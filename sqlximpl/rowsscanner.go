@@ -13,38 +13,32 @@ type rowsScanner struct {
 	rows *sqlx.Rows
 }
 
-func (s rowsScanner) ScanSlice(dest interface{}) error {
+func (s rowsScanner) scanSlice(dest interface{}, scanStruct bool) (err error) {
 	defer s.rows.Close()
 
-	v := reflect.ValueOf(dest)
-	if v.Kind() != reflect.Ptr {
-		return errors.Errorf("ScanSlice needs pointer to slice, got %s", v.Type())
+	destVal := reflect.ValueOf(dest)
+	if destVal.Kind() != reflect.Ptr {
+		return errors.Errorf("scan dest is not a pointer but %s", destVal.Type())
 	}
-	if v.IsNil() {
-		return errors.New("passed nil to ScanSlice")
+	if destVal.IsNil() {
+		return errors.New("scan dest is nil")
 	}
-	slice := v.Elem()
-	if v.Kind() != reflect.Slice {
-		return errors.Errorf("ScanSlice needs pointer to slice, got pointer to %s", v.Type())
+	slice := destVal.Elem()
+	if slice.Kind() != reflect.Slice {
+		return errors.Errorf("scan dest is not pointer to slice but %s", destVal.Type())
 	}
+	sliceElemType := slice.Type().Elem()
 
-	newLen := 0
-	newCap := 16
-	newSlice := reflect.MakeSlice(slice.Type(), newLen, newCap)
+	newSlice := reflect.MakeSlice(slice.Type(), 0, 32)
 
 	for s.rows.Next() {
-		if newLen == newCap {
-			// Double capacity
-			newSlice = reflect.AppendSlice(newSlice, reflect.MakeSlice(slice.Type(), newLen, newLen)).Slice(0, newLen)
-			newCap *= 2
+		newSlice = reflect.Append(newSlice, reflect.Zero(sliceElemType))
+		elemPtr := newSlice.Index(newSlice.Len() - 1).Addr()
+		if scanStruct {
+			err = s.rows.StructScan(elemPtr.Interface())
+		} else {
+			err = s.rows.Scan(elemPtr.Interface())
 		}
-
-		// Grow slice by one
-		newLen++
-		newSlice = newSlice.Slice(0, newLen)
-
-		lastElemPtr := newSlice.Index(newLen - 1).Addr()
-		err := s.rows.Scan(lastElemPtr.Interface())
 		if err != nil {
 			return err
 		}
@@ -54,13 +48,21 @@ func (s rowsScanner) ScanSlice(dest interface{}) error {
 	}
 
 	// Assign newSlice if there were no errors
-	slice.Set(newSlice)
+	if newSlice.Len() == 0 {
+		slice.SetLen(0)
+	} else {
+		slice.Set(newSlice)
+	}
 
 	return nil
 }
 
+func (s rowsScanner) ScanSlice(dest interface{}) error {
+	return s.scanSlice(dest, false)
+}
+
 func (s rowsScanner) ScanStructSlice(dest interface{}) error {
-	return sqlx.StructScan(s.rows, dest)
+	return s.scanSlice(dest, true)
 }
 
 func (s rowsScanner) ForEachRow(callback func(sqldb.RowScanner) error) error {
