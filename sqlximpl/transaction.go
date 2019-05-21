@@ -42,3 +42,7 @@ func (conn transaction) Commit() error {
 func (conn transaction) Rollback() error {
 	return conn.tx.Rollback()
 }
+
+func (conn transaction) Transaction(txFunc func(tx sqldb.Connection) error) error {
+	return sqldb.ErrWithinTransaction
+}

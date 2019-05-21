@@ -7,6 +7,8 @@ import (
 	"github.com/domonda/zerolog/log"
 )
 
+// Transaction executes txFunc within a transaction that is passed in as tx Connection.
+// The transaction will be rolled back if txFunc returns an error or panics.
 func Transaction(conn Connection, txFunc func(tx Connection) error) (err error) {
 	tx, e := conn.Begin()
 	if e != nil {
