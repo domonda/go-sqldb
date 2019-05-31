@@ -34,6 +34,11 @@ func (s rowsScanner) scanSlice(dest interface{}, scanStruct bool) (err error) {
 	for s.rows.Next() {
 		newSlice = reflect.Append(newSlice, reflect.Zero(sliceElemType))
 		elemPtr := newSlice.Index(newSlice.Len() - 1).Addr()
+		if sliceElemType.Kind() == reflect.Ptr {
+			elemPtr = reflect.New(sliceElemType.Elem())
+			newSlice.Index(newSlice.Len() - 1).Set(elemPtr)
+		}
+
 		if scanStruct {
 			err = s.rows.StructScan(elemPtr.Interface())
 		} else {
