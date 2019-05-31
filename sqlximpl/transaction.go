@@ -10,6 +10,10 @@ type transaction struct {
 	tx *sqlx.Tx
 }
 
+func TransactionConnection(tx *sqlx.Tx) sqldb.Connection {
+	return transaction{tx}
+}
+
 func (conn transaction) Exec(query string, args ...interface{}) error {
 	_, err := conn.tx.Exec(query, args...)
 	return err
