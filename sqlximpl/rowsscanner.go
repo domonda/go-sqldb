@@ -33,16 +33,19 @@ func (s rowsScanner) scanSlice(dest interface{}, scanStruct bool) (err error) {
 
 	for s.rows.Next() {
 		newSlice = reflect.Append(newSlice, reflect.Zero(sliceElemType))
-		elemPtr := newSlice.Index(newSlice.Len() - 1).Addr()
+		target := newSlice.Index(newSlice.Len() - 1)
 		if sliceElemType.Kind() == reflect.Ptr {
-			elemPtr = reflect.New(sliceElemType.Elem())
-			newSlice.Index(newSlice.Len() - 1).Set(elemPtr)
-		}
-
-		if scanStruct {
-			err = s.rows.StructScan(elemPtr.Interface())
+			// sqlx does not allocate for pointer types,
+			// so set last slice element to newly allocated object
+			target.Set(reflect.New(sliceElemType.Elem()))
 		} else {
-			err = s.rows.Scan(elemPtr.Interface())
+			// If no pointer type, then use address of last slice element
+			target = target.Addr()
+		}
+		if scanStruct {
+			err = s.rows.StructScan(target.Interface())
+		} else {
+			err = s.rows.Scan(target.Interface())
 		}
 		if err != nil {
 			return err

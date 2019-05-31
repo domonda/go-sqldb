@@ -44,7 +44,7 @@ func (conn connection) Begin() (sqldb.Connection, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &transaction{tx}, nil
+	return TransactionConnection(tx), nil
 }
 
 func (conn connection) Commit() error {
