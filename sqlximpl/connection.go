@@ -1,6 +1,8 @@
 package sqlximpl
 
 import (
+	"fmt"
+
 	"github.com/jmoiron/sqlx"
 
 	sqldb "github.com/domonda/go-sqldb"
@@ -12,6 +14,28 @@ func NewConnection(driverName, dataSourceName string) (sqldb.Connection, error) 
 		return nil, err
 	}
 	return &connection{db}, nil
+}
+
+func MustNewConnection(driverName, dataSourceName string) sqldb.Connection {
+	conn, err := NewConnection(driverName, dataSourceName)
+	if err != nil {
+		panic(err)
+	}
+	return conn
+}
+
+func NewPostgresConnection(user, dbname string) (sqldb.Connection, error) {
+	driverName := "postgres"
+	dataSourceName := fmt.Sprintf("user=%s dbname=%s sslmode=disable", user, dbname)
+	return NewConnection(driverName, dataSourceName)
+}
+
+func MustNewPostgresConnection(user, dbname string) sqldb.Connection {
+	conn, err := NewPostgresConnection(user, dbname)
+	if err != nil {
+		panic(err)
+	}
+	return conn
 }
 
 type connection struct {
@@ -57,4 +81,8 @@ func (conn connection) Rollback() error {
 
 func (conn connection) Transaction(txFunc func(tx sqldb.Connection) error) error {
 	return sqldb.Transaction(conn, txFunc)
+}
+
+func (conn connection) Close() error {
+	return conn.db.Close()
 }

@@ -9,6 +9,8 @@ type Connection interface {
 	Commit() error
 	Rollback() error
 	Transaction(txFunc func(tx Connection) error) error
+
+	Close() error
 }
 
 type RowScanner interface {

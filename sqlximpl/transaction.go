@@ -50,3 +50,8 @@ func (conn transaction) Rollback() error {
 func (conn transaction) Transaction(txFunc func(tx sqldb.Connection) error) error {
 	return sqldb.ErrWithinTransaction
 }
+
+func (conn transaction) Close() error {
+	conn.Rollback()
+	return nil
+}
