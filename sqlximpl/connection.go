@@ -83,6 +83,18 @@ func (conn connection) Transaction(txFunc func(tx sqldb.Connection) error) error
 	return sqldb.Transaction(conn, txFunc)
 }
 
+func (conn connection) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
+	return getOrCreateGlobalListener(conn.db.DriverName()).listenOnChannel(channel, onNotify, onUnlisten)
+}
+
+func (conn connection) UnlistenChannel(channel string) (err error) {
+	return getGlobalListenerOrNil(conn.db.DriverName()).unlistenChannel(channel)
+}
+
+func (conn connection) IsListeningOnChannel(channel string) bool {
+	return getGlobalListenerOrNil(conn.db.DriverName()).isListeningOnChannel(channel)
+}
+
 func (conn connection) Close() error {
 	return conn.db.Close()
 }

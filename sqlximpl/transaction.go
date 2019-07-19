@@ -51,6 +51,18 @@ func (conn transaction) Transaction(txFunc func(tx sqldb.Connection) error) erro
 	return sqldb.ErrWithinTransaction
 }
 
+func (conn transaction) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
+	return getOrCreateGlobalListener(conn.tx.DriverName()).listenOnChannel(channel, onNotify, onUnlisten)
+}
+
+func (conn transaction) UnlistenChannel(channel string) (err error) {
+	return getGlobalListenerOrNil(conn.tx.DriverName()).unlistenChannel(channel)
+}
+
+func (conn transaction) IsListeningOnChannel(channel string) bool {
+	return getGlobalListenerOrNil(conn.tx.DriverName()).isListeningOnChannel(channel)
+}
+
 func (conn transaction) Close() error {
 	conn.Rollback()
 	return nil
