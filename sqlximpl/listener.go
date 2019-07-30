@@ -7,8 +7,8 @@ import (
 
 	"github.com/lib/pq"
 
-	"github.com/domonda/Domonda/pkg/wrap"
 	"github.com/domonda/errors"
+	"github.com/domonda/errors/wrap"
 	sqldb "github.com/domonda/go-sqldb"
 )
 
