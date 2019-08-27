@@ -13,7 +13,7 @@ func NewConnection(driverName, dataSourceName string) (sqldb.Connection, error) 
 	if err != nil {
 		return nil, err
 	}
-	return &connection{db}, nil
+	return &connection{db, driverName, dataSourceName}, nil
 }
 
 func MustNewConnection(driverName, dataSourceName string) sqldb.Connection {
@@ -39,7 +39,9 @@ func MustNewPostgresConnection(user, dbname string) sqldb.Connection {
 }
 
 type connection struct {
-	db *sqlx.DB
+	db             *sqlx.DB
+	driverName     string
+	dataSourceName string
 }
 
 func (conn connection) Exec(query string, args ...interface{}) error {
@@ -84,15 +86,15 @@ func (conn connection) Transaction(txFunc func(tx sqldb.Connection) error) error
 }
 
 func (conn connection) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
-	return getOrCreateGlobalListener(conn.db.DriverName()).listenOnChannel(channel, onNotify, onUnlisten)
+	return getOrCreateGlobalListener(conn.dataSourceName).listenOnChannel(channel, onNotify, onUnlisten)
 }
 
 func (conn connection) UnlistenChannel(channel string) (err error) {
-	return getGlobalListenerOrNil(conn.db.DriverName()).unlistenChannel(channel)
+	return getGlobalListenerOrNil(conn.dataSourceName).unlistenChannel(channel)
 }
 
 func (conn connection) IsListeningOnChannel(channel string) bool {
-	return getGlobalListenerOrNil(conn.db.DriverName()).isListeningOnChannel(channel)
+	return getGlobalListenerOrNil(conn.dataSourceName).isListeningOnChannel(channel)
 }
 
 func (conn connection) Close() error {
