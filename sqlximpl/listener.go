@@ -97,13 +97,13 @@ func (l *listener) notify(notification *pq.Notification) {
 }
 
 func (l *listener) safeNotifyCallback(callback sqldb.OnNotifyFunc, channel, payload string) {
-	defer wrap.RecoverAndLogPanic(log, "safeNotifyCallback", channel, payload)
+	defer wrap.RecoverAndLogPanic(log.ErrorPrinter(), "safeNotifyCallback", channel, payload)
 
 	callback(channel, payload)
 }
 
 func (l *listener) safeUnlistenCallback(callback sqldb.OnUnlistenFunc, channel string) {
-	defer wrap.RecoverAndLogPanic(log, "safeUnlistenCallback", channel)
+	defer wrap.RecoverAndLogPanic(log.ErrorPrinter(), "safeUnlistenCallback", channel)
 
 	callback(channel)
 }
