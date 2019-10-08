@@ -97,13 +97,13 @@ func (l *listener) notify(notification *pq.Notification) {
 }
 
 func (l *listener) safeNotifyCallback(callback sqldb.OnNotifyFunc, channel, payload string) {
-	defer wrap.RecoverAndLogPanic(log.ErrorPrinter(), "safeNotifyCallback", channel, payload)
+	defer wrap.RecoverAndLogPanic(log.ErrorWriter(), "safeNotifyCallback", channel, payload)
 
 	callback(channel, payload)
 }
 
 func (l *listener) safeUnlistenCallback(callback sqldb.OnUnlistenFunc, channel string) {
-	defer wrap.RecoverAndLogPanic(log.ErrorPrinter(), "safeUnlistenCallback", channel)
+	defer wrap.RecoverAndLogPanic(log.ErrorWriter(), "safeUnlistenCallback", channel)
 
 	callback(channel)
 }
@@ -202,9 +202,9 @@ func logListenerConnectionEvent(event pq.ListenerEventType, err error) {
 		message = fmt.Sprintf("unknown(%d)", event)
 	}
 
-	l := log.Debug().Str("message", message)
+	l := log.Debug("sqlximpl: got listener connection event").Str("message", message)
 	if err != nil {
-		l = l.Err(err)
+		l = l.Val("err", err)
 	}
-	l.Msg("postgresdb: notifications " + message)
+	l.Log()
 }

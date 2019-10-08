@@ -4,7 +4,7 @@ import (
 	"database/sql"
 
 	"github.com/domonda/errors"
-	"github.com/domonda/zerolog/log"
+	"github.com/domonda/golog/log"
 )
 
 // Transaction executes txFunc within a transaction that is passed in as tx Connection.
@@ -24,7 +24,7 @@ func Transaction(conn Connection, txFunc func(tx Connection) error) (err error) 
 					// No hard error, should we still debug log it?
 				} else {
 					// Double error situation, log e so it doesn't get lost
-					log.Error().Err(e).Msgf("error from transaction rollback after panic: %+v", r)
+					log.Errorf("error from transaction rollback after panic: %+v", r).Val("err", e).Log()
 				}
 			}
 			panic(r) // re-throw panic after Rollback
@@ -37,7 +37,7 @@ func Transaction(conn Connection, txFunc func(tx Connection) error) (err error) 
 					// No hard error, should we still debug log it?
 				} else {
 					// Double error situation, log e so it doesn't get lost
-					log.Error().Err(e).Msgf("error from transaction rollback after error: %+v", err)
+					log.Errorf("error from transaction rollback after error: %+v", err).Val("err", e).Log()
 				}
 			}
 

@@ -1,5 +1,7 @@
 package sqlximpl
 
-import "github.com/domonda/Domonda/pkg/logger"
+import (
+	"github.com/domonda/golog"
+)
 
-var log = logger.WithDebugLevel()
+var log = golog.NewLogger(golog.DefaultLevels, golog.LevelFilterNone)
