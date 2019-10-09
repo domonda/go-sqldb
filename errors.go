@@ -2,20 +2,14 @@ package sqldb
 
 import (
 	"database/sql"
-
-	"github.com/domonda/errors"
+	"errors"
 )
 
 // ErrNoRows
 
-// IsErrNoRows returns if the root cause error of err is sql.ErrNoRows
-func IsErrNoRows(err error) bool {
-	return errors.Cause(err) == sql.ErrNoRows
-}
-
 // FilterErrNoRows returns err or nil if IsErrNoRows(err)
 func FilterErrNoRows(err error) error {
-	if IsErrNoRows(err) {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
 	return err

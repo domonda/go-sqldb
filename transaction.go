@@ -2,9 +2,8 @@ package sqldb
 
 import (
 	"database/sql"
-
-	"github.com/domonda/errors"
-	"github.com/domonda/golog/log"
+	"errors"
+	"fmt"
 )
 
 // Transaction executes txFunc within a transaction that is passed in as tx Connection.
@@ -20,11 +19,11 @@ func Transaction(conn Connection, txFunc func(tx Connection) error) (err error) 
 
 			e := tx.Rollback()
 			if e != nil {
-				if errors.Cause(e) == sql.ErrTxDone {
+				if errors.Is(e, sql.ErrTxDone) {
 					// No hard error, should we still debug log it?
 				} else {
 					// Double error situation, log e so it doesn't get lost
-					log.Errorf("error from transaction rollback after panic: %+v", r).Val("err", e).Log()
+					ErrLogger.Printf("error %s from transaction rollback after panic: %+v", e, r)
 				}
 			}
 			panic(r) // re-throw panic after Rollback
@@ -33,11 +32,11 @@ func Transaction(conn Connection, txFunc func(tx Connection) error) (err error) 
 
 			e := tx.Rollback()
 			if e != nil {
-				if errors.Cause(e) == sql.ErrTxDone {
+				if errors.Is(e, sql.ErrTxDone) {
 					// No hard error, should we still debug log it?
 				} else {
-					// Double error situation, log e so it doesn't get lost
-					log.Errorf("error from transaction rollback after error: %+v", err).Val("err", e).Log()
+					// Double error situation, wrap err with e so it doesn't get lost
+					err = fmt.Errorf("error %s from transaction rollback after error: %w", e, err)
 				}
 			}
 
@@ -50,7 +49,7 @@ func Transaction(conn Connection, txFunc func(tx Connection) error) (err error) 
 				// Save for error cases above?
 				// Why do we have those sql.ErrTxDone cases?
 
-				// if errors.Cause(e) == sql.ErrTxDone {
+				// if errors.Is(e, sql.ErrTxDone) {
 				// 	// No hard error, should we still debug log it?
 				// } else {
 				// 	// Commit failed, set error as function return value
