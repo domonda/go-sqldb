@@ -9,57 +9,36 @@ import (
 // Transaction executes txFunc within a transaction that is passed in as tx Connection.
 // The transaction will be rolled back if txFunc returns an error or panics.
 func Transaction(conn Connection, txFunc func(tx Connection) error) (err error) {
-	tx, e := conn.Begin()
+	tx, e := conn.Begin() // use e to keep err accessible in defer func below
 	if e != nil {
-		return e
+		return fmt.Errorf("sqldb.Transaction begin: %w", e)
 	}
 
 	defer func() {
 		if r := recover(); r != nil {
-
+			// txFunc paniced
 			e := tx.Rollback()
-			if e != nil {
-				if errors.Is(e, sql.ErrTxDone) {
-					// No hard error, should we still debug log it?
-				} else {
-					// Double error situation, log e so it doesn't get lost
-					ErrLogger.Printf("error %s from transaction rollback after panic: %+v", e, r)
-				}
+			if e != nil && !errors.Is(e, sql.ErrTxDone) {
+				// Double error situation, log e so it doesn't get lost
+				ErrLogger.Printf("sqldb.Transaction error %s from rollback after panic: %+v", e, r)
 			}
 			panic(r) // re-throw panic after Rollback
+		}
 
-		} else if err != nil {
-
+		if err != nil {
+			// txFunc returned an error
 			e := tx.Rollback()
-			if e != nil {
-				if errors.Is(e, sql.ErrTxDone) {
-					// No hard error, should we still debug log it?
-				} else {
-					// Double error situation, wrap err with e so it doesn't get lost
-					err = fmt.Errorf("error %s from transaction rollback after error: %w", e, err)
-				}
+			if e != nil && !errors.Is(e, sql.ErrTxDone) {
+				// Double error situation, wrap err with e so it doesn't get lost
+				err = fmt.Errorf("sqldb.Transaction error %s from rollback after error: %w", e, err)
 			}
+			return
+		}
 
-		} else {
-
-			e := tx.Commit()
-			if e != nil {
-				// TODO clarify: Commit should never get called twice
-				// so sql.ErrTxDone should not get ignored.
-				// Save for error cases above?
-				// Why do we have those sql.ErrTxDone cases?
-
-				// if errors.Is(e, sql.ErrTxDone) {
-				// 	// No hard error, should we still debug log it?
-				// } else {
-				// 	// Commit failed, set error as function return value
-				// 	err = e
-				// }
-
-				// Set Commit error as function return value
-				err = e
-			}
-
+		e := tx.Commit()
+		if e != nil {
+			// Set Commit error as function return value
+			err = fmt.Errorf("sqldb.Transaction commit: %w", e)
 		}
 	}()
 
