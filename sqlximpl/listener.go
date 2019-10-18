@@ -7,9 +7,8 @@ import (
 
 	"github.com/lib/pq"
 
-	"github.com/domonda/errors"
-	"github.com/domonda/errors/wrap"
 	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-wraperr"
 )
 
 var (
@@ -97,13 +96,13 @@ func (l *listener) notify(notification *pq.Notification) {
 }
 
 func (l *listener) safeNotifyCallback(callback sqldb.OnNotifyFunc, channel, payload string) {
-	defer wrap.RecoverAndLogPanic(sqldb.ErrLogger, "safeNotifyCallback", channel, payload)
+	defer wraperr.RecoverAndLogPanicWithFuncParams(sqldb.ErrLogger, channel, payload)
 
 	callback(channel, payload)
 }
 
 func (l *listener) safeUnlistenCallback(callback sqldb.OnUnlistenFunc, channel string) {
-	defer wrap.RecoverAndLogPanic(sqldb.ErrLogger, "safeUnlistenCallback", channel)
+	defer wraperr.RecoverAndLogPanicWithFuncParams(sqldb.ErrLogger, channel)
 
 	callback(channel)
 }
@@ -141,11 +140,9 @@ func (l *listener) isListeningOnChannel(channel string) bool {
 }
 
 func (l *listener) listenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
-	defer wrap.ResultError(&err, "listenOnChannel", channel)
-
 	err = l.conn.Listen(channel)
 	if err != nil {
-		return err
+		return fmt.Errorf("sqlximpl can't listenOnChannel %q because: %w", channel, err)
 	}
 
 	l.callbacksMtx.Lock()
@@ -163,15 +160,13 @@ func (l *listener) listenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, 
 
 // called on nil listener will return an error
 func (l *listener) unlistenChannel(channel string) (err error) {
-	defer wrap.ResultError(&err, "unlistenChannel", channel)
-
 	if l == nil || l.conn == nil {
-		return errors.New("postgresdb: no listener")
+		return fmt.Errorf("sqlximpl can't unlistenChannel %q because: no db connection", channel)
 	}
 
 	err = l.conn.Unlisten(channel)
 	if err != nil {
-		return err
+		return fmt.Errorf("sqlximpl can't unlistenChannel %q because: %w", channel, err)
 	}
 
 	l.callbacksMtx.Lock()
