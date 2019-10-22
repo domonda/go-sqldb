@@ -11,6 +11,15 @@ import (
 	"github.com/domonda/go-wraperr"
 )
 
+type Logger interface {
+	Printf(format string, args ...interface{})
+}
+
+var (
+	ListenerEventLogger Logger
+	ListenerErrorLogger Logger
+)
+
 var (
 	globalListeners    = make(map[string]*listener)
 	globalListenersMtx sync.RWMutex
@@ -197,5 +206,13 @@ func logListenerConnectionEvent(event pq.ListenerEventType, err error) {
 		message = fmt.Sprintf("unknown(%d)", event)
 	}
 
-	fmt.Printf("sqlximpl: got listener connection event message=%q error=%v\n", message, err)
+	if err == nil {
+		if ListenerEventLogger != nil {
+			ListenerEventLogger.Printf("sqlximpl: got listener connection event message=%q", message)
+		}
+	} else {
+		if ListenerErrorLogger != nil {
+			ListenerErrorLogger.Printf("sqlximpl: got listener connection event message=%q error=%v", message, err)
+		}
+	}
 }
