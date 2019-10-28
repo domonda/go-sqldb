@@ -3,6 +3,8 @@ package sqldb
 import (
 	"database/sql"
 	"errors"
+
+	"github.com/domonda/go-wraperr/sentinel"
 )
 
 // ErrNoRows
@@ -17,9 +19,9 @@ func FilterErrNoRows(err error) error {
 
 // Errors considering transactions
 
-var (
-	ErrWithinTransaction    = errors.New("within a transaction")
-	ErrNotWithinTransaction = errors.New("not within a transaction")
+const (
+	ErrWithinTransaction    = sentinel.Error("within a transaction")
+	ErrNotWithinTransaction = sentinel.Error("not within a transaction")
 )
 
 // ErrConnection
