@@ -3,28 +3,49 @@ package main
 import (
 	"go/parser"
 	"go/token"
-	"io/ioutil"
 	"log"
 	"os"
-	"path/filepath"
+	"strings"
 
+	"github.com/ungerik/go-fs"
 	"github.com/vburenin/ifacemaker/maker"
 )
 
 func main() {
-	if len(os.Args) != 2 {
-		log.Fatal("need implementation filename")
+	var implPackageDir fs.File
+	switch len(os.Args) {
+	case 1:
+		implPackageDir = fs.CurrentWorkingDir()
+	case 2:
+		implPackageDir = fs.File(os.Args[1])
+	default:
+		log.Fatalf("need 0 or 1 arguments but got %d", len(os.Args))
+	}
+	if !implPackageDir.IsDir() {
+		log.Fatalf("not a package directory: %s", string(implPackageDir))
 	}
 
-	packageDir := ".."
-	packageName := packageNameOfDir(packageDir)
+	var implPackageFiles []string
+	err := implPackageDir.ListDir(func(file fs.File) error {
+		if !file.IsDir() && file.Ext() == ".go" && !strings.HasSuffix(file.Name(), "_test.go") {
+			implPackageFiles = append(implPackageFiles, file.LocalPath())
+		}
+		return nil
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	packageDir := implPackageDir.Dir()
+	packageName := packageNameOfDir(packageDir.LocalPath())
+	outputFile := packageDir.Join("database.go")
 
 	source, err := maker.Make(
-		os.Args[1:2], // Implementation struct filenames
-		"Impl",       // Implementation struct name
-		"GENERATED",  // Interface file comment
-		packageName,  // Interface package
-		"Database",   // Interface type mame
+		implPackageFiles, // Implementation struct filenames
+		"Impl",           // Implementation struct name
+		"GENERATED",      // Interface file comment
+		packageName,      // Interface package
+		"Database",       // Interface type mame
 		"Database interface for package "+packageName, // Interface type comment
 		true,  // Copy docs from methods
 		false, // Copy type doc from struct
@@ -33,7 +54,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	err = ioutil.WriteFile(filepath.Join(packageDir, "database.go"), source, 0664)
+	err = outputFile.WriteAll(source)
 	if err != nil {
 		log.Fatal(err)
 	}
