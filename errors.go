@@ -9,8 +9,9 @@ import (
 
 // ErrNoRows
 
-// FilterErrNoRows returns err or nil if IsErrNoRows(err)
-func FilterErrNoRows(err error) error {
+// RemoveErrNoRows returns nil if errors.Is(err, sql.ErrNoRows)
+// or else err is returned unchanged.
+func RemoveErrNoRows(err error) error {
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
