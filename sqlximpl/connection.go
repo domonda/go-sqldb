@@ -59,6 +59,12 @@ func (conn *connection) Insert(table string, columValues sqldb.Values) error {
 	return implhelper.Insert(conn, table, columValues)
 }
 
+// InsertReturning inserts a new row into table using columnValues
+// and returns values from the inserted row listed in returning.
+func (conn *connection) InsertReturning(table string, columnValues sqldb.Values, returning string) sqldb.RowScanner {
+	return implhelper.InsertReturning(conn, table, columnValues, returning)
+}
+
 func (conn *connection) InsertStruct(table string, rowStruct interface{}, onlyColumns ...string) error {
 	return implhelper.InsertStruct(conn, table, rowStruct, onlyColumns...)
 }

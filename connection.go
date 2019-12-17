@@ -10,8 +10,12 @@ type Values map[string]interface{}
 type Connection interface {
 	Exec(query string, args ...interface{}) error
 
-	// Insert a new row into table using the named columValues.
-	Insert(table string, columValues Values) error
+	// Insert a new row into table using the columnValues.
+	Insert(table string, columnValues Values) error
+
+	// InsertReturning inserts a new row into table using columnValues
+	// and returns values from the inserted row listed in returning.
+	InsertReturning(table string, columnValues Values, returning string) RowScanner
 
 	// InsertStruct inserts a new row into table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
