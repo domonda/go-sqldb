@@ -7,6 +7,11 @@ type (
 
 type Connection interface {
 	Exec(query string, args ...interface{}) error
+
+	// InsertStruct inserts a new row into table using the exported fields
+	// of rowStruct which have a `db` tag that is not "-".
+	InsertStruct(table string, rowStruct interface{}) error
+
 	QueryRow(query string, args ...interface{}) RowScanner
 	QueryRows(query string, args ...interface{}) RowsScanner
 

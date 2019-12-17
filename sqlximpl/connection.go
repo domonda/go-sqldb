@@ -6,6 +6,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/implhelper"
 )
 
 func NewConnection(driverName, dataSourceName string) (sqldb.Connection, error) {
@@ -44,12 +45,16 @@ type connection struct {
 	dataSourceName string
 }
 
-func (conn connection) Exec(query string, args ...interface{}) error {
+func (conn *connection) Exec(query string, args ...interface{}) error {
 	_, err := conn.db.Exec(query, args...)
 	return err
 }
 
-func (conn connection) QueryRow(query string, args ...interface{}) sqldb.RowScanner {
+func (conn *connection) InsertStruct(table string, rowStruct interface{}) error {
+	return implhelper.InsertStruct(conn, table, rowStruct)
+}
+
+func (conn *connection) QueryRow(query string, args ...interface{}) sqldb.RowScanner {
 	row := conn.db.QueryRowx(query, args...)
 	if row.Err() != nil {
 		return sqldb.NewErrRowScanner(row.Err())
@@ -57,7 +62,7 @@ func (conn connection) QueryRow(query string, args ...interface{}) sqldb.RowScan
 	return rowScanner{row}
 }
 
-func (conn connection) QueryRows(query string, args ...interface{}) sqldb.RowsScanner {
+func (conn *connection) QueryRows(query string, args ...interface{}) sqldb.RowsScanner {
 	rows, err := conn.db.Queryx(query, args...)
 	if err != nil {
 		return sqldb.NewErrRowsScanner(err)
@@ -65,7 +70,7 @@ func (conn connection) QueryRows(query string, args ...interface{}) sqldb.RowsSc
 	return &rowsScanner{rows}
 }
 
-func (conn connection) Begin() (sqldb.Connection, error) {
+func (conn *connection) Begin() (sqldb.Connection, error) {
 	tx, err := conn.db.Beginx()
 	if err != nil {
 		return nil, err
@@ -73,30 +78,30 @@ func (conn connection) Begin() (sqldb.Connection, error) {
 	return TransactionConnection(tx), nil
 }
 
-func (conn connection) Commit() error {
+func (conn *connection) Commit() error {
 	return sqldb.ErrNotWithinTransaction
 }
 
-func (conn connection) Rollback() error {
+func (conn *connection) Rollback() error {
 	return sqldb.ErrNotWithinTransaction
 }
 
-func (conn connection) Transaction(txFunc func(tx sqldb.Connection) error) error {
-	return sqldb.Transaction(conn, txFunc)
+func (conn *connection) Transaction(txFunc func(tx sqldb.Connection) error) error {
+	return implhelper.Transaction(conn, txFunc)
 }
 
-func (conn connection) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
+func (conn *connection) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
 	return getOrCreateGlobalListener(conn.dataSourceName).listenOnChannel(channel, onNotify, onUnlisten)
 }
 
-func (conn connection) UnlistenChannel(channel string) (err error) {
+func (conn *connection) UnlistenChannel(channel string) (err error) {
 	return getGlobalListenerOrNil(conn.dataSourceName).unlistenChannel(channel)
 }
 
-func (conn connection) IsListeningOnChannel(channel string) bool {
+func (conn *connection) IsListeningOnChannel(channel string) bool {
 	return getGlobalListenerOrNil(conn.dataSourceName).isListeningOnChannel(channel)
 }
 
-func (conn connection) Close() error {
+func (conn *connection) Close() error {
 	return conn.db.Close()
 }

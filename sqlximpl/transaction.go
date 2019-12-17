@@ -4,6 +4,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/implhelper"
 )
 
 type transaction struct {
@@ -17,6 +18,10 @@ func TransactionConnection(tx *sqlx.Tx) sqldb.Connection {
 func (conn transaction) Exec(query string, args ...interface{}) error {
 	_, err := conn.tx.Exec(query, args...)
 	return err
+}
+
+func (conn transaction) InsertStruct(table string, rowStruct interface{}) error {
+	return implhelper.InsertStruct(conn, table, rowStruct)
 }
 
 func (conn transaction) QueryRow(query string, args ...interface{}) sqldb.RowScanner {
