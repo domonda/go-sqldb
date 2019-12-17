@@ -20,8 +20,8 @@ func (conn transaction) Exec(query string, args ...interface{}) error {
 	return err
 }
 
-func (conn transaction) InsertStruct(table string, rowStruct interface{}) error {
-	return implhelper.InsertStruct(conn, table, rowStruct)
+func (conn transaction) InsertStruct(table string, rowStruct interface{}, onlyColumns ...string) error {
+	return implhelper.InsertStruct(conn, table, rowStruct, onlyColumns...)
 }
 
 func (conn transaction) QueryRow(query string, args ...interface{}) sqldb.RowScanner {

@@ -10,7 +10,9 @@ type Connection interface {
 
 	// InsertStruct inserts a new row into table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
-	InsertStruct(table string, rowStruct interface{}) error
+	// If optional onlyColumns are provided, then only struct fields with a `db` tag
+	// matching any of the passed column names will be inserted.
+	InsertStruct(table string, rowStruct interface{}, onlyColumns ...string) error
 
 	QueryRow(query string, args ...interface{}) RowScanner
 	QueryRows(query string, args ...interface{}) RowsScanner

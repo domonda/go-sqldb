@@ -10,7 +10,9 @@ import (
 
 // InsertStruct inserts a new row into table using the exported fields
 // of rowStruct which have a `db` tag that is not "-".
-func InsertStruct(conn sqldb.Connection, table string, rowStruct interface{}) error {
+// If optional onlyColumns are provided, then only struct fields with a `db` tag
+// matching any of the passed column names will be inserted.
+func InsertStruct(conn sqldb.Connection, table string, rowStruct interface{}, onlyColumns ...string) error {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -22,7 +24,7 @@ func InsertStruct(conn sqldb.Connection, table string, rowStruct interface{}) er
 		return fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	names, values := structFields(v)
+	names, values := structFields(v, onlyColumns)
 	if len(names) == 0 {
 		return fmt.Errorf("InsertStruct into table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
 	}
@@ -51,23 +53,38 @@ func InsertStruct(conn sqldb.Connection, table string, rowStruct interface{}) er
 	return conn.Exec(query.String(), values...)
 }
 
-func structFields(v reflect.Value) (names []string, values []interface{}) {
+func structFields(v reflect.Value, allowedNames []string) (names []string, values []interface{}) {
 	for i := 0; i < v.NumField(); i++ {
 		fieldType := v.Type().Field(i)
 		fieldValue := v.Field(i)
 		switch {
 		case fieldType.Anonymous:
-			embedNames, embedValues := structFields(fieldValue)
+			embedNames, embedValues := structFields(fieldValue, allowedNames)
 			names = append(names, embedNames...)
 			values = append(values, embedValues...)
 
 		case fieldType.PkgPath == "":
 			name := fieldType.Tag.Get("db")
-			if name != "" && name != "-" {
+			if validName(name, allowedNames) {
 				names = append(names, name)
 				values = append(values, fieldValue.Interface())
 			}
 		}
 	}
 	return names, values
+}
+
+func validName(name string, allowedNames []string) bool {
+	if name == "" || name == "-" {
+		return false
+	}
+	if len(allowedNames) == 0 {
+		return true
+	}
+	for _, allowedName := range allowedNames {
+		if name == allowedName {
+			return true
+		}
+	}
+	return false
 }

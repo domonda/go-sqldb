@@ -50,8 +50,8 @@ func (conn *connection) Exec(query string, args ...interface{}) error {
 	return err
 }
 
-func (conn *connection) InsertStruct(table string, rowStruct interface{}) error {
-	return implhelper.InsertStruct(conn, table, rowStruct)
+func (conn *connection) InsertStruct(table string, rowStruct interface{}, onlyColumns ...string) error {
+	return implhelper.InsertStruct(conn, table, rowStruct, onlyColumns...)
 }
 
 func (conn *connection) QueryRow(query string, args ...interface{}) sqldb.RowScanner {
