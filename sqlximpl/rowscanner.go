@@ -6,6 +6,7 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+// rowScanner implements sqldb.RowScanner for a sqlx.Row
 type rowScanner struct {
 	row *sqlx.Row
 }

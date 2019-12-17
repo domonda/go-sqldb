@@ -14,7 +14,7 @@ func NewConnection(driverName, dataSourceName string) (sqldb.Connection, error) 
 	if err != nil {
 		return nil, err
 	}
-	return &connection{db, driverName, dataSourceName}, nil
+	return &Connection{db, driverName, dataSourceName}, nil
 }
 
 func MustNewConnection(driverName, dataSourceName string) sqldb.Connection {
@@ -39,27 +39,27 @@ func MustNewPostgresConnection(user, dbname string) sqldb.Connection {
 	return conn
 }
 
-type connection struct {
+type Connection struct {
 	db             *sqlx.DB
 	driverName     string
 	dataSourceName string
 }
 
-func (conn *connection) Exec(query string, args ...interface{}) error {
+func (conn *Connection) Exec(query string, args ...interface{}) error {
 	_, err := conn.db.Exec(query, args...)
 	return err
 }
 
 // Insert a new row into table using the named columValues.
-func (conn *connection) Insert(table string, columValues map[string]interface{}) error {
+func (conn *Connection) Insert(table string, columValues map[string]interface{}) error {
 	return implhelper.Insert(conn, table, columValues)
 }
 
-func (conn *connection) InsertStruct(table string, rowStruct interface{}, onlyColumns ...string) error {
+func (conn *Connection) InsertStruct(table string, rowStruct interface{}, onlyColumns ...string) error {
 	return implhelper.InsertStruct(conn, table, rowStruct, onlyColumns...)
 }
 
-func (conn *connection) QueryRow(query string, args ...interface{}) sqldb.RowScanner {
+func (conn *Connection) QueryRow(query string, args ...interface{}) sqldb.RowScanner {
 	row := conn.db.QueryRowx(query, args...)
 	if row.Err() != nil {
 		return sqldb.NewErrRowScanner(row.Err())
@@ -67,7 +67,7 @@ func (conn *connection) QueryRow(query string, args ...interface{}) sqldb.RowSca
 	return rowScanner{row}
 }
 
-func (conn *connection) QueryRows(query string, args ...interface{}) sqldb.RowsScanner {
+func (conn *Connection) QueryRows(query string, args ...interface{}) sqldb.RowsScanner {
 	rows, err := conn.db.Queryx(query, args...)
 	if err != nil {
 		return sqldb.NewErrRowsScanner(err)
@@ -75,7 +75,7 @@ func (conn *connection) QueryRows(query string, args ...interface{}) sqldb.RowsS
 	return &rowsScanner{rows}
 }
 
-func (conn *connection) Begin() (sqldb.Connection, error) {
+func (conn *Connection) Begin() (sqldb.Connection, error) {
 	tx, err := conn.db.Beginx()
 	if err != nil {
 		return nil, err
@@ -83,30 +83,30 @@ func (conn *connection) Begin() (sqldb.Connection, error) {
 	return TransactionConnection(tx), nil
 }
 
-func (conn *connection) Commit() error {
+func (conn *Connection) Commit() error {
 	return sqldb.ErrNotWithinTransaction
 }
 
-func (conn *connection) Rollback() error {
+func (conn *Connection) Rollback() error {
 	return sqldb.ErrNotWithinTransaction
 }
 
-func (conn *connection) Transaction(txFunc func(tx sqldb.Connection) error) error {
+func (conn *Connection) Transaction(txFunc func(tx sqldb.Connection) error) error {
 	return implhelper.Transaction(conn, txFunc)
 }
 
-func (conn *connection) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
+func (conn *Connection) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
 	return getOrCreateGlobalListener(conn.dataSourceName).listenOnChannel(channel, onNotify, onUnlisten)
 }
 
-func (conn *connection) UnlistenChannel(channel string) (err error) {
+func (conn *Connection) UnlistenChannel(channel string) (err error) {
 	return getGlobalListenerOrNil(conn.dataSourceName).unlistenChannel(channel)
 }
 
-func (conn *connection) IsListeningOnChannel(channel string) bool {
+func (conn *Connection) IsListeningOnChannel(channel string) bool {
 	return getGlobalListenerOrNil(conn.dataSourceName).isListeningOnChannel(channel)
 }
 
-func (conn *connection) Close() error {
+func (conn *Connection) Close() error {
 	return conn.db.Close()
 }

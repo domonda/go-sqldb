@@ -9,6 +9,7 @@ import (
 	sqldb "github.com/domonda/go-sqldb"
 )
 
+// rowsScanner implements sqldb.RowsScanner for sqlx.Rows
 type rowsScanner struct {
 	rows *sqlx.Rows
 }
