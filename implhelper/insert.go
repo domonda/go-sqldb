@@ -9,7 +9,7 @@ import (
 )
 
 // Insert a new row into table using the named columValues.
-func Insert(conn sqldb.Connection, table string, columValues map[string]interface{}) error {
+func Insert(conn sqldb.Connection, table string, columValues sqldb.Values) error {
 	if len(columValues) == 0 {
 		return fmt.Errorf("Insert into table %s: no columValues", table)
 	}

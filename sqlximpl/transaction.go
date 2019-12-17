@@ -21,7 +21,7 @@ func (conn transaction) Exec(query string, args ...interface{}) error {
 }
 
 // Insert a new row into table using the named columValues.
-func (conn transaction) Insert(table string, columValues map[string]interface{}) error {
+func (conn transaction) Insert(table string, columValues sqldb.Values) error {
 	return implhelper.Insert(conn, table, columValues)
 }
 
