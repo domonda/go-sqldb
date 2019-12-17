@@ -3,6 +3,7 @@ package implhelper
 import (
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 
 	sqldb "github.com/domonda/go-sqldb"
@@ -13,15 +14,10 @@ func Insert(conn sqldb.Connection, table string, columnValues sqldb.Values) erro
 	if len(columnValues) == 0 {
 		return fmt.Errorf("Insert into table %s: no columnValues", table)
 	}
-	names := make([]string, 0, len(columnValues))
-	values := make([]interface{}, 0, len(columnValues))
-	for name, value := range columnValues {
-		names = append(names, name)
-		values = append(values, value)
-	}
-	// TODO sort by name to create reproducable queries
 
-	return conn.Exec(insertQuery(table, names, ""), values...)
+	names, values := sortedNamesAndValues(columnValues)
+	query := insertQuery(table, names, "")
+	return conn.Exec(query, values...)
 }
 
 // InsertReturning inserts a new row into table using columnValues
@@ -30,15 +26,50 @@ func InsertReturning(conn sqldb.Connection, table string, columnValues sqldb.Val
 	if len(columnValues) == 0 {
 		return sqldb.NewErrRowScanner(fmt.Errorf("InsertReturning into table %s: no columnValues", table))
 	}
-	names := make([]string, 0, len(columnValues))
-	values := make([]interface{}, 0, len(columnValues))
-	for name, value := range columnValues {
-		names = append(names, name)
-		values = append(values, value)
-	}
-	// TODO sort by name to create reproducable queries
 
-	return conn.QueryRow(insertQuery(table, names, returning), values...)
+	names, values := sortedNamesAndValues(columnValues)
+	query := insertQuery(table, names, returning)
+	return conn.QueryRow(query, values...)
+}
+
+// InsertStruct inserts a new row into table using the exported fields
+// of rowStruct which have a `db` tag that is not "-".
+// If optional onlyColumns are provided, then only struct fields with a `db` tag
+// matching any of the passed column names will be inserted.
+func InsertStruct(conn sqldb.Connection, table string, rowStruct interface{}, onlyColumns ...string) error {
+	v := reflect.ValueOf(rowStruct)
+	for v.Kind() == reflect.Ptr && !v.IsNil() {
+		v = v.Elem()
+	}
+	switch {
+	case v.Kind() == reflect.Ptr && v.IsNil():
+		return fmt.Errorf("InsertStruct into table %s: can't insert nil", table)
+	case v.Kind() != reflect.Struct:
+		return fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
+	}
+
+	names, values := structFields(v, onlyColumns)
+	if len(names) == 0 {
+		return fmt.Errorf("InsertStruct into table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
+	}
+
+	query := insertQuery(table, names, "")
+	return conn.Exec(query, values...)
+}
+
+func sortedNamesAndValues(columnValues sqldb.Values) (names []string, values []interface{}) {
+	names = make([]string, 0, len(columnValues))
+	for name := range columnValues {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	values = make([]interface{}, len(columnValues))
+	for i, name := range names {
+		values[i] = columnValues[name]
+	}
+
+	return names, values
 }
 
 func insertQuery(table string, names []string, returning string) string {
@@ -67,30 +98,6 @@ func insertQuery(table string, names []string, returning string) string {
 	}
 
 	return query.String()
-}
-
-// InsertStruct inserts a new row into table using the exported fields
-// of rowStruct which have a `db` tag that is not "-".
-// If optional onlyColumns are provided, then only struct fields with a `db` tag
-// matching any of the passed column names will be inserted.
-func InsertStruct(conn sqldb.Connection, table string, rowStruct interface{}, onlyColumns ...string) error {
-	v := reflect.ValueOf(rowStruct)
-	for v.Kind() == reflect.Ptr && !v.IsNil() {
-		v = v.Elem()
-	}
-	switch {
-	case v.Kind() == reflect.Ptr && v.IsNil():
-		return fmt.Errorf("InsertStruct into table %s: can't insert nil", table)
-	case v.Kind() != reflect.Struct:
-		return fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
-	}
-
-	names, values := structFields(v, onlyColumns)
-	if len(names) == 0 {
-		return fmt.Errorf("InsertStruct into table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
-	}
-
-	return conn.Exec(insertQuery(table, names, ""), values...)
 }
 
 func structFields(v reflect.Value, allowedNames []string) (names []string, values []interface{}) {
