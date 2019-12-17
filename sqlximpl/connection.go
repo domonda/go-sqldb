@@ -50,6 +50,11 @@ func (conn *connection) Exec(query string, args ...interface{}) error {
 	return err
 }
 
+// Insert a new row into table using the named columValues.
+func (conn *connection) Insert(table string, columValues map[string]interface{}) error {
+	return implhelper.Insert(conn, table, columValues)
+}
+
 func (conn *connection) InsertStruct(table string, rowStruct interface{}, onlyColumns ...string) error {
 	return implhelper.InsertStruct(conn, table, rowStruct, onlyColumns...)
 }
