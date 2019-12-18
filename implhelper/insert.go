@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-wraperr"
 )
 
 // Insert a new row into table using the columnValues.
@@ -17,7 +18,12 @@ func Insert(conn sqldb.Connection, table string, columnValues sqldb.Values) erro
 
 	names, values := sortedNamesAndValues(columnValues)
 	query := insertQuery(table, names, "")
-	return conn.Exec(query, values...)
+	err := conn.Exec(query, values...)
+	if err != nil {
+		return wraperr.Errorf("query `%s` returned error: %w", query, err)
+	}
+
+	return nil
 }
 
 // InsertReturning inserts a new row into table using columnValues
@@ -54,7 +60,12 @@ func InsertStruct(conn sqldb.Connection, table string, rowStruct interface{}, on
 	}
 
 	query := insertQuery(table, names, "")
-	return conn.Exec(query, values...)
+	err := conn.Exec(query, values...)
+	if err != nil {
+		return wraperr.Errorf("query `%s` returned error: %w", query, err)
+	}
+
+	return nil
 }
 
 func sortedNamesAndValues(columnValues sqldb.Values) (names []string, values []interface{}) {

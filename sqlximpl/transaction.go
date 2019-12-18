@@ -40,7 +40,7 @@ func (conn transaction) QueryRow(query string, args ...interface{}) sqldb.RowSca
 	if row.Err() != nil {
 		return sqldb.NewErrRowScanner(row.Err())
 	}
-	return rowScanner{row}
+	return &rowScanner{query, row}
 }
 
 func (conn transaction) QueryRows(query string, args ...interface{}) sqldb.RowsScanner {
@@ -48,7 +48,7 @@ func (conn transaction) QueryRows(query string, args ...interface{}) sqldb.RowsS
 	if err != nil {
 		return sqldb.NewErrRowsScanner(err)
 	}
-	return &rowsScanner{rows}
+	return &rowsScanner{query, rows}
 }
 
 func (conn transaction) Begin() (sqldb.Connection, error) {

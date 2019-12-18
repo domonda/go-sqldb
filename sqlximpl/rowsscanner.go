@@ -5,28 +5,34 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/domonda/errors"
 	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-wraperr"
 )
 
 // rowsScanner implements sqldb.RowsScanner for sqlx.Rows
 type rowsScanner struct {
-	rows *sqlx.Rows
+	query string // for error wrapping
+	rows  *sqlx.Rows
 }
 
-func (s rowsScanner) scanSlice(dest interface{}, scanStruct bool) (err error) {
-	defer s.rows.Close()
+func (s *rowsScanner) scanSlice(dest interface{}, scanStruct bool) (err error) {
+	defer func() {
+		if err != nil {
+			err = wraperr.Errorf("query `%s` returned error: %w", s.query, err)
+		}
+		s.rows.Close()
+	}()
 
 	destVal := reflect.ValueOf(dest)
 	if destVal.Kind() != reflect.Ptr {
-		return errors.Errorf("scan dest is not a pointer but %s", destVal.Type())
+		return wraperr.Errorf("scan dest is not a pointer but %s", destVal.Type())
 	}
 	if destVal.IsNil() {
-		return errors.New("scan dest is nil")
+		return wraperr.New("scan dest is nil")
 	}
 	slice := destVal.Elem()
 	if slice.Kind() != reflect.Slice {
-		return errors.Errorf("scan dest is not pointer to slice but %s", destVal.Type())
+		return wraperr.Errorf("scan dest is not pointer to slice but %s", destVal.Type())
 	}
 	sliceElemType := slice.Type().Elem()
 
@@ -66,16 +72,21 @@ func (s rowsScanner) scanSlice(dest interface{}, scanStruct bool) (err error) {
 	return nil
 }
 
-func (s rowsScanner) ScanSlice(dest interface{}) error {
+func (s *rowsScanner) ScanSlice(dest interface{}) error {
 	return s.scanSlice(dest, false)
 }
 
-func (s rowsScanner) ScanStructSlice(dest interface{}) error {
+func (s *rowsScanner) ScanStructSlice(dest interface{}) error {
 	return s.scanSlice(dest, true)
 }
 
-func (s rowsScanner) ForEachRow(callback func(sqldb.RowScanner) error) error {
-	defer s.rows.Close()
+func (s *rowsScanner) ForEachRow(callback func(sqldb.RowScanner) error) (err error) {
+	defer func() {
+		if err != nil {
+			err = wraperr.Errorf("query `%s` returned error: %w", s.query, err)
+		}
+		s.rows.Close()
+	}()
 
 	for s.rows.Next() {
 		err := callback(rowsWrapper{s.rows})

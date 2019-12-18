@@ -7,6 +7,7 @@ import (
 
 	sqldb "github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/implhelper"
+	"github.com/domonda/go-wraperr"
 )
 
 func Connection(db *sqlx.DB, driverName, dataSourceName string) sqldb.Connection {
@@ -51,7 +52,10 @@ type connection struct {
 
 func (conn *connection) Exec(query string, args ...interface{}) error {
 	_, err := conn.db.Exec(query, args...)
-	return err
+	if err != nil {
+		return wraperr.Errorf("query `%s` returned error: %w", query, err)
+	}
+	return nil
 }
 
 // Insert a new row into table using the named columValues.
@@ -71,18 +75,20 @@ func (conn *connection) InsertStruct(table string, rowStruct interface{}, onlyCo
 
 func (conn *connection) QueryRow(query string, args ...interface{}) sqldb.RowScanner {
 	row := conn.db.QueryRowx(query, args...)
-	if row.Err() != nil {
-		return sqldb.NewErrRowScanner(row.Err())
+	if err := row.Err(); err != nil {
+		err = wraperr.Errorf("query `%s` returned error: %w", query, err)
+		return sqldb.NewErrRowScanner(err)
 	}
-	return rowScanner{row}
+	return &rowScanner{query, row}
 }
 
 func (conn *connection) QueryRows(query string, args ...interface{}) sqldb.RowsScanner {
 	rows, err := conn.db.Queryx(query, args...)
 	if err != nil {
+		err = wraperr.Errorf("query `%s` returned error: %w", query, err)
 		return sqldb.NewErrRowsScanner(err)
 	}
-	return &rowsScanner{rows}
+	return &rowsScanner{query, rows}
 }
 
 func (conn *connection) Begin() (sqldb.Connection, error) {
