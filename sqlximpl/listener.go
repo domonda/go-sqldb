@@ -11,15 +11,6 @@ import (
 	"github.com/domonda/go-wraperr"
 )
 
-type Logger interface {
-	Printf(format string, args ...interface{})
-}
-
-var (
-	ListenerEventLogger Logger
-	ListenerErrorLogger Logger
-)
-
 var (
 	globalListeners    = make(map[string]*listener)
 	globalListenersMtx sync.RWMutex
@@ -192,27 +183,26 @@ func (l *listener) unlistenChannel(channel string) (err error) {
 }
 
 func logListenerConnectionEvent(event pq.ListenerEventType, err error) {
-	var message string
+	switch {
+	case err != nil:
+		sqldb.ErrLogger.Printf("sqlximpl: got listener connection event=%q error=%v", connectionEvent(event), err)
+
+	case ListenerEventLogger != nil:
+		ListenerEventLogger.Printf("sqlximpl: got listener connection event=%q", connectionEvent(event))
+	}
+}
+
+func connectionEvent(event pq.ListenerEventType) string {
 	switch event {
 	case pq.ListenerEventConnected:
-		message = "connected"
+		return "connected"
 	case pq.ListenerEventDisconnected:
-		message = "disconnected"
+		return "disconnected"
 	case pq.ListenerEventReconnected:
-		message = "reconnected"
+		return "reconnected"
 	case pq.ListenerEventConnectionAttemptFailed:
-		message = "connectionAttemptFailed"
+		return "connectionAttemptFailed"
 	default:
-		message = fmt.Sprintf("unknown(%d)", event)
-	}
-
-	if err == nil {
-		if ListenerEventLogger != nil {
-			ListenerEventLogger.Printf("sqlximpl: got listener connection event message=%q", message)
-		}
-	} else {
-		if ListenerErrorLogger != nil {
-			ListenerErrorLogger.Printf("sqlximpl: got listener connection event message=%q error=%v", message, err)
-		}
+		return fmt.Sprintf("unknown(%d)", event)
 	}
 }
