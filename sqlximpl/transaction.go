@@ -1,6 +1,9 @@
 package sqlximpl
 
 import (
+	"context"
+	"database/sql"
+
 	"github.com/jmoiron/sqlx"
 
 	sqldb "github.com/domonda/go-sqldb"
@@ -20,23 +23,44 @@ func (conn transaction) Exec(query string, args ...interface{}) error {
 	return err
 }
 
+func (conn transaction) ExecContext(ctx context.Context, query string, args ...interface{}) error {
+	_, err := conn.tx.ExecContext(ctx, query, args...)
+	return err
+}
+
 // Insert a new row into table using the named columValues.
 func (conn transaction) Insert(table string, columValues sqldb.Values) error {
-	return implhelper.Insert(conn, table, columValues)
+	return implhelper.Insert(context.Background(), conn, table, columValues)
+}
+
+func (conn transaction) InsertContext(ctx context.Context, table string, columValues sqldb.Values) error {
+	return implhelper.Insert(ctx, conn, table, columValues)
 }
 
 // InsertReturning inserts a new row into table using columnValues
 // and returns values from the inserted row listed in returning.
 func (conn transaction) InsertReturning(table string, columnValues sqldb.Values, returning string) sqldb.RowScanner {
-	return implhelper.InsertReturning(conn, table, columnValues, returning)
+	return implhelper.InsertReturning(context.Background(), conn, table, columnValues, returning)
+}
+
+func (conn transaction) InsertReturningContext(ctx context.Context, table string, columnValues sqldb.Values, returning string) sqldb.RowScanner {
+	return implhelper.InsertReturning(ctx, conn, table, columnValues, returning)
 }
 
 func (conn transaction) InsertStruct(table string, rowStruct interface{}, onlyColumns ...string) error {
-	return implhelper.InsertStruct(conn, table, rowStruct, onlyColumns...)
+	return implhelper.InsertStruct(context.Background(), conn, table, rowStruct, onlyColumns...)
+}
+
+func (conn transaction) InsertStructContext(ctx context.Context, table string, rowStruct interface{}, onlyColumns ...string) error {
+	return implhelper.InsertStruct(ctx, conn, table, rowStruct, onlyColumns...)
 }
 
 func (conn transaction) QueryRow(query string, args ...interface{}) sqldb.RowScanner {
-	row := conn.tx.QueryRowx(query, args...)
+	return conn.QueryRowContext(context.Background(), query, args...)
+}
+
+func (conn transaction) QueryRowContext(ctx context.Context, query string, args ...interface{}) sqldb.RowScanner {
+	row := conn.tx.QueryRowxContext(ctx, query, args...)
 	if row.Err() != nil {
 		return sqldb.NewErrRowScanner(row.Err())
 	}
@@ -44,14 +68,18 @@ func (conn transaction) QueryRow(query string, args ...interface{}) sqldb.RowSca
 }
 
 func (conn transaction) QueryRows(query string, args ...interface{}) sqldb.RowsScanner {
-	rows, err := conn.tx.Queryx(query, args...)
+	return conn.QueryRowsContext(context.Background(), query, args...)
+}
+
+func (conn transaction) QueryRowsContext(ctx context.Context, query string, args ...interface{}) sqldb.RowsScanner {
+	rows, err := conn.tx.QueryxContext(ctx, query, args...)
 	if err != nil {
 		return sqldb.NewErrRowsScanner(err)
 	}
 	return &rowsScanner{query, rows}
 }
 
-func (conn transaction) Begin() (sqldb.Connection, error) {
+func (conn transaction) Begin(ctx context.Context, opts *sql.TxOptions) (sqldb.Connection, error) {
 	return nil, sqldb.ErrWithinTransaction
 }
 
@@ -64,6 +92,10 @@ func (conn transaction) Rollback() error {
 }
 
 func (conn transaction) Transaction(txFunc func(tx sqldb.Connection) error) error {
+	return sqldb.ErrWithinTransaction
+}
+
+func (conn transaction) TransactionContext(ctx context.Context, opts *sql.TxOptions, txFunc func(tx sqldb.Connection) error) error {
 	return sqldb.ErrWithinTransaction
 }
 

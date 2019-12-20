@@ -1,6 +1,7 @@
 package implhelper
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -10,8 +11,8 @@ import (
 
 // Transaction executes txFunc within a transaction that is passed in as tx Connection.
 // The transaction will be rolled back if txFunc returns an error or panics.
-func Transaction(conn sqldb.Connection, txFunc func(tx sqldb.Connection) error) (err error) {
-	tx, e := conn.Begin() // use e to keep err accessible in defer func below
+func Transaction(ctx context.Context, opts *sql.TxOptions, conn sqldb.Connection, txFunc func(tx sqldb.Connection) error) (err error) {
+	tx, e := conn.Begin(ctx, opts) // use e to keep err accessible in defer func below
 	if e != nil {
 		return fmt.Errorf("sqldb.Transaction begin: %w", e)
 	}

@@ -1,6 +1,7 @@
 package implhelper
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"sort"
@@ -11,14 +12,14 @@ import (
 )
 
 // Insert a new row into table using the columnValues.
-func Insert(conn sqldb.Connection, table string, columnValues sqldb.Values) error {
+func Insert(ctx context.Context, conn sqldb.Connection, table string, columnValues sqldb.Values) error {
 	if len(columnValues) == 0 {
 		return fmt.Errorf("Insert into table %s: no columnValues", table)
 	}
 
 	names, values := sortedNamesAndValues(columnValues)
 	query := insertQuery(table, names, "")
-	err := conn.Exec(query, values...)
+	err := conn.ExecContext(ctx, query, values...)
 	if err != nil {
 		return wraperr.Errorf("query `%s` returned error: %w", query, err)
 	}
@@ -28,7 +29,7 @@ func Insert(conn sqldb.Connection, table string, columnValues sqldb.Values) erro
 
 // InsertReturning inserts a new row into table using columnValues
 // and returns values from the inserted row listed in returning.
-func InsertReturning(conn sqldb.Connection, table string, columnValues sqldb.Values, returning string) sqldb.RowScanner {
+func InsertReturning(ctx context.Context, conn sqldb.Connection, table string, columnValues sqldb.Values, returning string) sqldb.RowScanner {
 	if len(columnValues) == 0 {
 		return sqldb.NewErrRowScanner(fmt.Errorf("InsertReturning into table %s: no columnValues", table))
 	}
@@ -42,7 +43,7 @@ func InsertReturning(conn sqldb.Connection, table string, columnValues sqldb.Val
 // of rowStruct which have a `db` tag that is not "-".
 // If optional onlyColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be inserted.
-func InsertStruct(conn sqldb.Connection, table string, rowStruct interface{}, onlyColumns ...string) error {
+func InsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowStruct interface{}, onlyColumns ...string) error {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -60,7 +61,7 @@ func InsertStruct(conn sqldb.Connection, table string, rowStruct interface{}, on
 	}
 
 	query := insertQuery(table, names, "")
-	err := conn.Exec(query, values...)
+	err := conn.ExecContext(ctx, query, values...)
 	if err != nil {
 		return wraperr.Errorf("query `%s` returned error: %w", query, err)
 	}
