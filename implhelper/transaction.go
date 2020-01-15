@@ -9,8 +9,11 @@ import (
 	sqldb "github.com/domonda/go-sqldb"
 )
 
-// Transaction executes txFunc within a transaction that is passed in as tx Connection.
+// Transaction executes txFunc within a database transaction that is passed in as tx Connection.
 // The transaction will be rolled back if txFunc returns an error or panics.
+// Recovered panics are re-paniced after the transaction was rolled back.
+// Transaction returns errors from txFunc or transaction commit errors happening after txFunc.
+// Rollback errors are logged with sqldb.ErrLogger.
 func Transaction(ctx context.Context, opts *sql.TxOptions, conn sqldb.Connection, txFunc func(tx sqldb.Connection) error) (err error) {
 	tx, e := conn.Begin(ctx, opts) // use e to keep err accessible in defer func below
 	if e != nil {

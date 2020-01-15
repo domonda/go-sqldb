@@ -139,11 +139,12 @@ func (conn *connection) Rollback() error {
 	return sqldb.ErrNotWithinTransaction
 }
 
-func (conn *connection) Transaction(txFunc func(tx sqldb.Connection) error) error {
-	return implhelper.Transaction(context.Background(), nil, conn, txFunc)
-}
-
-func (conn *connection) TransactionContext(ctx context.Context, opts *sql.TxOptions, txFunc func(tx sqldb.Connection) error) error {
+// Transaction executes txFunc within a database transaction that is passed in as tx Connection.
+// The transaction will be rolled back if txFunc returns an error or panics.
+// Recovered panics are re-paniced after the transaction was rolled back.
+// Transaction returns errors from txFunc or transaction commit errors happening after txFunc.
+// Rollback errors are logged with sqldb.ErrLogger.
+func (conn *connection) Transaction(ctx context.Context, opts *sql.TxOptions, txFunc func(tx sqldb.Connection) error) error {
 	return implhelper.Transaction(ctx, opts, conn, txFunc)
 }
 

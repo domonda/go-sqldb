@@ -91,11 +91,7 @@ func (conn transaction) Rollback() error {
 	return conn.tx.Rollback()
 }
 
-func (conn transaction) Transaction(txFunc func(tx sqldb.Connection) error) error {
-	return sqldb.ErrWithinTransaction
-}
-
-func (conn transaction) TransactionContext(ctx context.Context, opts *sql.TxOptions, txFunc func(tx sqldb.Connection) error) error {
+func (conn transaction) Transaction(ctx context.Context, opts *sql.TxOptions, txFunc func(tx sqldb.Connection) error) error {
 	return sqldb.ErrWithinTransaction
 }
 
