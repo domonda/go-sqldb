@@ -1,6 +1,7 @@
 package sqlximpl
 
 import (
+	"context"
 	"reflect"
 
 	"github.com/jmoiron/sqlx"
@@ -11,6 +12,7 @@ import (
 
 // rowsScanner implements sqldb.RowsScanner for sqlx.Rows
 type rowsScanner struct {
+	ctx   context.Context
 	query string // for error wrapping
 	rows  *sqlx.Rows
 }
@@ -39,6 +41,10 @@ func (s *rowsScanner) scanSlice(dest interface{}, scanStruct bool) (err error) {
 	newSlice := reflect.MakeSlice(slice.Type(), 0, 32)
 
 	for s.rows.Next() {
+		if s.ctx.Err() != nil {
+			return s.ctx.Err()
+		}
+
 		newSlice = reflect.Append(newSlice, reflect.Zero(sliceElemType))
 		target := newSlice.Index(newSlice.Len() - 1)
 		if sliceElemType.Kind() == reflect.Ptr {
@@ -58,8 +64,8 @@ func (s *rowsScanner) scanSlice(dest interface{}, scanStruct bool) (err error) {
 			return err
 		}
 	}
-	if err := s.rows.Err(); err != nil {
-		return err
+	if s.rows.Err() != nil {
+		return s.rows.Err()
 	}
 
 	// Assign newSlice if there were no errors
@@ -89,6 +95,10 @@ func (s *rowsScanner) ForEachRow(callback func(sqldb.RowScanner) error) (err err
 	}()
 
 	for s.rows.Next() {
+		if s.ctx.Err() != nil {
+			return s.ctx.Err()
+		}
+
 		err := callback(rowsWrapper{s.rows})
 		if err != nil {
 			return err

@@ -76,7 +76,7 @@ func (conn transaction) QueryRowsContext(ctx context.Context, query string, args
 	if err != nil {
 		return sqldb.NewErrRowsScanner(err)
 	}
-	return &rowsScanner{query, rows}
+	return &rowsScanner{ctx, query, rows}
 }
 
 func (conn transaction) Begin(ctx context.Context, opts *sql.TxOptions) (sqldb.Connection, error) {

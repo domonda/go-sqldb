@@ -120,7 +120,7 @@ func (conn *connection) QueryRowsContext(ctx context.Context, query string, args
 		err = wraperr.Errorf("query `%s` returned error: %w", query, err)
 		return sqldb.NewErrRowsScanner(err)
 	}
-	return &rowsScanner{query, rows}
+	return &rowsScanner{ctx, query, rows}
 }
 
 func (conn *connection) Begin(ctx context.Context, opts *sql.TxOptions) (sqldb.Connection, error) {
