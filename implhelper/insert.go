@@ -2,6 +2,7 @@ package implhelper
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"sort"
@@ -98,17 +99,24 @@ func UpsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 	}
 	var query strings.Builder
 	writeInsertQuery(&query, table, names)
-	fmt.Fprintf(&query, `ON CONFLICT("%s") DO UPDATE SET `, idColumn)
+	fmt.Fprintf(&query, ` ON CONFLICT("%s") DO UPDATE SET `, idColumn)
 	first := true
+	idColumnFound := false
 	for i, name := range names {
-		if name != idColumn {
-			if first {
-				first = false
-			} else {
-				query.WriteByte(',')
-			}
-			fmt.Fprintf(&query, `"%s"=$%d`, name, i+1)
+		if name == idColumn {
+			idColumnFound = true
+			continue
 		}
+		if first {
+			first = false
+		} else {
+			query.WriteByte(',')
+		}
+		fmt.Fprintf(&query, `"%s"=$%d`, name, i+1)
+	}
+	if !idColumnFound {
+		columns, _ := json.Marshal(names) // JSON array syntax is a nice format for the error
+		return fmt.Errorf("UpsertStruct to table %s: idColumn %q not found in columns %s", table, idColumn, columns)
 	}
 
 	err := conn.ExecContext(ctx, query.String(), values...)
@@ -134,7 +142,7 @@ func sortedNamesAndValues(columnValues sqldb.Values) (names []string, values []i
 }
 
 func writeInsertQuery(w *strings.Builder, table string, names []string) {
-	fmt.Fprintf(w, "INSERT INTO %s (", table)
+	fmt.Fprintf(w, "INSERT INTO %s(", table)
 	for i, name := range names {
 		if i > 0 {
 			w.WriteByte(',')
@@ -143,7 +151,7 @@ func writeInsertQuery(w *strings.Builder, table string, names []string) {
 		w.WriteString(name)
 		w.WriteByte('"')
 	}
-	w.WriteString(") VALUES (")
+	w.WriteString(") VALUES(")
 	for i := range names {
 		if i > 0 {
 			w.WriteByte(',')
