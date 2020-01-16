@@ -18,10 +18,11 @@ func Insert(ctx context.Context, conn sqldb.Connection, table string, columnValu
 	}
 
 	names, values := sortedNamesAndValues(columnValues)
-	query := insertQuery(table, names, "")
-	err := conn.ExecContext(ctx, query, values...)
+	var query strings.Builder
+	writeInsertQuery(&query, table, names)
+	err := conn.ExecContext(ctx, query.String(), values...)
 	if err != nil {
-		return wraperr.Errorf("query `%s` returned error: %w", query, err)
+		return wraperr.Errorf("query `%s` returned error: %w", query.String(), err)
 	}
 
 	return nil
@@ -35,11 +36,14 @@ func InsertReturning(ctx context.Context, conn sqldb.Connection, table string, c
 	}
 
 	names, values := sortedNamesAndValues(columnValues)
-	query := insertQuery(table, names, returning)
-	return conn.QueryRow(query, values...)
+	var query strings.Builder
+	writeInsertQuery(&query, table, names)
+	query.WriteString(" RETURNING ")
+	query.WriteString(returning)
+	return conn.QueryRow(query.String(), values...)
 }
 
-// InsertStructContext inserts a new row into table using the exported fields
+// InsertStruct inserts a new row into table using the exported fields
 // of rowStruct which have a `db` tag that is not "-".
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 // If restrictToColumns are provided, then only struct fields with a `db` tag
@@ -51,7 +55,7 @@ func InsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 	}
 	switch {
 	case v.Kind() == reflect.Ptr && v.IsNil():
-		return fmt.Errorf("InsertStruct into table %s: can't insert nil", table)
+		return fmt.Errorf("InsertStruct into table %s: can't upsert nil", table)
 	case v.Kind() != reflect.Struct:
 		return fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
 	}
@@ -60,13 +64,57 @@ func InsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 	if len(names) == 0 {
 		return fmt.Errorf("InsertStruct into table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
 	}
+	var query strings.Builder
+	writeInsertQuery(&query, table, names)
 
-	query := insertQuery(table, names, "")
-	err := conn.ExecContext(ctx, query, values...)
+	err := conn.ExecContext(ctx, query.String(), values...)
 	if err != nil {
-		return wraperr.Errorf("query `%s` returned error: %w", query, err)
+		return wraperr.Errorf("query `%s` returned error: %w", query.String(), err)
+	}
+	return nil
+}
+
+// UpsertStruct upserts a row to table using the exported fields
+// of rowStruct which have a `db` tag that is not "-".
+// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
+// If restrictToColumns are provided, then only struct fields with a `db` tag
+// matching any of the passed column names will be used.
+// If inserting conflicts on idColumn, then an update of the existing row is performed.
+func UpsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowStruct interface{}, idColumn string, ignoreColumns, restrictToColumns []string) error {
+	v := reflect.ValueOf(rowStruct)
+	for v.Kind() == reflect.Ptr && !v.IsNil() {
+		v = v.Elem()
+	}
+	switch {
+	case v.Kind() == reflect.Ptr && v.IsNil():
+		return fmt.Errorf("UpsertStruct to table %s: can't insert nil", table)
+	case v.Kind() != reflect.Struct:
+		return fmt.Errorf("UpsertStruct to table %s: expected struct but got %T", table, rowStruct)
 	}
 
+	names, values := structFields(v, ignoreColumns, restrictToColumns)
+	if len(names) == 0 {
+		return fmt.Errorf("UpsertStruct to table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
+	}
+	var query strings.Builder
+	writeInsertQuery(&query, table, names)
+	fmt.Fprintf(&query, `ON CONFLICT("%s") DO UPDATE SET `, idColumn)
+	first := true
+	for i, name := range names {
+		if name != idColumn {
+			if first {
+				first = false
+			} else {
+				query.WriteByte(',')
+			}
+			fmt.Fprintf(&query, `"%s"=$%d`, name, i+1)
+		}
+	}
+
+	err := conn.ExecContext(ctx, query.String(), values...)
+	if err != nil {
+		return wraperr.Errorf("query `%s` returned error: %w", query.String(), err)
+	}
 	return nil
 }
 
@@ -85,32 +133,24 @@ func sortedNamesAndValues(columnValues sqldb.Values) (names []string, values []i
 	return names, values
 }
 
-func insertQuery(table string, names []string, returning string) string {
-	var query strings.Builder
-	fmt.Fprintf(&query, "INSERT INTO %s (", table)
+func writeInsertQuery(w *strings.Builder, table string, names []string) {
+	fmt.Fprintf(w, "INSERT INTO %s (", table)
 	for i, name := range names {
 		if i > 0 {
-			query.WriteByte(',')
+			w.WriteByte(',')
 		}
-		query.WriteByte('"')
-		query.WriteString(name)
-		query.WriteByte('"')
+		w.WriteByte('"')
+		w.WriteString(name)
+		w.WriteByte('"')
 	}
-	query.WriteString(") VALUES (")
+	w.WriteString(") VALUES (")
 	for i := range names {
 		if i > 0 {
-			query.WriteByte(',')
+			w.WriteByte(',')
 		}
-		fmt.Fprintf(&query, "$%d", i+1)
+		fmt.Fprintf(w, "$%d", i+1)
 	}
-	query.WriteByte(')')
-
-	if returning != "" {
-		query.WriteString(" RETURNING ")
-		query.WriteString(returning)
-	}
-
-	return query.String()
+	w.WriteByte(')')
 }
 
 func structFields(v reflect.Value, ignoreNames, restrictToNames []string) (names []string, values []interface{}) {
