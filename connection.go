@@ -35,15 +35,25 @@ type Connection interface {
 
 	// InsertStruct inserts a new row into table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
-	// If optional onlyColumns are provided, then only struct fields with a `db` tag
-	// matching any of the passed column names will be inserted.
-	InsertStruct(table string, rowStruct interface{}, onlyColumns ...string) error
+	// If restrictToColumns are provided, then only struct fields with a `db` tag
+	// matching any of the passed column names will be used.
+	InsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error
 
 	// InsertStructContext inserts a new row into table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
-	// If optional onlyColumns are provided, then only struct fields with a `db` tag
-	// matching any of the passed column names will be inserted.
-	InsertStructContext(ctx context.Context, table string, rowStruct interface{}, onlyColumns ...string) error
+	// If restrictToColumns are provided, then only struct fields with a `db` tag
+	// matching any of the passed column names will be used.
+	InsertStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error
+
+	// InsertStructIgnoreColums inserts a new row into table using the exported fields
+	// of rowStruct which have a `db` tag that is not "-".
+	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
+	InsertStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error
+
+	// InsertStructIgnoreColumsContext inserts a new row into table using the exported fields
+	// of rowStruct which have a `db` tag that is not "-".
+	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
+	InsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error
 
 	// QueryRow queries a single row and returns a RowScanner for the results.
 	QueryRow(query string, args ...interface{}) RowScanner

@@ -47,12 +47,26 @@ func (conn transaction) InsertReturningContext(ctx context.Context, table string
 	return implhelper.InsertReturning(ctx, conn, table, columnValues, returning)
 }
 
-func (conn transaction) InsertStruct(table string, rowStruct interface{}, onlyColumns ...string) error {
-	return implhelper.InsertStruct(context.Background(), conn, table, rowStruct, onlyColumns...)
+func (conn transaction) InsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
+	return implhelper.InsertStruct(context.Background(), conn, table, rowStruct, nil, restrictToColumns)
 }
 
-func (conn transaction) InsertStructContext(ctx context.Context, table string, rowStruct interface{}, onlyColumns ...string) error {
-	return implhelper.InsertStruct(ctx, conn, table, rowStruct, onlyColumns...)
+func (conn transaction) InsertStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error {
+	return implhelper.InsertStruct(ctx, conn, table, rowStruct, nil, restrictToColumns)
+}
+
+// InsertStructIgnoreColums inserts a new row into table using the exported fields
+// of rowStruct which have a `db` tag that is not "-".
+// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
+func (conn transaction) InsertStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error {
+	return implhelper.InsertStruct(context.Background(), conn, table, rowStruct, ignoreColumns, nil)
+}
+
+// InsertStructIgnoreColumsContext inserts a new row into table using the exported fields
+// of rowStruct which have a `db` tag that is not "-".
+// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
+func (conn transaction) InsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
+	return implhelper.InsertStruct(ctx, conn, table, rowStruct, ignoreColumns, nil)
 }
 
 func (conn transaction) QueryRow(query string, args ...interface{}) sqldb.RowScanner {

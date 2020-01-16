@@ -39,11 +39,12 @@ func InsertReturning(ctx context.Context, conn sqldb.Connection, table string, c
 	return conn.QueryRow(query, values...)
 }
 
-// InsertStruct inserts a new row into table using the exported fields
+// InsertStructContext inserts a new row into table using the exported fields
 // of rowStruct which have a `db` tag that is not "-".
-// If optional onlyColumns are provided, then only struct fields with a `db` tag
-// matching any of the passed column names will be inserted.
-func InsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowStruct interface{}, onlyColumns ...string) error {
+// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
+// If restrictToColumns are provided, then only struct fields with a `db` tag
+// matching any of the passed column names will be used.
+func InsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowStruct interface{}, ignoreColumns, restrictToColumns []string) error {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -55,7 +56,7 @@ func InsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 		return fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	names, values := structFields(v, onlyColumns)
+	names, values := structFields(v, ignoreColumns, restrictToColumns)
 	if len(names) == 0 {
 		return fmt.Errorf("InsertStruct into table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
 	}
@@ -112,19 +113,19 @@ func insertQuery(table string, names []string, returning string) string {
 	return query.String()
 }
 
-func structFields(v reflect.Value, allowedNames []string) (names []string, values []interface{}) {
+func structFields(v reflect.Value, ignoreNames, restrictToNames []string) (names []string, values []interface{}) {
 	for i := 0; i < v.NumField(); i++ {
 		fieldType := v.Type().Field(i)
 		fieldValue := v.Field(i)
 		switch {
 		case fieldType.Anonymous:
-			embedNames, embedValues := structFields(fieldValue, allowedNames)
+			embedNames, embedValues := structFields(fieldValue, ignoreNames, restrictToNames)
 			names = append(names, embedNames...)
 			values = append(values, embedValues...)
 
 		case fieldType.PkgPath == "":
 			name := fieldType.Tag.Get("db")
-			if validName(name, allowedNames) {
+			if validName(name, ignoreNames, restrictToNames) {
 				names = append(names, name)
 				values = append(values, fieldValue.Interface())
 			}
@@ -133,15 +134,20 @@ func structFields(v reflect.Value, allowedNames []string) (names []string, value
 	return names, values
 }
 
-func validName(name string, allowedNames []string) bool {
+func validName(name string, ignoreNames, restrictToNames []string) bool {
 	if name == "" || name == "-" {
 		return false
 	}
-	if len(allowedNames) == 0 {
+	for _, ignore := range ignoreNames {
+		if name == ignore {
+			return false
+		}
+	}
+	if len(restrictToNames) == 0 {
 		return true
 	}
-	for _, allowedName := range allowedNames {
-		if name == allowedName {
+	for _, allowed := range restrictToNames {
+		if name == allowed {
 			return true
 		}
 	}
