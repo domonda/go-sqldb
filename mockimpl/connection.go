@@ -38,6 +38,10 @@ func (conn *connection) StructFieldNamer() sqldb.StructFieldNamer {
 	return conn.structFieldNamer
 }
 
+func (conn *connection) Stats() sql.DBStats {
+	return sql.DBStats{}
+}
+
 func (conn *connection) Ping(ctx context.Context) error {
 	return nil
 }

@@ -21,6 +21,7 @@ type Connection interface {
 	StructFieldNamer() StructFieldNamer
 
 	Ping(ctx context.Context) error
+	Stats() sql.DBStats
 
 	// Exec executes a query with optional args.
 	Exec(query string, args ...interface{}) error
