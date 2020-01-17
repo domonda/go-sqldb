@@ -153,7 +153,7 @@ func (conn *connection) QueryRowContext(ctx context.Context, query string, args 
 	row := conn.db.QueryRowxContext(ctx, query, args...)
 	if err := row.Err(); err != nil {
 		err = wraperr.Errorf("query `%s` returned error: %w", query, err)
-		return sqldb.NewErrRowScanner(err)
+		return sqldb.RowScannerWithError(err)
 	}
 	return &rowScanner{query, row}
 }
@@ -166,7 +166,7 @@ func (conn *connection) QueryRowsContext(ctx context.Context, query string, args
 	rows, err := conn.db.QueryxContext(ctx, query, args...)
 	if err != nil {
 		err = wraperr.Errorf("query `%s` returned error: %w", query, err)
-		return sqldb.NewErrRowsScanner(err)
+		return sqldb.RowsScannerWithError(err)
 	}
 	return &rowsScanner{ctx, query, rows}
 }
@@ -176,7 +176,7 @@ func (conn *connection) Begin(ctx context.Context, opts *sql.TxOptions) (sqldb.C
 	if err != nil {
 		return nil, err
 	}
-	return TransactionConnection(tx), nil
+	return NewTransaction(conn, tx), nil
 }
 
 func (conn *connection) Commit() error {
@@ -206,6 +206,10 @@ func (conn *connection) UnlistenChannel(channel string) (err error) {
 
 func (conn *connection) IsListeningOnChannel(channel string) bool {
 	return getGlobalListenerOrNil(conn.dataSourceName).isListeningOnChannel(channel)
+}
+
+func (conn *connection) Ping(ctx context.Context) error {
+	return conn.db.PingContext(ctx)
 }
 
 func (conn *connection) Close() error {

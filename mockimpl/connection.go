@@ -176,6 +176,10 @@ func (conn *connection) IsListeningOnChannel(channel string) bool {
 	return conn.listening[channel]
 }
 
+func (conn *connection) Ping(ctx context.Context) error {
+	return nil
+}
+
 func (conn *connection) Close() error {
 	return nil
 }

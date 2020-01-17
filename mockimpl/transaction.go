@@ -31,6 +31,5 @@ func (conn transaction) Transaction(ctx context.Context, opts *sql.TxOptions, tx
 }
 
 func (conn transaction) Close() error {
-	conn.Rollback()
-	return nil
+	return conn.Rollback()
 }

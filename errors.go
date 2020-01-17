@@ -18,135 +18,49 @@ func RemoveErrNoRows(err error) error {
 	return err
 }
 
-// Errors considering transactions
+// Transaction errors
 
 const (
 	ErrWithinTransaction    = sentinel.Error("within a transaction")
 	ErrNotWithinTransaction = sentinel.Error("not within a transaction")
 )
 
-// ErrConnection
+// RowScannerWithError
 
-type ErrConnection struct {
+func RowScannerWithError(err error) RowScanner {
+	return rowScannerWithError{err}
+}
+
+type rowScannerWithError struct {
 	err error
 }
 
-func NewErrConnection(err error) ErrConnection {
-	return ErrConnection{err}
-}
-
-// Error implements the error interface
-func (e ErrConnection) Error() string {
-	return e.err.Error()
-}
-
-// Unwrap implements xerrors.Wrapper
-func (e ErrConnection) Unwrap() error {
+func (e rowScannerWithError) Scan(dest ...interface{}) error {
 	return e.err
 }
 
-// Cause implements the unexported causer interface used by errors.Cause.
-// Note: Will be removed after transition to xerrors, see Unwrap.
-func (e ErrConnection) Cause() error {
+func (e rowScannerWithError) ScanStruct(dest interface{}) error {
 	return e.err
 }
 
-func (e ErrConnection) Exec(query string, args ...interface{}) error {
-	return e
+// RowsScannerWithError
+
+func RowsScannerWithError(err error) RowsScanner {
+	return rowsScannerWithError{err}
 }
 
-func (e ErrConnection) QueryRow(query string, args ...interface{}) RowScanner {
-	return ErrRowScanner{e}
-}
-
-func (e ErrConnection) QueryRows(query string, args ...interface{}) RowsScanner {
-	return ErrRowsScanner{e}
-}
-
-func (e ErrConnection) Begin() (Connection, error) {
-	return nil, e
-}
-
-func (e ErrConnection) Commit() error {
-	return e
-}
-
-func (e ErrConnection) Rollback() error {
-	return e
-}
-
-func (e ErrConnection) Transaction(func(tx Connection) error) error {
-	return e
-}
-
-// ErrRowScanner
-
-type ErrRowScanner struct {
+type rowsScannerWithError struct {
 	err error
 }
 
-func NewErrRowScanner(err error) ErrRowScanner {
-	return ErrRowScanner{err}
-}
-
-// Error implements the error interface
-func (e ErrRowScanner) Error() string {
-	return e.err.Error()
-}
-
-// Unwrap implements xerrors.Wrapper
-func (e ErrRowScanner) Unwrap() error {
+func (e rowsScannerWithError) ScanSlice(dest interface{}) error {
 	return e.err
 }
 
-// Cause implements the unexported causer interface used by errors.Cause.
-// Note: Will be removed after transition to xerrors, see Unwrap.
-func (e ErrRowScanner) Cause() error {
+func (e rowsScannerWithError) ScanStructSlice(dest interface{}) error {
 	return e.err
 }
 
-func (e ErrRowScanner) Scan(dest ...interface{}) error {
-	return e
-}
-
-func (e ErrRowScanner) ScanStruct(dest interface{}) error {
-	return e
-}
-
-// ErrRowsScanner
-
-type ErrRowsScanner struct {
-	err error
-}
-
-func NewErrRowsScanner(err error) ErrRowsScanner {
-	return ErrRowsScanner{err}
-}
-
-// Error implements the error interface
-func (e ErrRowsScanner) Error() string {
-	return e.err.Error()
-}
-
-// Unwrap implements xerrors.Wrapper
-func (e ErrRowsScanner) Unwrap() error {
+func (e rowsScannerWithError) ForEachRow(callback func(RowScanner) error) error {
 	return e.err
-}
-
-// Cause implements the unexported causer interface used by errors.Cause.
-// Note: Will be removed after transition to xerrors, see Unwrap.
-func (e ErrRowsScanner) Cause() error {
-	return e.err
-}
-
-func (e ErrRowsScanner) ScanSlice(dest interface{}) error {
-	return e
-}
-
-func (e ErrRowsScanner) ScanStructSlice(dest interface{}) error {
-	return e
-}
-
-func (e ErrRowsScanner) ForEachRow(callback func(RowScanner) error) error {
-	return e
 }

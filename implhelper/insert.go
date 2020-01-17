@@ -33,7 +33,7 @@ func Insert(ctx context.Context, conn sqldb.Connection, table string, columnValu
 // and returns values from the inserted row listed in returning.
 func InsertReturning(ctx context.Context, conn sqldb.Connection, table string, columnValues sqldb.Values, returning string) sqldb.RowScanner {
 	if len(columnValues) == 0 {
-		return sqldb.NewErrRowScanner(fmt.Errorf("InsertReturning into table %s: no columnValues", table))
+		return sqldb.RowScannerWithError(fmt.Errorf("InsertReturning into table %s: no columnValues", table))
 	}
 
 	names, values := sortedNamesAndValues(columnValues)

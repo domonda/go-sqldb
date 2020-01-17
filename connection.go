@@ -121,6 +121,7 @@ type Connection interface {
 	// IsListeningOnChannel returns if a channel is listened to.
 	IsListeningOnChannel(channel string) bool
 
+	Ping(ctx context.Context) error
 	Close() error
 }
 
