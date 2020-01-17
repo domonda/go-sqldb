@@ -1,10 +1,8 @@
-package sqlximpl
+package pqtimpl
 
 import (
 	"context"
 	"database/sql"
-
-	"github.com/jmoiron/sqlx"
 
 	sqldb "github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/implhelper"
@@ -12,17 +10,9 @@ import (
 )
 
 type transaction struct {
-	conn             sqldb.Connection
-	tx               *sqlx.Tx
+	conn             *connection
+	tx               *sql.Tx
 	structFieldNamer sqldb.StructFieldNamer
-}
-
-func NewTransaction(conn sqldb.Connection, tx *sqlx.Tx) sqldb.Connection {
-	return &transaction{
-		conn:             conn,
-		tx:               tx,
-		structFieldNamer: conn.StructFieldNamer(),
-	}
 }
 
 // WithStructFieldNamer returns a copy of the connection
@@ -137,12 +127,12 @@ func (conn *transaction) QueryRow(query string, args ...interface{}) sqldb.RowSc
 }
 
 func (conn *transaction) QueryRowContext(ctx context.Context, query string, args ...interface{}) sqldb.RowScanner {
-	row := conn.tx.QueryRowxContext(ctx, query, args...)
-	if row.Err() != nil {
-		err := wraperr.Errorf("query `%s` returned error: %w", query, row.Err())
+	rows, err := conn.tx.QueryContext(ctx, query, args...)
+	if err != nil {
+		err = wraperr.Errorf("query `%s` returned error: %w", query, err)
 		return sqldb.RowScannerWithError(err)
 	}
-	return &rowScanner{query, row}
+	return &rowScanner{query, rows, conn.structFieldNamer}
 }
 
 func (conn *transaction) QueryRows(query string, args ...interface{}) sqldb.RowsScanner {
@@ -150,12 +140,12 @@ func (conn *transaction) QueryRows(query string, args ...interface{}) sqldb.Rows
 }
 
 func (conn *transaction) QueryRowsContext(ctx context.Context, query string, args ...interface{}) sqldb.RowsScanner {
-	rows, err := conn.tx.QueryxContext(ctx, query, args...)
+	rows, err := conn.tx.QueryContext(ctx, query, args...)
 	if err != nil {
 		err = wraperr.Errorf("query `%s` returned error: %w", query, err)
 		return sqldb.RowsScannerWithError(err)
 	}
-	return &rowsScanner{ctx, query, rows}
+	return &rowsScanner{ctx, query, rows, conn.structFieldNamer}
 }
 
 func (conn *transaction) Begin(ctx context.Context, opts *sql.TxOptions) (sqldb.Connection, error) {
@@ -175,15 +165,15 @@ func (conn *transaction) Transaction(ctx context.Context, opts *sql.TxOptions, t
 }
 
 func (conn *transaction) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
-	return getOrCreateGlobalListener(conn.tx.DriverName()).listenOnChannel(channel, onNotify, onUnlisten)
+	return getOrCreateGlobalListener(conn.conn.dataSourceName).listenOnChannel(channel, onNotify, onUnlisten)
 }
 
 func (conn *transaction) UnlistenChannel(channel string) (err error) {
-	return getGlobalListenerOrNil(conn.tx.DriverName()).unlistenChannel(channel)
+	return getGlobalListenerOrNil(conn.conn.dataSourceName).unlistenChannel(channel)
 }
 
 func (conn *transaction) IsListeningOnChannel(channel string) bool {
-	return getGlobalListenerOrNil(conn.tx.DriverName()).isListeningOnChannel(channel)
+	return getGlobalListenerOrNil(conn.conn.dataSourceName).isListeningOnChannel(channel)
 }
 
 func (conn *transaction) Close() error {

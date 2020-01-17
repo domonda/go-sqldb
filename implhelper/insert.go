@@ -61,14 +61,14 @@ func InsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 		return fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	names, values := structFields(v, namer, ignoreColumns, restrictToColumns)
+	names, vals := structFields(v, namer, ignoreColumns, restrictToColumns)
 	if len(names) == 0 {
 		return fmt.Errorf("InsertStruct into table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
 	}
 	var query strings.Builder
 	writeInsertQuery(&query, table, names)
 
-	err := conn.ExecContext(ctx, query.String(), values...)
+	err := conn.ExecContext(ctx, query.String(), vals...)
 	if err != nil {
 		return wraperr.Errorf("query `%s` returned error: %w", query.String(), err)
 	}
@@ -93,7 +93,7 @@ func UpsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 		return fmt.Errorf("UpsertStruct to table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	names, values := structFields(v, namer, ignoreColumns, restrictToColumns)
+	names, vals := structFields(v, namer, ignoreColumns, restrictToColumns)
 	if len(names) == 0 {
 		return fmt.Errorf("UpsertStruct to table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
 	}
@@ -119,7 +119,7 @@ func UpsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 		return fmt.Errorf("UpsertStruct to table %s: idColumn %q not found in columns %s", table, idColumn, columns)
 	}
 
-	err := conn.ExecContext(ctx, query.String(), values...)
+	err := conn.ExecContext(ctx, query.String(), vals...)
 	if err != nil {
 		return wraperr.Errorf("query `%s` returned error: %w", query.String(), err)
 	}
