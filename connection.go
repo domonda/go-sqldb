@@ -10,8 +10,10 @@ type (
 	OnUnlistenFunc func(channel string)
 )
 
+// Values is a map from column names to values
 type Values map[string]interface{}
 
+// Connection represents a database connection or transaction
 type Connection interface {
 	// Exec executes a query with optional args.
 	Exec(query string, args ...interface{}) error
@@ -19,19 +21,19 @@ type Connection interface {
 	// ExecContext executes a query with optional args.
 	ExecContext(ctx context.Context, query string, args ...interface{}) error
 
-	// Insert a new row into table using the columnValues.
-	Insert(table string, columnValues Values) error
+	// Insert a new row into table using the values.
+	Insert(table string, values Values) error
 
-	// InsertContext inserts a new row into table using the columnValues.
-	InsertContext(ctx context.Context, table string, columnValues Values) error
+	// InsertContext inserts a new row into table using the values.
+	InsertContext(ctx context.Context, table string, values Values) error
 
-	// InsertReturning inserts a new row into table using columnValues
+	// InsertReturning inserts a new row into table using values
 	// and returns values from the inserted row listed in returning.
-	InsertReturning(table string, columnValues Values, returning string) RowScanner
+	InsertReturning(table string, values Values, returning string) RowScanner
 
-	// InsertReturningContext inserts a new row into table using columnValues
+	// InsertReturningContext inserts a new row into table using values
 	// and returns values from the inserted row listed in returning.
-	InsertReturningContext(ctx context.Context, table string, columnValues Values, returning string) RowScanner
+	InsertReturningContext(ctx context.Context, table string, values Values, returning string) RowScanner
 
 	// InsertStruct inserts a new row into table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".

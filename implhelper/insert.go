@@ -12,16 +12,16 @@ import (
 	"github.com/domonda/go-wraperr"
 )
 
-// Insert a new row into table using the columnValues.
-func Insert(ctx context.Context, conn sqldb.Connection, table string, columnValues sqldb.Values) error {
-	if len(columnValues) == 0 {
-		return fmt.Errorf("Insert into table %s: no columnValues", table)
+// Insert a new row into table using the values.
+func Insert(ctx context.Context, conn sqldb.Connection, table string, values sqldb.Values) error {
+	if len(values) == 0 {
+		return fmt.Errorf("Insert into table %s: no values", table)
 	}
 
-	names, values := sortedNamesAndValues(columnValues)
+	names, vals := sortedNamesAndValues(values)
 	var query strings.Builder
 	writeInsertQuery(&query, table, names)
-	err := conn.ExecContext(ctx, query.String(), values...)
+	err := conn.ExecContext(ctx, query.String(), vals...)
 	if err != nil {
 		return wraperr.Errorf("query `%s` returned error: %w", query.String(), err)
 	}
@@ -29,19 +29,19 @@ func Insert(ctx context.Context, conn sqldb.Connection, table string, columnValu
 	return nil
 }
 
-// InsertReturning inserts a new row into table using columnValues
+// InsertReturning inserts a new row into table using values
 // and returns values from the inserted row listed in returning.
-func InsertReturning(ctx context.Context, conn sqldb.Connection, table string, columnValues sqldb.Values, returning string) sqldb.RowScanner {
-	if len(columnValues) == 0 {
-		return sqldb.RowScannerWithError(fmt.Errorf("InsertReturning into table %s: no columnValues", table))
+func InsertReturning(ctx context.Context, conn sqldb.Connection, table string, values sqldb.Values, returning string) sqldb.RowScanner {
+	if len(values) == 0 {
+		return sqldb.RowScannerWithError(fmt.Errorf("InsertReturning into table %s: no values", table))
 	}
 
-	names, values := sortedNamesAndValues(columnValues)
+	names, vals := sortedNamesAndValues(values)
 	var query strings.Builder
 	writeInsertQuery(&query, table, names)
 	query.WriteString(" RETURNING ")
 	query.WriteString(returning)
-	return conn.QueryRow(query.String(), values...)
+	return conn.QueryRow(query.String(), vals...)
 }
 
 // InsertStruct inserts a new row into table using the exported fields
@@ -126,19 +126,19 @@ func UpsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 	return nil
 }
 
-func sortedNamesAndValues(columnValues sqldb.Values) (names []string, values []interface{}) {
-	names = make([]string, 0, len(columnValues))
-	for name := range columnValues {
+func sortedNamesAndValues(values sqldb.Values) (names []string, vals []interface{}) {
+	names = make([]string, 0, len(values))
+	for name := range values {
 		names = append(names, name)
 	}
 	sort.Strings(names)
 
-	values = make([]interface{}, len(columnValues))
+	vals = make([]interface{}, len(values))
 	for i, name := range names {
-		values[i] = columnValues[name]
+		vals[i] = values[name]
 	}
 
-	return names, values
+	return names, vals
 }
 
 func writeInsertQuery(w *strings.Builder, table string, names []string) {

@@ -43,16 +43,16 @@ func (conn *connection) InsertContext(ctx context.Context, table string, columVa
 	return implhelper.Insert(ctx, conn, table, columValues)
 }
 
-// InsertReturning inserts a new row into table using columnValues
+// InsertReturning inserts a new row into table using values
 // and returns values from the inserted row listed in returning.
-func (conn *connection) InsertReturning(table string, columnValues sqldb.Values, returning string) sqldb.RowScanner {
-	return implhelper.InsertReturning(context.Background(), conn, table, columnValues, returning)
+func (conn *connection) InsertReturning(table string, values sqldb.Values, returning string) sqldb.RowScanner {
+	return implhelper.InsertReturning(context.Background(), conn, table, values, returning)
 }
 
-// InsertReturningContext inserts a new row into table using columnValues
+// InsertReturningContext inserts a new row into table using values
 // and returns values from the inserted row listed in returning.
-func (conn *connection) InsertReturningContext(ctx context.Context, table string, columnValues sqldb.Values, returning string) sqldb.RowScanner {
-	return implhelper.InsertReturning(ctx, conn, table, columnValues, returning)
+func (conn *connection) InsertReturningContext(ctx context.Context, table string, values sqldb.Values, returning string) sqldb.RowScanner {
+	return implhelper.InsertReturning(ctx, conn, table, values, returning)
 }
 
 func (conn *connection) InsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
