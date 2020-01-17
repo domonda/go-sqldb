@@ -49,7 +49,7 @@ func InsertReturning(ctx context.Context, conn sqldb.Connection, table string, v
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
-func InsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowStruct interface{}, ignoreColumns, restrictToColumns []string) error {
+func InsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowStruct interface{}, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) error {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -61,7 +61,7 @@ func InsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 		return fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	names, values := structFields(v, ignoreColumns, restrictToColumns)
+	names, values := structFields(v, namer, ignoreColumns, restrictToColumns)
 	if len(names) == 0 {
 		return fmt.Errorf("InsertStruct into table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
 	}
@@ -81,7 +81,7 @@ func InsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
 // If inserting conflicts on idColumn, then an update of the existing row is performed.
-func UpsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowStruct interface{}, idColumn string, ignoreColumns, restrictToColumns []string) error {
+func UpsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowStruct interface{}, namer sqldb.StructFieldNamer, idColumn string, ignoreColumns, restrictToColumns []string) error {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -93,7 +93,7 @@ func UpsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 		return fmt.Errorf("UpsertStruct to table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	names, values := structFields(v, ignoreColumns, restrictToColumns)
+	names, values := structFields(v, namer, ignoreColumns, restrictToColumns)
 	if len(names) == 0 {
 		return fmt.Errorf("UpsertStruct to table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
 	}
@@ -161,25 +161,25 @@ func writeInsertQuery(w *strings.Builder, table string, names []string) {
 	w.WriteByte(')')
 }
 
-func structFields(v reflect.Value, ignoreNames, restrictToNames []string) (names []string, values []interface{}) {
+func structFields(v reflect.Value, namer sqldb.StructFieldNamer, ignoreNames, restrictToNames []string) (names []string, vals []interface{}) {
 	for i := 0; i < v.NumField(); i++ {
 		fieldType := v.Type().Field(i)
 		fieldValue := v.Field(i)
 		switch {
 		case fieldType.Anonymous:
-			embedNames, embedValues := structFields(fieldValue, ignoreNames, restrictToNames)
+			embedNames, embedValues := structFields(fieldValue, namer, ignoreNames, restrictToNames)
 			names = append(names, embedNames...)
-			values = append(values, embedValues...)
+			vals = append(vals, embedValues...)
 
 		case fieldType.PkgPath == "":
-			name := fieldType.Tag.Get("db")
+			name := namer.StructFieldName(fieldType)
 			if validName(name, ignoreNames, restrictToNames) {
 				names = append(names, name)
-				values = append(values, fieldValue.Interface())
+				vals = append(vals, fieldValue.Interface())
 			}
 		}
 	}
-	return names, values
+	return names, vals
 }
 
 func validName(name string, ignoreNames, restrictToNames []string) bool {

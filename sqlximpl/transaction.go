@@ -11,12 +11,35 @@ import (
 )
 
 type transaction struct {
-	conn sqldb.Connection
-	tx   *sqlx.Tx
+	conn             sqldb.Connection
+	tx               *sqlx.Tx
+	structFieldNamer sqldb.StructFieldNamer
 }
 
 func NewTransaction(conn sqldb.Connection, tx *sqlx.Tx) sqldb.Connection {
-	return &transaction{conn, tx}
+	return &transaction{
+		conn:             conn,
+		tx:               tx,
+		structFieldNamer: conn.StructFieldNamer(),
+	}
+}
+
+// WithStructFieldNamer returns a copy of the connection
+// that will use the passed StructFieldNamer.
+func (conn *transaction) WithStructFieldNamer(namer sqldb.StructFieldNamer) sqldb.Connection {
+	return &transaction{
+		conn:             conn,
+		tx:               conn.tx,
+		structFieldNamer: namer,
+	}
+}
+
+func (conn *transaction) StructFieldNamer() sqldb.StructFieldNamer {
+	return conn.structFieldNamer
+}
+
+func (conn *transaction) Ping(ctx context.Context) error {
+	return conn.conn.Ping(ctx)
 }
 
 func (conn *transaction) Exec(query string, args ...interface{}) error {
@@ -49,25 +72,25 @@ func (conn *transaction) InsertReturningContext(ctx context.Context, table strin
 }
 
 func (conn *transaction) InsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
-	return implhelper.InsertStruct(context.Background(), conn, table, rowStruct, nil, restrictToColumns)
+	return implhelper.InsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
 }
 
 func (conn *transaction) InsertStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error {
-	return implhelper.InsertStruct(ctx, conn, table, rowStruct, nil, restrictToColumns)
+	return implhelper.InsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
 }
 
 // InsertStructIgnoreColums inserts a new row into table using the exported fields
 // of rowStruct which have a `db` tag that is not "-".
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 func (conn *transaction) InsertStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error {
-	return implhelper.InsertStruct(context.Background(), conn, table, rowStruct, ignoreColumns, nil)
+	return implhelper.InsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
 // InsertStructIgnoreColumsContext inserts a new row into table using the exported fields
 // of rowStruct which have a `db` tag that is not "-".
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 func (conn *transaction) InsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
-	return implhelper.InsertStruct(ctx, conn, table, rowStruct, ignoreColumns, nil)
+	return implhelper.InsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
 // UpsertStruct upserts a row to table using the exported fields
@@ -76,7 +99,7 @@ func (conn *transaction) InsertStructIgnoreColumsContext(ctx context.Context, ta
 // matching any of the passed column names will be used.
 // If inserting conflicts on idColumn, then an update of the existing row is performed.
 func (conn *transaction) UpsertStruct(table string, rowStruct interface{}, idColumn string, restrictToColumns ...string) error {
-	return implhelper.UpsertStruct(context.Background(), conn, table, rowStruct, idColumn, nil, restrictToColumns)
+	return implhelper.UpsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, idColumn, nil, restrictToColumns)
 }
 
 // UpsertStructContext upserts a row to table using the exported fields
@@ -85,7 +108,7 @@ func (conn *transaction) UpsertStruct(table string, rowStruct interface{}, idCol
 // matching any of the passed column names will be used.
 // If inserting conflicts on idColumn, then an update of the existing row is performed.
 func (conn *transaction) UpsertStructContext(ctx context.Context, table string, rowStruct interface{}, idColumn string, restrictToColumns ...string) error {
-	return implhelper.UpsertStruct(ctx, conn, table, rowStruct, idColumn, nil, restrictToColumns)
+	return implhelper.UpsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, idColumn, nil, restrictToColumns)
 }
 
 // UpsertStructIgnoreColums upserts a row to table using the exported fields
@@ -93,7 +116,7 @@ func (conn *transaction) UpsertStructContext(ctx context.Context, table string, 
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 // If inserting conflicts on idColumn, then an update of the existing row is performed.
 func (conn *transaction) UpsertStructIgnoreColums(table string, rowStruct interface{}, idColumn string, ignoreColumns ...string) error {
-	return implhelper.UpsertStruct(context.Background(), conn, table, rowStruct, idColumn, ignoreColumns, nil)
+	return implhelper.UpsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, idColumn, ignoreColumns, nil)
 }
 
 // UpsertStructIgnoreColumsContext upserts a row to table using the exported fields
@@ -101,7 +124,7 @@ func (conn *transaction) UpsertStructIgnoreColums(table string, rowStruct interf
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 // If inserting conflicts on idColumn, then an update of the existing row is performed.
 func (conn *transaction) UpsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, idColumn string, ignoreColumns ...string) error {
-	return implhelper.UpsertStruct(ctx, conn, table, rowStruct, idColumn, ignoreColumns, nil)
+	return implhelper.UpsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, idColumn, ignoreColumns, nil)
 }
 
 func (conn *transaction) QueryRow(query string, args ...interface{}) sqldb.RowScanner {
@@ -154,10 +177,6 @@ func (conn *transaction) UnlistenChannel(channel string) (err error) {
 
 func (conn *transaction) IsListeningOnChannel(channel string) bool {
 	return getGlobalListenerOrNil(conn.tx.DriverName()).isListeningOnChannel(channel)
-}
-
-func (conn *transaction) Ping(ctx context.Context) error {
-	return conn.conn.Ping(ctx)
 }
 
 func (conn *transaction) Close() error {

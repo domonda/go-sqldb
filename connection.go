@@ -15,6 +15,13 @@ type Values map[string]interface{}
 
 // Connection represents a database connection or transaction
 type Connection interface {
+	// WithStructFieldNamer returns a copy of the connection
+	// that will use the passed StructFieldNamer.
+	WithStructFieldNamer(namer StructFieldNamer) Connection
+	StructFieldNamer() StructFieldNamer
+
+	Ping(ctx context.Context) error
+
 	// Exec executes a query with optional args.
 	Exec(query string, args ...interface{}) error
 
@@ -123,7 +130,6 @@ type Connection interface {
 	// IsListeningOnChannel returns if a channel is listened to.
 	IsListeningOnChannel(channel string) bool
 
-	Ping(ctx context.Context) error
 	Close() error
 }
 
