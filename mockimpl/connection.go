@@ -42,6 +42,10 @@ func (conn *connection) Stats() sql.DBStats {
 	return sql.DBStats{}
 }
 
+func (conn *connection) Config() *sqldb.Config {
+	return nil
+}
+
 func (conn *connection) Ping(ctx context.Context) error {
 	return nil
 }

@@ -33,6 +33,10 @@ func (conn *transaction) Stats() sql.DBStats {
 	return conn.conn.Stats()
 }
 
+func (conn *transaction) Config() *sqldb.Config {
+	return conn.conn.Config()
+}
+
 func (conn *transaction) Ping(ctx context.Context) error {
 	return conn.conn.Ping(ctx)
 }
@@ -165,15 +169,15 @@ func (conn *transaction) Transaction(ctx context.Context, opts *sql.TxOptions, t
 }
 
 func (conn *transaction) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
-	return getOrCreateGlobalListener(conn.conn.dataSourceName).listenOnChannel(channel, onNotify, onUnlisten)
+	return sqldb.ErrWithinTransaction
 }
 
 func (conn *transaction) UnlistenChannel(channel string) (err error) {
-	return getGlobalListenerOrNil(conn.conn.dataSourceName).unlistenChannel(channel)
+	return sqldb.ErrWithinTransaction
 }
 
 func (conn *transaction) IsListeningOnChannel(channel string) bool {
-	return getGlobalListenerOrNil(conn.conn.dataSourceName).isListeningOnChannel(channel)
+	return conn.conn.IsListeningOnChannel(channel)
 }
 
 func (conn *transaction) Close() error {

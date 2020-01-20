@@ -30,6 +30,14 @@ func (conn transaction) Transaction(ctx context.Context, opts *sql.TxOptions, tx
 	return sqldb.ErrWithinTransaction
 }
 
+func (conn transaction) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
+	return sqldb.ErrWithinTransaction
+}
+
+func (conn transaction) UnlistenChannel(channel string) (err error) {
+	return sqldb.ErrWithinTransaction
+}
+
 func (conn transaction) Close() error {
 	return conn.Rollback()
 }

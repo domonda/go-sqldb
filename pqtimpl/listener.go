@@ -15,41 +15,43 @@ var (
 	globalListeners    = make(map[string]*listener)
 	globalListenersMtx sync.RWMutex
 
-	listenerMinReconnectInterval = time.Second * 10
-	listenerMaxReconnectInterval = time.Second * 60
-	listenerPingInterval         = time.Second * 90
+	ListenerMinReconnectInterval = time.Second * 10
+	ListenerMaxReconnectInterval = time.Second * 60
+	ListenerPingInterval         = time.Second * 90
 )
 
 type listener struct {
-	dataSourceName string
-	conn           *pq.Listener
-	ping           *time.Ticker
+	connURL string
+	conn    *pq.Listener
+	ping    *time.Ticker
 
 	callbacksMtx      sync.RWMutex
 	notifyCallbacks   map[string][]sqldb.OnNotifyFunc
 	unlistenCallbacks map[string][]sqldb.OnUnlistenFunc
 }
 
-func getOrCreateGlobalListener(dataSourceName string) *listener {
+func (conn *connection) getOrCreateListener() *listener {
+	connURL := conn.config.ConnectURL()
+
 	globalListenersMtx.Lock()
 	defer globalListenersMtx.Unlock()
 
-	l := globalListeners[dataSourceName]
+	l := globalListeners[connURL]
 
 	if l == nil {
 		l = &listener{
-			dataSourceName: dataSourceName,
+			connURL: connURL,
 			conn: pq.NewListener(
-				dataSourceName,
-				listenerMinReconnectInterval,
-				listenerMaxReconnectInterval,
+				connURL,
+				ListenerMinReconnectInterval,
+				ListenerMaxReconnectInterval,
 				logListenerConnectionEvent,
 			),
-			ping:              time.NewTicker(listenerPingInterval),
+			ping:              time.NewTicker(ListenerPingInterval),
 			notifyCallbacks:   make(map[string][]sqldb.OnNotifyFunc),
 			unlistenCallbacks: make(map[string][]sqldb.OnUnlistenFunc),
 		}
-		globalListeners[dataSourceName] = l
+		globalListeners[connURL] = l
 
 		go l.listen()
 	}
@@ -57,11 +59,14 @@ func getOrCreateGlobalListener(dataSourceName string) *listener {
 	return l
 }
 
-func getGlobalListenerOrNil(dataSourceName string) *listener {
-	globalListenersMtx.RLock()
-	defer globalListenersMtx.RUnlock()
+func (conn *connection) getListenerOrNil() *listener {
+	connURL := conn.config.ConnectURL()
 
-	return globalListeners[dataSourceName]
+	globalListenersMtx.RLock()
+	l := globalListeners[connURL]
+	globalListenersMtx.RUnlock()
+
+	return l
 }
 
 func (l *listener) listen() {
@@ -72,7 +77,10 @@ func (l *listener) listen() {
 				l.close()
 				return
 			}
-			l.notify(notification)
+			// Re-connect will be followed by nil notification
+			if notification != nil {
+				l.notify(notification)
+			}
 
 		case <-l.ping.C:
 			err := l.conn.Ping()
@@ -85,10 +93,6 @@ func (l *listener) listen() {
 }
 
 func (l *listener) notify(notification *pq.Notification) {
-	if notification == nil {
-		return
-	}
-
 	l.callbacksMtx.RLock()
 	// Copy slice to be able to immediately unlock again
 	callbacks := append([]sqldb.OnNotifyFunc(nil), l.notifyCallbacks[notification.Channel]...)
@@ -112,10 +116,14 @@ func (l *listener) safeUnlistenCallback(callback sqldb.OnUnlistenFunc, channel s
 }
 
 func (l *listener) close() {
+	if l == nil {
+		return
+	}
+
 	globalListenersMtx.Lock()
 	defer globalListenersMtx.Unlock()
 
-	delete(globalListeners, l.dataSourceName)
+	delete(globalListeners, l.connURL)
 
 	l.ping.Stop()
 	l.conn.Close()
@@ -129,7 +137,6 @@ func (l *listener) close() {
 			l.safeUnlistenCallback(callback, channel)
 		}
 	}
-
 }
 
 func (l *listener) isListeningOnChannel(channel string) bool {
@@ -205,7 +212,7 @@ func connectionEvent(event pq.ListenerEventType) string {
 	case pq.ListenerEventReconnected:
 		return "reconnected"
 	case pq.ListenerEventConnectionAttemptFailed:
-		return "connectionAttemptFailed"
+		return "connection attempt failed"
 	default:
 		return fmt.Sprintf("unknown(%d)", event)
 	}

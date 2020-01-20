@@ -3,46 +3,27 @@ package pqtimpl
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"sync"
 
 	sqldb "github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/implhelper"
 	"github.com/domonda/go-wraperr"
 )
 
-func Connection(db *sql.DB, driverName, dataSourceName string, structFieldNamer sqldb.StructFieldNamer) sqldb.Connection {
-	return &connection{db, driverName, dataSourceName, structFieldNamer}
-}
-
-func NewConnection(ctx context.Context, driverName, dataSourceName string) (sqldb.Connection, error) {
-	db, err := sql.Open(driverName, dataSourceName)
+func NewConnection(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
+	db, err := config.Connect(ctx)
 	if err != nil {
 		return nil, err
 	}
-	conn := Connection(db, driverName, dataSourceName, sqldb.DefaultStructFieldTagNaming)
-	err = conn.Ping(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return conn, nil
+	return &connection{
+		db:               db,
+		config:           config,
+		structFieldNamer: sqldb.DefaultStructFieldTagNaming,
+	}, nil
 }
 
-func MustNewConnection(ctx context.Context, driverName, dataSourceName string) sqldb.Connection {
-	conn, err := NewConnection(ctx, driverName, dataSourceName)
-	if err != nil {
-		panic(err)
-	}
-	return conn
-}
-
-func NewPostgresConnection(ctx context.Context, user, dbname string) (sqldb.Connection, error) {
-	driverName := "postgres"
-	dataSourceName := fmt.Sprintf("user=%s dbname=%s sslmode=disable", user, dbname)
-	return NewConnection(ctx, driverName, dataSourceName)
-}
-
-func MustNewPostgresConnection(ctx context.Context, user, dbname string) sqldb.Connection {
-	conn, err := NewPostgresConnection(ctx, user, dbname)
+func MustNewConnection(ctx context.Context, config *sqldb.Config) sqldb.Connection {
+	conn, err := NewConnection(ctx, config)
 	if err != nil {
 		panic(err)
 	}
@@ -51,18 +32,22 @@ func MustNewPostgresConnection(ctx context.Context, user, dbname string) sqldb.C
 
 type connection struct {
 	db               *sql.DB
-	driverName       string
-	dataSourceName   string
+	config           *sqldb.Config
 	structFieldNamer sqldb.StructFieldNamer
+
+	listener    *listener
+	listenerMtx sync.RWMutex
 }
 
 // WithStructFieldNamer returns a copy of the connection
 // that will use the passed StructFieldNamer.
 func (conn *connection) WithStructFieldNamer(namer sqldb.StructFieldNamer) sqldb.Connection {
+	conn.listenerMtx.Lock()
+	defer conn.listenerMtx.Unlock()
+
 	return &connection{
 		db:               conn.db,
-		driverName:       conn.driverName,
-		dataSourceName:   conn.dataSourceName,
+		config:           conn.config,
 		structFieldNamer: namer,
 	}
 }
@@ -73,6 +58,10 @@ func (conn *connection) StructFieldNamer() sqldb.StructFieldNamer {
 
 func (conn *connection) Stats() sql.DBStats {
 	return conn.db.Stats()
+}
+
+func (conn *connection) Config() *sqldb.Config {
+	return conn.config
 }
 
 func (conn *connection) Ping(ctx context.Context) error {
@@ -228,17 +217,18 @@ func (conn *connection) Transaction(ctx context.Context, opts *sql.TxOptions, tx
 }
 
 func (conn *connection) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
-	return getOrCreateGlobalListener(conn.dataSourceName).listenOnChannel(channel, onNotify, onUnlisten)
+	return conn.getOrCreateListener().listenOnChannel(channel, onNotify, onUnlisten)
 }
 
 func (conn *connection) UnlistenChannel(channel string) (err error) {
-	return getGlobalListenerOrNil(conn.dataSourceName).unlistenChannel(channel)
+	return conn.getListenerOrNil().unlistenChannel(channel)
 }
 
 func (conn *connection) IsListeningOnChannel(channel string) bool {
-	return getGlobalListenerOrNil(conn.dataSourceName).isListeningOnChannel(channel)
+	return conn.getListenerOrNil().isListeningOnChannel(channel)
 }
 
 func (conn *connection) Close() error {
+	conn.getListenerOrNil().close()
 	return conn.db.Close()
 }

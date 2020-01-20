@@ -19,9 +19,9 @@ type Connection interface {
 	// that will use the passed StructFieldNamer.
 	WithStructFieldNamer(namer StructFieldNamer) Connection
 	StructFieldNamer() StructFieldNamer
-
 	Ping(ctx context.Context) error
 	Stats() sql.DBStats
+	Config() *Config
 
 	// Exec executes a query with optional args.
 	Exec(query string, args ...interface{}) error

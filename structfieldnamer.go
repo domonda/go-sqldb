@@ -1,6 +1,7 @@
 package sqldb
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"unicode"
@@ -37,6 +38,10 @@ func (n StructFieldTagNaming) StructFieldName(field reflect.StructField) string 
 		return field.Name
 	}
 	return n.UntaggedNameFunc(field.Name)
+}
+
+func (n StructFieldTagNaming) String() string {
+	return fmt.Sprintf("NameTag: %q", n.NameTag)
 }
 
 // ToSnakeCase converts s to snake case
