@@ -38,16 +38,23 @@ func ScanStruct(rows *sql.Rows, rowStruct interface{}, namer sqldb.StructFieldNa
 		return fmt.Errorf("ScanStruct: expected struct but got %T", rowStruct)
 	}
 
-	fields := make(map[string]interface{})
-	setStructFieldPointers(v, namer, ignoreColumns, restrictToColumns, fields)
-	if len(fields) == 0 {
-		return fmt.Errorf("ScanStruct: %T has no exported struct fields with `db` tag", rowStruct)
-	}
-
 	cols, err := rows.Columns()
 	if err != nil {
 		return err
 	}
+
+	fields := make(map[string]interface{}, len(cols))
+	err = setStructFieldPointers(v, namer, ignoreColumns, restrictToColumns, fields)
+	if err != nil {
+		return err
+	}
+	if len(fields) == 0 {
+		return fmt.Errorf("ScanStruct: %T has no exported struct fields", rowStruct)
+	}
+	if len(fields) != len(cols) {
+		return fmt.Errorf("ScanStruct: %T ", rowStruct)
+	}
+
 	dest := make([]interface{}, len(cols))
 	for i, col := range cols {
 		fieldPtr, ok := fields[col]
@@ -60,19 +67,26 @@ func ScanStruct(rows *sql.Rows, rowStruct interface{}, namer sqldb.StructFieldNa
 	return rows.Scan(dest...)
 }
 
-func setStructFieldPointers(v reflect.Value, namer sqldb.StructFieldNamer, ignoreNames, restrictToNames []string, out map[string]interface{}) {
+func setStructFieldPointers(v reflect.Value, namer sqldb.StructFieldNamer, ignoreNames, restrictToNames []string, out map[string]interface{}) error {
 	for i := 0; i < v.NumField(); i++ {
 		fieldType := v.Type().Field(i)
 		fieldValue := v.Field(i)
 		switch {
 		case fieldType.Anonymous:
-			setStructFieldPointers(fieldValue, namer, ignoreNames, restrictToNames, out)
+			err := setStructFieldPointers(fieldValue, namer, ignoreNames, restrictToNames, out)
+			if err != nil {
+				return err
+			}
 
 		case fieldType.PkgPath == "":
 			name := namer.StructFieldName(fieldType)
 			if validName(name, ignoreNames, restrictToNames) {
+				if _, exists := out[name]; exists {
+					return fmt.Errorf("ScanStruct: duplicate struct field name or tag %q in %s", name, v.Type())
+				}
 				out[name] = fieldValue.Addr().Interface()
 			}
 		}
 	}
+	return nil
 }
