@@ -72,7 +72,9 @@ func (l *listener) listen() {
 				l.close()
 				return
 			}
-			l.notify(notification)
+			if notification != nil {
+				l.notify(notification)
+			}
 
 		case <-l.ping.C:
 			err := l.conn.Ping()
@@ -85,10 +87,6 @@ func (l *listener) listen() {
 }
 
 func (l *listener) notify(notification *pq.Notification) {
-	if notification == nil {
-		return
-	}
-
 	l.callbacksMtx.RLock()
 	// Copy slice to be able to immediately unlock again
 	callbacks := append([]sqldb.OnNotifyFunc(nil), l.notifyCallbacks[notification.Channel]...)

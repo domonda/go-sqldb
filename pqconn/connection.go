@@ -3,7 +3,6 @@ package pqconn
 import (
 	"context"
 	"database/sql"
-	"sync"
 
 	sqldb "github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/impl"
@@ -34,17 +33,11 @@ type connection struct {
 	db               *sql.DB
 	config           *sqldb.Config
 	structFieldNamer sqldb.StructFieldNamer
-
-	listener    *listener
-	listenerMtx sync.RWMutex
 }
 
 // WithStructFieldNamer returns a copy of the connection
 // that will use the passed StructFieldNamer.
 func (conn *connection) WithStructFieldNamer(namer sqldb.StructFieldNamer) sqldb.Connection {
-	conn.listenerMtx.Lock()
-	defer conn.listenerMtx.Unlock()
-
 	return &connection{
 		db:               conn.db,
 		config:           conn.config,

@@ -3,7 +3,6 @@ package sqlxconn
 import (
 	"context"
 	"database/sql"
-	"fmt"
 
 	"github.com/jmoiron/sqlx"
 
@@ -12,39 +11,22 @@ import (
 	"github.com/domonda/go-wraperr"
 )
 
-func Connection(db *sqlx.DB, driverName, dataSourceName string, structFieldNamer sqldb.StructFieldNamer) sqldb.Connection {
-	return &connection{db, driverName, dataSourceName, structFieldNamer}
-}
-
-func NewConnection(ctx context.Context, driverName, dataSourceName string) (sqldb.Connection, error) {
-	db, err := sqlx.ConnectContext(ctx, driverName, dataSourceName)
+func NewConnection(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
+	db, err := config.Connect(ctx)
 	if err != nil {
 		return nil, err
 	}
-	db.MapperFunc(sqldb.ToSnakeCase)
-	structFieldNamer := sqldb.StructFieldTagNaming{
-		NameTag:          "db",
-		UntaggedNameFunc: sqldb.ToSnakeCase,
-	}
-	return Connection(db, driverName, dataSourceName, structFieldNamer), nil
+	dbx := sqlx.NewDb(db, config.Driver)
+	dbx.MapperFunc(sqldb.DefaultStructFieldTagNaming.UntaggedNameFunc)
+	return &connection{
+		db:               dbx,
+		config:           config,
+		structFieldNamer: sqldb.DefaultStructFieldTagNaming,
+	}, nil
 }
 
-func MustNewConnection(ctx context.Context, driverName, dataSourceName string) sqldb.Connection {
-	conn, err := NewConnection(ctx, driverName, dataSourceName)
-	if err != nil {
-		panic(err)
-	}
-	return conn
-}
-
-func NewPostgresConnection(ctx context.Context, user, dbname string) (sqldb.Connection, error) {
-	driverName := "postgres"
-	dataSourceName := fmt.Sprintf("user=%s dbname=%s sslmode=disable", user, dbname)
-	return NewConnection(ctx, driverName, dataSourceName)
-}
-
-func MustNewPostgresConnection(ctx context.Context, user, dbname string) sqldb.Connection {
-	conn, err := NewPostgresConnection(ctx, user, dbname)
+func MustNewConnection(ctx context.Context, config *sqldb.Config) sqldb.Connection {
+	conn, err := NewConnection(ctx, config)
 	if err != nil {
 		panic(err)
 	}
@@ -53,8 +35,7 @@ func MustNewPostgresConnection(ctx context.Context, user, dbname string) sqldb.C
 
 type connection struct {
 	db               *sqlx.DB
-	driverName       string
-	dataSourceName   string
+	config           *sqldb.Config
 	structFieldNamer sqldb.StructFieldNamer
 }
 
@@ -63,8 +44,7 @@ type connection struct {
 func (conn *connection) WithStructFieldNamer(namer sqldb.StructFieldNamer) sqldb.Connection {
 	return &connection{
 		db:               conn.db,
-		driverName:       conn.driverName,
-		dataSourceName:   conn.dataSourceName,
+		config:           conn.config,
 		structFieldNamer: namer,
 	}
 }
@@ -230,15 +210,15 @@ func (conn *connection) Transaction(ctx context.Context, opts *sql.TxOptions, tx
 }
 
 func (conn *connection) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
-	return getOrCreateGlobalListener(conn.dataSourceName).listenOnChannel(channel, onNotify, onUnlisten)
+	return getOrCreateGlobalListener(conn.config.ConnectURL()).listenOnChannel(channel, onNotify, onUnlisten)
 }
 
 func (conn *connection) UnlistenChannel(channel string) (err error) {
-	return getGlobalListenerOrNil(conn.dataSourceName).unlistenChannel(channel)
+	return getGlobalListenerOrNil(conn.config.ConnectURL()).unlistenChannel(channel)
 }
 
 func (conn *connection) IsListeningOnChannel(channel string) bool {
-	return getGlobalListenerOrNil(conn.dataSourceName).isListeningOnChannel(channel)
+	return getGlobalListenerOrNil(conn.config.ConnectURL()).isListeningOnChannel(channel)
 }
 
 func (conn *connection) Close() error {
