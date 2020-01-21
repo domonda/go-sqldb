@@ -21,6 +21,14 @@ func Transaction(ctx context.Context, opts *sql.TxOptions, conn sqldb.Connection
 	var tx sqldb.Connection
 	if inheritConnTx && conn.IsTransaction() {
 		tx = conn
+		if ctx.Err() != nil {
+			e := tx.Rollback()
+			if e != nil && !errors.Is(e, sql.ErrTxDone) {
+				// Double error situation, log e so it doesn't get lost
+				sqldb.ErrLogger.Printf("sqldb.Transaction error '%s' from rollback after context error '%s'", e, ctx.Err())
+			}
+			return ctx.Err()
+		}
 	} else {
 		tx, err = conn.Begin(ctx, opts)
 		if err != nil {
