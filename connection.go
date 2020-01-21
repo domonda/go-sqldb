@@ -103,16 +103,21 @@ type Connection interface {
 	// QueryRowsContext queries multiple rows and returns a RowsScanner for the results.
 	QueryRowsContext(ctx context.Context, query string, args ...interface{}) RowsScanner
 
+	// IsTransaction returns if the connection is a transaction
+	IsTransaction() bool
 	Begin(ctx context.Context, opts *sql.TxOptions) (Connection, error)
 	Commit() error
 	Rollback() error
 
-	// Transaction executes txFunc within a database transaction that is passed in as tx Connection.
+	// Transaction executes txFunc within a database transaction.
 	// The transaction will be rolled back if txFunc returns an error or panics.
-	// Recovered panics are re-paniced after the transaction was rolled back.
-	// Transaction returns errors from txFunc or transaction commit errors happening after txFunc.
+	// Recovered panics are re-paniced after the transaction is rolled back.
 	// Rollback errors are logged with sqldb.ErrLogger.
-	Transaction(ctx context.Context, opts *sql.TxOptions, txFunc func(tx Connection) error) error
+	// Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
+	// If inheritConnTx is true and the connection is already a transaction,
+	// then this transaction is inherited for txFunc ignoring opts and Begin/Commit are not called on the connection.
+	// Errors or panics will roll back the inherited transaction though.
+	Transaction(ctx context.Context, opts *sql.TxOptions, inheritConnTx bool, txFunc func(tx Connection) error) error
 
 	// ListenOnChannel will call onNotify for every channel notification
 	// and onUnlisten if the channel gets unlistened

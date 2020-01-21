@@ -184,6 +184,11 @@ func (conn *connection) QueryRowsContext(ctx context.Context, query string, args
 	return &rowsScanner{ctx, query, rows}
 }
 
+// IsTransaction returns if the connection is a transaction
+func (conn *connection) IsTransaction() bool {
+	return false
+}
+
 func (conn *connection) Begin(ctx context.Context, opts *sql.TxOptions) (sqldb.Connection, error) {
 	tx, err := conn.db.BeginTxx(ctx, opts)
 	if err != nil {
@@ -200,13 +205,16 @@ func (conn *connection) Rollback() error {
 	return sqldb.ErrNotWithinTransaction
 }
 
-// Transaction executes txFunc within a database transaction that is passed in as tx Connection.
+// Transaction executes txFunc within a database transaction.
 // The transaction will be rolled back if txFunc returns an error or panics.
-// Recovered panics are re-paniced after the transaction was rolled back.
-// Transaction returns errors from txFunc or transaction commit errors happening after txFunc.
+// Recovered panics are re-paniced after the transaction is rolled back.
 // Rollback errors are logged with sqldb.ErrLogger.
-func (conn *connection) Transaction(ctx context.Context, opts *sql.TxOptions, txFunc func(tx sqldb.Connection) error) error {
-	return impl.Transaction(ctx, opts, conn, txFunc)
+// Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
+// If inheritConnTx is true and the connection is already a transaction,
+// then this transaction is inherited for txFunc ignoring opts and Begin/Commit are not called on the connection.
+// Errors or panics will roll back the inherited transaction though.
+func (conn *connection) Transaction(ctx context.Context, opts *sql.TxOptions, inheritConnTx bool, txFunc func(tx sqldb.Connection) error) error {
+	return impl.Transaction(ctx, opts, conn, inheritConnTx, txFunc)
 }
 
 func (conn *connection) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {

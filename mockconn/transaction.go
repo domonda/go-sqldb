@@ -12,6 +12,11 @@ type transaction struct {
 	*connection
 }
 
+// IsTransaction returns if the connection is a transaction
+func (conn transaction) IsTransaction() bool {
+	return true
+}
+
 func (conn transaction) Begin(ctx context.Context, opts *sql.TxOptions) (sqldb.Connection, error) {
 	return nil, sqldb.ErrWithinTransaction
 }
@@ -24,10 +29,6 @@ func (conn transaction) Commit() error {
 func (conn transaction) Rollback() error {
 	fmt.Fprintln(conn.queryWriter, "ROLLBACK")
 	return nil
-}
-
-func (conn transaction) Transaction(ctx context.Context, opts *sql.TxOptions, txFunc func(tx sqldb.Connection) error) error {
-	return sqldb.ErrWithinTransaction
 }
 
 func (conn transaction) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {

@@ -9,15 +9,23 @@ import (
 	sqldb "github.com/domonda/go-sqldb"
 )
 
-// Transaction executes txFunc within a database transaction that is passed in as tx Connection.
+// Transaction executes txFunc within a database transaction that is passed in as tx sqldb.Connection.
 // The transaction will be rolled back if txFunc returns an error or panics.
-// Recovered panics are re-paniced after the transaction was rolled back.
-// Transaction returns errors from txFunc or transaction commit errors happening after txFunc.
+// Recovered panics are re-paniced after the transaction is rolled back.
 // Rollback errors are logged with sqldb.ErrLogger.
-func Transaction(ctx context.Context, opts *sql.TxOptions, conn sqldb.Connection, txFunc func(tx sqldb.Connection) error) (err error) {
-	tx, e := conn.Begin(ctx, opts) // use e to keep err accessible in defer func below
-	if e != nil {
-		return fmt.Errorf("sqldb.Transaction begin: %w", e)
+// Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
+// If inheritConnTx is true and conn is already a transaction,
+// then this transaction is inherited for txFunc ignoring opts and neither Begin nor Commit will becalled on conn.
+// Errors or panics will roll back the inherited transaction though.
+func Transaction(ctx context.Context, opts *sql.TxOptions, conn sqldb.Connection, inheritConnTx bool, txFunc func(tx sqldb.Connection) error) (err error) {
+	var tx sqldb.Connection
+	if inheritConnTx && conn.IsTransaction() {
+		tx = conn
+	} else {
+		tx, err = conn.Begin(ctx, opts)
+		if err != nil {
+			return fmt.Errorf("sqldb.Transaction Begin returned: %w", err)
+		}
 	}
 
 	defer func() {
@@ -38,6 +46,10 @@ func Transaction(ctx context.Context, opts *sql.TxOptions, conn sqldb.Connection
 				// Double error situation, wrap err with e so it doesn't get lost
 				err = fmt.Errorf("sqldb.Transaction error %s from rollback after error: %w", e, err)
 			}
+			return
+		}
+
+		if inheritConnTx && conn.IsTransaction() {
 			return
 		}
 
