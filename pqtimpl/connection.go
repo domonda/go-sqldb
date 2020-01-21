@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	sqldb "github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/implhelper"
+	"github.com/domonda/go-sqldb/impl"
 	"github.com/domonda/go-wraperr"
 )
 
@@ -86,45 +86,45 @@ func (conn *connection) ExecContext(ctx context.Context, query string, args ...i
 
 // Insert a new row into table using the named columValues.
 func (conn *connection) Insert(table string, columValues sqldb.Values) error {
-	return implhelper.Insert(context.Background(), conn, table, columValues)
+	return impl.Insert(context.Background(), conn, table, columValues)
 }
 
 func (conn *connection) InsertContext(ctx context.Context, table string, columValues sqldb.Values) error {
-	return implhelper.Insert(ctx, conn, table, columValues)
+	return impl.Insert(ctx, conn, table, columValues)
 }
 
 // InsertReturning inserts a new row into table using values
 // and returns values from the inserted row listed in returning.
 func (conn *connection) InsertReturning(table string, values sqldb.Values, returning string) sqldb.RowScanner {
-	return implhelper.InsertReturning(context.Background(), conn, table, values, returning)
+	return impl.InsertReturning(context.Background(), conn, table, values, returning)
 }
 
 // InsertReturningContext inserts a new row into table using values
 // and returns values from the inserted row listed in returning.
 func (conn *connection) InsertReturningContext(ctx context.Context, table string, values sqldb.Values, returning string) sqldb.RowScanner {
-	return implhelper.InsertReturning(ctx, conn, table, values, returning)
+	return impl.InsertReturning(ctx, conn, table, values, returning)
 }
 
 func (conn *connection) InsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
-	return implhelper.InsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
+	return impl.InsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
 }
 
 func (conn *connection) InsertStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error {
-	return implhelper.InsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
+	return impl.InsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
 }
 
 // InsertStructIgnoreColums inserts a new row into table using the exported fields
 // of rowStruct which have a `db` tag that is not "-".
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 func (conn *connection) InsertStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error {
-	return implhelper.InsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
+	return impl.InsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
 // InsertStructIgnoreColumsContext inserts a new row into table using the exported fields
 // of rowStruct which have a `db` tag that is not "-".
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 func (conn *connection) InsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
-	return implhelper.InsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
+	return impl.InsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
 // UpsertStruct upserts a row to table using the exported fields
@@ -133,7 +133,7 @@ func (conn *connection) InsertStructIgnoreColumsContext(ctx context.Context, tab
 // matching any of the passed column names will be used.
 // If inserting conflicts on idColumn, then an update of the existing row is performed.
 func (conn *connection) UpsertStruct(table string, rowStruct interface{}, idColumn string, restrictToColumns ...string) error {
-	return implhelper.UpsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, idColumn, nil, restrictToColumns)
+	return impl.UpsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, idColumn, nil, restrictToColumns)
 }
 
 // UpsertStructContext upserts a row to table using the exported fields
@@ -142,7 +142,7 @@ func (conn *connection) UpsertStruct(table string, rowStruct interface{}, idColu
 // matching any of the passed column names will be used.
 // If inserting conflicts on idColumn, then an update of the existing row is performed.
 func (conn *connection) UpsertStructContext(ctx context.Context, table string, rowStruct interface{}, idColumn string, restrictToColumns ...string) error {
-	return implhelper.UpsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, idColumn, nil, restrictToColumns)
+	return impl.UpsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, idColumn, nil, restrictToColumns)
 }
 
 // UpsertStructIgnoreColums upserts a row to table using the exported fields
@@ -150,7 +150,7 @@ func (conn *connection) UpsertStructContext(ctx context.Context, table string, r
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 // If inserting conflicts on idColumn, then an update of the existing row is performed.
 func (conn *connection) UpsertStructIgnoreColums(table string, rowStruct interface{}, idColumn string, ignoreColumns ...string) error {
-	return implhelper.UpsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, idColumn, ignoreColumns, nil)
+	return impl.UpsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, idColumn, ignoreColumns, nil)
 }
 
 // UpsertStructIgnoreColumsContext upserts a row to table using the exported fields
@@ -158,7 +158,7 @@ func (conn *connection) UpsertStructIgnoreColums(table string, rowStruct interfa
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 // If inserting conflicts on idColumn, then an update of the existing row is performed.
 func (conn *connection) UpsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, idColumn string, ignoreColumns ...string) error {
-	return implhelper.UpsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, idColumn, ignoreColumns, nil)
+	return impl.UpsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, idColumn, ignoreColumns, nil)
 }
 
 func (conn *connection) QueryRow(query string, args ...interface{}) sqldb.RowScanner {
@@ -213,7 +213,7 @@ func (conn *connection) Rollback() error {
 // Transaction returns errors from txFunc or transaction commit errors happening after txFunc.
 // Rollback errors are logged with sqldb.ErrLogger.
 func (conn *connection) Transaction(ctx context.Context, opts *sql.TxOptions, txFunc func(tx sqldb.Connection) error) error {
-	return implhelper.Transaction(ctx, opts, conn, txFunc)
+	return impl.Transaction(ctx, opts, conn, txFunc)
 }
 
 func (conn *connection) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {

@@ -6,7 +6,7 @@ import (
 	"reflect"
 
 	sqldb "github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/implhelper"
+	"github.com/domonda/go-sqldb/impl"
 	"github.com/domonda/go-wraperr"
 )
 
@@ -49,7 +49,7 @@ func (s *rowsScanner) scanSlice(dest interface{}, scanStruct bool) (err error) {
 		newSlice = reflect.Append(newSlice, reflect.Zero(sliceElemType))
 		target := newSlice.Index(newSlice.Len() - 1).Addr()
 		if scanStruct {
-			err = implhelper.ScanStruct(s.rows, target.Interface(), s.structFieldNamer, nil, nil)
+			err = impl.ScanStruct(s.rows, target.Interface(), s.structFieldNamer, nil, nil)
 		} else {
 			err = s.rows.Scan(target.Interface())
 		}
@@ -110,5 +110,5 @@ func (s perRowScanner) Scan(dest ...interface{}) error {
 }
 
 func (s perRowScanner) ScanStruct(dest interface{}) error {
-	return implhelper.ScanStruct(s.rows, dest, s.structFieldNamer, nil, nil)
+	return impl.ScanStruct(s.rows, dest, s.structFieldNamer, nil, nil)
 }

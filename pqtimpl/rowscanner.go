@@ -4,7 +4,7 @@ import (
 	"database/sql"
 
 	sqldb "github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/implhelper"
+	"github.com/domonda/go-sqldb/impl"
 	"github.com/domonda/go-wraperr"
 )
 
@@ -32,5 +32,5 @@ func (s *rowScanner) ScanStruct(dest interface{}) (err error) {
 		s.rows.Close()
 	}()
 
-	return implhelper.ScanStruct(s.rows, dest, s.structFieldNamer, nil, nil)
+	return impl.ScanStruct(s.rows, dest, s.structFieldNamer, nil, nil)
 }

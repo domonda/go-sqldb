@@ -1,4 +1,4 @@
-package implhelper
+package impl
 
 import (
 	"context"
@@ -180,24 +180,4 @@ func structFields(v reflect.Value, namer sqldb.StructFieldNamer, ignoreNames, re
 		}
 	}
 	return names, vals
-}
-
-func validName(name string, ignoreNames, restrictToNames []string) bool {
-	if name == "" || name == "-" {
-		return false
-	}
-	for _, ignore := range ignoreNames {
-		if name == ignore {
-			return false
-		}
-	}
-	if len(restrictToNames) == 0 {
-		return true
-	}
-	for _, allowed := range restrictToNames {
-		if name == allowed {
-			return true
-		}
-	}
-	return false
 }
