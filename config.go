@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+// Config for a connection.
+// For tips see https://www.alexedwards.net/blog/configuring-sqldb
 type Config struct {
 	Driver          string            `json:"driver"`
 	Host            string            `json:"host"`
@@ -21,6 +23,7 @@ type Config struct {
 	ConnMaxLifetime time.Duration     `json:"connMaxLifetime,omitempty"`
 }
 
+// ConnectURL for connecting to a database
 func (c *Config) ConnectURL() string {
 	extra := make(url.Values)
 	for key, val := range c.Extra {
@@ -41,6 +44,9 @@ func (c *Config) ConnectURL() string {
 	return u.String()
 }
 
+// Connect calls opens a new sql.DB connection,
+// sets all Config values and performs a ping with ctx.
+// The sql.DB will be returned if the ping was successful.
 func (c *Config) Connect(ctx context.Context) (*sql.DB, error) {
 	db, err := sql.Open(c.Driver, c.ConnectURL())
 	if err != nil {
