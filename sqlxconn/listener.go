@@ -1,4 +1,4 @@
-package sqlximpl
+package sqlxconn
 
 import (
 	"fmt"
@@ -146,7 +146,7 @@ func (l *listener) isListeningOnChannel(channel string) bool {
 func (l *listener) listenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
 	err = l.conn.Listen(channel)
 	if err != nil {
-		return fmt.Errorf("sqlximpl can't listenOnChannel %q because: %w", channel, err)
+		return fmt.Errorf("sqlxconn can't listenOnChannel %q because: %w", channel, err)
 	}
 
 	l.callbacksMtx.Lock()
@@ -165,12 +165,12 @@ func (l *listener) listenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, 
 // called on nil listener will return an error
 func (l *listener) unlistenChannel(channel string) (err error) {
 	if l == nil || l.conn == nil {
-		return fmt.Errorf("sqlximpl can't unlistenChannel %q because: no db connection", channel)
+		return fmt.Errorf("sqlxconn can't unlistenChannel %q because: no db connection", channel)
 	}
 
 	err = l.conn.Unlisten(channel)
 	if err != nil {
-		return fmt.Errorf("sqlximpl can't unlistenChannel %q because: %w", channel, err)
+		return fmt.Errorf("sqlxconn can't unlistenChannel %q because: %w", channel, err)
 	}
 
 	l.callbacksMtx.Lock()
@@ -189,10 +189,10 @@ func (l *listener) unlistenChannel(channel string) (err error) {
 func logListenerConnectionEvent(event pq.ListenerEventType, err error) {
 	switch {
 	case err != nil:
-		sqldb.ErrLogger.Printf("sqlximpl: got listener connection event=%q error=%v", connectionEvent(event), err)
+		sqldb.ErrLogger.Printf("sqlxconn: got listener connection event=%q error=%v", connectionEvent(event), err)
 
 	case ListenerEventLogger != nil:
-		ListenerEventLogger.Printf("sqlximpl: got listener connection event=%q", connectionEvent(event))
+		ListenerEventLogger.Printf("sqlxconn: got listener connection event=%q", connectionEvent(event))
 	}
 }
 

@@ -1,4 +1,4 @@
-package mockimpl
+package mockconn
 
 import (
 	"github.com/domonda/go-wraperr/sentinel"

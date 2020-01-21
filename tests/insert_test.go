@@ -7,7 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/domonda/go-sqldb/mockimpl"
+	"github.com/domonda/go-sqldb/mockconn"
 	"github.com/domonda/go-types/uu"
 )
 
@@ -27,7 +27,7 @@ type testRow struct {
 
 func TestInsertStruct(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
-	conn := mockimpl.NewConnection(buf)
+	conn := mockconn.NewConnection(buf)
 
 	row := new(testRow)
 	expected := `INSERT INTO public.table("id","int","bool","str","untagged_field","created_at") VALUES($1,$2,$3,$4,$5,$6)` + "\n"
@@ -39,7 +39,7 @@ func TestInsertStruct(t *testing.T) {
 
 func TestUpsertStruct(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
-	conn := mockimpl.NewConnection(buf)
+	conn := mockconn.NewConnection(buf)
 
 	row := new(testRow)
 	expected := `INSERT INTO public.table("id","int","bool","str","untagged_field","created_at") VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT("id") DO UPDATE SET "int"=$2,"bool"=$3,"str"=$4,"untagged_field"=$5,"created_at"=$6` + "\n"

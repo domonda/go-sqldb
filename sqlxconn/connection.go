@@ -1,4 +1,4 @@
-package sqlximpl
+package sqlxconn
 
 import (
 	"context"

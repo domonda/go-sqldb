@@ -1,4 +1,4 @@
-package pqtimpl
+package sqlxconn
 
 import sqldb "github.com/domonda/go-sqldb"
 

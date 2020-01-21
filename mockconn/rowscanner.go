@@ -1,4 +1,4 @@
-package mockimpl
+package mockconn
 
 type rowScanner struct{}
 

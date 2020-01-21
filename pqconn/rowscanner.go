@@ -1,4 +1,4 @@
-package pqtimpl
+package pqconn
 
 import (
 	"database/sql"

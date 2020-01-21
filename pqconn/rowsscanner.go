@@ -1,20 +1,21 @@
-package sqlximpl
+package pqconn
 
 import (
 	"context"
+	"database/sql"
 	"reflect"
 
-	"github.com/jmoiron/sqlx"
-
 	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/impl"
 	"github.com/domonda/go-wraperr"
 )
 
-// rowsScanner implements sqldb.RowsScanner for sqlx.Rows
+// rowsScanner implements sqldb.RowsScanner for sql.Rows
 type rowsScanner struct {
-	ctx   context.Context
-	query string // for error wrapping
-	rows  *sqlx.Rows
+	ctx              context.Context
+	query            string // for error wrapping
+	rows             *sql.Rows
+	structFieldNamer sqldb.StructFieldNamer
 }
 
 func (s *rowsScanner) scanSlice(dest interface{}, scanStruct bool) (err error) {
@@ -46,17 +47,9 @@ func (s *rowsScanner) scanSlice(dest interface{}, scanStruct bool) (err error) {
 		}
 
 		newSlice = reflect.Append(newSlice, reflect.Zero(sliceElemType))
-		target := newSlice.Index(newSlice.Len() - 1)
-		if sliceElemType.Kind() == reflect.Ptr {
-			// sqlx does not allocate for pointer types,
-			// so set last slice element to newly allocated object
-			target.Set(reflect.New(sliceElemType.Elem()))
-		} else {
-			// If no pointer type, then use address of last slice element
-			target = target.Addr()
-		}
+		target := newSlice.Index(newSlice.Len() - 1).Addr()
 		if scanStruct {
-			err = s.rows.StructScan(target.Interface())
+			err = impl.ScanStruct(s.rows, target.Interface(), s.structFieldNamer, nil, nil)
 		} else {
 			err = s.rows.Scan(target.Interface())
 		}
@@ -99,7 +92,7 @@ func (s *rowsScanner) ForEachRow(callback func(sqldb.RowScanner) error) (err err
 			return s.ctx.Err()
 		}
 
-		err := callback(perRowScanner{s.rows})
+		err := callback(perRowScanner{s.rows, s.structFieldNamer})
 		if err != nil {
 			return err
 		}
@@ -108,7 +101,8 @@ func (s *rowsScanner) ForEachRow(callback func(sqldb.RowScanner) error) (err err
 }
 
 type perRowScanner struct {
-	rows *sqlx.Rows
+	rows             *sql.Rows
+	structFieldNamer sqldb.StructFieldNamer
 }
 
 func (s perRowScanner) Scan(dest ...interface{}) error {
@@ -116,5 +110,5 @@ func (s perRowScanner) Scan(dest ...interface{}) error {
 }
 
 func (s perRowScanner) ScanStruct(dest interface{}) error {
-	return s.rows.StructScan(dest)
+	return impl.ScanStruct(s.rows, dest, s.structFieldNamer, nil, nil)
 }
