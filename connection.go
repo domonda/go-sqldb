@@ -70,26 +70,26 @@ type Connection interface {
 	// If restrictToColumns are provided, then only struct fields with a `db` tag
 	// matching any of the passed column names will be used.
 	// If inserting conflicts on idColumn, then an update of the existing row is performed.
-	UpsertStruct(table string, rowStruct interface{}, idColumn string, restrictToColumns ...string) error
+	UpsertStruct(table, idColumn string, rowStruct interface{}, restrictToColumns ...string) error
 
 	// UpsertStructContext upserts a row to table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// If restrictToColumns are provided, then only struct fields with a `db` tag
 	// matching any of the passed column names will be used.
 	// If inserting conflicts on idColumn, then an update of the existing row is performed.
-	UpsertStructContext(ctx context.Context, table string, rowStruct interface{}, idColumn string, restrictToColumns ...string) error
+	UpsertStructContext(ctx context.Context, table, idColumn string, rowStruct interface{}, restrictToColumns ...string) error
 
 	// UpsertStructIgnoreColums upserts a row to table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	// If inserting conflicts on idColumn, then an update of the existing row is performed.
-	UpsertStructIgnoreColums(table string, rowStruct interface{}, idColumn string, ignoreColumns ...string) error
+	UpsertStructIgnoreColums(table, idColumn string, rowStruct interface{}, ignoreColumns ...string) error
 
 	// UpsertStructIgnoreColumsContext upserts a row to table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	// If inserting conflicts on idColumn, then an update of the existing row is performed.
-	UpsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, idColumn string, ignoreColumns ...string) error
+	UpsertStructIgnoreColumsContext(ctx context.Context, table, idColumn string, rowStruct interface{}, ignoreColumns ...string) error
 
 	// QueryRow queries a single row and returns a RowScanner for the results.
 	QueryRow(query string, args ...interface{}) RowScanner

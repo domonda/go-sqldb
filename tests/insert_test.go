@@ -44,10 +44,10 @@ func TestUpsertStruct(t *testing.T) {
 	row := new(testRow)
 	expected := `INSERT INTO public.table("id","int","bool","str","untagged_field","created_at") VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT("id") DO UPDATE SET "int"=$2,"bool"=$3,"str"=$4,"untagged_field"=$5,"created_at"=$6` + "\n"
 
-	err := conn.UpsertStruct("public.table", row, "id")
+	err := conn.UpsertStruct("public.table", "id", row)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, buf.String())
 
-	err = conn.UpsertStruct("public.table", row, "xxx")
+	err = conn.UpsertStruct("public.table", "xxx", row)
 	assert.Error(t, err, "xxx is not column")
 }

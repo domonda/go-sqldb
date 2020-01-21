@@ -125,7 +125,7 @@ func (conn *connection) InsertStructIgnoreColumsContext(ctx context.Context, tab
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
 // If inserting conflicts on idColumn, then an update of the existing row is performed.
-func (conn *connection) UpsertStruct(table string, rowStruct interface{}, idColumn string, restrictToColumns ...string) error {
+func (conn *connection) UpsertStruct(table, idColumn string, rowStruct interface{}, restrictToColumns ...string) error {
 	return impl.UpsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, idColumn, nil, restrictToColumns)
 }
 
@@ -134,7 +134,7 @@ func (conn *connection) UpsertStruct(table string, rowStruct interface{}, idColu
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
 // If inserting conflicts on idColumn, then an update of the existing row is performed.
-func (conn *connection) UpsertStructContext(ctx context.Context, table string, rowStruct interface{}, idColumn string, restrictToColumns ...string) error {
+func (conn *connection) UpsertStructContext(ctx context.Context, table, idColumn string, rowStruct interface{}, restrictToColumns ...string) error {
 	return impl.UpsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, idColumn, nil, restrictToColumns)
 }
 
@@ -142,7 +142,7 @@ func (conn *connection) UpsertStructContext(ctx context.Context, table string, r
 // of rowStruct which have a `db` tag that is not "-".
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 // If inserting conflicts on idColumn, then an update of the existing row is performed.
-func (conn *connection) UpsertStructIgnoreColums(table string, rowStruct interface{}, idColumn string, ignoreColumns ...string) error {
+func (conn *connection) UpsertStructIgnoreColums(table, idColumn string, rowStruct interface{}, ignoreColumns ...string) error {
 	return impl.UpsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, idColumn, ignoreColumns, nil)
 }
 
@@ -150,7 +150,7 @@ func (conn *connection) UpsertStructIgnoreColums(table string, rowStruct interfa
 // of rowStruct which have a `db` tag that is not "-".
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 // If inserting conflicts on idColumn, then an update of the existing row is performed.
-func (conn *connection) UpsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, idColumn string, ignoreColumns ...string) error {
+func (conn *connection) UpsertStructIgnoreColumsContext(ctx context.Context, table, idColumn string, rowStruct interface{}, ignoreColumns ...string) error {
 	return impl.UpsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, idColumn, ignoreColumns, nil)
 }
 
