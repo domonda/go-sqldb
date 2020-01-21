@@ -11,7 +11,7 @@ import (
 	"github.com/domonda/go-wraperr"
 )
 
-func NewConnection(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
+func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 	db, err := config.Connect(ctx)
 	if err != nil {
 		return nil, err
@@ -25,8 +25,8 @@ func NewConnection(ctx context.Context, config *sqldb.Config) (sqldb.Connection,
 	}, nil
 }
 
-func MustNewConnection(ctx context.Context, config *sqldb.Config) sqldb.Connection {
-	conn, err := NewConnection(ctx, config)
+func MustNew(ctx context.Context, config *sqldb.Config) sqldb.Connection {
+	conn, err := New(ctx, config)
 	if err != nil {
 		panic(err)
 	}

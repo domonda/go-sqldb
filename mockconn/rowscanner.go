@@ -8,5 +8,4 @@ func (s *rowScanner) Scan(dest ...interface{}) error {
 
 func (s *rowScanner) ScanStruct(dest interface{}) error {
 	return ErrMockedScan
-
 }

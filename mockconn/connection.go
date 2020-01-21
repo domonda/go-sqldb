@@ -10,7 +10,7 @@ import (
 	"github.com/domonda/go-sqldb/impl"
 )
 
-func NewConnection(queryWriter io.Writer) sqldb.Connection {
+func New(queryWriter io.Writer) sqldb.Connection {
 	return &connection{
 		queryWriter:      queryWriter,
 		listening:        newBoolMap(),
