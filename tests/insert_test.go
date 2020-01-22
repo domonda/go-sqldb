@@ -51,3 +51,26 @@ func TestUpsertStruct(t *testing.T) {
 	err = conn.UpsertStruct("public.table", "xxx", row)
 	assert.Error(t, err, "xxx is not column")
 }
+
+type multiPrimaryKeyRow struct {
+	FirstID  string `db:"first_id"`
+	SecondID string `db:"second_id"`
+	ThirdID  string `db:"third_id"`
+
+	CreatedAt time.Time `db:"created_at"`
+}
+
+func TestUpsertStructMultiPK(t *testing.T) {
+	buf := bytes.NewBuffer(nil)
+	conn := mockconn.New(buf)
+
+	row := new(multiPrimaryKeyRow)
+	expected := `INSERT INTO public.multi_pk("first_id","second_id","third_id","created_at") VALUES($1,$2,$3,$4) ON CONFLICT("first_id","second_id","third_id") DO UPDATE SET "created_at"=$4` + "\n"
+
+	err := conn.UpsertStruct("public.multi_pk", "first_id,second_id,third_id", row)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, buf.String())
+
+	err = conn.UpsertStruct("public.multi_pk", "first_id,second_id,xxx", row)
+	assert.Error(t, err, "xxx is not column")
+}

@@ -33,14 +33,17 @@ func UpsertStruct(ctx context.Context, conn sqldb.Connection, table, pkColumn st
 	if len(names) == 0 {
 		return fmt.Errorf("UpsertStruct to table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
 	}
+
+	pkColumns := strings.Split(pkColumn, ",")
+	pkColumnsFound := make([]bool, len(pkColumns))
+
 	var query strings.Builder
 	writeInsertQuery(&query, table, names)
-	fmt.Fprintf(&query, ` ON CONFLICT("%s") DO UPDATE SET `, pkColumn)
+	fmt.Fprintf(&query, ` ON CONFLICT("%s") DO UPDATE SET `, strings.ReplaceAll(pkColumn, `,`, `","`))
 	first := true
-	pkColumnFound := false
 	for i, name := range names {
-		if name == pkColumn {
-			pkColumnFound = true
+		if pki := indexOf(pkColumns, name); pki != -1 {
+			pkColumnsFound[pki] = true
 			continue
 		}
 		if first {
@@ -50,9 +53,11 @@ func UpsertStruct(ctx context.Context, conn sqldb.Connection, table, pkColumn st
 		}
 		fmt.Fprintf(&query, `"%s"=$%d`, name, i+1)
 	}
-	if !pkColumnFound {
-		columns, _ := json.Marshal(names) // JSON array syntax is a nice format for the error
-		return fmt.Errorf("UpsertStruct to table %s: pkColumn %q not found in columns %s", table, pkColumn, columns)
+	for i, found := range pkColumnsFound {
+		if !found {
+			columns, _ := json.Marshal(names) // JSON array syntax is a nice format for the error
+			return fmt.Errorf("UpsertStruct to table %s: pkColumn %q not found in columns %s", table, pkColumns[i], columns)
+		}
 	}
 
 	err := conn.ExecContext(ctx, query.String(), vals...)
@@ -60,4 +65,13 @@ func UpsertStruct(ctx context.Context, conn sqldb.Connection, table, pkColumn st
 		return wraperr.Errorf("query `%s` returned error: %w", query.String(), err)
 	}
 	return nil
+}
+
+func indexOf(s []string, str string) int {
+	for i, comp := range s {
+		if comp == str {
+			return i
+		}
+	}
+	return -1
 }

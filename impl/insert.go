@@ -59,7 +59,7 @@ func sortedNamesAndValues(values sqldb.Values) (names []string, vals []interface
 }
 
 func writeInsertQuery(w *strings.Builder, table string, names []string) {
-	fmt.Fprintf(w, "INSERT INTO %s(", table)
+	fmt.Fprintf(w, `INSERT INTO %s(`, table)
 	for i, name := range names {
 		if i > 0 {
 			w.WriteByte(',')
@@ -68,7 +68,7 @@ func writeInsertQuery(w *strings.Builder, table string, names []string) {
 		w.WriteString(name)
 		w.WriteByte('"')
 	}
-	w.WriteString(") VALUES(")
+	w.WriteString(`) VALUES(`)
 	for i := range names {
 		if i > 0 {
 			w.WriteByte(',')
