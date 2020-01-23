@@ -69,27 +69,35 @@ type Connection interface {
 	// of rowStruct which have a `db` tag that is not "-".
 	// If restrictToColumns are provided, then only struct fields with a `db` tag
 	// matching any of the passed column names will be used.
-	// If inserting conflicts on pkColumn, then an update of the existing row is performed.
-	UpsertStruct(table, pkColumn string, rowStruct interface{}, restrictToColumns ...string) error
+	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
+	// to mark primary key column(s).
+	// If inserting conflicts on the primary key column(s), then an update is performed.
+	UpsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error
 
 	// UpsertStructContext upserts a row to table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// If restrictToColumns are provided, then only struct fields with a `db` tag
 	// matching any of the passed column names will be used.
-	// If inserting conflicts on pkColumn, then an update of the existing row is performed.
-	UpsertStructContext(ctx context.Context, table, pkColumn string, rowStruct interface{}, restrictToColumns ...string) error
+	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
+	// to mark primary key column(s).
+	// If inserting conflicts on the primary key column(s), then an update is performed.
+	UpsertStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error
 
 	// UpsertStructIgnoreColums upserts a row to table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
-	// If inserting conflicts on pkColumn, then an update of the existing row is performed.
-	UpsertStructIgnoreColums(table, pkColumn string, rowStruct interface{}, ignoreColumns ...string) error
+	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
+	// to mark primary key column(s).
+	// If inserting conflicts on the primary key column(s), then an update is performed.
+	UpsertStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error
 
 	// UpsertStructIgnoreColumsContext upserts a row to table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
-	// If inserting conflicts on pkColumn, then an update of the existing row is performed.
-	UpsertStructIgnoreColumsContext(ctx context.Context, table, pkColumn string, rowStruct interface{}, ignoreColumns ...string) error
+	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
+	// to mark primary key column(s).
+	// If inserting conflicts on the primary key column(s), then an update is performed.
+	UpsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error
 
 	// QueryRow queries a single row and returns a RowScanner for the results.
 	QueryRow(query string, args ...interface{}) RowScanner

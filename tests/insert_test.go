@@ -16,7 +16,7 @@ type embed struct {
 }
 
 type testRow struct {
-	ID  uu.ID `db:"id"`
+	ID  uu.ID `db:"id,pk"`
 	Int int   `db:"int"`
 	embed
 	Str           string `db:"str"`
@@ -44,12 +44,9 @@ func TestUpsertStruct(t *testing.T) {
 	row := new(testRow)
 	expected := `INSERT INTO public.table("id","int","bool","str","untagged_field","created_at") VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT("id") DO UPDATE SET "int"=$2,"bool"=$3,"str"=$4,"untagged_field"=$5,"created_at"=$6` + "\n"
 
-	err := conn.UpsertStruct("public.table", "id", row)
+	err := conn.UpsertStruct("public.table", row)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, buf.String())
-
-	err = conn.UpsertStruct("public.table", "xxx", row)
-	assert.Error(t, err, "xxx is not column")
 }
 
 type multiPrimaryKeyRow struct {
@@ -67,10 +64,7 @@ func TestUpsertStructMultiPK(t *testing.T) {
 	row := new(multiPrimaryKeyRow)
 	expected := `INSERT INTO public.multi_pk("first_id","second_id","third_id","created_at") VALUES($1,$2,$3,$4) ON CONFLICT("first_id","second_id","third_id") DO UPDATE SET "created_at"=$4` + "\n"
 
-	err := conn.UpsertStruct("public.multi_pk", "first_id,second_id,third_id", row)
+	err := conn.UpsertStruct("public.multi_pk", row)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, buf.String())
-
-	err = conn.UpsertStruct("public.multi_pk", "first_id,second_id,xxx", row)
-	assert.Error(t, err, "xxx is not column")
 }

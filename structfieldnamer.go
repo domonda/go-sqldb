@@ -8,12 +8,12 @@ import (
 )
 
 type StructFieldNamer interface {
-	StructFieldName(field reflect.StructField) string
+	StructFieldName(field reflect.StructField) (name string, pk bool)
 }
 
-type StructFieldNamerFunc func(field reflect.StructField) string
+type StructFieldNamerFunc func(field reflect.StructField) (name string, pk bool)
 
-func (f StructFieldNamerFunc) StructFieldName(field reflect.StructField) string {
+func (f StructFieldNamerFunc) StructFieldName(field reflect.StructField) (name string, pk bool) {
 	return f(field)
 }
 
@@ -27,17 +27,22 @@ type StructFieldTagNaming struct {
 	UntaggedNameFunc func(string) string
 }
 
-func (n StructFieldTagNaming) StructFieldName(field reflect.StructField) string {
+func (n StructFieldTagNaming) StructFieldName(field reflect.StructField) (name string, pk bool) {
 	if tag, ok := field.Tag.Lookup(n.NameTag); ok && tag != "" {
 		if i := strings.IndexByte(tag, ','); i != -1 {
-			return tag[:i]
+			pk = tag[i+1:] == "pk"
+			name = tag[:i]
+			if name != "" {
+				return name, pk
+			}
+		} else {
+			return tag, false
 		}
-		return tag
 	}
 	if n.UntaggedNameFunc == nil {
-		return field.Name
+		return field.Name, pk
 	}
-	return n.UntaggedNameFunc(field.Name)
+	return n.UntaggedNameFunc(field.Name), pk
 }
 
 func (n StructFieldTagNaming) String() string {

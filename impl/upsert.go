@@ -17,7 +17,7 @@ import (
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
 // If inserting conflicts on pkColumn, then an update of the existing row is performed.
-func UpsertStruct(ctx context.Context, conn sqldb.Connection, table, pkColumn string, rowStruct interface{}, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) error {
+func UpsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowStruct interface{}, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) error {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -29,19 +29,20 @@ func UpsertStruct(ctx context.Context, conn sqldb.Connection, table, pkColumn st
 		return fmt.Errorf("UpsertStruct to table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	names, vals := structFields(v, namer, ignoreColumns, restrictToColumns)
-	if len(names) == 0 {
+	columns, pkColumns, vals := structFields(v, namer, ignoreColumns, restrictToColumns)
+	if len(columns) == 0 {
 		return fmt.Errorf("UpsertStruct to table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
 	}
-
-	pkColumns := strings.Split(pkColumn, ",")
+	if len(pkColumns) == 0 {
+		return fmt.Errorf("UpsertStruct to table %s: %T has no exported struct fields with ,pk tag value suffix to mark primary key column(s)", table, rowStruct)
+	}
 	pkColumnsFound := make([]bool, len(pkColumns))
 
 	var query strings.Builder
-	writeInsertQuery(&query, table, names)
-	fmt.Fprintf(&query, ` ON CONFLICT("%s") DO UPDATE SET `, strings.ReplaceAll(pkColumn, `,`, `","`))
+	writeInsertQuery(&query, table, columns)
+	fmt.Fprintf(&query, ` ON CONFLICT("%s") DO UPDATE SET `, strings.Join(pkColumns, `","`))
 	first := true
-	for i, name := range names {
+	for i, name := range columns {
 		if pki := indexOf(pkColumns, name); pki != -1 {
 			pkColumnsFound[pki] = true
 			continue
@@ -55,8 +56,8 @@ func UpsertStruct(ctx context.Context, conn sqldb.Connection, table, pkColumn st
 	}
 	for i, found := range pkColumnsFound {
 		if !found {
-			columns, _ := json.Marshal(names) // JSON array syntax is a nice format for the error
-			return fmt.Errorf("UpsertStruct to table %s: pkColumn %q not found in columns %s", table, pkColumns[i], columns)
+			columnsStr, _ := json.Marshal(columns) // JSON array syntax is a nice format for the error
+			return fmt.Errorf("UpsertStruct to table %s: pkColumn %q not found in columns %s", table, pkColumns[i], columnsStr)
 		}
 	}
 

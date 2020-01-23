@@ -107,8 +107,8 @@ func (conn *transaction) InsertStructIgnoreColumsContext(ctx context.Context, ta
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
 // If inserting conflicts on pkColumn, then an update of the existing row is performed.
-func (conn *transaction) UpsertStruct(table, pkColumn string, rowStruct interface{}, restrictToColumns ...string) error {
-	return impl.UpsertStruct(context.Background(), conn, table, pkColumn, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
+func (conn *transaction) UpsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
+	return impl.UpsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
 }
 
 // UpsertStructContext upserts a row to table using the exported fields
@@ -116,24 +116,24 @@ func (conn *transaction) UpsertStruct(table, pkColumn string, rowStruct interfac
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
 // If inserting conflicts on pkColumn, then an update of the existing row is performed.
-func (conn *transaction) UpsertStructContext(ctx context.Context, table, pkColumn string, rowStruct interface{}, restrictToColumns ...string) error {
-	return impl.UpsertStruct(ctx, conn, table, pkColumn, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
+func (conn *transaction) UpsertStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error {
+	return impl.UpsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
 }
 
 // UpsertStructIgnoreColums upserts a row to table using the exported fields
 // of rowStruct which have a `db` tag that is not "-".
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 // If inserting conflicts on pkColumn, then an update of the existing row is performed.
-func (conn *transaction) UpsertStructIgnoreColums(table, pkColumn string, rowStruct interface{}, ignoreColumns ...string) error {
-	return impl.UpsertStruct(context.Background(), conn, table, pkColumn, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
+func (conn *transaction) UpsertStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error {
+	return impl.UpsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
 // UpsertStructIgnoreColumsContext upserts a row to table using the exported fields
 // of rowStruct which have a `db` tag that is not "-".
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 // If inserting conflicts on pkColumn, then an update of the existing row is performed.
-func (conn *transaction) UpsertStructIgnoreColumsContext(ctx context.Context, table, pkColumn string, rowStruct interface{}, ignoreColumns ...string) error {
-	return impl.UpsertStruct(ctx, conn, table, pkColumn, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
+func (conn *transaction) UpsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
+	return impl.UpsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
 func (conn *transaction) QueryRow(query string, args ...interface{}) sqldb.RowScanner {

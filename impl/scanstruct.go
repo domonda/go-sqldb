@@ -70,7 +70,7 @@ func getStructFieldPointers(v reflect.Value, namer sqldb.StructFieldNamer, ignor
 			}
 
 		case fieldType.PkgPath == "":
-			name := namer.StructFieldName(fieldType)
+			name, _ := namer.StructFieldName(fieldType)
 			if validName(name, ignoreNames, restrictToNames) {
 				if _, exists := outFieldPtrs[name]; exists {
 					return fmt.Errorf("ScanStruct: duplicate struct field name or tag %q in %s", name, v.Type())
