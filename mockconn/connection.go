@@ -178,11 +178,11 @@ func (conn *connection) Rollback() error {
 // Recovered panics are re-paniced after the transaction is rolled back.
 // Rollback errors are logged with sqldb.ErrLogger.
 // Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
-// If inheritConnTx is true and the connection is already a transaction,
-// then this transaction is inherited for txFunc ignoring opts and Begin/Commit are not called on the connection.
+// If conn is already a transaction, then txFunc is executed within this transaction
+// ignoring opts and without calling another Begin or Commit in this Transaction call.
 // Errors or panics will roll back the inherited transaction though.
-func (conn *connection) Transaction(ctx context.Context, opts *sql.TxOptions, inheritConnTx bool, txFunc func(tx sqldb.Connection) error) error {
-	return impl.Transaction(ctx, opts, conn, inheritConnTx, txFunc)
+func (conn *connection) Transaction(ctx context.Context, opts *sql.TxOptions, txFunc func(tx sqldb.Connection) error) error {
+	return impl.Transaction(ctx, opts, conn, txFunc)
 }
 
 func (conn *connection) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {

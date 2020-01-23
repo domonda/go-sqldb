@@ -14,12 +14,12 @@ import (
 // Recovered panics are re-paniced after the transaction is rolled back.
 // Rollback errors are logged with sqldb.ErrLogger.
 // Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
-// If inheritConnTx is true and conn is already a transaction,
-// then this transaction is inherited for txFunc ignoring opts and neither Begin nor Commit will becalled on conn.
+// If conn is already a transaction, then txFunc is executed within this transaction
+// ignoring opts and without calling another Begin or Commit in this Transaction call.
 // Errors or panics will roll back the inherited transaction though.
-func Transaction(ctx context.Context, opts *sql.TxOptions, conn sqldb.Connection, inheritConnTx bool, txFunc func(tx sqldb.Connection) error) (err error) {
+func Transaction(ctx context.Context, opts *sql.TxOptions, conn sqldb.Connection, txFunc func(tx sqldb.Connection) error) (err error) {
 	var tx sqldb.Connection
-	if inheritConnTx && conn.IsTransaction() {
+	if conn.IsTransaction() {
 		tx = conn
 		if ctx.Err() != nil {
 			e := tx.Rollback()
@@ -57,7 +57,7 @@ func Transaction(ctx context.Context, opts *sql.TxOptions, conn sqldb.Connection
 			return
 		}
 
-		if inheritConnTx && conn.IsTransaction() {
+		if conn.IsTransaction() {
 			return
 		}
 

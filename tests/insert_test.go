@@ -53,9 +53,9 @@ func TestUpsertStruct(t *testing.T) {
 }
 
 type multiPrimaryKeyRow struct {
-	FirstID  string `db:"first_id"`
-	SecondID string `db:"second_id"`
-	ThirdID  string `db:"third_id"`
+	FirstID  string `db:"first_id,pk"`
+	SecondID string `db:"second_id,pk"`
+	ThirdID  string `db:"third_id,pk"`
 
 	CreatedAt time.Time `db:"created_at"`
 }
