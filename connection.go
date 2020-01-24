@@ -18,9 +18,19 @@ type Connection interface {
 	// WithStructFieldNamer returns a copy of the connection
 	// that will use the passed StructFieldNamer.
 	WithStructFieldNamer(namer StructFieldNamer) Connection
+
+	// StructFieldNamer used by methods of this Connection.
 	StructFieldNamer() StructFieldNamer
+
+	// Ping returns an error if the database
+	// does not answer on this connection.
 	Ping(ctx context.Context) error
+
+	// Stats returns the sql.DBStats of this connection.
 	Stats() sql.DBStats
+
+	// Config returns the configuration used
+	// to create this connection.
 	Config() *Config
 
 	// Exec executes a query with optional args.
@@ -143,8 +153,20 @@ type Connection interface {
 
 	// IsTransaction returns if the connection is a transaction
 	IsTransaction() bool
+
+	// Begin a new transaction.
+	// Returns ErrWithinTransaction if the connection
+	// is already within a transaction.
 	Begin(ctx context.Context, opts *sql.TxOptions) (Connection, error)
+
+	// Commit the current transaction.
+	// Returns ErrNotWithinTransaction if the connection
+	// is not within a transaction.
 	Commit() error
+
+	// Rollback the current transaction.
+	// Returns ErrNotWithinTransaction if the connection
+	// is not within a transaction.
 	Rollback() error
 
 	// Transaction executes txFunc within a database transaction.
@@ -174,14 +196,18 @@ type Connection interface {
 	// IsListeningOnChannel returns if a channel is listened to.
 	IsListeningOnChannel(channel string) bool
 
+	// Close the connection.
+	// Transactions will be rolled back.
 	Close() error
 }
 
+// RowScanner scans the values from a single row.
 type RowScanner interface {
 	Scan(dest ...interface{}) error
 	ScanStruct(dest interface{}) error
 }
 
+// RowsScanner scans the values from multiple rows.
 type RowsScanner interface {
 	// ScanSlice scans one value per row into one slice element of dest.
 	// dest must be a pointer to a slice with a row value compatible element type.

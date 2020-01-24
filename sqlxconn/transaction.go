@@ -129,7 +129,6 @@ func (conn *transaction) QueryRowsContext(ctx context.Context, query string, arg
 	return &rowsScanner{ctx, query, rows}
 }
 
-// IsTransaction returns if the connection is a transaction
 func (conn *transaction) IsTransaction() bool {
 	return true
 }
