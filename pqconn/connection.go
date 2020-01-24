@@ -9,7 +9,14 @@ import (
 	"github.com/domonda/go-wraperr"
 )
 
+// New creates a new sqldb.Connection using the passed sqldb.Config
+// and github.com/lib/pq as driver implementation.
+// The connection is pinged with the passed context,
+// and only returned when there was no error from the ping.
 func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
+	if config.Driver != "postgres" {
+		return nil, wraperr.Errorf(`invalid driver %q, pqconn expects "postgres"`, config.Driver)
+	}
 	db, err := config.Connect(ctx)
 	if err != nil {
 		return nil, err
@@ -21,6 +28,11 @@ func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 	}, nil
 }
 
+// MustNew creates a new sqldb.Connection using the passed sqldb.Config
+// and github.com/lib/pq as driver implementation.
+// The connection is pinged with the passed context,
+// and only returned when there was no error from the ping.
+// Errors are paniced.
 func MustNew(ctx context.Context, config *sqldb.Config) sqldb.Connection {
 	conn, err := New(ctx, config)
 	if err != nil {
@@ -189,14 +201,6 @@ func (conn *connection) Rollback() error {
 	return sqldb.ErrNotWithinTransaction
 }
 
-// Transaction executes txFunc within a database transaction.
-// The transaction will be rolled back if txFunc returns an error or panics.
-// Recovered panics are re-paniced after the transaction is rolled back.
-// Rollback errors are logged with sqldb.ErrLogger.
-// Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
-// If conn is already a transaction, then txFunc is executed within this transaction
-// ignoring opts and without calling another Begin or Commit in this Transaction call.
-// Errors or panics will roll back the inherited transaction though.
 func (conn *connection) Transaction(ctx context.Context, opts *sql.TxOptions, txFunc func(tx sqldb.Connection) error) error {
 	return impl.Transaction(ctx, opts, conn, txFunc)
 }

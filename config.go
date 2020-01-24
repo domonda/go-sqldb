@@ -44,7 +44,7 @@ func (c *Config) ConnectURL() string {
 	return u.String()
 }
 
-// Connect calls opens a new sql.DB connection,
+// Connect opens a new sql.DB connection,
 // sets all Config values and performs a ping with ctx.
 // The sql.DB will be returned if the ping was successful.
 func (c *Config) Connect(ctx context.Context) (*sql.DB, error) {
