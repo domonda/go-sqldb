@@ -37,6 +37,18 @@ func TestInsertStruct(t *testing.T) {
 	assert.Equal(t, expected, buf.String())
 }
 
+func TestUpdateStruct(t *testing.T) {
+	buf := bytes.NewBuffer(nil)
+	conn := mockconn.New(buf)
+
+	row := new(testRow)
+	expected := `UPDATE public.table SET "int"=$2,"bool"=$3,"str"=$4,"untagged_field"=$5,"created_at"=$6 WHERE "id"=$1` + "\n"
+
+	err := conn.UpdateStruct("public.table", row)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, buf.String())
+}
+
 func TestUpsertStruct(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 	conn := mockconn.New(buf)
@@ -65,6 +77,18 @@ func TestUpsertStructMultiPK(t *testing.T) {
 	expected := `INSERT INTO public.multi_pk("first_id","second_id","third_id","created_at") VALUES($1,$2,$3,$4) ON CONFLICT("first_id","second_id","third_id") DO UPDATE SET "created_at"=$4` + "\n"
 
 	err := conn.UpsertStruct("public.multi_pk", row)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, buf.String())
+}
+
+func TestUpdateStructMultiPK(t *testing.T) {
+	buf := bytes.NewBuffer(nil)
+	conn := mockconn.New(buf)
+
+	row := new(multiPrimaryKeyRow)
+	expected := `UPDATE public.multi_pk SET "created_at"=$4 WHERE "first_id"=$1 AND "second_id"=$2 AND "third_id"=$3` + "\n"
+
+	err := conn.UpdateStruct("public.multi_pk", row)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, buf.String())
 }

@@ -65,6 +65,36 @@ type Connection interface {
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	InsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error
 
+	// UpdateStruct updates a row to table using the exported fields
+	// of rowStruct which have a `db` tag that is not "-".
+	// If restrictToColumns are provided, then only struct fields with a `db` tag
+	// matching any of the passed column names will be used.
+	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
+	// to mark primary key column(s).
+	UpdateStruct(table string, rowStruct interface{}, restrictToColumns ...string) error
+
+	// UpdateStructContext updates a row to table using the exported fields
+	// of rowStruct which have a `db` tag that is not "-".
+	// If restrictToColumns are provided, then only struct fields with a `db` tag
+	// matching any of the passed column names will be used.
+	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
+	// to mark primary key column(s).
+	UpdateStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error
+
+	// UpdateStructIgnoreColums updates a row to table using the exported fields
+	// of rowStruct which have a `db` tag that is not "-".
+	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
+	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
+	// to mark primary key column(s).
+	UpdateStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error
+
+	// UpdateStructIgnoreColumsContext updates a row to table using the exported fields
+	// of rowStruct which have a `db` tag that is not "-".
+	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
+	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
+	// to mark primary key column(s).
+	UpdateStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error
+
 	// UpsertStruct upserts a row to table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// If restrictToColumns are provided, then only struct fields with a `db` tag

@@ -24,8 +24,6 @@ type connection struct {
 	structFieldNamer sqldb.StructFieldNamer
 }
 
-// WithStructFieldNamer returns a copy of the connection
-// that will use the passed StructFieldNamer.
 func (conn *connection) WithStructFieldNamer(namer sqldb.StructFieldNamer) sqldb.Connection {
 	return &connection{
 		queryWriter:      conn.queryWriter,
@@ -60,7 +58,6 @@ func (conn *connection) ExecContext(ctx context.Context, query string, args ...i
 	return nil
 }
 
-// Insert a new row into table using the named columValues.
 func (conn *connection) Insert(table string, columValues sqldb.Values) error {
 	return impl.Insert(context.Background(), conn, table, columValues)
 }
@@ -69,14 +66,10 @@ func (conn *connection) InsertContext(ctx context.Context, table string, columVa
 	return impl.Insert(ctx, conn, table, columValues)
 }
 
-// InsertReturning inserts a new row into table using values
-// and returns values from the inserted row listed in returning.
 func (conn *connection) InsertReturning(table string, values sqldb.Values, returning string) sqldb.RowScanner {
 	return impl.InsertReturning(context.Background(), conn, table, values, returning)
 }
 
-// InsertReturningContext inserts a new row into table using values
-// and returns values from the inserted row listed in returning.
 func (conn *connection) InsertReturningContext(ctx context.Context, table string, values sqldb.Values, returning string) sqldb.RowScanner {
 	return impl.InsertReturning(ctx, conn, table, values, returning)
 }
@@ -89,50 +82,42 @@ func (conn *connection) InsertStructContext(ctx context.Context, table string, r
 	return impl.InsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
 }
 
-// InsertStructIgnoreColums inserts a new row into table using the exported fields
-// of rowStruct which have a `db` tag that is not "-".
-// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 func (conn *connection) InsertStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return impl.InsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
-// InsertStructIgnoreColumsContext inserts a new row into table using the exported fields
-// of rowStruct which have a `db` tag that is not "-".
-// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 func (conn *connection) InsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return impl.InsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
-// UpsertStruct upserts a row to table using the exported fields
-// of rowStruct which have a `db` tag that is not "-".
-// If restrictToColumns are provided, then only struct fields with a `db` tag
-// matching any of the passed column names will be used.
-// If inserting conflicts on pkColumn, then an update of the existing row is performed.
+func (conn *connection) UpdateStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
+	return impl.UpdateStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
+}
+
+func (conn *connection) UpdateStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error {
+	return impl.UpdateStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
+}
+
+func (conn *connection) UpdateStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error {
+	return impl.UpdateStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
+}
+
+func (conn *connection) UpdateStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
+	return impl.UpdateStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
+}
+
 func (conn *connection) UpsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
 	return impl.UpsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
 }
 
-// UpsertStructContext upserts a row to table using the exported fields
-// of rowStruct which have a `db` tag that is not "-".
-// If restrictToColumns are provided, then only struct fields with a `db` tag
-// matching any of the passed column names will be used.
-// If inserting conflicts on pkColumn, then an update of the existing row is performed.
 func (conn *connection) UpsertStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error {
 	return impl.UpsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
 }
 
-// UpsertStructIgnoreColums upserts a row to table using the exported fields
-// of rowStruct which have a `db` tag that is not "-".
-// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
-// If inserting conflicts on pkColumn, then an update of the existing row is performed.
 func (conn *connection) UpsertStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return impl.UpsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
-// UpsertStructIgnoreColumsContext upserts a row to table using the exported fields
-// of rowStruct which have a `db` tag that is not "-".
-// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
-// If inserting conflicts on pkColumn, then an update of the existing row is performed.
 func (conn *connection) UpsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return impl.UpsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
@@ -173,14 +158,6 @@ func (conn *connection) Rollback() error {
 	return sqldb.ErrNotWithinTransaction
 }
 
-// Transaction executes txFunc within a database transaction.
-// The transaction will be rolled back if txFunc returns an error or panics.
-// Recovered panics are re-paniced after the transaction is rolled back.
-// Rollback errors are logged with sqldb.ErrLogger.
-// Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
-// If conn is already a transaction, then txFunc is executed within this transaction
-// ignoring opts and without calling another Begin or Commit in this Transaction call.
-// Errors or panics will roll back the inherited transaction though.
 func (conn *connection) Transaction(ctx context.Context, opts *sql.TxOptions, txFunc func(tx sqldb.Connection) error) error {
 	return impl.Transaction(ctx, opts, conn, txFunc)
 }
