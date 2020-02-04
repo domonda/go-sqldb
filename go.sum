@@ -30,6 +30,8 @@ github.com/stretchr/testify v1.2.2 h1:bSDNvY7ZPG5RlJ8otE/7V6gMiyenm9RtJ7IUVIAoJ1
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/stretchr/testify v1.3.0 h1:TivCn/peBQ7UY8ooIcPgZFpTNSz0Q2U6UrFlUfqbe0Q=
 github.com/stretchr/testify v1.3.0/go.mod h1:M5WIy9Dh21IEIfnGCwXGc5bZfKNJtfHm1UVUgZn+9EI=
+github.com/ungerik/go-astvisit v0.0.0-20191030134654-e9cef48dc381 h1:x6i4gfPubAkfK/q2TYAIr9kz8tfe4omhrQt0rkoDovQ=
+github.com/ungerik/go-astvisit v0.0.0-20191030134654-e9cef48dc381/go.mod h1:UAdrAbF6Phz793m7L4xWELIEjinsM4ckKRSM4lkPJs4=
 github.com/ungerik/go-fs v0.0.0-20191212142737-b054047432fe h1:vDggczHIvkN2hwqHX9qZ3D+iLDDcbapH4AMphjh7/3I=
 github.com/ungerik/go-fs v0.0.0-20191212142737-b054047432fe/go.mod h1:S7OXxb3PaT/Sv2Z/9dwjJN8suRi4u+oXDMoBbuD3O2o=
 github.com/ungerik/go-reflection v0.0.0-20191013094457-172d2e71715f h1:GTzUiGZ+7cJafyD15AbKaFsGnuoj+I8kboHhN5tL9iY=

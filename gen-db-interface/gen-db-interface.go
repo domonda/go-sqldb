@@ -1,12 +1,16 @@
 package main
 
 import (
+	"bytes"
+	"fmt"
+	"go/ast"
 	"go/parser"
 	"go/token"
 	"log"
 	"os"
 	"strings"
 
+	"github.com/ungerik/go-astvisit"
 	"github.com/ungerik/go-fs"
 	"github.com/vburenin/ifacemaker/maker"
 )
@@ -24,6 +28,9 @@ func main() {
 	if !implPackageDir.IsDir() {
 		log.Fatalf("not a package directory: %s", string(implPackageDir))
 	}
+
+	// For debugging:
+	// implPackageDir = "~/go/src/github.com/domonda/domonda-service/pkg/client/clientdb"
 
 	var implPackageFiles []string
 	err := implPackageDir.ListDir(func(file fs.File) error {
@@ -58,6 +65,78 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	// Parse written interface and create functions calling on db var
+
+	fset := token.NewFileSet()
+
+	f, err := parser.ParseFile(fset, outputFile.Name(), source, parser.ParseComments)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	visitor := &interfaceTypeVisitor{
+		interfaceVar: "db",
+		fset:         fset,
+		source:       source,
+		out:          bytes.NewBuffer(source),
+	}
+
+	astvisit.Visit(f, visitor, nil)
+
+	err = outputFile.WriteAll(visitor.out.Bytes())
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+type interfaceTypeVisitor struct {
+	astvisit.VisitorImpl
+
+	interfaceVar string
+	fset         *token.FileSet
+	source       []byte
+	out          *bytes.Buffer
+}
+
+func (v *interfaceTypeVisitor) VisitInterfaceType(interfaceType *ast.InterfaceType, cursor astvisit.Cursor) bool {
+	for _, method := range interfaceType.Methods.List {
+		// ast.Print(v.fset, method)
+
+		methodName := method.Names[0].Name
+		if methodName == "Conn" || methodName == "Transaction" {
+			continue
+		}
+
+		methodType := method.Type.(*ast.FuncType)
+		methodSignature := v.source[v.fset.Position(method.Pos()).Offset:v.fset.Position(method.End()).Offset]
+
+		if method.Doc != nil {
+			for _, comment := range method.Doc.List {
+				fmt.Fprintf(v.out, "\n%s", comment.Text)
+			}
+		}
+
+		fmt.Fprintf(v.out, "\nfunc %s {\n\t", methodSignature)
+		if methodType.Results.NumFields() > 0 {
+			fmt.Fprint(v.out, "return ")
+		}
+
+		fmt.Fprintf(v.out, "%s.%s(", v.interfaceVar, methodName)
+		first := true
+		for _, param := range methodType.Params.List {
+			for _, name := range param.Names {
+				if first {
+					first = false
+				} else {
+					fmt.Fprint(v.out, ", ")
+				}
+				fmt.Fprint(v.out, name)
+			}
+		}
+		fmt.Fprint(v.out, ")\n}\n")
+	}
+	return true
 }
 
 func packageNameOfDir(packageDir string) string {

@@ -12,6 +12,7 @@ require (
 	github.com/lib/pq v1.3.0
 	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.3.0
+	github.com/ungerik/go-astvisit v0.0.0-20191030134654-e9cef48dc381
 	github.com/ungerik/go-fs v0.0.0-20191212142737-b054047432fe
 	github.com/ungerik/go-reflection v0.0.0-20191013094457-172d2e71715f // indirect
 	github.com/vburenin/ifacemaker v1.1.0
