@@ -104,7 +104,7 @@ func (v *interfaceTypeVisitor) VisitInterfaceType(interfaceType *ast.InterfaceTy
 		// ast.Print(v.fset, method)
 
 		methodName := method.Names[0].Name
-		if methodName == "Conn" || methodName == "Transaction" {
+		if methodName == "Conn" || methodName == "Begin" || methodName == "Commit" || methodName == "Rollback" {
 			continue
 		}
 
