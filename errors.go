@@ -64,3 +64,7 @@ func (e rowsScannerWithError) ScanStructSlice(dest interface{}) error {
 func (e rowsScannerWithError) ForEachRow(callback func(RowScanner) error) error {
 	return e.err
 }
+
+func (e rowsScannerWithError) ForEachRowReflect(callback interface{}) error {
+	return e.err
+}

@@ -10,10 +10,16 @@ import (
 	"github.com/domonda/go-sqldb/impl"
 )
 
-func New(queryWriter io.Writer) sqldb.Connection {
+type RowsProvider interface {
+	QueryRow(query string, args ...interface{}) sqldb.RowScanner
+	QueryRows(query string, args ...interface{}) sqldb.RowsScanner
+}
+
+func New(queryWriter io.Writer, rowsProvider RowsProvider) sqldb.Connection {
 	return &connection{
 		queryWriter:      queryWriter,
 		listening:        newBoolMap(),
+		rowsProvider:     rowsProvider,
 		structFieldNamer: sqldb.DefaultStructFieldTagNaming,
 	}
 }
@@ -21,6 +27,7 @@ func New(queryWriter io.Writer) sqldb.Connection {
 type connection struct {
 	queryWriter      io.Writer
 	listening        *boolMap
+	rowsProvider     RowsProvider
 	structFieldNamer sqldb.StructFieldNamer
 }
 
@@ -28,6 +35,7 @@ func (conn *connection) WithStructFieldNamer(namer sqldb.StructFieldNamer) sqldb
 	return &connection{
 		queryWriter:      conn.queryWriter,
 		listening:        conn.listening,
+		rowsProvider:     conn.rowsProvider,
 		structFieldNamer: namer,
 	}
 }
@@ -127,8 +135,14 @@ func (conn *connection) QueryRow(query string, args ...interface{}) sqldb.RowSca
 }
 
 func (conn *connection) QueryRowContext(ctx context.Context, query string, args ...interface{}) sqldb.RowScanner {
+	if ctx.Err() != nil {
+		return sqldb.RowScannerWithError(ctx.Err())
+	}
 	fmt.Fprintln(conn.queryWriter, query)
-	return new(rowScanner)
+	if conn.rowsProvider == nil {
+		return nil
+	}
+	return conn.rowsProvider.QueryRow(query, args...)
 }
 
 func (conn *connection) QueryRows(query string, args ...interface{}) sqldb.RowsScanner {
@@ -136,8 +150,14 @@ func (conn *connection) QueryRows(query string, args ...interface{}) sqldb.RowsS
 }
 
 func (conn *connection) QueryRowsContext(ctx context.Context, query string, args ...interface{}) sqldb.RowsScanner {
+	if ctx.Err() != nil {
+		return sqldb.RowsScannerWithError(ctx.Err())
+	}
 	fmt.Fprintln(conn.queryWriter, query)
-	return new(rowsScanner)
+	if conn.rowsProvider == nil {
+		return nil
+	}
+	return conn.rowsProvider.QueryRows(query, args...)
 }
 
 // IsTransaction returns if the connection is a transaction

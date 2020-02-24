@@ -161,7 +161,7 @@ func (conn *connection) QueryRowContext(ctx context.Context, query string, args 
 		err = wraperr.Errorf("query `%s` returned error: %w", query, err)
 		return sqldb.RowScannerWithError(err)
 	}
-	return &rowScanner{query, rows, conn.structFieldNamer}
+	return &impl.RowScanner{Query: query, Rows: rows, StructFieldNamer: conn.structFieldNamer}
 }
 
 func (conn *connection) QueryRows(query string, args ...interface{}) sqldb.RowsScanner {
@@ -174,7 +174,7 @@ func (conn *connection) QueryRowsContext(ctx context.Context, query string, args
 		err = wraperr.Errorf("query `%s` returned error: %w", query, err)
 		return sqldb.RowsScannerWithError(err)
 	}
-	return &rowsScanner{ctx, query, rows, conn.structFieldNamer}
+	return &impl.RowsScanner{Context: ctx, Query: query, Rows: rows, StructFieldNamer: conn.structFieldNamer}
 }
 
 func (conn *connection) IsTransaction() bool {

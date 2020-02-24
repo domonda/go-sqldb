@@ -7,6 +7,7 @@ import (
 	"github.com/jmoiron/sqlx"
 
 	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/impl"
 	"github.com/domonda/go-wraperr"
 )
 
@@ -105,6 +106,14 @@ func (s *rowsScanner) ForEachRow(callback func(sqldb.RowScanner) error) (err err
 		}
 	}
 	return s.rows.Err()
+}
+
+func (s *rowsScanner) ForEachRowReflect(callback interface{}) error {
+	forEachRowFunc, err := impl.ForEachRowReflectFunc(s.ctx, callback)
+	if err != nil {
+		return err
+	}
+	return s.ForEachRow(forEachRowFunc)
 }
 
 type perRowScanner struct {

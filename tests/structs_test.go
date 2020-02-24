@@ -27,7 +27,7 @@ type testRow struct {
 
 func TestInsertStruct(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
-	conn := mockconn.New(buf)
+	conn := mockconn.New(buf, nil)
 
 	row := new(testRow)
 	expected := `INSERT INTO public.table("id","int","bool","str","untagged_field","created_at") VALUES($1,$2,$3,$4,$5,$6)` + "\n"
@@ -39,7 +39,7 @@ func TestInsertStruct(t *testing.T) {
 
 func TestUpdateStruct(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
-	conn := mockconn.New(buf)
+	conn := mockconn.New(buf, nil)
 
 	row := new(testRow)
 	expected := `UPDATE public.table SET "int"=$2,"bool"=$3,"str"=$4,"untagged_field"=$5,"created_at"=$6 WHERE "id"=$1` + "\n"
@@ -51,7 +51,7 @@ func TestUpdateStruct(t *testing.T) {
 
 func TestUpsertStruct(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
-	conn := mockconn.New(buf)
+	conn := mockconn.New(buf, nil)
 
 	row := new(testRow)
 	expected := `INSERT INTO public.table("id","int","bool","str","untagged_field","created_at") VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT("id") DO UPDATE SET "int"=$2,"bool"=$3,"str"=$4,"untagged_field"=$5,"created_at"=$6` + "\n"
@@ -71,7 +71,7 @@ type multiPrimaryKeyRow struct {
 
 func TestUpsertStructMultiPK(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
-	conn := mockconn.New(buf)
+	conn := mockconn.New(buf, nil)
 
 	row := new(multiPrimaryKeyRow)
 	expected := `INSERT INTO public.multi_pk("first_id","second_id","third_id","created_at") VALUES($1,$2,$3,$4) ON CONFLICT("first_id","second_id","third_id") DO UPDATE SET "created_at"=$4` + "\n"
@@ -83,7 +83,7 @@ func TestUpsertStructMultiPK(t *testing.T) {
 
 func TestUpdateStructMultiPK(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
-	conn := mockconn.New(buf)
+	conn := mockconn.New(buf, nil)
 
 	row := new(multiPrimaryKeyRow)
 	expected := `UPDATE public.multi_pk SET "created_at"=$4 WHERE "first_id"=$1 AND "second_id"=$2 AND "third_id"=$3` + "\n"

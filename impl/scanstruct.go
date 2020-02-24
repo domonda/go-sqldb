@@ -1,15 +1,14 @@
 package impl
 
 import (
-	"database/sql"
 	"fmt"
 	"reflect"
 
 	sqldb "github.com/domonda/go-sqldb"
 )
 
-func ScanStruct(rows *sql.Rows, rowStruct interface{}, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) error {
-	v := reflect.ValueOf(rowStruct)
+func ScanStruct(srcRow Row, destStruct interface{}, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) (err error) {
+	v := reflect.ValueOf(destStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
 	}
@@ -17,19 +16,22 @@ func ScanStruct(rows *sql.Rows, rowStruct interface{}, namer sqldb.StructFieldNa
 	if v.Kind() == reflect.Ptr && v.IsNil() && v.CanSet() {
 		// Got a pointer to a pointer that we can set with a newly allocated struct
 		structPtr := reflect.New(v.Type().Elem())
-		err := ScanStruct(rows, structPtr.Interface(), namer, ignoreColumns, restrictToColumns)
-		if err != nil {
-			return err
-		}
-		v.Set(structPtr)
-		return nil
+		defer func() {
+			// but set only after scanning into the struct
+			// to leave it unchanged in case of an error
+			if err == nil {
+				v.Set(structPtr)
+			}
+		}()
+
+		v = structPtr.Elem()
 	}
 
 	if v.Kind() != reflect.Struct {
-		return fmt.Errorf("ScanStruct: expected struct but got %T", rowStruct)
+		return fmt.Errorf("ScanStruct: expected struct but got %T", destStruct)
 	}
 
-	cols, err := rows.Columns()
+	cols, err := srcRow.Columns()
 	if err != nil {
 		return err
 	}
@@ -40,22 +42,22 @@ func ScanStruct(rows *sql.Rows, rowStruct interface{}, namer sqldb.StructFieldNa
 		return err
 	}
 	if len(fieldPointers) == 0 {
-		return fmt.Errorf("ScanStruct: %T has no exported struct fieldPointers", rowStruct)
+		return fmt.Errorf("ScanStruct: %T has no exported struct fieldPointers", destStruct)
 	}
 	if len(fieldPointers) != len(cols) {
-		return fmt.Errorf("ScanStruct: %T ", rowStruct)
+		return fmt.Errorf("ScanStruct: %T ", destStruct)
 	}
 
 	dest := make([]interface{}, len(cols))
 	for i, col := range cols {
 		fieldPtr, ok := fieldPointers[col]
 		if !ok {
-			return fmt.Errorf("ScanStruct: %T has no target struct field for column %s", rowStruct, col)
+			return fmt.Errorf("ScanStruct: %T has no target struct field for column %s", destStruct, col)
 		}
 		dest[i] = fieldPtr
 	}
 
-	return rows.Scan(dest...)
+	return srcRow.Scan(dest...)
 }
 
 func getStructFieldPointers(v reflect.Value, namer sqldb.StructFieldNamer, ignoreNames, restrictToNames []string, outFieldPtrs map[string]interface{}) error {
