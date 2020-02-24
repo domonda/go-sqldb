@@ -53,16 +53,16 @@ func (n StructFieldTagNaming) String() string {
 // by lower casing everything and inserting '_'
 // before every new upper case character in s.
 func ToSnakeCase(s string) string {
-	b := strings.Builder{}
+	var b strings.Builder
 	b.Grow(len(s))
 	lastWasUpper := true
-	for _, c := range s {
-		l := unicode.ToLower(c)
-		isUpper := l != c
+	for _, r := range s {
+		lr := unicode.ToLower(r)
+		isUpper := lr != r
 		if isUpper && !lastWasUpper {
 			b.WriteByte('_')
 		}
-		b.WriteRune(l)
+		b.WriteRune(lr)
 		lastWasUpper = isUpper
 	}
 	return b.String()
