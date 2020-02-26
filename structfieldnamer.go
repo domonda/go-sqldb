@@ -54,7 +54,7 @@ func (n StructFieldTagNaming) String() string {
 // before every new upper case character in s.
 func ToSnakeCase(s string) string {
 	var b strings.Builder
-	b.Grow(len(s))
+	b.Grow(len(s) + 2)
 	lastWasUpper := true
 	for _, r := range s {
 		lr := unicode.ToLower(r)
