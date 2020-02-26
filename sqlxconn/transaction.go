@@ -12,12 +12,12 @@ import (
 )
 
 // WithTransaction returns a transaction sqldb.Connection using conn and tx.
-func WithTransaction(conn sqldb.Connection, tx *sqlx.Tx) (sqldb.Connection, error) {
+func WithTransaction(conn sqldb.Connection, tx *sqlx.Tx) sqldb.Connection {
 	return &transaction{
 		connection:       conn.(*connection),
 		tx:               tx,
 		structFieldNamer: conn.StructFieldNamer(),
-	}, nil
+	}
 }
 
 type transaction struct {
