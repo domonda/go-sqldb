@@ -11,6 +11,15 @@ import (
 	"github.com/domonda/go-wraperr"
 )
 
+// WithTransaction returns a transaction sqldb.Connection using conn and tx.
+func WithTransaction(conn sqldb.Connection, tx *sqlx.Tx) (sqldb.Connection, error) {
+	return &transaction{
+		connection:       conn.(*connection),
+		tx:               tx,
+		structFieldNamer: conn.StructFieldNamer(),
+	}, nil
+}
+
 type transaction struct {
 	*connection
 	tx               *sqlx.Tx
