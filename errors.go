@@ -65,6 +65,6 @@ func (e rowsScannerWithError) ForEachRow(callback func(RowScanner) error) error 
 	return e.err
 }
 
-func (e rowsScannerWithError) ForEachRowReflect(callback interface{}) error {
+func (e rowsScannerWithError) ForEachRowScan(callback interface{}) error {
 	return e.err
 }

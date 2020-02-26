@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestForEachRowReflectFunc(t *testing.T) {
+func TestForEachRowScanFunc(t *testing.T) {
 	// type args struct {
 	// 	ctx      context.Context
 	// 	callback interface{}
@@ -19,13 +19,13 @@ func TestForEachRowReflectFunc(t *testing.T) {
 	// }
 	// for _, tt := range tests {
 	// 	t.Run(tt.name, func(t *testing.T) {
-	// 		gotF, err := ForEachRowReflectFunc(tt.args.ctx, tt.args.callback)
+	// 		gotF, err := ForEachRowScanFunc(tt.args.ctx, tt.args.callback)
 	// 		if (err != nil) != tt.wantErr {
-	// 			t.Errorf("ForEachRowReflectFunc() error = %v, wantErr %v", err, tt.wantErr)
+	// 			t.Errorf("ForEachRowScanFunc() error = %v, wantErr %v", err, tt.wantErr)
 	// 			return
 	// 		}
 	// 		if !reflect.DeepEqual(gotF, tt.wantF) {
-	// 			t.Errorf("ForEachRowReflectFunc() = %v, want %v", gotF, tt.wantF)
+	// 			t.Errorf("ForEachRowScanFunc() = %v, want %v", gotF, tt.wantF)
 	// 		}
 	// 	})
 	// }

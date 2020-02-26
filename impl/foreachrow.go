@@ -13,24 +13,24 @@ var (
 	typeOfContext = reflect.TypeOf((*context.Context)(nil)).Elem()
 )
 
-// ForEachRowReflectFunc will call the passed callback with scanned values or a struct for every row.
+// ForEachRowScanFunc will call the passed callback with scanned values or a struct for every row.
 // If the callback function has a single struct or struct pointer argument,
 // then RowScanner.ScanStruct will be used per row,
 // else RowScanner.Scan will be used for all arguments of the callback.
 // If the function has a context.Context as first argument,
 // then the passed ctx will be passed on.
 // In case of zero rows, no error will be returned.
-func ForEachRowReflectFunc(ctx context.Context, callback interface{}) (f func(sqldb.RowScanner) error, err error) {
+func ForEachRowScanFunc(ctx context.Context, callback interface{}) (f func(sqldb.RowScanner) error, err error) {
 	val := reflect.ValueOf(callback)
 	typ := val.Type()
 	if typ.Kind() != reflect.Func {
-		return nil, fmt.Errorf("ForEachRowReflect expected callback function, got %s", typ)
+		return nil, fmt.Errorf("ForEachRowScan expected callback function, got %s", typ)
 	}
 	if typ.IsVariadic() {
-		return nil, fmt.Errorf("ForEachRowReflect callback function must not be varidic: %s", typ)
+		return nil, fmt.Errorf("ForEachRowScan callback function must not be varidic: %s", typ)
 	}
 	if typ.NumIn() == 0 || (typ.NumIn() == 1 && typ.In(0) == typeOfContext) {
-		return nil, fmt.Errorf("ForEachRowReflect callback function has no arguments: %s", typ)
+		return nil, fmt.Errorf("ForEachRowScan callback function has no arguments: %s", typ)
 	}
 	firstArg := 0
 	if typ.In(0) == typeOfContext {
@@ -39,7 +39,7 @@ func ForEachRowReflectFunc(ctx context.Context, callback interface{}) (f func(sq
 	structArg := false
 	for i := firstArg; i < typ.NumIn(); i++ {
 		if structArg {
-			return nil, fmt.Errorf("ForEachRowReflect callback function must not have further argument after struct: %s", typ)
+			return nil, fmt.Errorf("ForEachRowScan callback function must not have further argument after struct: %s", typ)
 		}
 		derefArg := typ.In(i)
 		for derefArg.Kind() == reflect.Ptr {
@@ -49,11 +49,11 @@ func ForEachRowReflectFunc(ctx context.Context, callback interface{}) (f func(sq
 		case reflect.Struct:
 			structArg = true
 		case reflect.Chan, reflect.Func:
-			return nil, fmt.Errorf("ForEachRowReflect callback function has invalid argument type: %s", typ.In(i))
+			return nil, fmt.Errorf("ForEachRowScan callback function has invalid argument type: %s", typ.In(i))
 		}
 	}
 	if typ.NumOut() > 1 || typ.Out(0) != typeOfError {
-		return nil, fmt.Errorf("ForEachRowReflect callback function can only have one error result: %s", typ)
+		return nil, fmt.Errorf("ForEachRowScan callback function can only have one error result: %s", typ)
 	}
 
 	f = func(row sqldb.RowScanner) (err error) {

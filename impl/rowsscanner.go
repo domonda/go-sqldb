@@ -52,8 +52,8 @@ func (s *RowsScanner) ForEachRow(callback func(sqldb.RowScanner) error) (err err
 	return s.Rows.Err()
 }
 
-func (s *RowsScanner) ForEachRowReflect(callback interface{}) error {
-	forEachRowFunc, err := ForEachRowReflectFunc(s.Context, callback)
+func (s *RowsScanner) ForEachRowScan(callback interface{}) error {
+	forEachRowFunc, err := ForEachRowScanFunc(s.Context, callback)
 	if err != nil {
 		return err
 	}

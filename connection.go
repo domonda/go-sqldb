@@ -227,12 +227,12 @@ type RowsScanner interface {
 	// In case of zero rows, no error will be returned.
 	ForEachRow(callback func(RowScanner) error) error
 
-	// ForEachRowReflect will call the passed callback with scanned values or a struct for every row.
+	// ForEachRowScan will call the passed callback with scanned values or a struct for every row.
 	// If the callback function has a single struct or struct pointer argument,
 	// then RowScanner.ScanStruct will be used per row,
 	// else RowScanner.Scan will be used for all arguments of the callback.
 	// If the function has a context.Context as first argument,
 	// then the context of the query call will be passed on.
 	// In case of zero rows, no error will be returned.
-	ForEachRowReflect(callback interface{}) error
+	ForEachRowScan(callback interface{}) error
 }
