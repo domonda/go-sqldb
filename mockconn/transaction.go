@@ -22,12 +22,16 @@ func (conn transaction) Begin(ctx context.Context, opts *sql.TxOptions) (sqldb.C
 }
 
 func (conn transaction) Commit() error {
-	fmt.Fprintln(conn.queryWriter, "COMMIT")
+	if conn.queryWriter != nil {
+		fmt.Fprint(conn.queryWriter, "COMMIT")
+	}
 	return nil
 }
 
 func (conn transaction) Rollback() error {
-	fmt.Fprintln(conn.queryWriter, "ROLLBACK")
+	if conn.queryWriter != nil {
+		fmt.Fprint(conn.queryWriter, "ROLLBACK")
+	}
 	return nil
 }
 

@@ -95,7 +95,7 @@ func InsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 		return fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, _, vals := structFields(v, namer, ignoreColumns, restrictToColumns)
+	columns, _, vals := structFields(v, namer, ignoreColumns, restrictToColumns, false)
 	if len(columns) == 0 {
 		return fmt.Errorf("InsertStruct into table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
 	}
@@ -107,29 +107,4 @@ func InsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 		return wraperr.Errorf("query `%s` returned error: %w", query.String(), err)
 	}
 	return nil
-}
-
-func structFields(v reflect.Value, namer sqldb.StructFieldNamer, ignoreNames, restrictToNames []string) (names, pks []string, vals []interface{}) {
-	for i := 0; i < v.NumField(); i++ {
-		fieldType := v.Type().Field(i)
-		fieldValue := v.Field(i)
-		switch {
-		case fieldType.Anonymous:
-			embedNames, embedPks, embedValues := structFields(fieldValue, namer, ignoreNames, restrictToNames)
-			names = append(names, embedNames...)
-			pks = append(pks, embedPks...)
-			vals = append(vals, embedValues...)
-
-		case fieldType.PkgPath == "":
-			name, isPK := namer.StructFieldName(fieldType)
-			if validName(name, ignoreNames, restrictToNames) {
-				names = append(names, name)
-				if isPK {
-					pks = append(pks, name)
-				}
-				vals = append(vals, fieldValue.Interface())
-			}
-		}
-	}
-	return names, pks, vals
 }

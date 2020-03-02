@@ -84,6 +84,37 @@ func getStructFieldPointers(v reflect.Value, namer sqldb.StructFieldNamer, ignor
 	return nil
 }
 
+// structFields returns the struct field names using the passed namer ignoring names in ignoreNames
+// and if restrictToNames is not empty, then filtering out names not in it.
+// If true is passed for keepPK, then ignoreNames and restrictToNames are not applied to names with
+// the ,pk suffix in their struct field naming tag.
+// The same number of pkCol bools will be returend as names, every corresponding bool marking
+// if the name had the ,pk suffix in their struct field naming tag.
+func structFields(v reflect.Value, namer sqldb.StructFieldNamer, ignoreNames, restrictToNames []string, keepPK bool) (names []string, pkCol []bool, vals []interface{}) {
+	for i := 0; i < v.NumField(); i++ {
+		fieldType := v.Type().Field(i)
+		fieldValue := v.Field(i)
+		switch {
+		case fieldType.Anonymous:
+			embedNames, embedPKs, embedValues := structFields(fieldValue, namer, ignoreNames, restrictToNames, keepPK)
+			names = append(names, embedNames...)
+			pkCol = append(pkCol, embedPKs...)
+			vals = append(vals, embedValues...)
+
+		case fieldType.PkgPath == "":
+			name, isPK := namer.StructFieldName(fieldType)
+			if validName(name, ignoreNames, restrictToNames) || (isPK && keepPK && validName(name, nil, nil)) {
+				names = append(names, name)
+				pkCol = append(pkCol, isPK)
+				vals = append(vals, fieldValue.Interface())
+			}
+		}
+	}
+	return names, pkCol, vals
+}
+
+// validName returns if a name not empty or not "-" and not in ignoreNames
+// and if restrictToNames is not empty, then not in restrictToNames.
 func validName(name string, ignoreNames, restrictToNames []string) bool {
 	if name == "" || name == "-" {
 		return false

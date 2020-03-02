@@ -2,7 +2,6 @@ package impl
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
@@ -28,21 +27,16 @@ func UpdateStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 		return fmt.Errorf("UpdateStruct of table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, pkColumns, vals := structFields(v, namer, ignoreColumns, restrictToColumns)
+	columns, pkCol, vals := structFields(v, namer, ignoreColumns, restrictToColumns, true)
 	if len(columns) == 0 {
 		return fmt.Errorf("UpdateStruct of table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
 	}
-	if len(pkColumns) == 0 {
-		return fmt.Errorf("UpdateStruct of table %s: %T has no exported struct fields with ,pk tag value suffix to mark primary key column(s)", table, rowStruct)
-	}
-	pkColumnsArgNo := make([]int, len(pkColumns)) // 1 based SQL arg number, default 0 means column not found
 
 	var query strings.Builder
 	fmt.Fprintf(&query, `UPDATE %s SET `, table)
 	first := true
-	for i, name := range columns {
-		if pki := indexOf(pkColumns, name); pki != -1 {
-			pkColumnsArgNo[pki] = i + 1
+	for i := range columns {
+		if pkCol[i] {
 			continue
 		}
 		if first {
@@ -50,18 +44,24 @@ func UpdateStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 		} else {
 			query.WriteByte(',')
 		}
-		fmt.Fprintf(&query, `"%s"=$%d`, name, i+1)
+		fmt.Fprintf(&query, `"%s"=$%d`, columns[i], i+1)
 	}
+
 	query.WriteString(` WHERE `)
-	for i, argNo := range pkColumnsArgNo {
-		if argNo == 0 {
-			columnsStr, _ := json.Marshal(columns) // JSON array syntax is a nice format for the error
-			return fmt.Errorf("UpdateStruct of table %s: pkColumn %q not found in columns %s", table, pkColumns[i], columnsStr)
+	first = true
+	for i := range columns {
+		if !pkCol[i] {
+			continue
 		}
-		if i > 0 {
+		if first {
+			first = false
+		} else {
 			query.WriteString(` AND `)
 		}
-		fmt.Fprintf(&query, `"%s"=$%d`, columns[argNo-1], pkColumnsArgNo[i])
+		fmt.Fprintf(&query, `"%s"=$%d`, columns[i], i+1)
+	}
+	if first {
+		return fmt.Errorf("UpdateStruct of table %s: %T has no exported struct fields with ,pk tag value suffix to mark primary key column(s)", table, rowStruct)
 	}
 
 	err := conn.ExecContext(ctx, query.String(), vals...)

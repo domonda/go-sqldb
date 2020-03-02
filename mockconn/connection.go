@@ -10,11 +10,6 @@ import (
 	"github.com/domonda/go-sqldb/impl"
 )
 
-type RowsProvider interface {
-	QueryRow(query string, args ...interface{}) sqldb.RowScanner
-	QueryRows(query string, args ...interface{}) sqldb.RowsScanner
-}
-
 func New(queryWriter io.Writer, rowsProvider RowsProvider) sqldb.Connection {
 	return &connection{
 		queryWriter:      queryWriter,
@@ -57,12 +52,16 @@ func (conn *connection) Ping(ctx context.Context) error {
 }
 
 func (conn *connection) Exec(query string, args ...interface{}) error {
-	fmt.Fprintln(conn.queryWriter, query)
+	if conn.queryWriter != nil {
+		fmt.Fprint(conn.queryWriter, query)
+	}
 	return nil
 }
 
 func (conn *connection) ExecContext(ctx context.Context, query string, args ...interface{}) error {
-	fmt.Fprintln(conn.queryWriter, query)
+	if conn.queryWriter != nil {
+		fmt.Fprint(conn.queryWriter, query)
+	}
 	return nil
 }
 
@@ -138,7 +137,9 @@ func (conn *connection) QueryRowContext(ctx context.Context, query string, args 
 	if ctx.Err() != nil {
 		return sqldb.RowScannerWithError(ctx.Err())
 	}
-	fmt.Fprintln(conn.queryWriter, query)
+	if conn.queryWriter != nil {
+		fmt.Fprint(conn.queryWriter, query)
+	}
 	if conn.rowsProvider == nil {
 		return nil
 	}
@@ -153,7 +154,9 @@ func (conn *connection) QueryRowsContext(ctx context.Context, query string, args
 	if ctx.Err() != nil {
 		return sqldb.RowsScannerWithError(ctx.Err())
 	}
-	fmt.Fprintln(conn.queryWriter, query)
+	if conn.queryWriter != nil {
+		fmt.Fprint(conn.queryWriter, query)
+	}
 	if conn.rowsProvider == nil {
 		return nil
 	}
@@ -166,7 +169,9 @@ func (conn *connection) IsTransaction() bool {
 }
 
 func (conn *connection) Begin(ctx context.Context, opts *sql.TxOptions) (sqldb.Connection, error) {
-	fmt.Fprintln(conn.queryWriter, "BEGIN")
+	if conn.queryWriter != nil {
+		fmt.Fprint(conn.queryWriter, "BEGIN")
+	}
 	return transaction{conn}, nil
 }
 
@@ -184,13 +189,17 @@ func (conn *connection) Transaction(ctx context.Context, opts *sql.TxOptions, tx
 
 func (conn *connection) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
 	conn.listening.Set(channel, true)
-	fmt.Fprintln(conn.queryWriter, "LISTEN", channel)
+	if conn.queryWriter != nil {
+		fmt.Fprint(conn.queryWriter, "LISTEN "+channel)
+	}
 	return nil
 }
 
 func (conn *connection) UnlistenChannel(channel string) (err error) {
 	conn.listening.Set(channel, false)
-	fmt.Fprintln(conn.queryWriter, "UNLISTEN", channel)
+	if conn.queryWriter != nil {
+		fmt.Fprint(conn.queryWriter, "UNLISTEN "+channel)
+	}
 	return nil
 }
 
