@@ -32,8 +32,9 @@ func (s *rowScanner) ScanStruct(dest interface{}) (err error) {
 	if v := reflect.ValueOf(dest); v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
 		// sqlx StructScan does not support pointers to nil pointers
-		// so set pointer to newly allocated struct
-		if v.Kind() == reflect.Ptr && v.IsNil() {
+		// or pointers to pointers, so set pointer to newly allocated struct
+		// and assign result to pointed to pointer in case of success
+		if v.Kind() == reflect.Ptr {
 			n := reflect.New(v.Type().Elem())
 			err := s.row.StructScan(n.Interface())
 			if err != nil {
