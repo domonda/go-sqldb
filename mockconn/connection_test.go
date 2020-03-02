@@ -8,6 +8,7 @@ import (
 	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 
+	sqldb "github.com/domonda/go-sqldb"
 	"github.com/domonda/go-types/uu"
 )
 
@@ -48,6 +49,34 @@ func TestInsertStructQuery(t *testing.T) {
 	queryOutput.Reset()
 	expected = `INSERT INTO public.table("id","int","bool","str","str_ptr","bools") VALUES($1,$2,$3,$4,$5,$6)`
 	err = conn.InsertStructIgnoreColums("public.table", row, "nil_ptr", "untagged_field", "created_at")
+	assert.NoError(t, err)
+	assert.Equal(t, expected, queryOutput.String())
+}
+
+func TestUpdateQuery(t *testing.T) {
+	queryOutput := bytes.NewBuffer(nil)
+	conn := New(queryOutput, nil)
+
+	str := "Hello World!"
+	values := sqldb.Values{
+		"int":            66,
+		"bool":           true,
+		"str":            "Hello World!",
+		"str_ptr":        &str,
+		"nil_ptr":        nil,
+		"untagged_field": -1,
+		"created_at":     time.Now(),
+		"bools":          pq.BoolArray{true, false},
+	}
+
+	expected := `UPDATE public.table SET "bool"=$2,"bools"=$3,"created_at"=$4,"int"=$5,"nil_ptr"=$6,"str"=$7,"str_ptr"=$8,"untagged_field"=$9 WHERE id = $1`
+	err := conn.Update("public.table", values, "id = $1", 1)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, queryOutput.String())
+
+	queryOutput.Reset()
+	expected = `UPDATE public.table SET "bool"=$3,"bools"=$4,"created_at"=$5,"int"=$6,"nil_ptr"=$7,"str"=$8,"str_ptr"=$9,"untagged_field"=$10 WHERE a = $1 AND b = $2`
+	err = conn.Update("public.table", values, "a = $1 AND b = $2", 1, 2)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 }

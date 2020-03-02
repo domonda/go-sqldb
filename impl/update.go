@@ -10,6 +10,33 @@ import (
 	"github.com/domonda/go-wraperr"
 )
 
+// Update a row in table using the passed values and the where statement
+// with args starting at $1.
+func Update(ctx context.Context, conn sqldb.Connection, table string, values sqldb.Values, where string, args []interface{}) error {
+	if len(values) == 0 {
+		return fmt.Errorf("Update table %s: no values passed", table)
+	}
+
+	// where = strings.TrimSpace(where)
+	names, vals := values.Sorted()
+
+	var query strings.Builder
+	fmt.Fprintf(&query, `UPDATE %s SET `, table)
+	for i := range names {
+		if i > 0 {
+			query.WriteByte(',')
+		}
+		fmt.Fprintf(&query, `"%s"=$%d`, names[i], 1+len(args)+i)
+	}
+	fmt.Fprintf(&query, ` WHERE %s`, where)
+
+	err := conn.ExecContext(ctx, query.String(), append(args, vals...)...)
+	if err != nil {
+		return wraperr.Errorf("query `%s` returned error: %w", query.String(), err)
+	}
+	return nil
+}
+
 // UpdateStruct updates a row of table using the exported fields
 // of rowStruct which have a `db` tag that is not "-".
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.

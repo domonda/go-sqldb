@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"sort"
 	"strings"
 
 	sqldb "github.com/domonda/go-sqldb"
@@ -17,7 +16,7 @@ func Insert(ctx context.Context, conn sqldb.Connection, table string, values sql
 		return fmt.Errorf("Insert into table %s: no values", table)
 	}
 
-	names, vals := sortedNamesAndValues(values)
+	names, vals := values.Sorted()
 	var query strings.Builder
 	writeInsertQuery(&query, table, names)
 	err := conn.ExecContext(ctx, query.String(), vals...)
@@ -35,27 +34,12 @@ func InsertReturning(ctx context.Context, conn sqldb.Connection, table string, v
 		return sqldb.RowScannerWithError(fmt.Errorf("InsertReturning into table %s: no values", table))
 	}
 
-	names, vals := sortedNamesAndValues(values)
+	names, vals := values.Sorted()
 	var query strings.Builder
 	writeInsertQuery(&query, table, names)
 	query.WriteString(" RETURNING ")
 	query.WriteString(returning)
 	return conn.QueryRow(query.String(), vals...)
-}
-
-func sortedNamesAndValues(values sqldb.Values) (names []string, vals []interface{}) {
-	names = make([]string, 0, len(values))
-	for name := range values {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-
-	vals = make([]interface{}, len(values))
-	for i, name := range names {
-		vals[i] = values[name]
-	}
-
-	return names, vals
 }
 
 func writeInsertQuery(w *strings.Builder, table string, names []string) {

@@ -10,9 +10,6 @@ type (
 	OnUnlistenFunc func(channel string)
 )
 
-// Values is a map from column names to values
-type Values map[string]interface{}
-
 // Connection represents a database connection or transaction
 type Connection interface {
 	// WithStructFieldNamer returns a copy of the connection
@@ -75,7 +72,15 @@ type Connection interface {
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	InsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error
 
-	// UpdateStruct updates a row to table using the exported fields
+	// Update a row in table using the passed values and the where statement
+	// with args starting at $1.
+	Update(table string, values Values, where string, args ...interface{}) error
+
+	// UpdateContext updates a row in table using the passed values and the where statement
+	// with args starting at $1.
+	UpdateContext(ctx context.Context, table string, values Values, where string, args ...interface{}) error
+
+	// UpdateStruct updates a row in a table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// If restrictToColumns are provided, then only struct fields with a `db` tag
 	// matching any of the passed column names will be used.
@@ -83,7 +88,7 @@ type Connection interface {
 	// to mark primary key column(s).
 	UpdateStruct(table string, rowStruct interface{}, restrictToColumns ...string) error
 
-	// UpdateStructContext updates a row to table using the exported fields
+	// UpdateStructContext updates a row in a table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// If restrictToColumns are provided, then only struct fields with a `db` tag
 	// matching any of the passed column names will be used.
@@ -91,14 +96,14 @@ type Connection interface {
 	// to mark primary key column(s).
 	UpdateStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error
 
-	// UpdateStructIgnoreColums updates a row to table using the exported fields
+	// UpdateStructIgnoreColums updates a row in a table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
 	// to mark primary key column(s).
 	UpdateStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error
 
-	// UpdateStructIgnoreColumsContext updates a row to table using the exported fields
+	// UpdateStructIgnoreColumsContext updates a row in a table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	// The struct must have at least one field with a `db` tag value having a ",pk" suffix

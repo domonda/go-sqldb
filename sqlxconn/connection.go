@@ -111,6 +111,14 @@ func (conn *connection) InsertStructIgnoreColumsContext(ctx context.Context, tab
 	return impl.InsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
+func (conn *connection) Update(table string, values sqldb.Values, where string, args ...interface{}) error {
+	return impl.Update(context.Background(), conn, table, values, where, args)
+}
+
+func (conn *connection) UpdateContext(ctx context.Context, table string, values sqldb.Values, where string, args ...interface{}) error {
+	return impl.Update(ctx, conn, table, values, where, args)
+}
+
 func (conn *connection) UpdateStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
 	return impl.UpdateStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
 }
