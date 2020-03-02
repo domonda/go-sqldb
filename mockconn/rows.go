@@ -2,6 +2,7 @@ package mockconn
 
 import (
 	"errors"
+	"reflect"
 
 	sqldb "github.com/domonda/go-sqldb"
 )
@@ -13,13 +14,19 @@ type Rows struct {
 	err    error
 }
 
-func NewRows(columnNamer sqldb.StructFieldNamer, rowStructs ...interface{}) *Rows {
-	r := &Rows{
-		rows:   make([]*Row, len(rowStructs)),
-		cursor: -1,
+func NewRows(rowStructs interface{}, columnNamer sqldb.StructFieldNamer) *Rows {
+	v := reflect.ValueOf(rowStructs)
+	t := v.Type()
+	if t.Kind() != reflect.Array && t.Kind() != reflect.Slice {
+		panic("rowStructs must be array or slice of structs, but is " + t.String())
 	}
-	for i, rowStruct := range rowStructs {
-		r.rows[i] = NewRow(rowStruct, columnNamer)
+	if t.Elem().Kind() != reflect.Struct && !(t.Elem().Kind() == reflect.Ptr && t.Elem().Elem().Kind() == reflect.Struct) {
+		panic("rowStructs element type must be struct or struct pointer, but is " + t.Elem().String())
+	}
+
+	r := &Rows{cursor: -1}
+	for i := 0; i < v.Len(); i++ {
+		r.rows = append(r.rows, NewRow(v.Index(i).Interface(), columnNamer))
 	}
 	return r
 }
@@ -66,7 +73,7 @@ func (r *Rows) Close() error {
 //
 // Every call to Scan, even the first one, must be preceded by a call to Next.
 func (r *Rows) Next() bool {
-	if r.closed || r.cursor >= len(r.rows) || r.err != nil {
+	if r.closed || r.cursor >= len(r.rows)-1 || r.err != nil {
 		return false
 	}
 	r.cursor++
@@ -77,4 +84,11 @@ func (r *Rows) Next() bool {
 // Err may be called after an explicit or implicit Close.
 func (r *Rows) Err() error {
 	return r.err
+}
+
+// Reset to the state after NewRows (no error, not closed, before first row).
+func (r *Rows) Reset() {
+	r.cursor = -1
+	r.closed = false
+	r.err = nil
 }

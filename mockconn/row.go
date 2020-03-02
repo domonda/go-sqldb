@@ -40,7 +40,15 @@ func (s *Row) Columns() ([]string, error) {
 
 func (s *Row) Scan(dest ...interface{}) error {
 	for i := range dest {
-		err := convertAssign(dest[i], s.rowStructVal.Field(i))
+		src := s.rowStructVal.Field(i).Interface()
+		if valuer, ok := src.(driver.Valuer); ok {
+			val, err := valuer.Value()
+			if err != nil {
+				return err
+			}
+			src = val
+		}
+		err := convertAssign(dest[i], src)
 		if err != nil {
 			return fmt.Errorf("can't scan value %d because: %w", i, err)
 		}
