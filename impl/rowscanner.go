@@ -69,3 +69,17 @@ func (s CurrentRowScanner) Scan(dest ...interface{}) error {
 func (s CurrentRowScanner) ScanStruct(dest interface{}) error {
 	return ScanStruct(s.Rows, dest, s.StructFieldNamer, nil, nil)
 }
+
+// SingleRowScanner always uses the same Row
+type SingleRowScanner struct {
+	Row              Row
+	StructFieldNamer sqldb.StructFieldNamer
+}
+
+func (s SingleRowScanner) Scan(dest ...interface{}) error {
+	return s.Row.Scan(dest...)
+}
+
+func (s SingleRowScanner) ScanStruct(dest interface{}) error {
+	return ScanStruct(s.Row, dest, s.StructFieldNamer, nil, nil)
+}

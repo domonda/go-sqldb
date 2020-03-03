@@ -95,6 +95,14 @@ func (conn *connection) InsertContext(ctx context.Context, table string, columVa
 	return impl.Insert(ctx, conn, table, columValues)
 }
 
+func (conn *connection) InsertUnique(table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
+	return impl.InsertUnique(context.Background(), conn, table, values, onConflict)
+}
+
+func (conn *connection) InsertUniqueContext(ctx context.Context, table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
+	return impl.InsertUnique(ctx, conn, table, values, onConflict)
+}
+
 func (conn *connection) InsertReturning(table string, values sqldb.Values, returning string) sqldb.RowScanner {
 	return impl.InsertReturning(context.Background(), conn, table, values, returning)
 }

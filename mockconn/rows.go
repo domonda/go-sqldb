@@ -14,7 +14,7 @@ type Rows struct {
 	err    error
 }
 
-func NewRows(rowStructs interface{}, columnNamer sqldb.StructFieldNamer) *Rows {
+func NewRowsFromStructs(rowStructs interface{}, columnNamer sqldb.StructFieldNamer) *Rows {
 	v := reflect.ValueOf(rowStructs)
 	t := v.Type()
 	if t.Kind() != reflect.Array && t.Kind() != reflect.Slice {
@@ -29,6 +29,10 @@ func NewRows(rowStructs interface{}, columnNamer sqldb.StructFieldNamer) *Rows {
 		r.rows = append(r.rows, NewRow(v.Index(i).Interface(), columnNamer))
 	}
 	return r
+}
+
+func NewRows(rows ...*Row) *Rows {
+	return &Rows{rows: rows, cursor: -1}
 }
 
 // Columns returns the column names.

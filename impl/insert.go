@@ -27,6 +27,23 @@ func Insert(ctx context.Context, conn sqldb.Connection, table string, values sql
 	return nil
 }
 
+// InsertUnique inserts a new row into table using the passed values
+// or does nothing if the onConflict statement applies.
+// Returns if a row was inserted.
+func InsertUnique(ctx context.Context, conn sqldb.Connection, table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
+	if len(values) == 0 {
+		return false, fmt.Errorf("InsertUnique into table %s: no values", table)
+	}
+
+	names, vals := values.Sorted()
+	var query strings.Builder
+	writeInsertQuery(&query, table, names)
+	fmt.Fprintf(&query, " ON CONFLICT %s DO NOTHING RETURNING TRUE", onConflict)
+
+	err = conn.QueryRow(query.String(), vals...).Scan(&inserted)
+	return inserted, sqldb.RemoveErrNoRows(err)
+}
+
 // InsertReturning inserts a new row into table using values
 // and returns values from the inserted row listed in returning.
 func InsertReturning(ctx context.Context, conn sqldb.Connection, table string, values sqldb.Values, returning string) sqldb.RowScanner {

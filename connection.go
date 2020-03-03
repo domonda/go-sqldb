@@ -42,6 +42,16 @@ type Connection interface {
 	// InsertContext inserts a new row into table using the values.
 	InsertContext(ctx context.Context, table string, values Values) error
 
+	// InsertUnique inserts a new row into table using the passed values
+	// or does nothing if the onConflict statement applies.
+	// Returns if a row was inserted.
+	InsertUnique(table string, values Values, onConflict string) (inserted bool, err error)
+
+	// InsertUniqueContext inserts a new row into table using the passed values
+	// or does nothing if the onConflict statement applies.
+	// Returns if a row was inserted.
+	InsertUniqueContext(ctx context.Context, table string, values Values, onConflict string) (inserted bool, err error)
+
 	// InsertReturning inserts a new row into table using values
 	// and returns values from the inserted row listed in returning.
 	InsertReturning(table string, values Values, returning string) RowScanner
@@ -218,40 +228,4 @@ type Connection interface {
 	// Close the connection.
 	// Transactions will be rolled back.
 	Close() error
-}
-
-// RowScanner scans the values from a single row.
-type RowScanner interface {
-	Scan(dest ...interface{}) error
-	ScanStruct(dest interface{}) error
-}
-
-// RowsScanner scans the values from multiple rows.
-type RowsScanner interface {
-	// ScanSlice scans one value per row into one slice element of dest.
-	// dest must be a pointer to a slice with a row value compatible element type.
-	// In case of zero rows, dest will be set to nil and no error will be returned.
-	// In case of an error, dest will not be modified.
-	// It is an error to query more than one column.
-	ScanSlice(dest interface{}) error
-
-	// ScanStructSlice scans every row into the struct fields of dest slice elements.
-	// dest must be a pointer to a slice of structs or struct pointers.
-	// In case of zero rows, dest will be set to nil and no error will be returned.
-	// In case of an error, dest will not be modified.
-	// Every mapped struct field must have a corresponding column in the query results.
-	ScanStructSlice(dest interface{}) error
-
-	// ForEachRow will call the passed callback with a RowScanner for every row.
-	// In case of zero rows, no error will be returned.
-	ForEachRow(callback func(RowScanner) error) error
-
-	// ForEachRowScan will call the passed callback with scanned values or a struct for every row.
-	// If the callback function has a single struct or struct pointer argument,
-	// then RowScanner.ScanStruct will be used per row,
-	// else RowScanner.Scan will be used for all arguments of the callback.
-	// If the function has a context.Context as first argument,
-	// then the context of the query call will be passed on.
-	// In case of zero rows, no error will be returned.
-	ForEachRowScan(callback interface{}) error
 }

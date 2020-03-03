@@ -73,6 +73,14 @@ func (conn *connection) InsertContext(ctx context.Context, table string, columVa
 	return impl.Insert(ctx, conn, table, columValues)
 }
 
+func (conn *connection) InsertUnique(table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
+	return impl.InsertUnique(context.Background(), conn, table, values, onConflict)
+}
+
+func (conn *connection) InsertUniqueContext(ctx context.Context, table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
+	return impl.InsertUnique(ctx, conn, table, values, onConflict)
+}
+
 func (conn *connection) InsertReturning(table string, values sqldb.Values, returning string) sqldb.RowScanner {
 	return impl.InsertReturning(context.Background(), conn, table, values, returning)
 }
@@ -167,7 +175,7 @@ func (conn *connection) QueryRowContext(ctx context.Context, query string, args 
 	if conn.rowsProvider == nil {
 		return sqldb.RowScannerWithError(nil)
 	}
-	return conn.rowsProvider.QueryRow(query, args...)
+	return conn.rowsProvider.QueryRow(conn.structFieldNamer, query, args...)
 }
 
 func (conn *connection) QueryRows(query string, args ...interface{}) sqldb.RowsScanner {
@@ -184,7 +192,7 @@ func (conn *connection) QueryRowsContext(ctx context.Context, query string, args
 	if conn.rowsProvider == nil {
 		return sqldb.RowsScannerWithError(nil)
 	}
-	return conn.rowsProvider.QueryRows(query, args...)
+	return conn.rowsProvider.QueryRows(conn.structFieldNamer, query, args...)
 }
 
 // IsTransaction returns if the connection is a transaction

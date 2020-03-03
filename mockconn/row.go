@@ -29,18 +29,22 @@ func NewRow(rowStruct interface{}, columnNamer sqldb.StructFieldNamer) *Row {
 	}
 }
 
-func (s *Row) Columns() ([]string, error) {
-	columns := make([]string, s.rowStructVal.NumField())
+func (r *Row) StructFieldNamer() sqldb.StructFieldNamer {
+	return r.columnNamer
+}
+
+func (r *Row) Columns() ([]string, error) {
+	columns := make([]string, r.rowStructVal.NumField())
 	for i := range columns {
-		field := s.rowStructVal.Type().Field(i)
-		columns[i], _ = s.columnNamer.StructFieldName(field)
+		field := r.rowStructVal.Type().Field(i)
+		columns[i], _ = r.columnNamer.StructFieldName(field)
 	}
 	return columns, nil
 }
 
-func (s *Row) Scan(dest ...interface{}) error {
+func (r *Row) Scan(dest ...interface{}) error {
 	for i := range dest {
-		src := s.rowStructVal.Field(i).Interface()
+		src := r.rowStructVal.Field(i).Interface()
 		if valuer, ok := src.(driver.Valuer); ok {
 			val, err := valuer.Value()
 			if err != nil {

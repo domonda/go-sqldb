@@ -29,6 +29,38 @@ type testRow struct {
 	Bools         pq.BoolArray `db:"bools"`
 }
 
+func TestInsertQuery(t *testing.T) {
+	queryOutput := bytes.NewBuffer(nil)
+
+	rowProvider := &SingleRowProvider{Row: NewRow(struct{ True bool }{true}, sqldb.DefaultStructFieldTagNaming)}
+	conn := New(queryOutput, rowProvider)
+
+	str := "Hello World!"
+	values := sqldb.Values{
+		"id":             uu.IDNil,
+		"int":            66,
+		"bool":           true,
+		"str":            "Hello World!",
+		"str_ptr":        &str,
+		"nil_ptr":        nil,
+		"untagged_field": -1,
+		"created_at":     time.Now(),
+		"bools":          pq.BoolArray{true, false},
+	}
+
+	expected := `INSERT INTO public.table("bool","bools","created_at","id","int","nil_ptr","str","str_ptr","untagged_field") VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`
+	err := conn.Insert("public.table", values)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, queryOutput.String())
+
+	queryOutput.Reset()
+	expected = `INSERT INTO public.table("bool","bools","created_at","id","int","nil_ptr","str","str_ptr","untagged_field") VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING RETURNING TRUE`
+	inserted, err := conn.InsertUnique("public.table", values, "(id)")
+	assert.NoError(t, err)
+	assert.True(t, inserted)
+	assert.Equal(t, expected, queryOutput.String())
+}
+
 func TestInsertStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
 	conn := New(queryOutput, nil)

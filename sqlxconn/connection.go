@@ -79,12 +79,20 @@ func (conn *connection) ExecContext(ctx context.Context, query string, args ...i
 	return nil
 }
 
-func (conn *connection) Insert(table string, columValues sqldb.Values) error {
-	return impl.Insert(context.Background(), conn, table, columValues)
+func (conn *connection) Insert(table string, values sqldb.Values) error {
+	return impl.Insert(context.Background(), conn, table, values)
 }
 
-func (conn *connection) InsertContext(ctx context.Context, table string, columValues sqldb.Values) error {
-	return impl.Insert(ctx, conn, table, columValues)
+func (conn *connection) InsertContext(ctx context.Context, table string, values sqldb.Values) error {
+	return impl.Insert(ctx, conn, table, values)
+}
+
+func (conn *connection) InsertUnique(table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
+	return impl.InsertUnique(context.Background(), conn, table, values, onConflict)
+}
+
+func (conn *connection) InsertUniqueContext(ctx context.Context, table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
+	return impl.InsertUnique(ctx, conn, table, values, onConflict)
 }
 
 func (conn *connection) InsertReturning(table string, values sqldb.Values, returning string) sqldb.RowScanner {
