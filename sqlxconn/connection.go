@@ -119,6 +119,22 @@ func (conn *connection) UpdateContext(ctx context.Context, table string, values 
 	return impl.Update(ctx, conn, table, values, where, args)
 }
 
+func (conn *connection) UpdateReturningRow(table string, values sqldb.Values, returning, where string, args ...interface{}) sqldb.RowScanner {
+	return impl.UpdateReturningRow(context.Background(), conn, table, values, returning, where, args)
+}
+
+func (conn *connection) UpdateReturningRowContext(ctx context.Context, table string, values sqldb.Values, returning, where string, args ...interface{}) sqldb.RowScanner {
+	return impl.UpdateReturningRow(ctx, conn, table, values, returning, where, args)
+}
+
+func (conn *connection) UpdateReturningRows(table string, values sqldb.Values, returning, where string, args ...interface{}) sqldb.RowsScanner {
+	return impl.UpdateReturningRows(context.Background(), conn, table, values, returning, where, args)
+}
+
+func (conn *connection) UpdateReturningRowsContext(ctx context.Context, table string, values sqldb.Values, returning, where string, args ...interface{}) sqldb.RowsScanner {
+	return impl.UpdateReturningRows(ctx, conn, table, values, returning, where, args)
+}
+
 func (conn *connection) UpdateStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
 	return impl.UpdateStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
 }

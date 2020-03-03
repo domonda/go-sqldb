@@ -72,13 +72,27 @@ type Connection interface {
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	InsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error
 
-	// Update a row in table using the passed values and the where statement
-	// with args starting at $1.
+	// Update table rows(s) with values using the where statement with passed in args starting at $1.
 	Update(table string, values Values, where string, args ...interface{}) error
 
-	// UpdateContext updates a row in table using the passed values and the where statement
-	// with args starting at $1.
+	// UpdateContext updates table rows(s) with values using the where statement with passed in args starting at $1.
 	UpdateContext(ctx context.Context, table string, values Values, where string, args ...interface{}) error
+
+	// UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
+	// and returning a single row with the columns specified in returning argument.
+	UpdateReturningRow(table string, values Values, returning, where string, args ...interface{}) RowScanner
+
+	// UpdateReturningRowContext updates a table row with values using the where statement with passed in args starting at $1
+	// and returning a single row with the columns specified in returning argument.
+	UpdateReturningRowContext(ctx context.Context, table string, values Values, returning, where string, args ...interface{}) RowScanner
+
+	// UpdateReturningRows updates table rows with values using the where statement with passed in args starting at $1
+	// and returning multiple rows with the columns specified in returning argument.
+	UpdateReturningRows(table string, values Values, returning, where string, args ...interface{}) RowsScanner
+
+	// UpdateReturningRowsContext updates table rows with values using the where statement with passed in args starting at $1
+	// and returning multiple rows with the columns specified in returning argument.
+	UpdateReturningRowsContext(ctx context.Context, table string, values Values, returning, where string, args ...interface{}) RowsScanner
 
 	// UpdateStruct updates a row in a table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".

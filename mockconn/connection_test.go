@@ -81,6 +81,34 @@ func TestUpdateQuery(t *testing.T) {
 	assert.Equal(t, expected, queryOutput.String())
 }
 
+func TestUpdateReturningQuery(t *testing.T) {
+	queryOutput := bytes.NewBuffer(nil)
+	conn := New(queryOutput, nil)
+
+	str := "Hello World!"
+	values := sqldb.Values{
+		"int":            66,
+		"bool":           true,
+		"str":            "Hello World!",
+		"str_ptr":        &str,
+		"nil_ptr":        nil,
+		"untagged_field": -1,
+		"created_at":     time.Now(),
+		"bools":          pq.BoolArray{true, false},
+	}
+
+	expected := `UPDATE public.table SET "bool"=$2,"bools"=$3,"created_at"=$4,"int"=$5,"nil_ptr"=$6,"str"=$7,"str_ptr"=$8,"untagged_field"=$9 WHERE id = $1 RETURNING *`
+	err := conn.UpdateReturningRow("public.table", values, "*", "id = $1", 1).Scan()
+	assert.NoError(t, err)
+	assert.Equal(t, expected, queryOutput.String())
+
+	queryOutput.Reset()
+	expected = `UPDATE public.table SET "bool"=$2,"bools"=$3,"created_at"=$4,"int"=$5,"nil_ptr"=$6,"str"=$7,"str_ptr"=$8,"untagged_field"=$9 WHERE id = $1 RETURNING created_at,untagged_field`
+	err = conn.UpdateReturningRows("public.table", values, "created_at,untagged_field", "id = $1", 1, 2).ScanSlice(nil)
+	assert.NoError(t, err)
+	assert.Equal(t, expected, queryOutput.String())
+}
+
 func TestUpdateStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
 	conn := New(queryOutput, nil)

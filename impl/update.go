@@ -10,14 +10,45 @@ import (
 	"github.com/domonda/go-wraperr"
 )
 
-// Update a row in table using the passed values and the where statement
-// with args starting at $1.
+// Update table rows(s) with values using the where statement with passed in args starting at $1.
 func Update(ctx context.Context, conn sqldb.Connection, table string, values sqldb.Values, where string, args []interface{}) error {
 	if len(values) == 0 {
 		return fmt.Errorf("Update table %s: no values passed", table)
 	}
 
-	// where = strings.TrimSpace(where)
+	query, vals := buildUpdateQuery(table, values, where, args)
+	err := conn.ExecContext(ctx, query, vals...)
+	if err != nil {
+		return wraperr.Errorf("query `%s` returned error: %w", query, err)
+	}
+	return nil
+}
+
+// UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
+// and returning a single row with the columns specified in returning argument.
+func UpdateReturningRow(ctx context.Context, conn sqldb.Connection, table string, values sqldb.Values, returning, where string, args ...interface{}) sqldb.RowScanner {
+	if len(values) == 0 {
+		return sqldb.RowScannerWithError(fmt.Errorf("UpdateReturningRow table %s: no values passed", table))
+	}
+
+	query, vals := buildUpdateQuery(table, values, where, args)
+	query += " RETURNING " + returning
+	return conn.QueryRowContext(ctx, query, vals...)
+}
+
+// UpdateReturningRows updates table rows with values using the where statement with passed in args starting at $1
+// and returning multiple rows with the columns specified in returning argument.
+func UpdateReturningRows(ctx context.Context, conn sqldb.Connection, table string, values sqldb.Values, returning, where string, args ...interface{}) sqldb.RowsScanner {
+	if len(values) == 0 {
+		return sqldb.RowsScannerWithError(fmt.Errorf("UpdateReturningRows table %s: no values passed", table))
+	}
+
+	query, vals := buildUpdateQuery(table, values, where, args)
+	query += " RETURNING " + returning
+	return conn.QueryRowsContext(ctx, query, vals...)
+}
+
+func buildUpdateQuery(table string, values sqldb.Values, where string, args []interface{}) (string, []interface{}) {
 	names, vals := values.Sorted()
 
 	var query strings.Builder
@@ -30,11 +61,7 @@ func Update(ctx context.Context, conn sqldb.Connection, table string, values sql
 	}
 	fmt.Fprintf(&query, ` WHERE %s`, where)
 
-	err := conn.ExecContext(ctx, query.String(), append(args, vals...)...)
-	if err != nil {
-		return wraperr.Errorf("query `%s` returned error: %w", query.String(), err)
-	}
-	return nil
+	return query.String(), append(args, vals...)
 }
 
 // UpdateStruct updates a row of table using the exported fields
