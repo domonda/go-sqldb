@@ -85,27 +85,50 @@ func writeInsertQuery(w *strings.Builder, table string, names []string) {
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
 func InsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowStruct interface{}, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) error {
+	columns, vals, err := insertStructValues(table, rowStruct, namer, ignoreColumns, restrictToColumns)
+	if err != nil {
+		return err
+	}
+
+	var query strings.Builder
+	writeInsertQuery(&query, table, columns)
+
+	err = conn.ExecContext(ctx, query.String(), vals...)
+	if err != nil {
+		return wraperr.Errorf("query `%s` returned error: %w", query.String(), err)
+	}
+	return nil
+}
+
+func InsertUniqueStruct(ctx context.Context, conn sqldb.Connection, table string, rowStruct interface{}, onConflict string, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) (inserted bool, err error) {
+	columns, vals, err := insertStructValues(table, rowStruct, namer, ignoreColumns, restrictToColumns)
+	if err != nil {
+		return false, err
+	}
+
+	var query strings.Builder
+	writeInsertQuery(&query, table, columns)
+	fmt.Fprintf(&query, " ON CONFLICT %s DO NOTHING RETURNING TRUE", onConflict)
+
+	err = conn.QueryRow(query.String(), vals...).Scan(&inserted)
+	return inserted, sqldb.RemoveErrNoRows(err)
+}
+
+func insertStructValues(table string, rowStruct interface{}, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) (columns []string, vals []interface{}, err error) {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
 	}
 	switch {
 	case v.Kind() == reflect.Ptr && v.IsNil():
-		return fmt.Errorf("InsertStruct into table %s: can't upsert nil", table)
+		return nil, nil, fmt.Errorf("InsertStruct into table %s: can't upsert nil", table)
 	case v.Kind() != reflect.Struct:
-		return fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
+		return nil, nil, fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, _, vals := structFields(v, namer, ignoreColumns, restrictToColumns, false)
+	columns, _, vals = structFields(v, namer, ignoreColumns, restrictToColumns, false)
 	if len(columns) == 0 {
-		return fmt.Errorf("InsertStruct into table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
+		return nil, nil, fmt.Errorf("InsertStruct into table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
 	}
-	var query strings.Builder
-	writeInsertQuery(&query, table, columns)
-
-	err := conn.ExecContext(ctx, query.String(), vals...)
-	if err != nil {
-		return wraperr.Errorf("query `%s` returned error: %w", query.String(), err)
-	}
-	return nil
+	return columns, vals, nil
 }

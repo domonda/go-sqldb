@@ -30,9 +30,9 @@ type testRow struct {
 }
 
 func TestInsertQuery(t *testing.T) {
+	naming := sqldb.StructFieldTagNaming{NameTag: "db", UntaggedNameFunc: sqldb.ToSnakeCase}
 	queryOutput := bytes.NewBuffer(nil)
-
-	rowProvider := &SingleRowProvider{Row: NewRow(struct{ True bool }{true}, sqldb.DefaultStructFieldTagNaming)}
+	rowProvider := &SingleRowProvider{Row: NewRow(struct{ True bool }{true}, naming)}
 	conn := New(queryOutput, rowProvider)
 
 	str := "Hello World!"
@@ -82,6 +82,35 @@ func TestInsertStructQuery(t *testing.T) {
 	expected = `INSERT INTO public.table("id","int","bool","str","str_ptr","bools") VALUES($1,$2,$3,$4,$5,$6)`
 	err = conn.InsertStructIgnoreColums("public.table", row, "nil_ptr", "untagged_field", "created_at")
 	assert.NoError(t, err)
+	assert.Equal(t, expected, queryOutput.String())
+}
+
+func TestInsertUniqueStructQuery(t *testing.T) {
+	naming := sqldb.StructFieldTagNaming{NameTag: "db", UntaggedNameFunc: sqldb.ToSnakeCase}
+	queryOutput := bytes.NewBuffer(nil)
+	rowProvider := &SingleRowProvider{Row: NewRow(struct{ True bool }{true}, naming)}
+	conn := New(queryOutput, rowProvider)
+
+	row := new(testRow)
+
+	expected := `INSERT INTO public.table("id","int","bool","str","str_ptr","nil_ptr","untagged_field","created_at","bools") VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING RETURNING TRUE`
+	inserted, err := conn.InsertUniqueStruct("public.table", row, "(id)")
+	assert.NoError(t, err)
+	assert.True(t, inserted)
+	assert.Equal(t, expected, queryOutput.String())
+
+	queryOutput.Reset()
+	expected = `INSERT INTO public.table("id","untagged_field","bools") VALUES($1,$2,$3) ON CONFLICT (id, untagged_field) DO NOTHING RETURNING TRUE`
+	inserted, err = conn.InsertUniqueStruct("public.table", row, "(id, untagged_field)", "id", "untagged_field", "bools")
+	assert.NoError(t, err)
+	assert.True(t, inserted)
+	assert.Equal(t, expected, queryOutput.String())
+
+	queryOutput.Reset()
+	expected = `INSERT INTO public.table("id","int","bool","str","str_ptr","bools") VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING RETURNING TRUE`
+	inserted, err = conn.InsertUniqueStructIgnoreColums("public.table", row, "(id)", "nil_ptr", "untagged_field", "created_at")
+	assert.NoError(t, err)
+	assert.True(t, inserted)
 	assert.Equal(t, expected, queryOutput.String())
 }
 

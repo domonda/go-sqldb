@@ -127,6 +127,22 @@ func (conn *connection) InsertStructIgnoreColumsContext(ctx context.Context, tab
 	return impl.InsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
+func (conn *connection) InsertUniqueStruct(table string, rowStruct interface{}, onConflict string, restrictToColumns ...string) (inserted bool, err error) {
+	return impl.InsertUniqueStruct(context.Background(), conn, table, rowStruct, onConflict, conn.structFieldNamer, nil, restrictToColumns)
+}
+
+func (conn *connection) InsertUniqueStructContext(ctx context.Context, table string, rowStruct interface{}, onConflict string, restrictToColumns ...string) (inserted bool, err error) {
+	return impl.InsertUniqueStruct(ctx, conn, table, rowStruct, onConflict, conn.structFieldNamer, nil, restrictToColumns)
+}
+
+func (conn *connection) InsertUniqueStructIgnoreColums(table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
+	return impl.InsertUniqueStruct(context.Background(), conn, table, rowStruct, onConflict, conn.structFieldNamer, ignoreColumns, nil)
+}
+
+func (conn *connection) InsertUniqueStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
+	return impl.InsertUniqueStruct(ctx, conn, table, rowStruct, onConflict, conn.structFieldNamer, ignoreColumns, nil)
+}
+
 func (conn *connection) Update(table string, values sqldb.Values, where string, args ...interface{}) error {
 	return impl.Update(context.Background(), conn, table, values, where, args)
 }

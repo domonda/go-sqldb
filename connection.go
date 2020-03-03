@@ -82,6 +82,32 @@ type Connection interface {
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	InsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error
 
+	// InsertUniqueStruct inserts a new row into table using the exported fields
+	// of rowStruct which have a `db` tag that is not "-".
+	// If restrictToColumns are provided, then only struct fields with a `db` tag
+	// matching any of the passed column names will be used.
+	// Does nothing if the onConflict statement applies and returns if a row was inserted.
+	InsertUniqueStruct(table string, rowStruct interface{}, onConflict string, restrictToColumns ...string) (inserted bool, err error)
+
+	// InsertUniqueStructContext inserts a new row into table using the exported fields
+	// of rowStruct which have a `db` tag that is not "-".
+	// If restrictToColumns are provided, then only struct fields with a `db` tag
+	// matching any of the passed column names will be used.
+	// Does nothing if the onConflict statement applies and returns if a row was inserted.
+	InsertUniqueStructContext(ctx context.Context, table string, rowStruct interface{}, onConflict string, restrictToColumns ...string) (inserted bool, err error)
+
+	// InsertUniqueStructIgnoreColums inserts a new row into table using the exported fields
+	// of rowStruct which have a `db` tag that is not "-".
+	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
+	// Does nothing if the onConflict statement applies and returns if a row was inserted.
+	InsertUniqueStructIgnoreColums(table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error)
+
+	// InsertUniqueStructIgnoreColumsContext inserts a new row into table using the exported fields
+	// of rowStruct which have a `db` tag that is not "-".
+	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
+	// Does nothing if the onConflict statement applies and returns if a row was inserted.
+	InsertUniqueStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error)
+
 	// Update table rows(s) with values using the where statement with passed in args starting at $1.
 	Update(table string, values Values, where string, args ...interface{}) error
 
