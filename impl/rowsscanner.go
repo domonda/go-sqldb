@@ -31,6 +31,21 @@ func (s *RowsScanner) ScanStructSlice(dest interface{}) error {
 	return nil
 }
 
+func (s *RowsScanner) ScanStrings() (rows [][]string, err error) {
+	err = s.ForEachRow(func(rowScanner sqldb.RowScanner) error {
+		row, err := rowScanner.ScanStrings()
+		if err != nil {
+			return err
+		}
+		rows = append(rows, row)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
 func (s *RowsScanner) ForEachRow(callback func(sqldb.RowScanner) error) (err error) {
 	defer func() {
 		if err != nil {

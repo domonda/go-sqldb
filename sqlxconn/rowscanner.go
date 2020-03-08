@@ -5,6 +5,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
+	"github.com/domonda/go-sqldb/impl"
 	"github.com/domonda/go-wraperr"
 )
 
@@ -46,4 +47,8 @@ func (s *rowScanner) ScanStruct(dest interface{}) (err error) {
 	}
 
 	return s.row.StructScan(dest)
+}
+
+func (s *rowScanner) ScanStrings() ([]string, error) {
+	return impl.ScanStrings(s.row)
 }

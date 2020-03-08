@@ -87,6 +87,21 @@ func (s *rowsScanner) ScanStructSlice(dest interface{}) error {
 	return s.scanSlice(dest, true)
 }
 
+func (s *rowsScanner) ScanStrings() (rows [][]string, err error) {
+	err = s.ForEachRow(func(rowScanner sqldb.RowScanner) error {
+		row, err := rowScanner.ScanStrings()
+		if err != nil {
+			return err
+		}
+		rows = append(rows, row)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
 func (s *rowsScanner) ForEachRow(callback func(sqldb.RowScanner) error) (err error) {
 	defer func() {
 		if err != nil {
@@ -126,4 +141,8 @@ func (s perRowScanner) Scan(dest ...interface{}) error {
 
 func (s perRowScanner) ScanStruct(dest interface{}) error {
 	return s.rows.StructScan(dest)
+}
+
+func (s perRowScanner) ScanStrings() ([]string, error) {
+	return impl.ScanStrings(s.rows)
 }

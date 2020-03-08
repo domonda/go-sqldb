@@ -16,6 +16,12 @@ type RowsScanner interface {
 	// Every mapped struct field must have a corresponding column in the query results.
 	ScanStructSlice(dest interface{}) error
 
+	// ScanStrings scans the values of all rows as strings.
+	// Byte slices will be interpreted as strings,
+	// nil (SQL NULL) will be converted to an empty string,
+	// all other types are converted with fmt.Sprint(src).
+	ScanStrings() (rows [][]string, err error)
+
 	// ForEachRow will call the passed callback with a RowScanner for every row.
 	// In case of zero rows, no error will be returned.
 	ForEachRow(callback func(RowScanner) error) error

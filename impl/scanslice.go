@@ -15,7 +15,7 @@ import (
 // so that every column maps on exactly one struct field using structFieldNamer.
 // In case of single column rows, nil must be passed for structFieldNamer.
 // ScanRowsAsSlice calls srcRows.Close().
-func ScanRowsAsSlice(ctx context.Context, srcRows Rows, dest interface{}, structFieldNamer sqldb.StructFieldNamer) (err error) {
+func ScanRowsAsSlice(ctx context.Context, srcRows Rows, dest interface{}, structFieldNamer sqldb.StructFieldNamer) error {
 	defer srcRows.Close()
 
 	destVal := reflect.ValueOf(dest)
@@ -41,12 +41,15 @@ func ScanRowsAsSlice(ctx context.Context, srcRows Rows, dest interface{}, struct
 		newSlice = reflect.Append(newSlice, reflect.Zero(sliceElemType))
 		target := newSlice.Index(newSlice.Len() - 1).Addr()
 		if structFieldNamer != nil {
-			err = ScanStruct(srcRows, target.Interface(), structFieldNamer, nil, nil)
+			err := ScanStruct(srcRows, target.Interface(), structFieldNamer, nil, nil)
+			if err != nil {
+				return err
+			}
 		} else {
-			err = srcRows.Scan(target.Interface())
-		}
-		if err != nil {
-			return err
+			err := srcRows.Scan(target.Interface())
+			if err != nil {
+				return err
+			}
 		}
 	}
 	if srcRows.Err() != nil {

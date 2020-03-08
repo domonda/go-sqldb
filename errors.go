@@ -43,6 +43,10 @@ func (e rowScannerWithError) ScanStruct(dest interface{}) error {
 	return e.err
 }
 
+func (e rowScannerWithError) ScanStrings() ([]string, error) {
+	return nil, e.err
+}
+
 // RowsScannerWithError
 
 func RowsScannerWithError(err error) RowsScanner {
@@ -59,6 +63,10 @@ func (e rowsScannerWithError) ScanSlice(dest interface{}) error {
 
 func (e rowsScannerWithError) ScanStructSlice(dest interface{}) error {
 	return e.err
+}
+
+func (e rowsScannerWithError) ScanStrings() ([][]string, error) {
+	return nil, e.err
 }
 
 func (e rowsScannerWithError) ForEachRow(callback func(RowScanner) error) error {

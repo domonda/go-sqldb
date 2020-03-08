@@ -56,6 +56,10 @@ func (s *RowScanner) ScanStruct(dest interface{}) (err error) {
 	return ScanStruct(s.Rows, dest, s.StructFieldNamer, nil, nil)
 }
 
+func (s *RowScanner) ScanStrings() ([]string, error) {
+	return ScanStrings(s.Rows)
+}
+
 // CurrentRowScanner calls Rows.Scan without Rows.Next and Rows.Close
 type CurrentRowScanner struct {
 	Rows             Rows
@@ -70,6 +74,10 @@ func (s CurrentRowScanner) ScanStruct(dest interface{}) error {
 	return ScanStruct(s.Rows, dest, s.StructFieldNamer, nil, nil)
 }
 
+func (s CurrentRowScanner) ScanStrings() ([]string, error) {
+	return ScanStrings(s.Rows)
+}
+
 // SingleRowScanner always uses the same Row
 type SingleRowScanner struct {
 	Row              Row
@@ -82,4 +90,8 @@ func (s SingleRowScanner) Scan(dest ...interface{}) error {
 
 func (s SingleRowScanner) ScanStruct(dest interface{}) error {
 	return ScanStruct(s.Row, dest, s.StructFieldNamer, nil, nil)
+}
+
+func (s SingleRowScanner) ScanStrings() ([]string, error) {
+	return ScanStrings(s.Row)
 }
