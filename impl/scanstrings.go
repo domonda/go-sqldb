@@ -11,14 +11,16 @@ func ScanStrings(src Row) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	row := make([]string, len(cols))
-	args := make([]interface{}, len(cols))
+	var (
+		strs = make([]string, len(cols))
+		args = make([]interface{}, len(cols))
+	)
 	for i := range args {
-		args[i] = (*sqldb.StringScannable)(&row[i])
+		args[i] = (*sqldb.StringScannable)(&strs[i])
 	}
 	err = src.Scan(args...)
 	if err != nil {
 		return nil, err
 	}
-	return row, nil
+	return strs, nil
 }
