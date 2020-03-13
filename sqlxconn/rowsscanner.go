@@ -87,7 +87,14 @@ func (s *rowsScanner) ScanStructSlice(dest interface{}) error {
 	return s.scanSlice(dest, true)
 }
 
-func (s *rowsScanner) ScanStrings() (rows [][]string, err error) {
+func (s *rowsScanner) ScanStrings(headerRow bool) (rows [][]string, err error) {
+	if headerRow {
+		columns, err := s.rows.Columns()
+		if err != nil {
+			return nil, err
+		}
+		rows = [][]string{columns}
+	}
 	err = s.ForEachRow(func(rowScanner sqldb.RowScanner) error {
 		row, err := rowScanner.ScanStrings()
 		if err != nil {

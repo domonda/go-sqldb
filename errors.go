@@ -65,7 +65,7 @@ func (e rowsScannerWithError) ScanStructSlice(dest interface{}) error {
 	return e.err
 }
 
-func (e rowsScannerWithError) ScanStrings() ([][]string, error) {
+func (e rowsScannerWithError) ScanStrings(headerRow bool) ([][]string, error) {
 	return nil, e.err
 }
 

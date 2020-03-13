@@ -31,9 +31,21 @@ func (s *RowsScanner) ScanStructSlice(dest interface{}) error {
 	return nil
 }
 
-func (s *RowsScanner) ScanStrings() (rows [][]string, err error) {
+func (s *RowsScanner) ScanStrings(headerRow bool) (rows [][]string, err error) {
+	cols, err := s.Rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+	if headerRow {
+		rows = [][]string{cols}
+	}
+	stringScannablePtrs := make([]interface{}, len(cols))
 	err = s.ForEachRow(func(rowScanner sqldb.RowScanner) error {
-		row, err := rowScanner.ScanStrings()
+		row := make([]string, len(cols))
+		for i := range stringScannablePtrs {
+			stringScannablePtrs[i] = (*sqldb.StringScannable)(&row[i])
+		}
+		err := rowScanner.Scan(stringScannablePtrs...)
 		if err != nil {
 			return err
 		}
