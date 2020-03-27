@@ -12,7 +12,7 @@ import (
 // RemoveErrNoRows returns nil if errors.Is(err, sql.ErrNoRows)
 // or else err is returned unchanged.
 func RemoveErrNoRows(err error) error {
-	if errors.Is(err, sql.ErrNoRows) {
+	if err == nil || errors.Is(err, sql.ErrNoRows) {
 		return nil
 	}
 	return err
