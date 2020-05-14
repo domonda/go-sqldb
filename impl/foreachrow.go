@@ -55,8 +55,11 @@ func ForEachRowScanFunc(ctx context.Context, callback interface{}) (f func(sqldb
 			return nil, fmt.Errorf("ForEachRowScan callback function has invalid argument type: %s", typ.In(i))
 		}
 	}
-	if typ.NumOut() > 1 || typ.Out(0) != typeOfError {
-		return nil, fmt.Errorf("ForEachRowScan callback function can only have one error result: %s", typ)
+	if typ.NumOut() > 1 {
+		return nil, fmt.Errorf("ForEachRowScan callback function can only have one result value: %s", typ)
+	}
+	if typ.NumOut() == 1 && typ.Out(0) != typeOfError {
+		return nil, fmt.Errorf("ForEachRowScan callback function result must be of type error: %s", typ)
 	}
 
 	f = func(row sqldb.RowScanner) (err error) {
