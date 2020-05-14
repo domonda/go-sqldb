@@ -19,6 +19,9 @@ var (
 // else RowScanner.Scan will be used for all arguments of the callback.
 // If the function has a context.Context as first argument,
 // then the passed ctx will be passed on.
+// The callback can have no result or a single error result value.
+// If a non nil error is returned from the callback, then this error
+// is returned immediately by this function without scanning further rows.
 // In case of zero rows, no error will be returned.
 func ForEachRowScanFunc(ctx context.Context, callback interface{}) (f func(sqldb.RowScanner) error, err error) {
 	val := reflect.ValueOf(callback)
@@ -80,7 +83,7 @@ func ForEachRowScanFunc(ctx context.Context, callback interface{}) (f func(sqldb
 			args[i] = reflect.ValueOf(scannedValPtrs[i-firstArg]).Elem()
 		}
 		res := val.Call(args)
-		if !res[0].IsNil() {
+		if len(res) > 0 && !res[0].IsNil() {
 			return res[0].Interface().(error)
 		}
 		return nil

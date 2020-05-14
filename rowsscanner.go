@@ -34,6 +34,9 @@ type RowsScanner interface {
 	// else RowScanner.Scan will be used for all arguments of the callback.
 	// If the function has a context.Context as first argument,
 	// then the context of the query call will be passed on.
+	// The callback can have no result or a single error result value.
+	// If a non nil error is returned from the callback, then this error
+	// is returned immediately by this function without scanning further rows.
 	// In case of zero rows, no error will be returned.
 	ForEachRowScan(callback interface{}) error
 }
