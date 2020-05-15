@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"reflect"
 
@@ -9,8 +10,9 @@ import (
 )
 
 var (
-	typeOfError   = reflect.TypeOf((*error)(nil)).Elem()
-	typeOfContext = reflect.TypeOf((*context.Context)(nil)).Elem()
+	typeOfError      = reflect.TypeOf((*error)(nil)).Elem()
+	typeOfContext    = reflect.TypeOf((*context.Context)(nil)).Elem()
+	typeOfSQLScanner = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
 )
 
 // ForEachRowScanFunc will call the passed callback with scanned values or a struct for every row.
@@ -41,19 +43,21 @@ func ForEachRowScanFunc(ctx context.Context, callback interface{}) (f func(sqldb
 	}
 	structArg := false
 	for i := firstArg; i < typ.NumIn(); i++ {
-		if structArg {
-			return nil, fmt.Errorf("ForEachRowScan callback function must not have further argument after struct: %s", typ)
-		}
 		derefArg := typ.In(i)
 		for derefArg.Kind() == reflect.Ptr {
 			derefArg = derefArg.Elem()
 		}
 		switch derefArg.Kind() {
 		case reflect.Struct:
-			structArg = true
+			if !reflect.PtrTo(typ.In(i)).Implements(typeOfSQLScanner) {
+				structArg = true
+			}
 		case reflect.Chan, reflect.Func:
 			return nil, fmt.Errorf("ForEachRowScan callback function has invalid argument type: %s", typ.In(i))
 		}
+	}
+	if structArg && typ.NumIn()-firstArg > 1 {
+		return nil, fmt.Errorf("ForEachRowScan callback function must not have further argument after struct: %s", typ)
 	}
 	if typ.NumOut() > 1 {
 		return nil, fmt.Errorf("ForEachRowScan callback function can only have one result value: %s", typ)
