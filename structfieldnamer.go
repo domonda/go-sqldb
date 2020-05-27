@@ -7,24 +7,37 @@ import (
 	"unicode"
 )
 
+// StructFieldNamer is used to map struct type fields to column names
+// and indicate if the column is a primary key.
 type StructFieldNamer interface {
+	// StructFieldName returns the column name for reflected struct field
+	// and if the column is a primary key (pk).
 	StructFieldName(field reflect.StructField) (name string, pk bool)
 }
 
+// StructFieldNamerFunc implements the StructFieldNamer interface with a function
 type StructFieldNamerFunc func(field reflect.StructField) (name string, pk bool)
 
 func (f StructFieldNamerFunc) StructFieldName(field reflect.StructField) (name string, pk bool) {
 	return f(field)
 }
 
+// DefaultStructFieldTagNaming provides the default StructFieldTagNaming
+// using "db" as NameTag and ToSnakeCase as UntaggedNameFunc.
+// Implements StructFieldNamer.
 var DefaultStructFieldTagNaming = StructFieldTagNaming{
 	NameTag:          "db",
 	UntaggedNameFunc: ToSnakeCase,
 }
 
+// StructFieldTagNaming implements StructFieldNamer with a struct field NameTag
+// to be used for naming and a UntaggedNameFunc in case the NameTag is not set.
 type StructFieldTagNaming struct {
-	NameTag          string
-	UntaggedNameFunc func(string) string
+	// NameTag is the struct field tag to be used as column name
+	NameTag string
+	// UntaggedNameFunc will be called with the struct field name to
+	// return a column name in case the struct field has no tag named NameTag.
+	UntaggedNameFunc func(fieldName string) string
 }
 
 func (n StructFieldTagNaming) StructFieldName(field reflect.StructField) (name string, pk bool) {
