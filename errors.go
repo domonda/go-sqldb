@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"errors"
 
-	"github.com/domonda/go-wraperr/sentinel"
+	"github.com/domonda/go-errs"
 )
 
 // ErrNoRows
@@ -21,8 +21,8 @@ func RemoveErrNoRows(err error) error {
 // Transaction errors
 
 const (
-	ErrWithinTransaction    = sentinel.Error("within a transaction")
-	ErrNotWithinTransaction = sentinel.Error("not within a transaction")
+	ErrWithinTransaction    errs.Sentinel = "within a transaction"
+	ErrNotWithinTransaction errs.Sentinel = "not within a transaction"
 )
 
 // RowScannerWithError

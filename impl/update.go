@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/domonda/go-errs"
 	sqldb "github.com/domonda/go-sqldb"
-	"github.com/domonda/go-wraperr"
 )
 
 // Update table rows(s) with values using the where statement with passed in args starting at $1.
@@ -19,7 +19,7 @@ func Update(ctx context.Context, conn sqldb.Connection, table string, values sql
 	query, vals := buildUpdateQuery(table, values, where, args)
 	err := conn.ExecContext(ctx, query, vals...)
 	if err != nil {
-		return wraperr.Errorf("query `%s` returned error: %w", query, err)
+		return errs.Errorf("query `%s` returned error: %w", query, err)
 	}
 	return nil
 }
@@ -120,7 +120,7 @@ func UpdateStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 
 	err := conn.ExecContext(ctx, query.String(), vals...)
 	if err != nil {
-		return wraperr.Errorf("query `%s` returned error: %w", query.String(), err)
+		return errs.Errorf("query `%s` returned error: %w", query.String(), err)
 	}
 	return nil
 }

@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/domonda/go-errs"
 	sqldb "github.com/domonda/go-sqldb"
-	"github.com/domonda/go-wraperr"
 )
 
 // Insert a new row into table using the values.
@@ -21,7 +21,7 @@ func Insert(ctx context.Context, conn sqldb.Connection, table string, values sql
 	writeInsertQuery(&query, table, names)
 	err := conn.ExecContext(ctx, query.String(), vals...)
 	if err != nil {
-		return wraperr.Errorf("query `%s` returned error: %w", query.String(), err)
+		return errs.Errorf("query `%s` returned error: %w", query.String(), err)
 	}
 
 	return nil
@@ -95,7 +95,7 @@ func InsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 
 	err = conn.ExecContext(ctx, query.String(), vals...)
 	if err != nil {
-		return wraperr.Errorf("query `%s` returned error: %w", query.String(), err)
+		return errs.Errorf("query `%s` returned error: %w", query.String(), err)
 	}
 	return nil
 }

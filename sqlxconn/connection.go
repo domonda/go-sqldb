@@ -6,9 +6,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
+	"github.com/domonda/go-errs"
 	sqldb "github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/impl"
-	"github.com/domonda/go-wraperr"
 )
 
 func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
@@ -66,7 +66,7 @@ func (conn *connection) Ping(ctx context.Context) error {
 func (conn *connection) Exec(query string, args ...interface{}) error {
 	_, err := conn.db.Exec(query, args...)
 	if err != nil {
-		return wraperr.Errorf("query `%s` returned error: %w", query, err)
+		return errs.Errorf("query `%s` returned error: %w", query, err)
 	}
 	return nil
 }
@@ -74,7 +74,7 @@ func (conn *connection) Exec(query string, args ...interface{}) error {
 func (conn *connection) ExecContext(ctx context.Context, query string, args ...interface{}) error {
 	_, err := conn.db.ExecContext(ctx, query, args...)
 	if err != nil {
-		return wraperr.Errorf("query `%s` returned error: %w", query, err)
+		return errs.Errorf("query `%s` returned error: %w", query, err)
 	}
 	return nil
 }
@@ -198,7 +198,7 @@ func (conn *connection) QueryRow(query string, args ...interface{}) sqldb.RowSca
 func (conn *connection) QueryRowContext(ctx context.Context, query string, args ...interface{}) sqldb.RowScanner {
 	row := conn.db.QueryRowxContext(ctx, query, args...)
 	if err := row.Err(); err != nil {
-		err = wraperr.Errorf("query `%s` returned error: %w", query, err)
+		err = errs.Errorf("query `%s` returned error: %w", query, err)
 		return sqldb.RowScannerWithError(err)
 	}
 	return &rowScanner{query, row}
@@ -211,7 +211,7 @@ func (conn *connection) QueryRows(query string, args ...interface{}) sqldb.RowsS
 func (conn *connection) QueryRowsContext(ctx context.Context, query string, args ...interface{}) sqldb.RowsScanner {
 	rows, err := conn.db.QueryxContext(ctx, query, args...)
 	if err != nil {
-		err = wraperr.Errorf("query `%s` returned error: %w", query, err)
+		err = errs.Errorf("query `%s` returned error: %w", query, err)
 		return sqldb.RowsScannerWithError(err)
 	}
 	return &rowsScanner{ctx, query, rows}

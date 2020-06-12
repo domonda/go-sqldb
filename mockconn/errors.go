@@ -1,7 +1,5 @@
 package mockconn
 
-import (
-	"github.com/domonda/go-wraperr/sentinel"
-)
+import "github.com/domonda/go-errs"
 
-const ErrMockedScan = sentinel.Error("mocked scan")
+const ErrMockedScan = errs.Sentinel("mocked scan")

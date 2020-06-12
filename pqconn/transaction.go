@@ -4,9 +4,9 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/domonda/go-errs"
 	sqldb "github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/impl"
-	"github.com/domonda/go-wraperr"
 )
 
 type transaction struct {
@@ -108,7 +108,7 @@ func (conn *transaction) QueryRow(query string, args ...interface{}) sqldb.RowSc
 func (conn *transaction) QueryRowContext(ctx context.Context, query string, args ...interface{}) sqldb.RowScanner {
 	rows, err := conn.tx.QueryContext(ctx, query, args...)
 	if err != nil {
-		err = wraperr.Errorf("query `%s` returned error: %w", query, err)
+		err = errs.Errorf("query `%s` returned error: %w", query, err)
 		return sqldb.RowScannerWithError(err)
 	}
 	return &impl.RowScanner{Query: query, Rows: rows, StructFieldNamer: conn.structFieldNamer}
@@ -121,7 +121,7 @@ func (conn *transaction) QueryRows(query string, args ...interface{}) sqldb.Rows
 func (conn *transaction) QueryRowsContext(ctx context.Context, query string, args ...interface{}) sqldb.RowsScanner {
 	rows, err := conn.tx.QueryContext(ctx, query, args...)
 	if err != nil {
-		err = wraperr.Errorf("query `%s` returned error: %w", query, err)
+		err = errs.Errorf("query `%s` returned error: %w", query, err)
 		return sqldb.RowsScannerWithError(err)
 	}
 	return &impl.RowsScanner{Context: ctx, Query: query, Rows: rows, StructFieldNamer: conn.structFieldNamer}

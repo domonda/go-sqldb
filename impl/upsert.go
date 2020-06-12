@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/domonda/go-errs"
 	sqldb "github.com/domonda/go-sqldb"
-	"github.com/domonda/go-wraperr"
 )
 
 // UpsertStruct upserts a row to table using the exported fields
@@ -68,7 +68,7 @@ func UpsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 
 	err := conn.ExecContext(ctx, query.String(), vals...)
 	if err != nil {
-		return wraperr.Errorf("query `%s` returned error: %w", query.String(), err)
+		return errs.Errorf("query `%s` returned error: %w", query.String(), err)
 	}
 	return nil
 }

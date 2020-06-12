@@ -5,8 +5,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 
+	"github.com/domonda/go-errs"
 	"github.com/domonda/go-sqldb/impl"
-	"github.com/domonda/go-wraperr"
 )
 
 // rowScanner implements sqldb.RowScanner for a sqlx.Row
@@ -18,7 +18,7 @@ type rowScanner struct {
 func (s *rowScanner) Scan(dest ...interface{}) error {
 	err := s.row.Scan(dest...)
 	if err != nil {
-		return wraperr.Errorf("query `%s` returned error: %w", s.query, err)
+		return errs.Errorf("query `%s` returned error: %w", s.query, err)
 	}
 	return nil
 }
@@ -26,7 +26,7 @@ func (s *rowScanner) Scan(dest ...interface{}) error {
 func (s *rowScanner) ScanStruct(dest interface{}) (err error) {
 	defer func() {
 		if err != nil {
-			err = wraperr.Errorf("query `%s` returned error: %w", s.query, err)
+			err = errs.Errorf("query `%s` returned error: %w", s.query, err)
 		}
 	}()
 

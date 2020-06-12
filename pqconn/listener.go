@@ -7,8 +7,8 @@ import (
 
 	"github.com/lib/pq"
 
+	"github.com/domonda/go-errs"
 	sqldb "github.com/domonda/go-sqldb"
-	"github.com/domonda/go-wraperr"
 )
 
 var (
@@ -104,13 +104,13 @@ func (l *listener) notify(notification *pq.Notification) {
 }
 
 func (l *listener) safeNotifyCallback(callback sqldb.OnNotifyFunc, channel, payload string) {
-	defer wraperr.RecoverAndLogPanicWithFuncParams(sqldb.ErrLogger, channel, payload)
+	defer errs.RecoverAndLogPanicWithFuncParams(sqldb.ErrLogger, channel, payload)
 
 	callback(channel, payload)
 }
 
 func (l *listener) safeUnlistenCallback(callback sqldb.OnUnlistenFunc, channel string) {
-	defer wraperr.RecoverAndLogPanicWithFuncParams(sqldb.ErrLogger, channel)
+	defer errs.RecoverAndLogPanicWithFuncParams(sqldb.ErrLogger, channel)
 
 	callback(channel)
 }
