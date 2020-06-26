@@ -15,16 +15,20 @@ func ScanStruct(srcRow Row, destStruct interface{}, namer sqldb.StructFieldNamer
 
 	if v.Kind() == reflect.Ptr && v.IsNil() && v.CanSet() {
 		// Got a pointer to a pointer that we can set with a newly allocated struct
-		structPtr := reflect.New(v.Type().Elem())
+		var (
+			newPtr  = reflect.New(v.Type().Elem())
+			destPtr = v
+		)
 		defer func() {
-			// but set only after scanning into the struct
+			// but set only after scanning into the new struct
 			// to leave it unchanged in case of an error
 			if err == nil {
-				v.Set(structPtr)
+				destPtr.Set(newPtr)
 			}
 		}()
 
-		v = structPtr.Elem()
+		// Continue with the newly allocated struct
+		v = newPtr.Elem()
 	}
 
 	if v.Kind() != reflect.Struct {
