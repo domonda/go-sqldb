@@ -19,8 +19,7 @@ func ScanStruct(srcRow Row, destStruct interface{}, namer sqldb.StructFieldNamer
 		newStructPtr     reflect.Value
 	)
 	if v.Kind() == reflect.Ptr && v.IsNil() && v.CanSet() {
-		// Got a pointer to a nil pointer that we can set
-		// with a newly allocated struct
+		// Got a nil pointer that we can set with a newly allocated struct
 		setDestStructPtr = true
 		destStructPtr = v
 		newStructPtr = reflect.New(v.Type().Elem())
