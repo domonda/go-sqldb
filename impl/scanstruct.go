@@ -7,28 +7,25 @@ import (
 	sqldb "github.com/domonda/go-sqldb"
 )
 
-func ScanStruct(srcRow Row, destStruct interface{}, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) (err error) {
+func ScanStruct(srcRow Row, destStruct interface{}, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) error {
 	v := reflect.ValueOf(destStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
 	}
 
+	var (
+		setDestStructPtr = false
+		destStructPtr    reflect.Value
+		newStructPtr     reflect.Value
+	)
 	if v.Kind() == reflect.Ptr && v.IsNil() && v.CanSet() {
-		// Got a pointer to a pointer that we can set with a newly allocated struct
-		var (
-			newPtr  = reflect.New(v.Type().Elem())
-			destPtr = v
-		)
-		defer func() {
-			// but set only after scanning into the new struct
-			// to leave it unchanged in case of an error
-			if err == nil {
-				destPtr.Set(newPtr)
-			}
-		}()
-
+		// Got a pointer to a nil pointer that we can set
+		// with a newly allocated struct
+		setDestStructPtr = true
+		destStructPtr = v
+		newStructPtr = reflect.New(v.Type().Elem())
 		// Continue with the newly allocated struct
-		v = newPtr.Elem()
+		v = newStructPtr.Elem()
 	}
 
 	if v.Kind() != reflect.Struct {
@@ -61,7 +58,16 @@ func ScanStruct(srcRow Row, destStruct interface{}, namer sqldb.StructFieldNamer
 		dest[i] = fieldPtr
 	}
 
-	return srcRow.Scan(dest...)
+	err = srcRow.Scan(dest...)
+	if err != nil {
+		return err
+	}
+
+	if setDestStructPtr {
+		destStructPtr.Set(newStructPtr)
+	}
+
+	return nil
 }
 
 func getStructFieldPointers(v reflect.Value, namer sqldb.StructFieldNamer, ignoreNames, restrictToNames []string, outFieldPtrs map[string]interface{}) error {
