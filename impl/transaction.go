@@ -25,7 +25,7 @@ func Transaction(ctx context.Context, opts *sql.TxOptions, conn sqldb.Connection
 			e := tx.Rollback()
 			if e != nil && !errors.Is(e, sql.ErrTxDone) {
 				// Double error situation, log e so it doesn't get lost
-				sqldb.ErrLogger.Printf("sqldb.Transaction error '%s' from rollback after context error '%s'", e, ctx.Err())
+				sqldb.ErrLogger.Printf("sqldb.Transaction error (%s) from rollback after context error: %s", e, ctx.Err())
 			}
 			return ctx.Err()
 		}
@@ -42,7 +42,7 @@ func Transaction(ctx context.Context, opts *sql.TxOptions, conn sqldb.Connection
 			e := tx.Rollback()
 			if e != nil && !errors.Is(e, sql.ErrTxDone) {
 				// Double error situation, log e so it doesn't get lost
-				sqldb.ErrLogger.Printf("sqldb.Transaction error %s from rollback after panic: %+v", e, r)
+				sqldb.ErrLogger.Printf("sqldb.Transaction error (%s) from rollback after panic: %+v", e, r)
 			}
 			panic(r) // re-throw panic after Rollback
 		}
@@ -52,7 +52,7 @@ func Transaction(ctx context.Context, opts *sql.TxOptions, conn sqldb.Connection
 			e := tx.Rollback()
 			if e != nil && !errors.Is(e, sql.ErrTxDone) {
 				// Double error situation, wrap err with e so it doesn't get lost
-				err = fmt.Errorf("sqldb.Transaction error %s from rollback after error: %w", e, err)
+				err = fmt.Errorf("sqldb.Transaction error (%s) from rollback after error: %w", e, err)
 			}
 			return
 		}
