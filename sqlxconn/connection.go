@@ -33,6 +33,15 @@ func MustNew(ctx context.Context, config *sqldb.Config) sqldb.Connection {
 	return conn
 }
 
+// WithSQLxDB returns a connection (implementing sqldb.Connection) using a sqlx.DB and sqldb.Config
+func WithSQLxDB(db *sqlx.DB, config *sqldb.Config) *connection {
+	return &connection{
+		db:               db,
+		config:           config,
+		structFieldNamer: sqldb.DefaultStructFieldTagNaming,
+	}
+}
+
 type connection struct {
 	db               *sqlx.DB
 	config           *sqldb.Config

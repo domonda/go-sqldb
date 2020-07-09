@@ -11,8 +11,8 @@ import (
 	"github.com/domonda/go-sqldb/impl"
 )
 
-// WithTransaction returns a transaction sqldb.Connection using conn and tx.
-func WithTransaction(conn sqldb.Connection, tx *sqlx.Tx) sqldb.Connection {
+// WithSQLxTx returns a transaction (implementing sqldb.Connection) using a sqldb.Connection and sqlx.Tx.
+func WithSQLxTx(conn sqldb.Connection, tx *sqlx.Tx) *transaction {
 	return &transaction{
 		connection:       conn.(*connection),
 		tx:               tx,
