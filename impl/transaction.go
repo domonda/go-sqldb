@@ -9,26 +9,26 @@ import (
 	sqldb "github.com/domonda/go-sqldb"
 )
 
-// Transaction executes txFunc within a database transaction that is passed in as tx sqldb.Connection.
-// The transaction will be rolled back if txFunc returns an error or panics.
-// Recovered panics are re-paniced after the transaction is rolled back.
-// Rollback errors are logged with sqldb.ErrLogger.
+// Transaction executes txFunc within a database transaction that is passed in to txFunc as tx sqldb.Connection.
 // Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
-// If parentConn is already a transaction, then txFunc is executed within this transaction
-// ignoring opts and without calling another Begin or Commit in this Transaction call.
-// Errors or panics will roll back the inherited transaction though.
+// If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
+// and no parentConn.Begin, Commit, or Rollback calls will occour within this Transaction call.
+// Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
+// Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
 func Transaction(ctx context.Context, opts *sql.TxOptions, parentConn sqldb.Connection, txFunc func(tx sqldb.Connection) error) (err error) {
-	var tx sqldb.Connection
 	if parentConn.IsTransaction() {
-		tx = parentConn
+		// Check context for error because there is no
+		// Begin(ctx) call that would return the error
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-	} else {
-		tx, err = parentConn.Begin(ctx, opts)
-		if err != nil {
-			return fmt.Errorf("sqldb.Transaction Begin returned: %w", err)
-		}
+
+		return txFunc(parentConn)
+	}
+
+	tx, e := parentConn.Begin(ctx, opts)
+	if e != nil {
+		return fmt.Errorf("sqldb.Transaction Begin error: %w", e)
 	}
 
 	defer func() {
@@ -40,11 +40,6 @@ func Transaction(ctx context.Context, opts *sql.TxOptions, parentConn sqldb.Conn
 				sqldb.ErrLogger.Printf("sqldb.Transaction error (%s) from rollback after panic: %+v", e, r)
 			}
 			panic(r) // re-throw panic after Rollback
-		}
-
-		if parentConn.IsTransaction() {
-			// No Commit or Rollback if parentConn is already a transaction with its own Commit or Rollback
-			return
 		}
 
 		if err != nil {
@@ -60,7 +55,7 @@ func Transaction(ctx context.Context, opts *sql.TxOptions, parentConn sqldb.Conn
 		e := tx.Commit()
 		if e != nil {
 			// Set Commit error as function return value
-			err = fmt.Errorf("sqldb.Transaction commit: %w", e)
+			err = fmt.Errorf("sqldb.Transaction Commit error: %w", e)
 		}
 	}()
 

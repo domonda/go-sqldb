@@ -224,14 +224,12 @@ type Connection interface {
 	// is not within a transaction.
 	Rollback() error
 
-	// Transaction executes txFunc within a database transaction.
-	// The transaction will be rolled back if txFunc returns an error or panics.
-	// Recovered panics are re-paniced after the transaction is rolled back.
-	// Rollback errors are logged with sqldb.ErrLogger.
+	// Transaction executes txFunc within a database transaction that is passed in to txFunc as tx sqldb.Connection.
 	// Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
-	// If this connection is already a transaction, then txFunc is executed within this transaction
-	// ignoring opts and without calling another Begin or Commit in this Transaction call.
-	// Errors or panics will roll back the inherited transaction though.
+	// If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
+	// and no parentConn.Begin, Commit, or Rollback calls will occour within this Transaction call.
+	// Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
+	// Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
 	Transaction(ctx context.Context, opts *sql.TxOptions, txFunc func(tx Connection) error) error
 
 	// ListenOnChannel will call onNotify for every channel notification
