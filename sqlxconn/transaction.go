@@ -147,10 +147,12 @@ func (conn *transaction) Begin(ctx context.Context, opts *sql.TxOptions) (sqldb.
 }
 
 func (conn *transaction) Commit() error {
+	// fmt.Println("sqlxconn.transaction.Commit")
 	return conn.tx.Commit()
 }
 
 func (conn *transaction) Rollback() error {
+	// fmt.Println("sqlxconn.transaction.Rollback")
 	return conn.tx.Rollback()
 }
 
