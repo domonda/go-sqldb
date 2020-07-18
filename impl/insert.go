@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/domonda/go-errs"
 	sqldb "github.com/domonda/go-sqldb"
 )
 
@@ -21,7 +20,7 @@ func Insert(ctx context.Context, conn sqldb.Connection, table string, values sql
 	writeInsertQuery(&query, table, names)
 	err := conn.ExecContext(ctx, query.String(), vals...)
 	if err != nil {
-		return errs.Errorf("query `%s` returned error: %w", query.String(), err)
+		return fmt.Errorf("query `%s` returned error: %w", query.String(), err)
 	}
 
 	return nil
@@ -95,7 +94,7 @@ func InsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 
 	err = conn.ExecContext(ctx, query.String(), vals...)
 	if err != nil {
-		return errs.Errorf("query `%s` returned error: %w", query.String(), err)
+		return fmt.Errorf("query `%s` returned error: %w", query.String(), err)
 	}
 	return nil
 }

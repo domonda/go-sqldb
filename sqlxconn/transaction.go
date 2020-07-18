@@ -3,10 +3,10 @@ package sqlxconn
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/domonda/go-errs"
 	sqldb "github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/impl"
 )
@@ -119,7 +119,7 @@ func (conn *transaction) QueryRow(query string, args ...interface{}) sqldb.RowSc
 func (conn *transaction) QueryRowContext(ctx context.Context, query string, args ...interface{}) sqldb.RowScanner {
 	row := conn.tx.QueryRowxContext(ctx, query, args...)
 	if row.Err() != nil {
-		err := errs.Errorf("query `%s` returned error: %w", query, row.Err())
+		err := fmt.Errorf("query `%s` returned error: %w", query, row.Err())
 		return sqldb.RowScannerWithError(err)
 	}
 	return &rowScanner{query, row}
@@ -132,7 +132,7 @@ func (conn *transaction) QueryRows(query string, args ...interface{}) sqldb.Rows
 func (conn *transaction) QueryRowsContext(ctx context.Context, query string, args ...interface{}) sqldb.RowsScanner {
 	rows, err := conn.tx.QueryxContext(ctx, query, args...)
 	if err != nil {
-		err = errs.Errorf("query `%s` returned error: %w", query, err)
+		err = fmt.Errorf("query `%s` returned error: %w", query, err)
 		return sqldb.RowsScannerWithError(err)
 	}
 	return &rowsScanner{ctx, query, rows}

@@ -1,11 +1,11 @@
 package sqlxconn
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/domonda/go-errs"
 	"github.com/domonda/go-sqldb/impl"
 )
 
@@ -18,7 +18,7 @@ type rowScanner struct {
 func (s *rowScanner) Scan(dest ...interface{}) error {
 	err := s.row.Scan(dest...)
 	if err != nil {
-		return errs.Errorf("query `%s` returned error: %w", s.query, err)
+		return fmt.Errorf("query `%s` returned error: %w", s.query, err)
 	}
 	return nil
 }
@@ -26,7 +26,7 @@ func (s *rowScanner) Scan(dest ...interface{}) error {
 func (s *rowScanner) ScanStruct(dest interface{}) (err error) {
 	defer func() {
 		if err != nil {
-			err = errs.Errorf("query `%s` returned error: %w", s.query, err)
+			err = fmt.Errorf("query `%s` returned error: %w", s.query, err)
 		}
 	}()
 

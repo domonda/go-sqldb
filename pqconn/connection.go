@@ -3,8 +3,8 @@ package pqconn
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
-	"github.com/domonda/go-errs"
 	sqldb "github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/impl"
 )
@@ -15,7 +15,7 @@ import (
 // and only returned when there was no error from the ping.
 func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 	if config.Driver != "postgres" {
-		return nil, errs.Errorf(`invalid driver %q, pqconn expects "postgres"`, config.Driver)
+		return nil, fmt.Errorf(`invalid driver %q, pqconn expects "postgres"`, config.Driver)
 	}
 	db, err := config.Connect(ctx)
 	if err != nil {
@@ -74,7 +74,7 @@ func (conn *connection) Ping(ctx context.Context) error {
 func (conn *connection) Exec(query string, args ...interface{}) error {
 	_, err := conn.db.Exec(query, args...)
 	if err != nil {
-		return errs.Errorf("query `%s` returned error: %w", query, err)
+		return fmt.Errorf("query `%s` returned error: %w", query, err)
 	}
 	return nil
 }
@@ -82,7 +82,7 @@ func (conn *connection) Exec(query string, args ...interface{}) error {
 func (conn *connection) ExecContext(ctx context.Context, query string, args ...interface{}) error {
 	_, err := conn.db.ExecContext(ctx, query, args...)
 	if err != nil {
-		return errs.Errorf("query `%s` returned error: %w", query, err)
+		return fmt.Errorf("query `%s` returned error: %w", query, err)
 	}
 	return nil
 }
@@ -206,7 +206,7 @@ func (conn *connection) QueryRow(query string, args ...interface{}) sqldb.RowSca
 func (conn *connection) QueryRowContext(ctx context.Context, query string, args ...interface{}) sqldb.RowScanner {
 	rows, err := conn.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		err = errs.Errorf("query `%s` returned error: %w", query, err)
+		err = fmt.Errorf("query `%s` returned error: %w", query, err)
 		return sqldb.RowScannerWithError(err)
 	}
 	return &impl.RowScanner{Query: query, Rows: rows, StructFieldNamer: conn.structFieldNamer}
@@ -219,7 +219,7 @@ func (conn *connection) QueryRows(query string, args ...interface{}) sqldb.RowsS
 func (conn *connection) QueryRowsContext(ctx context.Context, query string, args ...interface{}) sqldb.RowsScanner {
 	rows, err := conn.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		err = errs.Errorf("query `%s` returned error: %w", query, err)
+		err = fmt.Errorf("query `%s` returned error: %w", query, err)
 		return sqldb.RowsScannerWithError(err)
 	}
 	return &impl.RowsScanner{Context: ctx, Query: query, Rows: rows, StructFieldNamer: conn.structFieldNamer}

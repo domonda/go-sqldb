@@ -3,8 +3,6 @@ package sqldb
 import (
 	"database/sql"
 	"errors"
-
-	"github.com/domonda/go-errs"
 )
 
 // ErrNoRows
@@ -18,11 +16,22 @@ func RemoveErrNoRows(err error) error {
 	return err
 }
 
+// sentinelError implements the error interface for a string
+// and is meant to be used to declare const sentinel errors.
+//
+// Example:
+//   const ErrUserNotFound impl.sentinelError = "user not found"
+type sentinelError string
+
+func (s sentinelError) Error() string {
+	return string(s)
+}
+
 // Transaction errors
 
 const (
-	ErrWithinTransaction    errs.Sentinel = "within a transaction"
-	ErrNotWithinTransaction errs.Sentinel = "not within a transaction"
+	ErrWithinTransaction    sentinelError = "within a transaction"
+	ErrNotWithinTransaction sentinelError = "not within a transaction"
 )
 
 // RowScannerWithError

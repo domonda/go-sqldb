@@ -2,11 +2,12 @@ package sqlxconn
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"reflect"
 
 	"github.com/jmoiron/sqlx"
 
-	"github.com/domonda/go-errs"
 	sqldb "github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/impl"
 )
@@ -21,21 +22,21 @@ type rowsScanner struct {
 func (s *rowsScanner) scanSlice(dest interface{}, scanStruct bool) (err error) {
 	defer func() {
 		if err != nil {
-			err = errs.Errorf("query `%s` returned error: %w", s.query, err)
+			err = fmt.Errorf("query `%s` returned error: %w", s.query, err)
 		}
 		s.rows.Close()
 	}()
 
 	destVal := reflect.ValueOf(dest)
 	if destVal.Kind() != reflect.Ptr {
-		return errs.Errorf("scan dest is not a pointer but %s", destVal.Type())
+		return fmt.Errorf("scan dest is not a pointer but %s", destVal.Type())
 	}
 	if destVal.IsNil() {
-		return errs.New("scan dest is nil")
+		return errors.New("scan dest is nil")
 	}
 	slice := destVal.Elem()
 	if slice.Kind() != reflect.Slice {
-		return errs.Errorf("scan dest is not pointer to slice but %s", destVal.Type())
+		return fmt.Errorf("scan dest is not pointer to slice but %s", destVal.Type())
 	}
 	sliceElemType := slice.Type().Elem()
 
@@ -112,7 +113,7 @@ func (s *rowsScanner) ScanStrings(headerRow bool) (rows [][]string, err error) {
 func (s *rowsScanner) ForEachRow(callback func(sqldb.RowScanner) error) (err error) {
 	defer func() {
 		if err != nil {
-			err = errs.Errorf("query `%s` returned error: %w", s.query, err)
+			err = fmt.Errorf("query `%s` returned error: %w", s.query, err)
 		}
 		s.rows.Close()
 	}()

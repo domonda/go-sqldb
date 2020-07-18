@@ -7,7 +7,6 @@ import (
 
 	"github.com/lib/pq"
 
-	"github.com/domonda/go-errs"
 	sqldb "github.com/domonda/go-sqldb"
 )
 
@@ -104,13 +103,13 @@ func (l *listener) notify(notification *pq.Notification) {
 }
 
 func (l *listener) safeNotifyCallback(callback sqldb.OnNotifyFunc, channel, payload string) {
-	defer errs.RecoverAndLogPanicWithFuncParams(sqldb.ErrLogger, channel, payload)
+	defer recoverAndLogListenerPanic("notify", channel)
 
 	callback(channel, payload)
 }
 
 func (l *listener) safeUnlistenCallback(callback sqldb.OnUnlistenFunc, channel string) {
-	defer errs.RecoverAndLogPanicWithFuncParams(sqldb.ErrLogger, channel)
+	defer recoverAndLogListenerPanic("unlisten", channel)
 
 	callback(channel)
 }
