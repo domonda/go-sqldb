@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+	"time"
 
 	sqldb "github.com/domonda/go-sqldb"
 )
@@ -13,6 +14,7 @@ var (
 	typeOfError      = reflect.TypeOf((*error)(nil)).Elem()
 	typeOfContext    = reflect.TypeOf((*context.Context)(nil)).Elem()
 	typeOfSQLScanner = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
+	typeOfTime       = reflect.TypeOf(time.Time{})
 )
 
 // ForEachRowScanFunc will call the passed callback with scanned values or a struct for every row.
@@ -43,21 +45,25 @@ func ForEachRowScanFunc(ctx context.Context, callback interface{}) (f func(sqldb
 	}
 	structArg := false
 	for i := firstArg; i < typ.NumIn(); i++ {
-		derefArg := typ.In(i)
-		for derefArg.Kind() == reflect.Ptr {
-			derefArg = derefArg.Elem()
+		t := typ.In(i)
+		for t.Kind() == reflect.Ptr {
+			t = t.Elem()
 		}
-		switch derefArg.Kind() {
+		if t == typeOfTime {
+			continue
+		}
+		switch t.Kind() {
 		case reflect.Struct:
-			if !derefArg.Implements(typeOfSQLScanner) && !reflect.PtrTo(derefArg).Implements(typeOfSQLScanner) {
-				structArg = true
+			if t.Implements(typeOfSQLScanner) || reflect.PtrTo(t).Implements(typeOfSQLScanner) {
+				continue
 			}
+			if structArg {
+				return nil, fmt.Errorf("ForEachRowScan callback function must not have further argument after struct: %s", typ)
+			}
+			structArg = true
 		case reflect.Chan, reflect.Func:
 			return nil, fmt.Errorf("ForEachRowScan callback function has invalid argument type: %s", typ.In(i))
 		}
-	}
-	if structArg && typ.NumIn()-firstArg > 1 {
-		return nil, fmt.Errorf("ForEachRowScan callback function must not have further argument after struct: %s", typ)
 	}
 	if typ.NumOut() > 1 {
 		return nil, fmt.Errorf("ForEachRowScan callback function can only have one result value: %s", typ)
