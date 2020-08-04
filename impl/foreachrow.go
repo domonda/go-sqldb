@@ -49,7 +49,7 @@ func ForEachRowScanFunc(ctx context.Context, callback interface{}) (f func(sqldb
 		}
 		switch derefArg.Kind() {
 		case reflect.Struct:
-			if !reflect.PtrTo(typ.In(i)).Implements(typeOfSQLScanner) {
+			if !derefArg.Implements(typeOfSQLScanner) && !reflect.PtrTo(derefArg).Implements(typeOfSQLScanner) {
 				structArg = true
 			}
 		case reflect.Chan, reflect.Func:
