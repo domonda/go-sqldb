@@ -72,15 +72,15 @@ type Connection interface {
 	// matching any of the passed column names will be used.
 	InsertStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error
 
-	// InsertStructIgnoreColums inserts a new row into table using the exported fields
+	// InsertStructIgnoreColumns inserts a new row into table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
-	InsertStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error
+	InsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error
 
-	// InsertStructIgnoreColumsContext inserts a new row into table using the exported fields
+	// InsertStructIgnoreColumnsContext inserts a new row into table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
-	InsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error
+	InsertStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error
 
 	// InsertUniqueStruct inserts a new row into table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
@@ -96,17 +96,17 @@ type Connection interface {
 	// Does nothing if the onConflict statement applies and returns if a row was inserted.
 	InsertUniqueStructContext(ctx context.Context, table string, rowStruct interface{}, onConflict string, restrictToColumns ...string) (inserted bool, err error)
 
-	// InsertUniqueStructIgnoreColums inserts a new row into table using the exported fields
+	// InsertUniqueStructIgnoreColumns inserts a new row into table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	// Does nothing if the onConflict statement applies and returns if a row was inserted.
-	InsertUniqueStructIgnoreColums(table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error)
+	InsertUniqueStructIgnoreColumns(table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error)
 
-	// InsertUniqueStructIgnoreColumsContext inserts a new row into table using the exported fields
+	// InsertUniqueStructIgnoreColumnsContext inserts a new row into table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	// Does nothing if the onConflict statement applies and returns if a row was inserted.
-	InsertUniqueStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error)
+	InsertUniqueStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error)
 
 	// Update table rows(s) with values using the where statement with passed in args starting at $1.
 	Update(table string, values Values, where string, args ...interface{}) error
@@ -146,19 +146,19 @@ type Connection interface {
 	// to mark primary key column(s).
 	UpdateStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error
 
-	// UpdateStructIgnoreColums updates a row in a table using the exported fields
+	// UpdateStructIgnoreColumns updates a row in a table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
 	// to mark primary key column(s).
-	UpdateStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error
+	UpdateStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error
 
-	// UpdateStructIgnoreColumsContext updates a row in a table using the exported fields
+	// UpdateStructIgnoreColumnsContext updates a row in a table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
 	// to mark primary key column(s).
-	UpdateStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error
+	UpdateStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error
 
 	// UpsertStruct upserts a row to table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
@@ -178,21 +178,21 @@ type Connection interface {
 	// If inserting conflicts on the primary key column(s), then an update is performed.
 	UpsertStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error
 
-	// UpsertStructIgnoreColums upserts a row to table using the exported fields
+	// UpsertStructIgnoreColumns upserts a row to table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
 	// to mark primary key column(s).
 	// If inserting conflicts on the primary key column(s), then an update is performed.
-	UpsertStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error
+	UpsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error
 
-	// UpsertStructIgnoreColumsContext upserts a row to table using the exported fields
+	// UpsertStructIgnoreColumnsContext upserts a row to table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
 	// to mark primary key column(s).
 	// If inserting conflicts on the primary key column(s), then an update is performed.
-	UpsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error
+	UpsertStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error
 
 	// QueryRow queries a single row and returns a RowScanner for the results.
 	QueryRow(query string, args ...interface{}) RowScanner

@@ -80,7 +80,7 @@ func TestInsertStructQuery(t *testing.T) {
 
 	queryOutput.Reset()
 	expected = `INSERT INTO public.table("id","int","bool","str","str_ptr","bools") VALUES($1,$2,$3,$4,$5,$6)`
-	err = conn.InsertStructIgnoreColums("public.table", row, "nil_ptr", "untagged_field", "created_at")
+	err = conn.InsertStructIgnoreColumns("public.table", row, "nil_ptr", "untagged_field", "created_at")
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 }
@@ -108,7 +108,7 @@ func TestInsertUniqueStructQuery(t *testing.T) {
 
 	queryOutput.Reset()
 	expected = `INSERT INTO public.table("id","int","bool","str","str_ptr","bools") VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING RETURNING TRUE`
-	inserted, err = conn.InsertUniqueStructIgnoreColums("public.table", row, "(id)", "nil_ptr", "untagged_field", "created_at")
+	inserted, err = conn.InsertUniqueStructIgnoreColumns("public.table", row, "(id)", "nil_ptr", "untagged_field", "created_at")
 	assert.NoError(t, err)
 	assert.True(t, inserted)
 	assert.Equal(t, expected, queryOutput.String())
@@ -189,7 +189,7 @@ func TestUpdateStructQuery(t *testing.T) {
 
 	queryOutput.Reset()
 	expected = `UPDATE public.table SET "int"=$2,"bool"=$3,"str_ptr"=$4,"nil_ptr"=$5,"created_at"=$6 WHERE "id"=$1`
-	err = conn.UpdateStructIgnoreColums("public.table", row, "untagged_field", "str", "bools")
+	err = conn.UpdateStructIgnoreColumns("public.table", row, "untagged_field", "str", "bools")
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 }

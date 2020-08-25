@@ -72,11 +72,11 @@ func (conn *transaction) InsertStructContext(ctx context.Context, table string, 
 	return impl.InsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
 }
 
-func (conn *transaction) InsertStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (conn *transaction) InsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return impl.InsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
-func (conn *transaction) InsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (conn *transaction) InsertStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return impl.InsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
@@ -88,11 +88,11 @@ func (conn *transaction) UpdateStructContext(ctx context.Context, table string, 
 	return impl.UpdateStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
 }
 
-func (conn *transaction) UpdateStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (conn *transaction) UpdateStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return impl.UpdateStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
-func (conn *transaction) UpdateStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (conn *transaction) UpdateStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return impl.UpdateStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
@@ -104,11 +104,11 @@ func (conn *transaction) UpsertStructContext(ctx context.Context, table string, 
 	return impl.UpsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
 }
 
-func (conn *transaction) UpsertStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (conn *transaction) UpsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return impl.UpsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
-func (conn *transaction) UpsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (conn *transaction) UpsertStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return impl.UpsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 

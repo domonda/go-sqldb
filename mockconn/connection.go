@@ -97,11 +97,11 @@ func (conn *connection) InsertStructContext(ctx context.Context, table string, r
 	return impl.InsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
 }
 
-func (conn *connection) InsertStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (conn *connection) InsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return impl.InsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
-func (conn *connection) InsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (conn *connection) InsertStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return impl.InsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
@@ -113,11 +113,11 @@ func (conn *connection) InsertUniqueStructContext(ctx context.Context, table str
 	return impl.InsertUniqueStruct(ctx, conn, table, rowStruct, onConflict, conn.structFieldNamer, nil, restrictToColumns)
 }
 
-func (conn *connection) InsertUniqueStructIgnoreColums(table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
+func (conn *connection) InsertUniqueStructIgnoreColumns(table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
 	return impl.InsertUniqueStruct(context.Background(), conn, table, rowStruct, onConflict, conn.structFieldNamer, ignoreColumns, nil)
 }
 
-func (conn *connection) InsertUniqueStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
+func (conn *connection) InsertUniqueStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
 	return impl.InsertUniqueStruct(ctx, conn, table, rowStruct, onConflict, conn.structFieldNamer, ignoreColumns, nil)
 }
 
@@ -153,11 +153,11 @@ func (conn *connection) UpdateStructContext(ctx context.Context, table string, r
 	return impl.UpdateStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
 }
 
-func (conn *connection) UpdateStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (conn *connection) UpdateStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return impl.UpdateStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
-func (conn *connection) UpdateStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (conn *connection) UpdateStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return impl.UpdateStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
@@ -169,11 +169,11 @@ func (conn *connection) UpsertStructContext(ctx context.Context, table string, r
 	return impl.UpsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
 }
 
-func (conn *connection) UpsertStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (conn *connection) UpsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return impl.UpsertStruct(context.Background(), conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
-func (conn *connection) UpsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (conn *connection) UpsertStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return impl.UpsertStruct(ctx, conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 

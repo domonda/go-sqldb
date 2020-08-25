@@ -110,11 +110,11 @@ func (e connectionWithError) InsertStructContext(ctx context.Context, table stri
 	return e.err
 }
 
-func (e connectionWithError) InsertStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (e connectionWithError) InsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return e.err
 }
 
-func (e connectionWithError) InsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (e connectionWithError) InsertStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return e.err
 }
 
@@ -126,11 +126,11 @@ func (e connectionWithError) InsertUniqueStructContext(ctx context.Context, tabl
 	return false, e.err
 }
 
-func (e connectionWithError) InsertUniqueStructIgnoreColums(table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
+func (e connectionWithError) InsertUniqueStructIgnoreColumns(table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
 	return false, e.err
 }
 
-func (e connectionWithError) InsertUniqueStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
+func (e connectionWithError) InsertUniqueStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
 	return false, e.err
 }
 
@@ -166,11 +166,11 @@ func (e connectionWithError) UpdateStructContext(ctx context.Context, table stri
 	return e.err
 }
 
-func (e connectionWithError) UpdateStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (e connectionWithError) UpdateStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return e.err
 }
 
-func (e connectionWithError) UpdateStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (e connectionWithError) UpdateStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return e.err
 }
 
@@ -182,11 +182,11 @@ func (e connectionWithError) UpsertStructContext(ctx context.Context, table stri
 	return e.err
 }
 
-func (e connectionWithError) UpsertStructIgnoreColums(table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (e connectionWithError) UpsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return e.err
 }
 
-func (e connectionWithError) UpsertStructIgnoreColumsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (e connectionWithError) UpsertStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return e.err
 }
 
