@@ -7,7 +7,11 @@ import (
 // ConnectionWithContext wraps the passed Connection so that all
 // non Context methods call their Context counterparts with the
 // ctx passed to this function.
+// If conn was alread wrapped with ctx, then it's returned unchanged.
 func ConnectionWithContext(conn Connection, ctx context.Context) Connection {
+	if c, ok := conn.(connWithCtx); ok && c.ctx == ctx {
+		return c
+	}
 	return connWithCtx{conn, ctx}
 }
 
