@@ -10,9 +10,17 @@ import (
 
 // RemoveErrNoRows returns nil if errors.Is(err, sql.ErrNoRows)
 // or else err is returned unchanged.
+// TODO remove function and use ReplaceErrNoRows instead.
 func RemoveErrNoRows(err error) error {
-	if err == nil || errors.Is(err, sql.ErrNoRows) {
-		return nil
+	return ReplaceErrNoRows(err, nil)
+}
+
+// ReplaceErrNoRows returns the passed replacement error
+// if errors.Is(err, sql.ErrNoRows),
+// else err is returned unchanged.
+func ReplaceErrNoRows(err, replacement error) error {
+	if err != nil && errors.Is(err, sql.ErrNoRows) {
+		return replacement
 	}
 	return err
 }
