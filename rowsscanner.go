@@ -28,7 +28,7 @@ type RowsScanner interface {
 	// In case of zero rows, no error will be returned.
 	ForEachRow(callback func(RowScanner) error) error
 
-	// ForEachRowScan will call the passed callback with scanned values or a struct for every row.
+	// ForEachRowCall will call the passed callback with scanned values or a struct for every row.
 	// If the callback function has a single struct or struct pointer argument,
 	// then RowScanner.ScanStruct will be used per row,
 	// else RowScanner.Scan will be used for all arguments of the callback.
@@ -38,5 +38,5 @@ type RowsScanner interface {
 	// If a non nil error is returned from the callback, then this error
 	// is returned immediately by this function without scanning further rows.
 	// In case of zero rows, no error will be returned.
-	ForEachRowScan(callback interface{}) error
+	ForEachRowCall(callback interface{}) error
 }

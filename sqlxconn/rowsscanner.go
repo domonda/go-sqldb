@@ -131,8 +131,8 @@ func (s *rowsScanner) ForEachRow(callback func(sqldb.RowScanner) error) (err err
 	return s.rows.Err()
 }
 
-func (s *rowsScanner) ForEachRowScan(callback interface{}) error {
-	forEachRowFunc, err := impl.ForEachRowScanFunc(s.ctx, callback)
+func (s *rowsScanner) ForEachRowCall(callback interface{}) error {
+	forEachRowFunc, err := impl.ForEachRowCallFunc(s.ctx, callback)
 	if err != nil {
 		return err
 	}
