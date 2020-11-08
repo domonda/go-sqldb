@@ -1,7 +1,6 @@
 package impl
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -15,7 +14,7 @@ import (
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
 // If inserting conflicts on pkColumn, then an update of the existing row is performed.
-func UpsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowStruct interface{}, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) error {
+func UpsertStruct(conn sqldb.Connection, table string, rowStruct interface{}, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) error {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -32,9 +31,9 @@ func UpsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 		return fmt.Errorf("UpsertStruct to table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
 	}
 
-	var query strings.Builder
-	writeInsertQuery(&query, table, columns)
-	query.WriteString(` ON CONFLICT(`)
+	var b strings.Builder
+	writeInsertQuery(&b, table, columns)
+	b.WriteString(` ON CONFLICT(`)
 	first := true
 	for i := range columns {
 		if !pkCol[i] {
@@ -43,15 +42,15 @@ func UpsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 		if first {
 			first = false
 		} else {
-			query.WriteByte(',')
+			b.WriteByte(',')
 		}
-		fmt.Fprintf(&query, `"%s"`, columns[i])
+		fmt.Fprintf(&b, `"%s"`, columns[i])
 	}
 	if first {
 		return fmt.Errorf("UpsertStruct to table %s: %T has no exported struct fields with ,pk tag value suffix to mark primary key column(s)", table, rowStruct)
 	}
 
-	query.WriteString(`) DO UPDATE SET `)
+	b.WriteString(`) DO UPDATE SET `)
 	first = true
 	for i := range columns {
 		if pkCol[i] {
@@ -60,14 +59,13 @@ func UpsertStruct(ctx context.Context, conn sqldb.Connection, table string, rowS
 		if first {
 			first = false
 		} else {
-			query.WriteByte(',')
+			b.WriteByte(',')
 		}
-		fmt.Fprintf(&query, `"%s"=$%d`, columns[i], i+1)
+		fmt.Fprintf(&b, `"%s"=$%d`, columns[i], i+1)
 	}
+	query := b.String()
 
-	err := conn.ExecContext(ctx, query.String(), vals...)
-	if err != nil {
-		return fmt.Errorf("query `%s` returned error: %w", query.String(), err)
-	}
-	return nil
+	err := conn.Exec(query, vals...)
+
+	return WrapNonNilErrorWithQuery(err, query, vals)
 }

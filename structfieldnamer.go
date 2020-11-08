@@ -33,6 +33,8 @@ var DefaultStructFieldTagNaming = StructFieldTagNaming{
 // StructFieldTagNaming implements StructFieldNamer with a struct field NameTag
 // to be used for naming and a UntaggedNameFunc in case the NameTag is not set.
 type StructFieldTagNaming struct {
+	_Named_Fields_Required struct{}
+
 	// NameTag is the struct field tag to be used as column name
 	NameTag string
 	// UntaggedNameFunc will be called with the struct field name to

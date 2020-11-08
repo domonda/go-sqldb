@@ -2,62 +2,62 @@ package impl
 
 import (
 	"database/sql"
-	"fmt"
 
 	sqldb "github.com/domonda/go-sqldb"
 )
 
 // RowScanner implements sqldb.RowScanner for a sql.Row
 type RowScanner struct {
-	Query            string // for error wrapping
-	Rows             Rows
-	StructFieldNamer sqldb.StructFieldNamer
+	rows             Rows
+	structFieldNamer sqldb.StructFieldNamer
+	query            string        // for error wrapping
+	args             []interface{} // for error wrapping
+}
+
+func NewRowScanner(rows Rows, structFieldNamer sqldb.StructFieldNamer, query string, args []interface{}) *RowScanner {
+	return &RowScanner{rows, structFieldNamer, query, args}
 }
 
 func (s *RowScanner) Scan(dest ...interface{}) (err error) {
-	if s.Rows.Err() != nil {
-		return s.Rows.Err()
+	defer func() {
+		s.rows.Close()
+		err = WrapNonNilErrorWithQuery(err, s.query, s.args)
+	}()
+
+	if s.rows.Err() != nil {
+		return s.rows.Err()
 	}
-	if !s.Rows.Next() {
-		if s.Rows.Err() != nil {
-			return s.Rows.Err()
+	if !s.rows.Next() {
+		if s.rows.Err() != nil {
+			return s.rows.Err()
 		}
 		return sql.ErrNoRows
 	}
 
-	defer func() {
-		if err != nil {
-			err = fmt.Errorf("query `%s` returned error: %w", s.Query, err)
-		}
-		s.Rows.Close()
-	}()
-
-	return s.Rows.Scan(dest...)
+	return s.rows.Scan(dest...)
 }
 
 func (s *RowScanner) ScanStruct(dest interface{}) (err error) {
-	if s.Rows.Err() != nil {
-		return s.Rows.Err()
+	defer func() {
+		s.rows.Close()
+		err = WrapNonNilErrorWithQuery(err, s.query, s.args)
+	}()
+
+	if s.rows.Err() != nil {
+		return s.rows.Err()
 	}
-	if !s.Rows.Next() {
-		if s.Rows.Err() != nil {
-			return s.Rows.Err()
+	if !s.rows.Next() {
+		if s.rows.Err() != nil {
+			return s.rows.Err()
 		}
 		return sql.ErrNoRows
 	}
 
-	defer func() {
-		if err != nil {
-			err = fmt.Errorf("query `%s` returned error: %w", s.Query, err)
-		}
-		s.Rows.Close()
-	}()
-
-	return ScanStruct(s.Rows, dest, s.StructFieldNamer, nil, nil)
+	return ScanStruct(s.rows, dest, s.structFieldNamer, nil, nil)
 }
 
 func (s *RowScanner) ScanStrings() ([]string, error) {
-	return ScanStrings(s.Rows)
+	return ScanStrings(s.rows)
 }
 
 // CurrentRowScanner calls Rows.Scan without Rows.Next and Rows.Close

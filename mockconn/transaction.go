@@ -1,7 +1,6 @@
 package mockconn
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 
@@ -17,7 +16,7 @@ func (conn transaction) IsTransaction() bool {
 	return true
 }
 
-func (conn transaction) Begin(ctx context.Context, opts *sql.TxOptions) (sqldb.Connection, error) {
+func (conn transaction) Begin(opts *sql.TxOptions) (sqldb.Connection, error) {
 	return nil, sqldb.ErrWithinTransaction
 }
 

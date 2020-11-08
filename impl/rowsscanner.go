@@ -9,30 +9,35 @@ import (
 
 // RowsScanner implements sqldb.RowsScanner with Rows
 type RowsScanner struct {
-	Context          context.Context
-	Query            string // for error wrapping
-	Rows             Rows
-	StructFieldNamer sqldb.StructFieldNamer
+	ctx              context.Context // ctx is checked for every row and passed through to callbacks
+	rows             Rows
+	structFieldNamer sqldb.StructFieldNamer
+	query            string        // for error wrapping
+	args             []interface{} // for error wrapping
+}
+
+func NewRowsScanner(ctx context.Context, rows Rows, structFieldNamer sqldb.StructFieldNamer, query string, args []interface{}) *RowsScanner {
+	return &RowsScanner{ctx, rows, structFieldNamer, query, args}
 }
 
 func (s *RowsScanner) ScanSlice(dest interface{}) error {
-	err := ScanRowsAsSlice(s.Context, s.Rows, dest, nil)
+	err := ScanRowsAsSlice(s.ctx, s.rows, dest, nil)
 	if err != nil {
-		return fmt.Errorf("query `%s` returned error: %w", s.Query, err)
+		return fmt.Errorf("%w from query: %s", err, FormatQuery(s.query, s.args...))
 	}
 	return nil
 }
 
 func (s *RowsScanner) ScanStructSlice(dest interface{}) error {
-	err := ScanRowsAsSlice(s.Context, s.Rows, dest, s.StructFieldNamer)
+	err := ScanRowsAsSlice(s.ctx, s.rows, dest, s.structFieldNamer)
 	if err != nil {
-		return fmt.Errorf("query `%s` returned error: %w", s.Query, err)
+		return fmt.Errorf("%w from query: %s", err, FormatQuery(s.query, s.args...))
 	}
 	return nil
 }
 
 func (s *RowsScanner) ScanStrings(headerRow bool) (rows [][]string, err error) {
-	cols, err := s.Rows.Columns()
+	cols, err := s.rows.Columns()
 	if err != nil {
 		return nil, err
 	}
@@ -60,27 +65,25 @@ func (s *RowsScanner) ScanStrings(headerRow bool) (rows [][]string, err error) {
 
 func (s *RowsScanner) ForEachRow(callback func(sqldb.RowScanner) error) (err error) {
 	defer func() {
-		if err != nil {
-			err = fmt.Errorf("query `%s` returned error: %w", s.Query, err)
-		}
-		s.Rows.Close()
+		s.rows.Close()
+		err = WrapNonNilErrorWithQuery(err, s.query, s.args)
 	}()
 
-	for s.Rows.Next() {
-		if s.Context.Err() != nil {
-			return s.Context.Err()
+	for s.rows.Next() {
+		if s.ctx.Err() != nil {
+			return s.ctx.Err()
 		}
 
-		err := callback(CurrentRowScanner{s.Rows, s.StructFieldNamer})
+		err := callback(CurrentRowScanner{s.rows, s.structFieldNamer})
 		if err != nil {
 			return err
 		}
 	}
-	return s.Rows.Err()
+	return s.rows.Err()
 }
 
 func (s *RowsScanner) ForEachRowCall(callback interface{}) error {
-	forEachRowFunc, err := ForEachRowCallFunc(s.Context, callback)
+	forEachRowFunc, err := ForEachRowCallFunc(s.ctx, callback)
 	if err != nil {
 		return err
 	}

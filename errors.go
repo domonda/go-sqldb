@@ -6,15 +6,6 @@ import (
 	"errors"
 )
 
-// ErrNoRows
-
-// RemoveErrNoRows returns nil if errors.Is(err, sql.ErrNoRows)
-// or else err is returned unchanged.
-// TODO remove function and use ReplaceErrNoRows instead.
-func RemoveErrNoRows(err error) error {
-	return ReplaceErrNoRows(err, nil)
-}
-
 // ReplaceErrNoRows returns the passed replacement error
 // if errors.Is(err, sql.ErrNoRows),
 // else err is returned unchanged.
@@ -47,15 +38,22 @@ const (
 
 // ConnectionWithError returns a dummy Connection
 // where all methods return the passed error.
-func ConnectionWithError(err error) Connection {
+func ConnectionWithError(ctx context.Context, err error) Connection {
 	if err == nil {
-		panic("ConnectionWithError(nil) not allowed")
+		panic("ConnectionWithError needs an error")
 	}
-	return connectionWithError{err}
+	return connectionWithError{ctx, err}
 }
 
 type connectionWithError struct {
+	ctx context.Context
 	err error
+}
+
+func (e connectionWithError) Context() context.Context { return e.ctx }
+
+func (e connectionWithError) WithContext(ctx context.Context) Connection {
+	return connectionWithError{ctx: ctx, err: e.err}
 }
 
 func (e connectionWithError) WithStructFieldNamer(namer StructFieldNamer) Connection {
@@ -66,7 +64,7 @@ func (e connectionWithError) StructFieldNamer() StructFieldNamer {
 	return &DefaultStructFieldTagNaming
 }
 
-func (e connectionWithError) Ping(ctx context.Context) error {
+func (e connectionWithError) Ping() error {
 	return e.err
 }
 
@@ -82,15 +80,7 @@ func (e connectionWithError) Exec(query string, args ...interface{}) error {
 	return e.err
 }
 
-func (e connectionWithError) ExecContext(ctx context.Context, query string, args ...interface{}) error {
-	return e.err
-}
-
 func (e connectionWithError) Insert(table string, values Values) error {
-	return e.err
-}
-
-func (e connectionWithError) InsertContext(ctx context.Context, table string, values Values) error {
 	return e.err
 }
 
@@ -98,15 +88,7 @@ func (e connectionWithError) InsertUnique(table string, values Values, onConflic
 	return false, e.err
 }
 
-func (e connectionWithError) InsertUniqueContext(ctx context.Context, table string, values Values, onConflict string) (inserted bool, err error) {
-	return false, e.err
-}
-
 func (e connectionWithError) InsertReturning(table string, values Values, returning string) RowScanner {
-	return RowScannerWithError(e.err)
-}
-
-func (e connectionWithError) InsertReturningContext(ctx context.Context, table string, values Values, returning string) RowScanner {
 	return RowScannerWithError(e.err)
 }
 
@@ -114,15 +96,7 @@ func (e connectionWithError) InsertStruct(table string, rowStruct interface{}, r
 	return e.err
 }
 
-func (e connectionWithError) InsertStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error {
-	return e.err
-}
-
 func (e connectionWithError) InsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
-	return e.err
-}
-
-func (e connectionWithError) InsertStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
 	return e.err
 }
 
@@ -130,15 +104,7 @@ func (e connectionWithError) InsertUniqueStruct(table string, rowStruct interfac
 	return false, e.err
 }
 
-func (e connectionWithError) InsertUniqueStructContext(ctx context.Context, table string, rowStruct interface{}, onConflict string, restrictToColumns ...string) (inserted bool, err error) {
-	return false, e.err
-}
-
 func (e connectionWithError) InsertUniqueStructIgnoreColumns(table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
-	return false, e.err
-}
-
-func (e connectionWithError) InsertUniqueStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
 	return false, e.err
 }
 
@@ -146,15 +112,7 @@ func (e connectionWithError) Update(table string, values Values, where string, a
 	return e.err
 }
 
-func (e connectionWithError) UpdateContext(ctx context.Context, table string, values Values, where string, args ...interface{}) error {
-	return e.err
-}
-
 func (e connectionWithError) UpdateReturningRow(table string, values Values, returning, where string, args ...interface{}) RowScanner {
-	return RowScannerWithError(e.err)
-}
-
-func (e connectionWithError) UpdateReturningRowContext(ctx context.Context, table string, values Values, returning, where string, args ...interface{}) RowScanner {
 	return RowScannerWithError(e.err)
 }
 
@@ -162,15 +120,7 @@ func (e connectionWithError) UpdateReturningRows(table string, values Values, re
 	return RowsScannerWithError(e.err)
 }
 
-func (e connectionWithError) UpdateReturningRowsContext(ctx context.Context, table string, values Values, returning, where string, args ...interface{}) RowsScanner {
-	return RowsScannerWithError(e.err)
-}
-
 func (e connectionWithError) UpdateStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
-	return e.err
-}
-
-func (e connectionWithError) UpdateStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error {
 	return e.err
 }
 
@@ -178,15 +128,7 @@ func (e connectionWithError) UpdateStructIgnoreColumns(table string, rowStruct i
 	return e.err
 }
 
-func (e connectionWithError) UpdateStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
-	return e.err
-}
-
 func (e connectionWithError) UpsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
-	return e.err
-}
-
-func (e connectionWithError) UpsertStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error {
 	return e.err
 }
 
@@ -194,15 +136,7 @@ func (e connectionWithError) UpsertStructIgnoreColumns(table string, rowStruct i
 	return e.err
 }
 
-func (e connectionWithError) UpsertStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error {
-	return e.err
-}
-
 func (e connectionWithError) QueryRow(query string, args ...interface{}) RowScanner {
-	return RowScannerWithError(e.err)
-}
-
-func (e connectionWithError) QueryRowContext(ctx context.Context, query string, args ...interface{}) RowScanner {
 	return RowScannerWithError(e.err)
 }
 
@@ -210,15 +144,11 @@ func (e connectionWithError) QueryRows(query string, args ...interface{}) RowsSc
 	return RowsScannerWithError(e.err)
 }
 
-func (e connectionWithError) QueryRowsContext(ctx context.Context, query string, args ...interface{}) RowsScanner {
-	return RowsScannerWithError(e.err)
-}
-
 func (e connectionWithError) IsTransaction() bool {
 	return false
 }
 
-func (e connectionWithError) Begin(ctx context.Context, opts *sql.TxOptions) (Connection, error) {
+func (e connectionWithError) Begin(opts *sql.TxOptions) (Connection, error) {
 	return nil, e.err
 }
 
@@ -230,7 +160,7 @@ func (e connectionWithError) Rollback() error {
 	return e.err
 }
 
-func (e connectionWithError) Transaction(ctx context.Context, opts *sql.TxOptions, txFunc func(tx Connection) error) error {
+func (e connectionWithError) Transaction(opts *sql.TxOptions, txFunc func(tx Connection) error) error {
 	return e.err
 }
 
@@ -255,9 +185,6 @@ func (e connectionWithError) Close() error {
 // RowScannerWithError returns a dummy RowScanner
 // where all methods return the passed error.
 func RowScannerWithError(err error) RowScanner {
-	if err == nil {
-		panic("RowScannerWithError(nil) not allowed")
-	}
 	return rowScannerWithError{err}
 }
 
@@ -282,9 +209,6 @@ func (e rowScannerWithError) ScanStrings() ([]string, error) {
 // RowsScannerWithError returns a dummy RowsScanner
 // where all methods return the passed error.
 func RowsScannerWithError(err error) RowsScanner {
-	if err == nil {
-		panic("RowsScannerWithError(nil) not allowed")
-	}
 	return rowsScannerWithError{err}
 }
 

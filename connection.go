@@ -12,6 +12,10 @@ type (
 
 // Connection represents a database connection or transaction
 type Connection interface {
+	// WithContext returns a connection that uses the passed
+	// context for its operations.
+	WithContext(ctx context.Context) Connection
+
 	// WithStructFieldNamer returns a copy of the connection
 	// that will use the passed StructFieldNamer.
 	WithStructFieldNamer(namer StructFieldNamer) Connection
@@ -21,7 +25,7 @@ type Connection interface {
 
 	// Ping returns an error if the database
 	// does not answer on this connection.
-	Ping(ctx context.Context) error
+	Ping() error
 
 	// Stats returns the sql.DBStats of this connection.
 	Stats() sql.DBStats
@@ -33,32 +37,17 @@ type Connection interface {
 	// Exec executes a query with optional args.
 	Exec(query string, args ...interface{}) error
 
-	// ExecContext executes a query with optional args.
-	ExecContext(ctx context.Context, query string, args ...interface{}) error
-
 	// Insert a new row into table using the values.
 	Insert(table string, values Values) error
-
-	// InsertContext inserts a new row into table using the values.
-	InsertContext(ctx context.Context, table string, values Values) error
 
 	// InsertUnique inserts a new row into table using the passed values
 	// or does nothing if the onConflict statement applies.
 	// Returns if a row was inserted.
 	InsertUnique(table string, values Values, onConflict string) (inserted bool, err error)
 
-	// InsertUniqueContext inserts a new row into table using the passed values
-	// or does nothing if the onConflict statement applies.
-	// Returns if a row was inserted.
-	InsertUniqueContext(ctx context.Context, table string, values Values, onConflict string) (inserted bool, err error)
-
 	// InsertReturning inserts a new row into table using values
 	// and returns values from the inserted row listed in returning.
 	InsertReturning(table string, values Values, returning string) RowScanner
-
-	// InsertReturningContext inserts a new row into table using values
-	// and returns values from the inserted row listed in returning.
-	InsertReturningContext(ctx context.Context, table string, values Values, returning string) RowScanner
 
 	// InsertStruct inserts a new row into table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
@@ -66,21 +55,10 @@ type Connection interface {
 	// matching any of the passed column names will be used.
 	InsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error
 
-	// InsertStructContext inserts a new row into table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// If restrictToColumns are provided, then only struct fields with a `db` tag
-	// matching any of the passed column names will be used.
-	InsertStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error
-
 	// InsertStructIgnoreColumns inserts a new row into table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	InsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error
-
-	// InsertStructIgnoreColumnsContext inserts a new row into table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
-	InsertStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error
 
 	// InsertUniqueStruct inserts a new row into table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
@@ -89,46 +67,22 @@ type Connection interface {
 	// Does nothing if the onConflict statement applies and returns if a row was inserted.
 	InsertUniqueStruct(table string, rowStruct interface{}, onConflict string, restrictToColumns ...string) (inserted bool, err error)
 
-	// InsertUniqueStructContext inserts a new row into table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// If restrictToColumns are provided, then only struct fields with a `db` tag
-	// matching any of the passed column names will be used.
-	// Does nothing if the onConflict statement applies and returns if a row was inserted.
-	InsertUniqueStructContext(ctx context.Context, table string, rowStruct interface{}, onConflict string, restrictToColumns ...string) (inserted bool, err error)
-
 	// InsertUniqueStructIgnoreColumns inserts a new row into table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	// Does nothing if the onConflict statement applies and returns if a row was inserted.
 	InsertUniqueStructIgnoreColumns(table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error)
 
-	// InsertUniqueStructIgnoreColumnsContext inserts a new row into table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
-	// Does nothing if the onConflict statement applies and returns if a row was inserted.
-	InsertUniqueStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error)
-
 	// Update table rows(s) with values using the where statement with passed in args starting at $1.
 	Update(table string, values Values, where string, args ...interface{}) error
-
-	// UpdateContext updates table rows(s) with values using the where statement with passed in args starting at $1.
-	UpdateContext(ctx context.Context, table string, values Values, where string, args ...interface{}) error
 
 	// UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
 	// and returning a single row with the columns specified in returning argument.
 	UpdateReturningRow(table string, values Values, returning, where string, args ...interface{}) RowScanner
 
-	// UpdateReturningRowContext updates a table row with values using the where statement with passed in args starting at $1
-	// and returning a single row with the columns specified in returning argument.
-	UpdateReturningRowContext(ctx context.Context, table string, values Values, returning, where string, args ...interface{}) RowScanner
-
 	// UpdateReturningRows updates table rows with values using the where statement with passed in args starting at $1
 	// and returning multiple rows with the columns specified in returning argument.
 	UpdateReturningRows(table string, values Values, returning, where string, args ...interface{}) RowsScanner
-
-	// UpdateReturningRowsContext updates table rows with values using the where statement with passed in args starting at $1
-	// and returning multiple rows with the columns specified in returning argument.
-	UpdateReturningRowsContext(ctx context.Context, table string, values Values, returning, where string, args ...interface{}) RowsScanner
 
 	// UpdateStruct updates a row in a table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
@@ -138,27 +92,12 @@ type Connection interface {
 	// to mark primary key column(s).
 	UpdateStruct(table string, rowStruct interface{}, restrictToColumns ...string) error
 
-	// UpdateStructContext updates a row in a table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// If restrictToColumns are provided, then only struct fields with a `db` tag
-	// matching any of the passed column names will be used.
-	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
-	// to mark primary key column(s).
-	UpdateStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error
-
 	// UpdateStructIgnoreColumns updates a row in a table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
 	// to mark primary key column(s).
 	UpdateStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error
-
-	// UpdateStructIgnoreColumnsContext updates a row in a table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
-	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
-	// to mark primary key column(s).
-	UpdateStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error
 
 	// UpsertStruct upserts a row to table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
@@ -169,15 +108,6 @@ type Connection interface {
 	// If inserting conflicts on the primary key column(s), then an update is performed.
 	UpsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error
 
-	// UpsertStructContext upserts a row to table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// If restrictToColumns are provided, then only struct fields with a `db` tag
-	// matching any of the passed column names will be used.
-	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
-	// to mark primary key column(s).
-	// If inserting conflicts on the primary key column(s), then an update is performed.
-	UpsertStructContext(ctx context.Context, table string, rowStruct interface{}, restrictToColumns ...string) error
-
 	// UpsertStructIgnoreColumns upserts a row to table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
@@ -186,25 +116,11 @@ type Connection interface {
 	// If inserting conflicts on the primary key column(s), then an update is performed.
 	UpsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error
 
-	// UpsertStructIgnoreColumnsContext upserts a row to table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
-	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
-	// to mark primary key column(s).
-	// If inserting conflicts on the primary key column(s), then an update is performed.
-	UpsertStructIgnoreColumnsContext(ctx context.Context, table string, rowStruct interface{}, ignoreColumns ...string) error
-
 	// QueryRow queries a single row and returns a RowScanner for the results.
 	QueryRow(query string, args ...interface{}) RowScanner
 
-	// QueryRowContext queries a single row and returns a RowScanner for the results.
-	QueryRowContext(ctx context.Context, query string, args ...interface{}) RowScanner
-
 	// QueryRows queries multiple rows and returns a RowsScanner for the results.
 	QueryRows(query string, args ...interface{}) RowsScanner
-
-	// QueryRowsContext queries multiple rows and returns a RowsScanner for the results.
-	QueryRowsContext(ctx context.Context, query string, args ...interface{}) RowsScanner
 
 	// IsTransaction returns if the connection is a transaction
 	IsTransaction() bool
@@ -212,7 +128,7 @@ type Connection interface {
 	// Begin a new transaction.
 	// Returns ErrWithinTransaction if the connection
 	// is already within a transaction.
-	Begin(ctx context.Context, opts *sql.TxOptions) (Connection, error)
+	Begin(opts *sql.TxOptions) (Connection, error)
 
 	// Commit the current transaction.
 	// Returns ErrNotWithinTransaction if the connection
@@ -223,14 +139,6 @@ type Connection interface {
 	// Returns ErrNotWithinTransaction if the connection
 	// is not within a transaction.
 	Rollback() error
-
-	// Transaction executes txFunc within a database transaction that is passed in to txFunc as tx sqldb.Connection.
-	// Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
-	// If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
-	// and no parentConn.Begin, Commit, or Rollback calls will occour within this Transaction call.
-	// Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
-	// Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
-	Transaction(ctx context.Context, opts *sql.TxOptions, txFunc func(tx Connection) error) error
 
 	// ListenOnChannel will call onNotify for every channel notification
 	// and onUnlisten if the channel gets unlistened

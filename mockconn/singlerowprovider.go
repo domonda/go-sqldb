@@ -1,6 +1,8 @@
 package mockconn
 
 import (
+	"context"
+
 	sqldb "github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/impl"
 )
@@ -12,9 +14,9 @@ type SingleRowProvider struct {
 }
 
 func (p *SingleRowProvider) QueryRow(structFieldNamer sqldb.StructFieldNamer, query string, args ...interface{}) sqldb.RowScanner {
-	return &impl.RowScanner{Query: query, Rows: impl.RowAsRows(p.Row), StructFieldNamer: structFieldNamer}
+	return impl.NewRowScanner(impl.RowAsRows(p.Row), structFieldNamer, query, args)
 }
 
 func (p *SingleRowProvider) QueryRows(structFieldNamer sqldb.StructFieldNamer, query string, args ...interface{}) sqldb.RowsScanner {
-	return &impl.RowsScanner{Query: query, Rows: NewRows(p.Row), StructFieldNamer: structFieldNamer}
+	return impl.NewRowsScanner(context.Background(), NewRows(p.Row), structFieldNamer, query, args)
 }

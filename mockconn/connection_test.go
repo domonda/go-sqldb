@@ -2,6 +2,7 @@ package mockconn
 
 import (
 	"bytes"
+	"context"
 	"testing"
 	"time"
 
@@ -33,7 +34,7 @@ func TestInsertQuery(t *testing.T) {
 	naming := sqldb.StructFieldTagNaming{NameTag: "db", UntaggedNameFunc: sqldb.ToSnakeCase}
 	queryOutput := bytes.NewBuffer(nil)
 	rowProvider := &SingleRowProvider{Row: NewRow(struct{ True bool }{true}, naming)}
-	conn := New(queryOutput, rowProvider)
+	conn := New(context.Background(), queryOutput, rowProvider)
 
 	str := "Hello World!"
 	values := sqldb.Values{
@@ -63,7 +64,7 @@ func TestInsertQuery(t *testing.T) {
 
 func TestInsertStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	conn := New(queryOutput, nil)
+	conn := New(context.Background(), queryOutput, nil)
 
 	row := new(testRow)
 
@@ -89,7 +90,7 @@ func TestInsertUniqueStructQuery(t *testing.T) {
 	naming := sqldb.StructFieldTagNaming{NameTag: "db", UntaggedNameFunc: sqldb.ToSnakeCase}
 	queryOutput := bytes.NewBuffer(nil)
 	rowProvider := &SingleRowProvider{Row: NewRow(struct{ True bool }{true}, naming)}
-	conn := New(queryOutput, rowProvider)
+	conn := New(context.Background(), queryOutput, rowProvider)
 
 	row := new(testRow)
 
@@ -116,7 +117,7 @@ func TestInsertUniqueStructQuery(t *testing.T) {
 
 func TestUpdateQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	conn := New(queryOutput, nil)
+	conn := New(context.Background(), queryOutput, nil)
 
 	str := "Hello World!"
 	values := sqldb.Values{
@@ -144,7 +145,7 @@ func TestUpdateQuery(t *testing.T) {
 
 func TestUpdateReturningQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	conn := New(queryOutput, nil)
+	conn := New(context.Background(), queryOutput, nil)
 
 	str := "Hello World!"
 	values := sqldb.Values{
@@ -172,7 +173,7 @@ func TestUpdateReturningQuery(t *testing.T) {
 
 func TestUpdateStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	conn := New(queryOutput, nil)
+	conn := New(context.Background(), queryOutput, nil)
 
 	row := new(testRow)
 
@@ -196,7 +197,7 @@ func TestUpdateStructQuery(t *testing.T) {
 
 func TestUpsertStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	conn := New(queryOutput, nil)
+	conn := New(context.Background(), queryOutput, nil)
 
 	row := new(testRow)
 	expected := `INSERT INTO public.table("id","int","bool","str","str_ptr","nil_ptr","untagged_field","created_at","bools") VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)` +
@@ -217,7 +218,7 @@ type multiPrimaryKeyRow struct {
 
 func TestUpsertStructMultiPKQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	conn := New(queryOutput, nil)
+	conn := New(context.Background(), queryOutput, nil)
 
 	row := new(multiPrimaryKeyRow)
 	expected := `INSERT INTO public.multi_pk("first_id","second_id","third_id","created_at") VALUES($1,$2,$3,$4) ON CONFLICT("first_id","second_id","third_id") DO UPDATE SET "created_at"=$4`
@@ -229,7 +230,7 @@ func TestUpsertStructMultiPKQuery(t *testing.T) {
 
 func TestUpdateStructMultiPKQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	conn := New(queryOutput, nil)
+	conn := New(context.Background(), queryOutput, nil)
 
 	row := new(multiPrimaryKeyRow)
 	expected := `UPDATE public.multi_pk SET "created_at"=$4 WHERE "first_id"=$1 AND "second_id"=$2 AND "third_id"=$3`
