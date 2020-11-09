@@ -1,5 +1,12 @@
 package sqldb
 
+import (
+	"context"
+	"fmt"
+
+	"github.com/domonda/go-sqldb/impl"
+)
+
 // RowsScanner scans the values from multiple rows.
 type RowsScanner interface {
 	// ScanSlice scans one value per row into one slice element of dest.
@@ -39,4 +46,86 @@ type RowsScanner interface {
 	// is returned immediately by this function without scanning further rows.
 	// In case of zero rows, no error will be returned.
 	ForEachRowCall(callback interface{}) error
+}
+
+type rowsScanner struct {
+	ctx              context.Context // ctx is checked for every row and passed through to callbacks
+	rows             Rows
+	structFieldNamer StructFieldNamer
+	query            string        // for error wrapping
+	args             []interface{} // for error wrapping
+}
+
+func newRowsScanner(ctx context.Context, rows Rows, structFieldNamer StructFieldNamer, query string, args []interface{}) RowsScanner {
+	return &rowsScanner{ctx, rows, structFieldNamer, query, args}
+}
+
+func (s *rowsScanner) ScanSlice(dest interface{}) error {
+	err := impl.ScanRowsAsSlice(s.ctx, s.rows, dest, nil)
+	if err != nil {
+		return fmt.Errorf("%w from query: %s", err, impl.FormatQuery(s.query, s.args...))
+	}
+	return nil
+}
+
+func (s *rowsScanner) ScanStructSlice(dest interface{}) error {
+	err := impl.ScanRowsAsSlice(s.ctx, s.rows, dest, s.structFieldNamer)
+	if err != nil {
+		return fmt.Errorf("%w from query: %s", err, impl.FormatQuery(s.query, s.args...))
+	}
+	return nil
+}
+
+func (s *rowsScanner) ScanStrings(headerRow bool) (rows [][]string, err error) {
+	cols, err := s.rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+	if headerRow {
+		rows = [][]string{cols}
+	}
+	stringScannablePtrs := make([]interface{}, len(cols))
+	err = s.ForEachRow(func(rowScanner RowScanner) error {
+		row := make([]string, len(cols))
+		for i := range stringScannablePtrs {
+			stringScannablePtrs[i] = (*StringScannable)(&row[i])
+		}
+		err := rowScanner.Scan(stringScannablePtrs...)
+		if err != nil {
+			return err
+		}
+		rows = append(rows, row)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
+
+func (s *rowsScanner) ForEachRow(callback func(RowScanner) error) (err error) {
+	defer func() {
+		s.rows.Close()
+		err = impl.WrapNonNilErrorWithQuery(err, s.query, s.args)
+	}()
+
+	for s.rows.Next() {
+		if s.ctx.Err() != nil {
+			return s.ctx.Err()
+		}
+
+		err := callback(CurrentRowScanner{s.rows, s.structFieldNamer})
+		if err != nil {
+			return err
+		}
+	}
+	return s.rows.Err()
+}
+
+func (s *rowsScanner) ForEachRowCall(callback interface{}) error {
+	forEachRowFunc, err := impl.ForEachRowCallFunc(s.ctx, callback)
+	if err != nil {
+		return err
+	}
+	return s.ForEachRow(forEachRowFunc)
 }

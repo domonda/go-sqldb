@@ -44,6 +44,10 @@ func (c *Config) ConnectURL() string {
 	return u.String()
 }
 
+func (c *Config) String() string {
+	return "sqldb.Config: " + c.ConnectURL()
+}
+
 // Connect opens a new sql.DB connection,
 // sets all Config values and performs a ping with ctx.
 // The sql.DB will be returned if the ping was successful.

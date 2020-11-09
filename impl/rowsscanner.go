@@ -10,13 +10,13 @@ import (
 // RowsScanner implements sqldb.RowsScanner with Rows
 type RowsScanner struct {
 	ctx              context.Context // ctx is checked for every row and passed through to callbacks
-	rows             Rows
+	rows             sqldb.Rows
 	structFieldNamer sqldb.StructFieldNamer
 	query            string        // for error wrapping
 	args             []interface{} // for error wrapping
 }
 
-func NewRowsScanner(ctx context.Context, rows Rows, structFieldNamer sqldb.StructFieldNamer, query string, args []interface{}) *RowsScanner {
+func NewRowsScanner(ctx context.Context, rows sqldb.Rows, structFieldNamer sqldb.StructFieldNamer, query string, args []interface{}) *RowsScanner {
 	return &RowsScanner{ctx, rows, structFieldNamer, query, args}
 }
 

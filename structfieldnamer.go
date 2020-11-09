@@ -7,6 +7,8 @@ import (
 	"unicode"
 )
 
+var TODO_StructFieldNamer = DefaultStructFieldTagNaming
+
 // StructFieldNamer is used to map struct type fields to column names
 // and indicate if the column is a primary key.
 type StructFieldNamer interface {

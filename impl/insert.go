@@ -1,6 +1,7 @@
 package impl
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -9,7 +10,7 @@ import (
 )
 
 // Insert a new row into table using the values.
-func Insert(conn sqldb.Connection, table string, values sqldb.Values) error {
+func Insert(conn sqldb.DB, table string, values sqldb.Values) error {
 	if len(values) == 0 {
 		return fmt.Errorf("Insert into table %s: no values", table)
 	}
@@ -19,15 +20,13 @@ func Insert(conn sqldb.Connection, table string, values sqldb.Values) error {
 	writeInsertQuery(&b, table, names)
 	query := b.String()
 
-	err := conn.Exec(query, vals...)
-
-	return WrapNonNilErrorWithQuery(err, query, vals)
+	return conn.Exec(context.TODO(), query, vals)
 }
 
 // InsertUnique inserts a new row into table using the passed values
 // or does nothing if the onConflict statement applies.
 // Returns if a row was inserted.
-func InsertUnique(conn sqldb.Connection, table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
+func InsertUnique(conn sqldb.DB, table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
 	if len(values) == 0 {
 		return false, fmt.Errorf("InsertUnique into table %s: no values", table)
 	}
@@ -37,13 +36,13 @@ func InsertUnique(conn sqldb.Connection, table string, values sqldb.Values, onCo
 	writeInsertQuery(&query, table, names)
 	fmt.Fprintf(&query, " ON CONFLICT %s DO NOTHING RETURNING TRUE", onConflict)
 
-	err = conn.QueryRow(query.String(), vals...).Scan(&inserted)
+	err = conn.QueryRow(context.TODO(), query.String(), vals).Scan(&inserted)
 	return inserted, sqldb.ReplaceErrNoRows(err, nil)
 }
 
 // InsertReturning inserts a new row into table using values
 // and returns values from the inserted row listed in returning.
-func InsertReturning(conn sqldb.Connection, table string, values sqldb.Values, returning string) sqldb.RowScanner {
+func InsertReturning(conn sqldb.DB, table string, values sqldb.Values, returning string) sqldb.RowScanner {
 	if len(values) == 0 {
 		return sqldb.RowScannerWithError(fmt.Errorf("InsertReturning into table %s: no values", table))
 	}
@@ -53,7 +52,7 @@ func InsertReturning(conn sqldb.Connection, table string, values sqldb.Values, r
 	writeInsertQuery(&query, table, names)
 	query.WriteString(" RETURNING ")
 	query.WriteString(returning)
-	return conn.QueryRow(query.String(), vals...)
+	return conn.QueryRow(context.TODO(), query.String(), vals...)
 }
 
 func writeInsertQuery(w *strings.Builder, table string, names []string) {
@@ -81,7 +80,7 @@ func writeInsertQuery(w *strings.Builder, table string, names []string) {
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
-func InsertStruct(conn sqldb.Connection, table string, rowStruct interface{}, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) error {
+func InsertStruct(conn sqldb.DB, table string, rowStruct interface{}, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) error {
 	columns, vals, err := insertStructValues(table, rowStruct, namer, ignoreColumns, restrictToColumns)
 	if err != nil {
 		return err
@@ -91,12 +90,10 @@ func InsertStruct(conn sqldb.Connection, table string, rowStruct interface{}, na
 	writeInsertQuery(&b, table, columns)
 	query := b.String()
 
-	err = conn.Exec(query, vals...)
-
-	return WrapNonNilErrorWithQuery(err, query, vals)
+	return conn.Exec(context.TODO(), query, vals)
 }
 
-func InsertUniqueStruct(conn sqldb.Connection, table string, rowStruct interface{}, onConflict string, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) (inserted bool, err error) {
+func InsertUniqueStruct(conn sqldb.DB, table string, rowStruct interface{}, onConflict string, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) (inserted bool, err error) {
 	columns, vals, err := insertStructValues(table, rowStruct, namer, ignoreColumns, restrictToColumns)
 	if err != nil {
 		return false, err
@@ -109,7 +106,7 @@ func InsertUniqueStruct(conn sqldb.Connection, table string, rowStruct interface
 
 	err = conn.QueryRow(query, vals...).Scan(&inserted)
 	err = sqldb.ReplaceErrNoRows(err, nil)
-	err = WrapNonNilErrorWithQuery(err, query, vals)
+	// err = WrapNonNilErrorWithQuery(err, query, vals)
 
 	return inserted, err
 }
