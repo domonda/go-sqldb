@@ -23,11 +23,11 @@ func (f StructFieldNamerFunc) StructFieldName(field reflect.StructField) (name s
 }
 
 // DefaultStructFieldTagNaming provides the default StructFieldTagNaming
-// using "db" as NameTag and ToSnakeCase as UntaggedNameFunc.
+// using "db" as NameTag and IgnoreField as UntaggedNameFunc.
 // Implements StructFieldNamer.
 var DefaultStructFieldTagNaming = StructFieldTagNaming{
 	NameTag:          "db",
-	UntaggedNameFunc: ToSnakeCase,
+	UntaggedNameFunc: IgnoreField,
 }
 
 // StructFieldTagNaming implements StructFieldNamer with a struct field NameTag
@@ -63,6 +63,10 @@ func (n StructFieldTagNaming) StructFieldName(field reflect.StructField) (name s
 func (n StructFieldTagNaming) String() string {
 	return fmt.Sprintf("NameTag: %q", n.NameTag)
 }
+
+// IgnoreField can be used as StructFieldTagNaming.UntaggedNameFunc
+// to ignore fields that don't have StructFieldTagNaming.NameTag.
+func IgnoreField(string) string { return "-" }
 
 // ToSnakeCase converts s to snake case
 // by lower casing everything and inserting '_'
