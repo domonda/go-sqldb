@@ -45,7 +45,7 @@ func ScanStruct(srcRow Row, destStruct interface{}, namer sqldb.StructFieldNamer
 		return fmt.Errorf("ScanStruct: %T has no exported struct fieldPointers", destStruct)
 	}
 	if len(fieldPointers) != len(cols) {
-		return fmt.Errorf("ScanStruct: %T ", destStruct)
+		return fmt.Errorf("ScanStruct: %T has %d fields to scan, but database row has %d columns", destStruct, len(fieldPointers), len(cols))
 	}
 
 	dest := make([]interface{}, len(cols))
