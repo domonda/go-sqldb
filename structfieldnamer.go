@@ -42,8 +42,7 @@ type StructFieldTagNaming struct {
 }
 
 func (n StructFieldTagNaming) StructFieldName(field reflect.StructField) (name string, pk, ok bool) {
-	if field.Anonymous || (field.Type.Kind() == reflect.Struct && field.Type.Name() == "") {
-		// Either an embedded struct or inline declared struct type
+	if field.Anonymous {
 		name, hasTag := field.Tag.Lookup(n.NameTag)
 		if !hasTag {
 			// Embedded struct fields are ok if not tagged with IgnoreName

@@ -175,8 +175,7 @@ func getStructFieldIndices(structType reflect.Type, namer sqldb.StructFieldNamer
 			continue
 		}
 
-		if field.Anonymous || (field.Type.Kind() == reflect.Struct && field.Type.Name() == "") {
-			// Either an embedded struct or inline declared struct type
+		if field.Anonymous {
 			err := getStructFieldIndices(field.Type, namer, append(parentIndices, field.Index...), outFieldIndices)
 			if err != nil {
 				return err

@@ -22,18 +22,17 @@ func TestGetStructFieldIndices(t *testing.T) {
 		embeddedStruct
 		UntaggedField int
 		Struct        struct {
-			AnomStructInt int `db:"anom_struct_int"`
+			InlineStructInt int `db:"inline_struct_int"`
 		}
 		NilPtr *byte `db:"nil_ptr"`
 	}
 
 	fieldIndices := map[string][]int{
-		"id":              {0},
-		"int":             {1},
-		"deep_emb_int":    {3, 0, 0},
-		"emb_int":         {3, 1},
-		"anom_struct_int": {5, 0},
-		"nil_ptr":         {6},
+		"id":           {0},
+		"int":          {1},
+		"deep_emb_int": {3, 0, 0},
+		"emb_int":      {3, 1},
+		"nil_ptr":      {6},
 	}
 	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.IgnoreStructField}
 
