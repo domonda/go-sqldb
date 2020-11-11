@@ -31,10 +31,10 @@ type testRow struct {
 }
 
 func TestInsertQuery(t *testing.T) {
-	naming := sqldb.StructFieldTagNaming{NameTag: "db", UntaggedNameFunc: sqldb.ToSnakeCase}
+	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
 	queryOutput := bytes.NewBuffer(nil)
 	rowProvider := &SingleRowProvider{Row: NewRow(struct{ True bool }{true}, naming)}
-	conn := New(context.Background(), queryOutput, rowProvider)
+	conn := New(context.Background(), queryOutput, rowProvider).WithStructFieldNamer(naming)
 
 	str := "Hello World!"
 	values := sqldb.Values{
@@ -64,7 +64,8 @@ func TestInsertQuery(t *testing.T) {
 
 func TestInsertStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	conn := New(context.Background(), queryOutput, nil)
+	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	conn := New(context.Background(), queryOutput, nil).WithStructFieldNamer(naming)
 
 	row := new(testRow)
 
@@ -87,10 +88,10 @@ func TestInsertStructQuery(t *testing.T) {
 }
 
 func TestInsertUniqueStructQuery(t *testing.T) {
-	naming := sqldb.StructFieldTagNaming{NameTag: "db", UntaggedNameFunc: sqldb.ToSnakeCase}
 	queryOutput := bytes.NewBuffer(nil)
+	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
 	rowProvider := &SingleRowProvider{Row: NewRow(struct{ True bool }{true}, naming)}
-	conn := New(context.Background(), queryOutput, rowProvider)
+	conn := New(context.Background(), queryOutput, rowProvider).WithStructFieldNamer(naming)
 
 	row := new(testRow)
 
@@ -117,7 +118,8 @@ func TestInsertUniqueStructQuery(t *testing.T) {
 
 func TestUpdateQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	conn := New(context.Background(), queryOutput, nil)
+	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	conn := New(context.Background(), queryOutput, nil).WithStructFieldNamer(naming)
 
 	str := "Hello World!"
 	values := sqldb.Values{
@@ -145,7 +147,8 @@ func TestUpdateQuery(t *testing.T) {
 
 func TestUpdateReturningQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	conn := New(context.Background(), queryOutput, nil)
+	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	conn := New(context.Background(), queryOutput, nil).WithStructFieldNamer(naming)
 
 	str := "Hello World!"
 	values := sqldb.Values{
@@ -173,7 +176,8 @@ func TestUpdateReturningQuery(t *testing.T) {
 
 func TestUpdateStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	conn := New(context.Background(), queryOutput, nil)
+	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	conn := New(context.Background(), queryOutput, nil).WithStructFieldNamer(naming)
 
 	row := new(testRow)
 
@@ -197,7 +201,8 @@ func TestUpdateStructQuery(t *testing.T) {
 
 func TestUpsertStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	conn := New(context.Background(), queryOutput, nil)
+	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	conn := New(context.Background(), queryOutput, nil).WithStructFieldNamer(naming)
 
 	row := new(testRow)
 	expected := `INSERT INTO public.table("id","int","bool","str","str_ptr","nil_ptr","untagged_field","created_at","bools") VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)` +
@@ -218,7 +223,8 @@ type multiPrimaryKeyRow struct {
 
 func TestUpsertStructMultiPKQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	conn := New(context.Background(), queryOutput, nil)
+	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	conn := New(context.Background(), queryOutput, nil).WithStructFieldNamer(naming)
 
 	row := new(multiPrimaryKeyRow)
 	expected := `INSERT INTO public.multi_pk("first_id","second_id","third_id","created_at") VALUES($1,$2,$3,$4) ON CONFLICT("first_id","second_id","third_id") DO UPDATE SET "created_at"=$4`
@@ -230,7 +236,8 @@ func TestUpsertStructMultiPKQuery(t *testing.T) {
 
 func TestUpdateStructMultiPKQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	conn := New(context.Background(), queryOutput, nil)
+	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	conn := New(context.Background(), queryOutput, nil).WithStructFieldNamer(naming)
 
 	row := new(multiPrimaryKeyRow)
 	expected := `UPDATE public.multi_pk SET "created_at"=$4 WHERE "first_id"=$1 AND "second_id"=$2 AND "third_id"=$3`

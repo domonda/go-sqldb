@@ -45,7 +45,7 @@ func ScanStruct(srcRow Row, destStruct interface{}, namer sqldb.StructFieldNamer
 		return fmt.Errorf("ScanStruct: %T has no exported struct fieldPointers", destStruct)
 	}
 	if len(fieldPointers) != len(cols) {
-		return fmt.Errorf("ScanStruct: %T has %d fields to scan, but database row has %d columns", destStruct, len(fieldPointers), len(cols))
+		return fmt.Errorf("ScanStruct: %T has %d fields to scan, but database row has %d columns: %v", destStruct, len(fieldPointers), len(cols), cols)
 	}
 
 	dest := make([]interface{}, len(cols))
@@ -71,24 +71,27 @@ func ScanStruct(srcRow Row, destStruct interface{}, namer sqldb.StructFieldNamer
 
 func getStructFieldPointers(v reflect.Value, namer sqldb.StructFieldNamer, ignoreNames, restrictToNames []string, outFieldPtrs map[string]interface{}) error {
 	for i := 0; i < v.NumField(); i++ {
-		fieldType := v.Type().Field(i)
-		fieldValue := v.Field(i)
-		switch {
-		case fieldType.Anonymous:
-			err := getStructFieldPointers(fieldValue, namer, ignoreNames, restrictToNames, outFieldPtrs)
+		field := v.Type().Field(i)
+		name, _, ok := namer.StructFieldName(field)
+		if !ok {
+			continue
+		}
+
+		if field.Anonymous {
+			err := getStructFieldPointers(v.Field(i), namer, ignoreNames, restrictToNames, outFieldPtrs)
 			if err != nil {
 				return err
 			}
-
-		case fieldType.PkgPath == "":
-			name, _ := namer.StructFieldName(fieldType)
-			if validName(name, ignoreNames, restrictToNames) {
-				if _, exists := outFieldPtrs[name]; exists {
-					return fmt.Errorf("ScanStruct: duplicate struct field name or tag %q in %s", name, v.Type())
-				}
-				outFieldPtrs[name] = fieldValue.Addr().Interface()
-			}
+			continue
 		}
+
+		if !validName(name, ignoreNames, restrictToNames) {
+			continue
+		}
+		if outFieldPtrs[name] != nil {
+			return fmt.Errorf("ScanStruct: duplicate struct field name or tag %q in %s", name, v.Type())
+		}
+		outFieldPtrs[name] = v.Field(i).Addr().Interface()
 	}
 	return nil
 }
@@ -101,31 +104,33 @@ func getStructFieldPointers(v reflect.Value, namer sqldb.StructFieldNamer, ignor
 // if the name had the ,pk suffix in their struct field naming tag.
 func structFields(v reflect.Value, namer sqldb.StructFieldNamer, ignoreNames, restrictToNames []string, keepPK bool) (names []string, pkCol []bool, vals []interface{}) {
 	for i := 0; i < v.NumField(); i++ {
-		fieldType := v.Type().Field(i)
-		fieldValue := v.Field(i)
-		switch {
-		case fieldType.Anonymous:
-			embedNames, embedPKs, embedValues := structFields(fieldValue, namer, ignoreNames, restrictToNames, keepPK)
+		field := v.Type().Field(i)
+		name, isPK, ok := namer.StructFieldName(field)
+		if !ok {
+			continue
+		}
+
+		if field.Anonymous {
+			embedNames, embedPKs, embedValues := structFields(v.Field(i), namer, ignoreNames, restrictToNames, keepPK)
 			names = append(names, embedNames...)
 			pkCol = append(pkCol, embedPKs...)
 			vals = append(vals, embedValues...)
+			continue
+		}
 
-		case fieldType.PkgPath == "":
-			name, isPK := namer.StructFieldName(fieldType)
-			if validName(name, ignoreNames, restrictToNames) || (isPK && keepPK && validName(name, nil, nil)) {
-				names = append(names, name)
-				pkCol = append(pkCol, isPK)
-				vals = append(vals, fieldValue.Interface())
-			}
+		if validName(name, ignoreNames, restrictToNames) || (isPK && keepPK && validName(name, nil, nil)) {
+			names = append(names, name)
+			pkCol = append(pkCol, isPK)
+			vals = append(vals, v.Field(i).Interface())
 		}
 	}
 	return names, pkCol, vals
 }
 
-// validName returns if a name not empty or not "-" and not in ignoreNames
+// validName returns if a name not empty and not in ignoreNames
 // and if restrictToNames is not empty, then not in restrictToNames.
 func validName(name string, ignoreNames, restrictToNames []string) bool {
-	if name == "" || name == "-" {
+	if name == "" {
 		return false
 	}
 	for _, ignore := range ignoreNames {
@@ -142,4 +147,48 @@ func validName(name string, ignoreNames, restrictToNames []string) bool {
 		}
 	}
 	return false
+}
+
+func GetStructFieldIndices(t reflect.Type, namer sqldb.StructFieldNamer) (fieldIndices map[string][]int, err error) {
+	fieldIndices = make(map[string][]int)
+	err = getStructFieldIndices(t, namer, nil, fieldIndices)
+	if err != nil {
+		return nil, err
+	}
+	return fieldIndices, nil
+}
+
+func getStructFieldIndices(structType reflect.Type, namer sqldb.StructFieldNamer, parentIndices []int, outFieldIndices map[string][]int) error {
+	t := structType
+	if t.Kind() == reflect.Ptr {
+		t = structType.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return fmt.Errorf("struct or pointer to struct type expected, but got %s", structType)
+	}
+
+	numFields := t.NumField()
+	for i := 0; i < numFields; i++ {
+		field := t.Field(i)
+		name, _, ok := namer.StructFieldName(field)
+		if !ok {
+			continue
+		}
+
+		if field.Anonymous || (field.Type.Kind() == reflect.Struct && field.Type.Name() == "") {
+			// Either an embedded struct or inline declared struct type
+			err := getStructFieldIndices(field.Type, namer, append(parentIndices, field.Index...), outFieldIndices)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		if outFieldIndices[name] != nil {
+			return fmt.Errorf("ScanStruct: duplicate struct field name or tag %q in %s", name, t)
+		}
+		outFieldIndices[name] = append(parentIndices, field.Index...)
+	}
+
+	return nil
 }

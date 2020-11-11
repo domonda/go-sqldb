@@ -21,7 +21,8 @@ func TestRow(t *testing.T) {
 
 	str := "Hello World!"
 	input := Struct{"myID", 66, -1, &str, nil, pq.BoolArray{true, false}}
-	row := NewRow(input, sqldb.DefaultStructFieldTagNaming)
+	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	row := NewRow(input, naming)
 
 	cols, err := row.Columns()
 	assert.NoError(t, err)
