@@ -16,10 +16,12 @@ type StringScannable string
 // all other types are converted with fmt.Sprint(src).
 func (s *StringScannable) Scan(src interface{}) error {
 	switch x := src.(type) {
-	case []byte:
-		*s = StringScannable(x)
 	case nil:
 		*s = ""
+	case string:
+		*s = StringScannable(x)
+	case []byte:
+		*s = StringScannable(x)
 	default:
 		*s = StringScannable(fmt.Sprint(src))
 	}
