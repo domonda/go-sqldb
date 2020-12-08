@@ -32,6 +32,12 @@ func FormatValue(val interface{}) (string, error) {
 
 	v := reflect.ValueOf(val)
 	switch v.Kind() {
+	case reflect.Ptr:
+		if v.IsNil() {
+			return "NULL", nil
+		}
+		return FormatValue(v.Elem().Interface())
+
 	case reflect.Bool:
 		if v.Bool() {
 			return "TRUE", nil

@@ -1,6 +1,7 @@
 package impl
 
 import (
+	"database/sql/driver"
 	"testing"
 	"time"
 )
@@ -12,10 +13,13 @@ func TestFormatValue(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		{name: "nil", val: nil, want: "NULL"},
-		{name: "true", val: true, want: "TRUE"},
-		{name: "false", val: false, want: "FALSE"},
-		// TODO
+		{name: "nil", val: nil, want: `NULL`},
+		{name: "nil string", val: (*string)(nil), want: `NULL`},
+		{name: "nil driver.Valuer", val: (driver.Valuer)(nil), want: `NULL`},
+		{name: "true", val: true, want: `TRUE`},
+		{name: "false", val: false, want: `FALSE`},
+		{name: "string", val: "Hello World!", want: `'Hello World!'`},
+		{name: "string pointer", val: new(string), want: `''`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -45,7 +49,7 @@ func TestFormatQuery(t *testing.T) {
 	  	AND
 	  	created_at >= $1
 	`
-	query1form := `SELECT *
+	query1formatted := `SELECT *
 FROM public.user
 WHERE
 	name = 'Erik''s Test'
@@ -58,13 +62,17 @@ WHERE
 		panic(err)
 	}
 
+	query2 := `UPDATE table SET "v1"=$1,v2=$2 ,"v3" = $3`
+	query2formatted := `UPDATE table SET "v1"='',v2=2 ,"v3" = '3'`
+
 	tests := []struct {
 		name  string
 		query string
 		args  []interface{}
 		want  string
 	}{
-		{name: "query1", query: query1, args: []interface{}{createdAt, true, `Erik's Test`}, want: query1form},
+		{name: "query1", query: query1, args: []interface{}{createdAt, true, `Erik's Test`}, want: query1formatted},
+		{name: "query2", query: query2, args: []interface{}{"", 2, "3"}, want: query2formatted},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
