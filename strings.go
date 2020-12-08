@@ -1,8 +1,18 @@
 package sqldb
 
-import "strings"
+import (
+	"strings"
+	"unicode"
+)
 
-// SanitizeString returns valid UTF-8 without zero byte characters.
+// SanitizeString returns valid UTF-8 without any control code characters.
 func SanitizeString(s string) string {
-	return strings.ReplaceAll(strings.ToValidUTF8(s, ""), "\x00", "")
+	return strings.Map(removeControlCodes, strings.ToValidUTF8(s, ""))
+}
+
+func removeControlCodes(r rune) rune {
+	if unicode.IsControl(r) {
+		return -1
+	}
+	return r
 }
