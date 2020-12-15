@@ -15,11 +15,21 @@ const timeFormat = "'2006-01-02 15:04:05.999999Z07:00:00'"
 
 // FormatValue formats a value for debugging or logging SQL statements.
 func FormatValue(val interface{}) (string, error) {
-	switch x := val.(type) {
-	case nil:
+	if val == nil {
 		return "NULL", nil
+	}
 
+	v := reflect.ValueOf(val)
+
+	switch x := val.(type) {
 	case driver.Valuer:
+		if v.Kind() == reflect.Ptr && v.IsNil() {
+			// Assume nil pointer implementing driver.Valuer is NULL
+			// because if the method Value is implemented by value
+			// the nil pointer will still implement driver.Valuer
+			// but calling Value by value on a nil pointer panics
+			return "NULL", nil
+		}
 		value, err := x.Value()
 		if err != nil {
 			return "", err
@@ -30,7 +40,6 @@ func FormatValue(val interface{}) (string, error) {
 		return x.Format(timeFormat), nil
 	}
 
-	v := reflect.ValueOf(val)
 	switch v.Kind() {
 	case reflect.Ptr:
 		if v.IsNil() {

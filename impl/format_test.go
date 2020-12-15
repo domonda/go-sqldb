@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+type valuer struct{}
+
+func (v valuer) Value() (driver.Value, error) {
+	return "driver.Valuer", nil
+}
+
 func TestFormatValue(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -16,6 +22,9 @@ func TestFormatValue(t *testing.T) {
 		{name: "nil", val: nil, want: `NULL`},
 		{name: "nil string", val: (*string)(nil), want: `NULL`},
 		{name: "nil driver.Valuer", val: (driver.Valuer)(nil), want: `NULL`},
+		{name: "nil driver.Valuer impl", val: (*valuer)(nil), want: `NULL`},
+		{name: "driver.Valuer", val: valuer{}, want: `'driver.Valuer'`},
+		{name: "driver.Valuer ptr", val: &valuer{}, want: `'driver.Valuer'`},
 		{name: "true", val: true, want: `TRUE`},
 		{name: "false", val: false, want: `FALSE`},
 		{name: "string", val: "Hello World!", want: `'Hello World!'`},
