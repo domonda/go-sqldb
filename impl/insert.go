@@ -32,10 +32,14 @@ func InsertUnique(conn sqldb.Connection, table string, values sqldb.Values, onCo
 		return false, fmt.Errorf("InsertUnique into table %s: no values", table)
 	}
 
+	if strings.HasPrefix(onConflict, "(") && strings.HasSuffix(onConflict, ")") {
+		onConflict = onConflict[1 : len(onConflict)-1]
+	}
+
 	names, vals := values.Sorted()
 	var query strings.Builder
 	writeInsertQuery(&query, table, names)
-	fmt.Fprintf(&query, " ON CONFLICT %s DO NOTHING RETURNING TRUE", onConflict)
+	fmt.Fprintf(&query, " ON CONFLICT (%s) DO NOTHING RETURNING TRUE", onConflict)
 
 	err = conn.QueryRow(query.String(), vals...).Scan(&inserted)
 	return inserted, sqldb.ReplaceErrNoRows(err, nil)
@@ -102,9 +106,13 @@ func InsertUniqueStruct(conn sqldb.Connection, table string, rowStruct interface
 		return false, err
 	}
 
+	if strings.HasPrefix(onConflict, "(") && strings.HasSuffix(onConflict, ")") {
+		onConflict = onConflict[1 : len(onConflict)-1]
+	}
+
 	var b strings.Builder
 	writeInsertQuery(&b, table, columns)
-	fmt.Fprintf(&b, " ON CONFLICT %s DO NOTHING RETURNING TRUE", onConflict)
+	fmt.Fprintf(&b, " ON CONFLICT (%s) DO NOTHING RETURNING TRUE", onConflict)
 	query := b.String()
 
 	err = conn.QueryRow(query, vals...).Scan(&inserted)
