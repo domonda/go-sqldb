@@ -55,6 +55,9 @@ type Connection interface {
 	// matching any of the passed column names will be used.
 	InsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error
 
+	// TODO insert multiple structs with single query if possible
+	// InsertStructs(table string, rowStructs interface{}, restrictToColumns ...string) error
+
 	// InsertStructIgnoreColumns inserts a new row into table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
