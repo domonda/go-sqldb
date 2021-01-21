@@ -36,7 +36,7 @@ func (conn *transaction) StructFieldNamer() sqldb.StructFieldNamer {
 
 func (conn *transaction) Exec(query string, args ...interface{}) error {
 	_, err := conn.tx.Exec(query, args...)
-	return err
+	return impl.WrapNonNilErrorWithQuery(err, query, args)
 }
 
 func (conn *transaction) Insert(table string, columValues sqldb.Values) error {
