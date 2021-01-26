@@ -95,7 +95,15 @@ func (conn *transaction) IsTransaction() bool {
 }
 
 func (conn *transaction) Begin(opts *sql.TxOptions) (sqldb.Connection, error) {
-	return nil, sqldb.ErrWithinTransaction
+	tx, err := conn.db.BeginTx(conn.connection.ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	return &transaction{
+		connection:       conn.connection,
+		tx:               tx,
+		structFieldNamer: conn.structFieldNamer,
+	}, nil
 }
 
 func (conn *transaction) Commit() error {
