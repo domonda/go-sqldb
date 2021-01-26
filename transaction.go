@@ -19,9 +19,9 @@ func Transaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Conn
 	return FreshTransaction(parentConn, opts, txFunc)
 }
 
-// FreshTransaction executes txFunc within a database transaction that is passed in to txFunc as tx Connection.
+// FreshTransaction executes txFunc within a new database transaction that is passed in to txFunc as tx Connection.
 // FreshTransaction returns all errors from txFunc or transaction commit errors happening after txFunc.
-// If parentConn is already a transaction, a fresh transaction will be created.
+// A fresh transaction will always be created, independent if the parentConn is already a transaction.
 // Errors and panics from txFunc will rollback the transaction.
 // Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
 func FreshTransaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Connection) error) (err error) {
