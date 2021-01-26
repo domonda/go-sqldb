@@ -16,10 +16,18 @@ func Transaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Conn
 	if parentConn.IsTransaction() {
 		return txFunc(parentConn)
 	}
+	return FreshTransaction(parentConn, opts, txFunc)
+}
 
+// FreshTransaction executes txFunc within a database transaction that is passed in to txFunc as tx Connection.
+// FreshTransaction returns all errors from txFunc or transaction commit errors happening after txFunc.
+// If parentConn is already a transaction, a fresh transaction will be created.
+// Errors and panics from txFunc will rollback the transaction.
+// Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
+func FreshTransaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Connection) error) (err error) {
 	tx, e := parentConn.Begin(opts)
 	if e != nil {
-		return fmt.Errorf("Transaction Begin error: %w", e)
+		return fmt.Errorf("FreshTransaction Begin error: %w", e)
 	}
 
 	defer func() {
@@ -28,7 +36,7 @@ func Transaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Conn
 			e := tx.Rollback()
 			if e != nil && !errors.Is(e, sql.ErrTxDone) {
 				// Double error situation, log e so it doesn't get lost
-				ErrLogger.Printf("Transaction error (%s) from rollback after panic: %+v", e, r)
+				ErrLogger.Printf("FreshTransaction error (%s) from rollback after panic: %+v", e, r)
 			}
 			panic(r) // re-throw panic after Rollback
 		}
@@ -38,7 +46,7 @@ func Transaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Conn
 			e := tx.Rollback()
 			if e != nil && !errors.Is(e, sql.ErrTxDone) {
 				// Double error situation, wrap err with e so it doesn't get lost
-				err = fmt.Errorf("Transaction error (%s) from rollback after error: %w", e, err)
+				err = fmt.Errorf("FreshTransaction error (%s) from rollback after error: %w", e, err)
 			}
 			return
 		}
@@ -46,7 +54,7 @@ func Transaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Conn
 		e := tx.Commit()
 		if e != nil {
 			// Set Commit error as function return value
-			err = fmt.Errorf("Transaction Commit error: %w", e)
+			err = fmt.Errorf("FreshTransaction Commit error: %w", e)
 		}
 	}()
 
