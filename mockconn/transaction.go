@@ -1,6 +1,7 @@
 package mockconn
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 
@@ -9,6 +10,12 @@ import (
 
 type transaction struct {
 	*connection
+}
+
+func (conn transaction) WithContext(ctx context.Context) sqldb.Connection {
+	return transaction{
+		connection: conn.connection.WithContext(ctx).(*connection), // TODO better way than type cast?
+	}
 }
 
 // IsTransaction returns if the connection is a transaction

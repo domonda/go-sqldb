@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 
-	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/impl"
 )
 
