@@ -48,6 +48,7 @@ github.com/domonda/go-types v0.0.0-20200708151211-d76e5982c26f/go.mod h1:cVAD1Oc
 github.com/domonda/go-types v0.0.0-20200812124141-0d4514dc5982/go.mod h1:cVAD1OcEuytU4/mE9gA+SbOQWLoSGLbAf/fdOgNBCeo=
 github.com/domonda/go-types v0.0.0-20200924083638-39ebc21394cd/go.mod h1:wz+6FtLIKMJf6AmWPqEvrts+/6Orehd2Q2PGSCgIhGA=
 github.com/domonda/go-types v0.0.0-20210205100405-94aad03cfa0e/go.mod h1:Gu8lMkGPGIrHeu4hhi8mDlmFecmtCgM+Dk1kuIuv6JI=
+github.com/domonda/go-types v0.0.0-20210308171246-14e42fd69187/go.mod h1:Gu8lMkGPGIrHeu4hhi8mDlmFecmtCgM+Dk1kuIuv6JI=
 github.com/domonda/go-wraperr v0.0.0-20191218095026-c132bf32bd96/go.mod h1:+StTOV14t8kZSKmDG8CfcXEBKTocUqZ9x8zuJHnXgII=
 github.com/domonda/go-wraperr v0.0.0-20200414143540-485fd6d06d5d/go.mod h1:+StTOV14t8kZSKmDG8CfcXEBKTocUqZ9x8zuJHnXgII=
 github.com/domonda/golog v0.0.0-20200104211507-b1ff3be34563/go.mod h1:35TUI0fS2sdkd11hmcqCoRrKEJIlWDaP54aROPpAxe8=
@@ -145,6 +146,7 @@ github.com/lib/pq v1.7.0 h1:h93mCPfUSkaul3Ka/VG8uZdmW1uMHDGxzu0NWHuJmHY=
 github.com/lib/pq v1.7.0/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
 github.com/lib/pq v1.8.0/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
 github.com/lib/pq v1.9.0/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
+github.com/lib/pq v1.10.0/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
 github.com/lucasb-eyer/go-colorful v1.0.3/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/magiconair/properties v1.8.0/go.mod h1:PppfXfuXeibc/6YijjN8zIbojt8czPbwD3XqdrwzmxQ=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=

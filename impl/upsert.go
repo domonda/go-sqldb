@@ -26,7 +26,7 @@ func UpsertStruct(conn sqldb.Connection, table string, rowStruct interface{}, na
 		return fmt.Errorf("UpsertStruct to table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, pkCol, vals := structFields(v, namer, ignoreColumns, restrictToColumns, true)
+	columns, flags, vals := structFields(v, namer, ignoreColumns, restrictToColumns, true)
 	if len(columns) == 0 {
 		return fmt.Errorf("UpsertStruct to table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
 	}
@@ -34,26 +34,26 @@ func UpsertStruct(conn sqldb.Connection, table string, rowStruct interface{}, na
 	var b strings.Builder
 	writeInsertQuery(&b, table, columns)
 	b.WriteString(` ON CONFLICT(`)
-	first := true
+	hasPK := false
 	for i := range columns {
-		if !pkCol[i] {
+		if !flags[i].IsPrimaryKey() {
 			continue
 		}
-		if first {
-			first = false
+		if !hasPK {
+			hasPK = true
 		} else {
 			b.WriteByte(',')
 		}
 		fmt.Fprintf(&b, `"%s"`, columns[i])
 	}
-	if first {
+	if !hasPK {
 		return fmt.Errorf("UpsertStruct to table %s: %T has no exported struct fields with ,pk tag value suffix to mark primary key column(s)", table, rowStruct)
 	}
 
 	b.WriteString(`) DO UPDATE SET `)
-	first = true
+	first := true
 	for i := range columns {
-		if pkCol[i] {
+		if f := flags[i]; f.IsPrimaryKey() || f.IsReadOnly() {
 			continue
 		}
 		if first {

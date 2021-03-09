@@ -102,29 +102,29 @@ func getStructFieldPointers(v reflect.Value, namer sqldb.StructFieldNamer, ignor
 // the ,pk suffix in their struct field naming tag.
 // The same number of pkCol bools will be returend as names, every corresponding bool marking
 // if the name had the ,pk suffix in their struct field naming tag.
-func structFields(v reflect.Value, namer sqldb.StructFieldNamer, ignoreNames, restrictToNames []string, keepPK bool) (names []string, pkCol []bool, vals []interface{}) {
+func structFields(v reflect.Value, namer sqldb.StructFieldNamer, ignoreNames, restrictToNames []string, keepPK bool) (names []string, flags []sqldb.FieldFlag, vals []interface{}) {
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Type().Field(i)
-		name, isPK, ok := namer.StructFieldName(field)
+		name, flag, ok := namer.StructFieldName(field)
 		if !ok {
 			continue
 		}
 
 		if field.Anonymous {
-			embedNames, embedPKs, embedValues := structFields(v.Field(i), namer, ignoreNames, restrictToNames, keepPK)
+			embedNames, embedFlags, embedValues := structFields(v.Field(i), namer, ignoreNames, restrictToNames, keepPK)
 			names = append(names, embedNames...)
-			pkCol = append(pkCol, embedPKs...)
+			flags = append(flags, embedFlags...)
 			vals = append(vals, embedValues...)
 			continue
 		}
 
-		if validName(name, ignoreNames, restrictToNames) || (isPK && keepPK && validName(name, nil, nil)) {
+		if validName(name, ignoreNames, restrictToNames) || (flag.IsPrimaryKey() && keepPK && validName(name, nil, nil)) {
 			names = append(names, name)
-			pkCol = append(pkCol, isPK)
+			flags = append(flags, flag)
 			vals = append(vals, v.Field(i).Interface())
 		}
 	}
-	return names, pkCol, vals
+	return names, flags, vals
 }
 
 // validName returns if a name not empty and not in ignoreNames

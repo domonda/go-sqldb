@@ -76,7 +76,7 @@ func UpdateStruct(conn sqldb.Connection, table string, rowStruct interface{}, na
 		return fmt.Errorf("UpdateStruct of table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, pkCol, vals := structFields(v, namer, ignoreColumns, restrictToColumns, true)
+	columns, flags, vals := structFields(v, namer, ignoreColumns, restrictToColumns, true)
 	if len(columns) == 0 {
 		return fmt.Errorf("UpdateStruct of table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
 	}
@@ -85,7 +85,7 @@ func UpdateStruct(conn sqldb.Connection, table string, rowStruct interface{}, na
 	fmt.Fprintf(&b, `UPDATE %s SET `, table)
 	first := true
 	for i := range columns {
-		if pkCol[i] {
+		if f := flags[i]; f.IsPrimaryKey() || f.IsReadOnly() {
 			continue
 		}
 		if first {
@@ -97,19 +97,19 @@ func UpdateStruct(conn sqldb.Connection, table string, rowStruct interface{}, na
 	}
 
 	b.WriteString(` WHERE `)
-	first = true
+	hasPK := false
 	for i := range columns {
-		if !pkCol[i] {
+		if !flags[i].IsPrimaryKey() {
 			continue
 		}
-		if first {
-			first = false
+		if !hasPK {
+			hasPK = true
 		} else {
 			b.WriteString(` AND `)
 		}
 		fmt.Fprintf(&b, `"%s"=$%d`, columns[i], i+1)
 	}
-	if first {
+	if !hasPK {
 		return fmt.Errorf("UpdateStruct of table %s: %T has no exported struct fields with ,pk tag value suffix to mark primary key column(s)", table, rowStruct)
 	}
 	query := b.String()

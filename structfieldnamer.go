@@ -7,13 +7,25 @@ import (
 	"unicode"
 )
 
+// FieldFlag is a bitmask for special properties
+// of how struct fields relate to database columns.
+type FieldFlag uint
+
+const (
+	FieldFlagPrimaryKey FieldFlag = 1 << iota
+	FieldFlagReadOnly
+)
+
+func (f FieldFlag) IsPrimaryKey() bool { return f&FieldFlagPrimaryKey != 0 }
+func (f FieldFlag) IsReadOnly() bool   { return f&FieldFlagReadOnly != 0 }
+
 // StructFieldNamer is used to map struct type fields to column names
-// and indicate if the column is a primary key.
+// and indicate special column properies via flags.
 type StructFieldNamer interface {
 	// StructFieldName returns the column name for reflected struct field
-	// and if the column is a primary key (pk).
-	// A name is returned for every ok field, non ok fields will be ignored.
-	StructFieldName(field reflect.StructField) (name string, pk, ok bool)
+	// and flags for special column properies.
+	// If the struct field can't be mapped, false is returned for ok.
+	StructFieldName(field reflect.StructField) (name string, flags FieldFlag, ok bool)
 }
 
 // DefaultStructFieldTagNaming provides the default StructFieldTagNaming
@@ -41,39 +53,49 @@ type StructFieldTagNaming struct {
 	UntaggedNameFunc func(fieldName string) string
 }
 
-func (n StructFieldTagNaming) StructFieldName(field reflect.StructField) (name string, pk, ok bool) {
+func (n StructFieldTagNaming) StructFieldName(field reflect.StructField) (name string, flags FieldFlag, ok bool) {
 	if field.Anonymous {
 		name, hasTag := field.Tag.Lookup(n.NameTag)
 		if !hasTag {
 			// Embedded struct fields are ok if not tagged with IgnoreName
-			return "", false, true
+			return "", 0, true
 		}
 		if i := strings.IndexByte(name, ','); i != -1 {
 			name = name[:i]
 		}
 		// Embedded struct fields are ok if not tagged with IgnoreName
-		return "", false, name != n.IgnoreName
+		return "", 0, name != n.IgnoreName
 	}
 	if field.PkgPath != "" {
 		// Not exported struct fields that are not
 		// anonymously embedded structs are not ok
-		return "", false, false
+		return "", 0, false
 	}
 
-	name, hasTag := field.Tag.Lookup(n.NameTag)
+	tag, hasTag := field.Tag.Lookup(n.NameTag)
 	if hasTag {
-		if i := strings.IndexByte(name, ','); i != -1 {
-			pk = name[i+1:] == "pk"
-			name = name[:i]
+		for i, part := range strings.Split(tag, ",") {
+			// First part is the name
+			if i == 0 {
+				name = part
+				continue
+			}
+			// Follow on parts are flags
+			switch part {
+			case "pk":
+				flags |= FieldFlagPrimaryKey
+			case "readonly":
+				flags |= FieldFlagReadOnly
+			}
 		}
 	} else {
 		name = n.UntaggedNameFunc(field.Name)
 	}
 
 	if name == "" || name == n.IgnoreName {
-		return "", false, false
+		return "", 0, false
 	}
-	return name, pk, true
+	return name, flags, true
 }
 
 func (n StructFieldTagNaming) String() string {
