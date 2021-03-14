@@ -134,16 +134,7 @@ func insertStructValues(table string, rowStruct interface{}, namer sqldb.StructF
 		return nil, nil, fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, flags, vals := structFields(v, namer, ignoreColumns, restrictToColumns, false)
-	for i := 0; i < len(columns); i++ {
-		// Remove readonly column data
-		if flags[i].IsReadOnly() {
-			columns = append(columns[:i], columns[i+1:]...)
-			flags = append(flags[:i], flags[i+1:]...)
-			vals = append(vals[:i], vals[i+1:]...)
-			i--
-		}
-	}
+	columns, _, vals = structFieldValues(v, namer, ignoreColumns, restrictToColumns, false)
 	if len(columns) == 0 {
 		return nil, nil, fmt.Errorf("InsertStruct into table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
 	}

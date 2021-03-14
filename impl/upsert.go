@@ -26,7 +26,7 @@ func UpsertStruct(conn sqldb.Connection, table string, rowStruct interface{}, na
 		return fmt.Errorf("UpsertStruct to table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, flags, vals := structFields(v, namer, ignoreColumns, restrictToColumns, true)
+	columns, flags, vals := structFieldValues(v, namer, ignoreColumns, restrictToColumns, true)
 	if len(columns) == 0 {
 		return fmt.Errorf("UpsertStruct to table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
 	}
