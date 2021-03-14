@@ -128,6 +128,11 @@ type Connection interface {
 	// IsTransaction returns if the connection is a transaction
 	IsTransaction() bool
 
+	// TransactionOptions returns the sql.TxOptions of the
+	// current transaction and true as second result value,
+	// or false if the connection is not a transaction.
+	TransactionOptions() (*sql.TxOptions, bool)
+
 	// Begin a new transaction.
 	// Returns ErrWithinTransaction if the connection
 	// is already within a transaction.

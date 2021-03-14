@@ -10,10 +10,16 @@ import (
 // Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx Connection
 // and no parentConn.Begin, Commit, or Rollback calls will occour within this Transaction call.
+// An error is returned, if the requested transaction options passed via opts
+// are stricter than the options of the parent transaction.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
 // Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
 func Transaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Connection) error) (err error) {
-	if parentConn.IsTransaction() {
+	if parentOpts, parentIsTx := parentConn.TransactionOptions(); parentIsTx {
+		err = CheckTxOptionsCompatibility(parentOpts, opts, parentConn.Config().DefaultIsolationLevel)
+		if err != nil {
+			return err
+		}
 		return txFunc(parentConn)
 	}
 
@@ -51,4 +57,35 @@ func Transaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Conn
 	}()
 
 	return txFunc(tx)
+}
+
+// CheckTxOptionsCompatibility returns an error
+// if the parent transaction options are less strict than the child options.
+func CheckTxOptionsCompatibility(parent, child *sql.TxOptions, defaultIsolation sql.IsolationLevel) error {
+	var (
+		parentReadOnly  = false
+		parentIsolation = defaultIsolation
+		childReadOnly   = false
+		childIsolation  = defaultIsolation
+	)
+	if parent != nil {
+		parentReadOnly = parent.ReadOnly
+		if parent.Isolation != sql.LevelDefault {
+			parentIsolation = parent.Isolation
+		}
+	}
+	if child != nil {
+		childReadOnly = child.ReadOnly
+		if child.Isolation != sql.LevelDefault {
+			childIsolation = child.Isolation
+		}
+	}
+
+	if parentReadOnly && !childReadOnly {
+		return errors.New("parent transaction is read-only but child is not")
+	}
+	if parentIsolation < childIsolation {
+		return fmt.Errorf("parent transaction isolation level '%s' is less strict child level '%s'", parentIsolation, childIsolation)
+	}
+	return nil
 }

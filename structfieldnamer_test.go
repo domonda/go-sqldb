@@ -58,7 +58,7 @@ func TestStructFieldTagNaming_StructFieldName(t *testing.T) {
 		{name: "read_only", structField: st.Field(2), wantName: "read_only", wantFlags: FieldFlagReadOnly, wantOk: true},
 		{name: "untagged_field", structField: st.Field(3), wantName: "untagged_field", wantFlags: 0, wantOk: true},
 		{name: "ignore", structField: st.Field(4), wantName: "", wantFlags: 0, wantOk: false},
-		{name: "pk_read_only", structField: st.Field(5), wantName: "pk_read_only", wantFlags: FieldFlagPrimaryKey + FieldFlagReadOnly, wantOk: true},
+		{name: "pk_read_only", structField: st.Field(5), wantName: "pk_read_only", wantFlags: FieldFlagPrimaryKey | FieldFlagReadOnly, wantOk: true},
 		{name: "no_flag", structField: st.Field(6), wantName: "no_flag", wantFlags: 0, wantOk: true},
 		{name: "malformed_flags", structField: st.Field(7), wantName: "malformed_flags", wantFlags: FieldFlagReadOnly, wantOk: true},
 		{name: "Embedded", structField: st.Field(8), wantName: "", wantFlags: 0, wantOk: true},

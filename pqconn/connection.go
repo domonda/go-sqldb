@@ -17,6 +17,8 @@ func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 	if config.Driver != "postgres" {
 		return nil, fmt.Errorf(`invalid driver %q, pqconn expects "postgres"`, config.Driver)
 	}
+	config.DefaultIsolationLevel = sql.LevelReadCommitted // postgres default
+
 	db, err := config.Connect(ctx)
 	if err != nil {
 		return nil, err
@@ -166,6 +168,10 @@ func (conn *connection) IsTransaction() bool {
 	return false
 }
 
+func (conn *connection) TransactionOptions() (*sql.TxOptions, bool) {
+	return nil, false
+}
+
 func (conn *connection) Begin(opts *sql.TxOptions) (sqldb.Connection, error) {
 	tx, err := conn.db.BeginTx(conn.ctx, opts)
 	if err != nil {
@@ -174,6 +180,7 @@ func (conn *connection) Begin(opts *sql.TxOptions) (sqldb.Connection, error) {
 	return &transaction{
 		connection:       conn,
 		tx:               tx,
+		opts:             opts,
 		structFieldNamer: conn.structFieldNamer,
 	}, nil
 }

@@ -73,7 +73,7 @@ func (e connectionWithError) Stats() sql.DBStats {
 }
 
 func (e connectionWithError) Config() *Config {
-	return nil
+	return new(Config)
 }
 
 func (e connectionWithError) Exec(query string, args ...interface{}) error {
@@ -146,6 +146,10 @@ func (e connectionWithError) QueryRows(query string, args ...interface{}) RowsSc
 
 func (e connectionWithError) IsTransaction() bool {
 	return false
+}
+
+func (ce connectionWithError) TransactionOptions() (*sql.TxOptions, bool) {
+	return nil, false
 }
 
 func (e connectionWithError) Begin(opts *sql.TxOptions) (Connection, error) {

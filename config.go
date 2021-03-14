@@ -11,16 +11,17 @@ import (
 // Config for a connection.
 // For tips see https://www.alexedwards.net/blog/configuring-sqldb
 type Config struct {
-	Driver          string            `json:"driver"`
-	Host            string            `json:"host"`
-	Port            uint16            `json:"port,omitempty"`
-	User            string            `json:"user,omitempty"`
-	Password        string            `json:"password,omitempty"`
-	Database        string            `json:"database"`
-	Extra           map[string]string `json:"misc,omitempty"`
-	MaxOpenConns    int               `json:"maxOpenConns,omitempty"`
-	MaxIdleConns    int               `json:"maxIdleConns,omitempty"`
-	ConnMaxLifetime time.Duration     `json:"connMaxLifetime,omitempty"`
+	Driver                string             `json:"driver"`
+	Host                  string             `json:"host"`
+	Port                  uint16             `json:"port,omitempty"`
+	User                  string             `json:"user,omitempty"`
+	Password              string             `json:"password,omitempty"`
+	Database              string             `json:"database"`
+	Extra                 map[string]string  `json:"misc,omitempty"`
+	MaxOpenConns          int                `json:"maxOpenConns,omitempty"`
+	MaxIdleConns          int                `json:"maxIdleConns,omitempty"`
+	ConnMaxLifetime       time.Duration      `json:"connMaxLifetime,omitempty"`
+	DefaultIsolationLevel sql.IsolationLevel `json:"-"`
 }
 
 // ConnectURL for connecting to a database

@@ -24,6 +24,7 @@ type testRow struct {
 	Str           string  `db:"str"`
 	StrPtr        *string `db:"str_ptr"`
 	NilPtr        *byte   `db:"nil_ptr"`
+	ReadOnly      int     `db:"read_only,readonly"`
 	Ignore        int     `db:"-"`
 	UntaggedField int
 	CreatedAt     time.Time    `db:"created_at"`

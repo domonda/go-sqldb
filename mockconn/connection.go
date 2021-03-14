@@ -153,16 +153,19 @@ func (conn *connection) QueryRows(query string, args ...interface{}) sqldb.RowsS
 	return conn.rowsProvider.QueryRows(conn.structFieldNamer, query, args...)
 }
 
-// IsTransaction returns if the connection is a transaction
 func (conn *connection) IsTransaction() bool {
 	return false
+}
+
+func (conn *connection) TransactionOptions() (*sql.TxOptions, bool) {
+	return nil, false
 }
 
 func (conn *connection) Begin(opts *sql.TxOptions) (sqldb.Connection, error) {
 	if conn.queryWriter != nil {
 		fmt.Fprint(conn.queryWriter, "BEGIN")
 	}
-	return transaction{conn}, nil
+	return transaction{conn, opts}, nil
 }
 
 func (conn *connection) Commit() error {

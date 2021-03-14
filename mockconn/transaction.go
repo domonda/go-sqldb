@@ -10,17 +10,22 @@ import (
 
 type transaction struct {
 	*connection
+	opts *sql.TxOptions
 }
 
 func (conn transaction) WithContext(ctx context.Context) sqldb.Connection {
 	return transaction{
 		connection: conn.connection.WithContext(ctx).(*connection), // TODO better way than type cast?
+		opts:       conn.opts,
 	}
 }
 
-// IsTransaction returns if the connection is a transaction
 func (conn transaction) IsTransaction() bool {
 	return true
+}
+
+func (conn transaction) TransactionOptions() (*sql.TxOptions, bool) {
+	return conn.opts, true
 }
 
 func (conn transaction) Begin(opts *sql.TxOptions) (sqldb.Connection, error) {

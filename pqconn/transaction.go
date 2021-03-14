@@ -11,6 +11,7 @@ import (
 type transaction struct {
 	*connection
 	tx               *sql.Tx
+	opts             *sql.TxOptions
 	structFieldNamer sqldb.StructFieldNamer
 }
 
@@ -18,6 +19,7 @@ func (conn *transaction) WithContext(ctx context.Context) sqldb.Connection {
 	return &transaction{
 		connection:       conn.connection.WithContext(ctx).(*connection), // TODO better way than type cast?
 		tx:               conn.tx,
+		opts:             conn.opts,
 		structFieldNamer: conn.structFieldNamer,
 	}
 }
@@ -26,6 +28,7 @@ func (conn *transaction) WithStructFieldNamer(namer sqldb.StructFieldNamer) sqld
 	return &transaction{
 		connection:       conn.connection,
 		tx:               conn.tx,
+		opts:             conn.opts,
 		structFieldNamer: namer,
 	}
 }
@@ -89,9 +92,12 @@ func (conn *transaction) QueryRows(query string, args ...interface{}) sqldb.Rows
 	return impl.NewRowsScanner(conn.connection.ctx, rows, conn.structFieldNamer, query, args)
 }
 
-// IsTransaction returns if the connection is a transaction
 func (conn *transaction) IsTransaction() bool {
 	return true
+}
+
+func (conn *transaction) TransactionOptions() (*sql.TxOptions, bool) {
+	return conn.opts, true
 }
 
 func (conn *transaction) Begin(opts *sql.TxOptions) (sqldb.Connection, error) {
