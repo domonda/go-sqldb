@@ -58,6 +58,10 @@ func (conn *transaction) InsertStructIgnoreColumns(table string, rowStruct inter
 	return impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
 }
 
+func (conn *transaction) Update(table string, values sqldb.Values, where string, args ...interface{}) error {
+	return impl.Update(conn, table, values, where, args)
+}
+
 func (conn *transaction) UpdateStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
 	return impl.UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
 }
