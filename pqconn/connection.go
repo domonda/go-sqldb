@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	sqldb "github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/impl"
@@ -51,26 +52,35 @@ type connection struct {
 	structFieldNamer sqldb.StructFieldNamer
 }
 
+func (conn *connection) clone() *connection {
+	c := *conn
+	return &c
+}
+
 func (conn *connection) WithContext(ctx context.Context) sqldb.Connection {
-	return &connection{
-		ctx:              ctx,
-		db:               conn.db,
-		config:           conn.config,
-		structFieldNamer: conn.structFieldNamer,
-	}
+	c := conn.clone()
+	c.ctx = ctx
+	return c
 }
 
 func (conn *connection) WithStructFieldNamer(namer sqldb.StructFieldNamer) sqldb.Connection {
-	return &connection{
-		ctx:              conn.ctx,
-		db:               conn.db,
-		config:           conn.config,
-		structFieldNamer: namer,
-	}
+	c := conn.clone()
+	c.structFieldNamer = namer
+	return c
 }
 
 func (conn *connection) StructFieldNamer() sqldb.StructFieldNamer {
 	return conn.structFieldNamer
+}
+
+func (conn *connection) Ping(timeout time.Duration) error {
+	ctx := conn.ctx
+	if timeout > 0 {
+		var cancel func()
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
+	return conn.db.PingContext(ctx)
 }
 
 func (conn *connection) Stats() sql.DBStats {
@@ -79,10 +89,6 @@ func (conn *connection) Stats() sql.DBStats {
 
 func (conn *connection) Config() *sqldb.Config {
 	return conn.config
-}
-
-func (conn *connection) Ping() error {
-	return conn.db.PingContext(conn.ctx)
 }
 
 func (conn *connection) Exec(query string, args ...interface{}) error {
@@ -177,12 +183,7 @@ func (conn *connection) Begin(opts *sql.TxOptions) (sqldb.Connection, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &transaction{
-		connection:       conn,
-		tx:               tx,
-		opts:             opts,
-		structFieldNamer: conn.structFieldNamer,
-	}, nil
+	return newTransaction(conn, tx, opts), nil
 }
 
 func (conn *connection) Commit() error {

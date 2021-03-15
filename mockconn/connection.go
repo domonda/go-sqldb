@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/impl"
@@ -60,7 +61,7 @@ func (conn *connection) Config() *sqldb.Config {
 	return nil
 }
 
-func (conn *connection) Ping() error {
+func (conn *connection) Ping(time.Duration) error {
 	return nil
 }
 
