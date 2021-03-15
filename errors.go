@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 )
 
 // ReplaceErrNoRows returns the passed replacement error
@@ -64,7 +65,7 @@ func (e connectionWithError) StructFieldNamer() StructFieldNamer {
 	return &DefaultStructFieldTagNaming
 }
 
-func (e connectionWithError) Ping() error {
+func (e connectionWithError) Ping(time.Duration) error {
 	return e.err
 }
 

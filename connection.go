@@ -3,6 +3,7 @@ package sqldb
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 type (
@@ -24,8 +25,11 @@ type Connection interface {
 	StructFieldNamer() StructFieldNamer
 
 	// Ping returns an error if the database
-	// does not answer on this connection.
-	Ping() error
+	// does not answer on this connection
+	// with an optional timeout.
+	// The passed timeout has to be greater zero
+	// to be considered.
+	Ping(timeout time.Duration) error
 
 	// Stats returns the sql.DBStats of this connection.
 	Stats() sql.DBStats
