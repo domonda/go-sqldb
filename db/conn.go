@@ -19,10 +19,20 @@ func SetConn(c sqldb.Connection) {
 
 // Conn returns a non nil sqldb.Connection from ctx
 // or the global connection set with SetConn.
+// The returned connection will use the passed context.
+// See sqldb.Connection.WithContext
 func Conn(ctx context.Context) sqldb.Connection {
+	return ConnDefault(ctx, conn)
+}
+
+// ConnDefault returns a non nil sqldb.Connection from ctx
+// or the passed defaultConn.
+// The returned connection will use the passed context.
+// See sqldb.Connection.WithContext
+func ConnDefault(ctx context.Context, defaultConn sqldb.Connection) sqldb.Connection {
 	c, _ := ctx.Value(connKey).(sqldb.Connection)
 	if c == nil {
-		c = conn
+		c = defaultConn
 	}
 	return c.WithContext(ctx)
 }
