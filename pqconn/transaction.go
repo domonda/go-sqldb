@@ -32,7 +32,12 @@ func (conn *transaction) clone() *transaction {
 	return &c
 }
 
+func (conn *transaction) Context() context.Context { return conn.parent.ctx }
+
 func (conn *transaction) WithContext(ctx context.Context) sqldb.Connection {
+	if ctx == conn.parent.ctx {
+		return conn
+	}
 	parent := conn.parent.clone()
 	parent.ctx = ctx
 	return newTransaction(parent, conn.tx, conn.opts)

@@ -74,7 +74,7 @@ func (e connectionWithError) Stats() sql.DBStats {
 }
 
 func (e connectionWithError) Config() *Config {
-	return new(Config)
+	return &Config{Driver: "ConnectionWithError"}
 }
 
 func (e connectionWithError) Exec(query string, args ...interface{}) error {

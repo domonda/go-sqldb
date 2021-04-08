@@ -34,6 +34,9 @@ func ConnDefault(ctx context.Context, defaultConn sqldb.Connection) sqldb.Connec
 	if c == nil {
 		c = defaultConn
 	}
+	if c.Context() == ctx {
+		return c
+	}
 	return c.WithContext(ctx)
 }
 

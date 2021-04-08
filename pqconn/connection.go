@@ -57,7 +57,12 @@ func (conn *connection) clone() *connection {
 	return &c
 }
 
+func (conn *connection) Context() context.Context { return conn.ctx }
+
 func (conn *connection) WithContext(ctx context.Context) sqldb.Connection {
+	if ctx == conn.ctx {
+		return conn
+	}
 	c := conn.clone()
 	c.ctx = ctx
 	return c

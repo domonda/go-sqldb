@@ -13,9 +13,14 @@ type transaction struct {
 	opts *sql.TxOptions
 }
 
+func (conn transaction) Context() context.Context { return conn.connection.ctx }
+
 func (conn transaction) WithContext(ctx context.Context) sqldb.Connection {
+	if ctx == conn.connection.ctx {
+		return conn
+	}
 	return transaction{
-		connection: conn.connection.WithContext(ctx).(*connection), // TODO better way than type cast?
+		connection: conn.connection.WithContext(ctx).(*connection),
 		opts:       conn.opts,
 	}
 }

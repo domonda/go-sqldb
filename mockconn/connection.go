@@ -29,7 +29,12 @@ type connection struct {
 	structFieldNamer sqldb.StructFieldNamer
 }
 
+func (conn *connection) Context() context.Context { return conn.ctx }
+
 func (conn *connection) WithContext(ctx context.Context) sqldb.Connection {
+	if ctx == conn.ctx {
+		return conn
+	}
 	return &connection{
 		ctx:              ctx,
 		queryWriter:      conn.queryWriter,
@@ -58,7 +63,7 @@ func (conn *connection) Stats() sql.DBStats {
 }
 
 func (conn *connection) Config() *sqldb.Config {
-	return nil
+	return &sqldb.Config{Driver: "mockconn"}
 }
 
 func (conn *connection) Ping(time.Duration) error {

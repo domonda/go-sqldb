@@ -13,6 +13,10 @@ type (
 
 // Connection represents a database connection or transaction
 type Connection interface {
+	// Context that all connection operations use.
+	// See also WithContext.
+	Context() context.Context
+
 	// WithContext returns a connection that uses the passed
 	// context for its operations.
 	WithContext(ctx context.Context) Connection
