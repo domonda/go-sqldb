@@ -7,16 +7,23 @@ import (
 	"github.com/domonda/go-sqldb/impl"
 )
 
+// NewSingleRowProvider a RowsProvider implementation
+// with a single row that will be re-used for every query.
+func NewSingleRowProvider(row *Row) RowsProvider {
+	return &singleRowProvider{row: row, argFmt: DefaultArgFmt}
+}
+
 // SingleRowProvider implements RowsProvider with a single Row
 // that will be re-used for every query.
-type SingleRowProvider struct {
-	Row *Row
+type singleRowProvider struct {
+	row    *Row
+	argFmt string
 }
 
-func (p *SingleRowProvider) QueryRow(structFieldNamer sqldb.StructFieldNamer, query string, args ...interface{}) sqldb.RowScanner {
-	return impl.NewRowScanner(impl.RowAsRows(p.Row), structFieldNamer, query, args)
+func (p *singleRowProvider) QueryRow(structFieldNamer sqldb.StructFieldNamer, query string, args ...interface{}) sqldb.RowScanner {
+	return impl.NewRowScanner(impl.RowAsRows(p.row), structFieldNamer, query, p.argFmt, args)
 }
 
-func (p *SingleRowProvider) QueryRows(structFieldNamer sqldb.StructFieldNamer, query string, args ...interface{}) sqldb.RowsScanner {
-	return impl.NewRowsScanner(context.Background(), NewRows(p.Row), structFieldNamer, query, args)
+func (p *singleRowProvider) QueryRows(structFieldNamer sqldb.StructFieldNamer, query string, args ...interface{}) sqldb.RowsScanner {
+	return impl.NewRowsScanner(context.Background(), NewRows(p.row), structFieldNamer, query, p.argFmt, args)
 }

@@ -11,6 +11,8 @@ import (
 	"github.com/domonda/go-sqldb/impl"
 )
 
+var DefaultArgFmt = "$%d"
+
 func New(ctx context.Context, queryWriter io.Writer, rowsProvider RowsProvider) sqldb.Connection {
 	return &connection{
 		ctx:              ctx,
@@ -18,6 +20,7 @@ func New(ctx context.Context, queryWriter io.Writer, rowsProvider RowsProvider) 
 		listening:        newBoolMap(),
 		rowsProvider:     rowsProvider,
 		structFieldNamer: sqldb.DefaultStructFieldTagNaming,
+		argFmt:           DefaultArgFmt,
 	}
 }
 
@@ -27,6 +30,7 @@ type connection struct {
 	listening        *boolMap
 	rowsProvider     RowsProvider
 	structFieldNamer sqldb.StructFieldNamer
+	argFmt           string
 }
 
 func (conn *connection) Context() context.Context { return conn.ctx }
@@ -41,6 +45,7 @@ func (conn *connection) WithContext(ctx context.Context) sqldb.Connection {
 		listening:        conn.listening,
 		rowsProvider:     conn.rowsProvider,
 		structFieldNamer: conn.structFieldNamer,
+		argFmt:           conn.argFmt,
 	}
 }
 
@@ -51,6 +56,7 @@ func (conn *connection) WithStructFieldNamer(namer sqldb.StructFieldNamer) sqldb
 		listening:        conn.listening,
 		rowsProvider:     conn.rowsProvider,
 		structFieldNamer: namer,
+		argFmt:           conn.argFmt,
 	}
 }
 
@@ -78,35 +84,35 @@ func (conn *connection) Exec(query string, args ...interface{}) error {
 }
 
 func (conn *connection) Insert(table string, columValues sqldb.Values) error {
-	return impl.Insert(conn, table, columValues)
+	return impl.Insert(conn, table, conn.argFmt, columValues)
 }
 
 func (conn *connection) InsertUnique(table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
-	return impl.InsertUnique(conn, table, values, onConflict)
+	return impl.InsertUnique(conn, table, conn.argFmt, values, onConflict)
 }
 
 func (conn *connection) InsertReturning(table string, values sqldb.Values, returning string) sqldb.RowScanner {
-	return impl.InsertReturning(conn, table, values, returning)
+	return impl.InsertReturning(conn, table, conn.argFmt, values, returning)
 }
 
 func (conn *connection) InsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
-	return impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
+	return impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt, nil, restrictToColumns)
 }
 
 func (conn *connection) InsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
-	return impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
+	return impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt, ignoreColumns, nil)
 }
 
 func (conn *connection) InsertUniqueStruct(table string, rowStruct interface{}, onConflict string, restrictToColumns ...string) (inserted bool, err error) {
-	return impl.InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, nil, restrictToColumns)
+	return impl.InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, conn.argFmt, nil, restrictToColumns)
 }
 
 func (conn *connection) InsertUniqueStructIgnoreColumns(table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
-	return impl.InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, ignoreColumns, nil)
+	return impl.InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, conn.argFmt, ignoreColumns, nil)
 }
 
 func (conn *connection) Update(table string, values sqldb.Values, where string, args ...interface{}) error {
-	return impl.Update(conn, table, values, where, args)
+	return impl.Update(conn, table, values, where, conn.argFmt, args)
 }
 
 func (conn *connection) UpdateReturningRow(table string, values sqldb.Values, returning, where string, args ...interface{}) sqldb.RowScanner {
@@ -118,19 +124,19 @@ func (conn *connection) UpdateReturningRows(table string, values sqldb.Values, r
 }
 
 func (conn *connection) UpdateStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
-	return impl.UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
+	return impl.UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt, nil, restrictToColumns)
 }
 
 func (conn *connection) UpdateStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
-	return impl.UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
+	return impl.UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt, ignoreColumns, nil)
 }
 
 func (conn *connection) UpsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
-	return impl.UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, nil, restrictToColumns)
+	return impl.UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt, nil, restrictToColumns)
 }
 
 func (conn *connection) UpsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
-	return impl.UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, ignoreColumns, nil)
+	return impl.UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt, ignoreColumns, nil)
 }
 
 func (conn *connection) QueryRow(query string, args ...interface{}) sqldb.RowScanner {

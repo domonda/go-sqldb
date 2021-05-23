@@ -13,17 +13,18 @@ type RowsScanner struct {
 	rows             Rows
 	structFieldNamer sqldb.StructFieldNamer
 	query            string        // for error wrapping
+	argFmt           string        // for error wrapping
 	args             []interface{} // for error wrapping
 }
 
-func NewRowsScanner(ctx context.Context, rows Rows, structFieldNamer sqldb.StructFieldNamer, query string, args []interface{}) *RowsScanner {
-	return &RowsScanner{ctx, rows, structFieldNamer, query, args}
+func NewRowsScanner(ctx context.Context, rows Rows, structFieldNamer sqldb.StructFieldNamer, query, argFmt string, args []interface{}) *RowsScanner {
+	return &RowsScanner{ctx, rows, structFieldNamer, query, argFmt, args}
 }
 
 func (s *RowsScanner) ScanSlice(dest interface{}) error {
 	err := ScanRowsAsSlice(s.ctx, s.rows, dest, nil)
 	if err != nil {
-		return fmt.Errorf("%w from query: %s", err, FormatQuery(s.query, s.args...))
+		return fmt.Errorf("%w from query: %s", err, FormatQuery(s.query, s.argFmt, s.args...))
 	}
 	return nil
 }
@@ -31,7 +32,7 @@ func (s *RowsScanner) ScanSlice(dest interface{}) error {
 func (s *RowsScanner) ScanStructSlice(dest interface{}) error {
 	err := ScanRowsAsSlice(s.ctx, s.rows, dest, s.structFieldNamer)
 	if err != nil {
-		return fmt.Errorf("%w from query: %s", err, FormatQuery(s.query, s.args...))
+		return fmt.Errorf("%w from query: %s", err, FormatQuery(s.query, s.argFmt, s.args...))
 	}
 	return nil
 }
@@ -66,7 +67,7 @@ func (s *RowsScanner) ScanStrings(headerRow bool) (rows [][]string, err error) {
 func (s *RowsScanner) ForEachRow(callback func(sqldb.RowScanner) error) (err error) {
 	defer func() {
 		s.rows.Close()
-		err = WrapNonNilErrorWithQuery(err, s.query, s.args)
+		err = WrapNonNilErrorWithQuery(err, s.query, s.argFmt, s.args)
 	}()
 
 	for s.rows.Next() {

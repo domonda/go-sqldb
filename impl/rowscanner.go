@@ -11,17 +11,18 @@ type RowScanner struct {
 	rows             Rows
 	structFieldNamer sqldb.StructFieldNamer
 	query            string        // for error wrapping
+	argFmt           string        // for error wrapping
 	args             []interface{} // for error wrapping
 }
 
-func NewRowScanner(rows Rows, structFieldNamer sqldb.StructFieldNamer, query string, args []interface{}) *RowScanner {
-	return &RowScanner{rows, structFieldNamer, query, args}
+func NewRowScanner(rows Rows, structFieldNamer sqldb.StructFieldNamer, query, argFmt string, args []interface{}) *RowScanner {
+	return &RowScanner{rows, structFieldNamer, query, argFmt, args}
 }
 
 func (s *RowScanner) Scan(dest ...interface{}) (err error) {
 	defer func() {
 		s.rows.Close()
-		err = WrapNonNilErrorWithQuery(err, s.query, s.args)
+		err = WrapNonNilErrorWithQuery(err, s.query, s.argFmt, s.args)
 	}()
 
 	if s.rows.Err() != nil {
@@ -40,7 +41,7 @@ func (s *RowScanner) Scan(dest ...interface{}) (err error) {
 func (s *RowScanner) ScanStruct(dest interface{}) (err error) {
 	defer func() {
 		s.rows.Close()
-		err = WrapNonNilErrorWithQuery(err, s.query, s.args)
+		err = WrapNonNilErrorWithQuery(err, s.query, s.argFmt, s.args)
 	}()
 
 	if s.rows.Err() != nil {

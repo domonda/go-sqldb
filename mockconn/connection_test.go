@@ -34,7 +34,7 @@ type testRow struct {
 func TestInsertQuery(t *testing.T) {
 	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
 	queryOutput := bytes.NewBuffer(nil)
-	rowProvider := &SingleRowProvider{Row: NewRow(struct{ True bool }{true}, naming)}
+	rowProvider := NewSingleRowProvider(NewRow(struct{ True bool }{true}, naming))
 	conn := New(context.Background(), queryOutput, rowProvider).WithStructFieldNamer(naming)
 
 	str := "Hello World!"
@@ -91,7 +91,7 @@ func TestInsertStructQuery(t *testing.T) {
 func TestInsertUniqueStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
 	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
-	rowProvider := &SingleRowProvider{Row: NewRow(struct{ True bool }{true}, naming)}
+	rowProvider := NewSingleRowProvider(NewRow(struct{ True bool }{true}, naming))
 	conn := New(context.Background(), queryOutput, rowProvider).WithStructFieldNamer(naming)
 
 	row := new(testRow)

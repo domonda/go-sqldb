@@ -6,10 +6,10 @@ import (
 	"time"
 )
 
-type valuer struct{}
+type driverValuer struct{}
 
-func (v valuer) Value() (driver.Value, error) {
-	return "driver.Valuer", nil
+func (v driverValuer) Value() (driver.Value, error) {
+	return "A driver.Valuer", nil
 }
 
 func TestFormatValue(t *testing.T) {
@@ -22,9 +22,9 @@ func TestFormatValue(t *testing.T) {
 		{name: "nil", val: nil, want: `NULL`},
 		{name: "nil string", val: (*string)(nil), want: `NULL`},
 		{name: "nil driver.Valuer", val: (driver.Valuer)(nil), want: `NULL`},
-		{name: "nil driver.Valuer impl", val: (*valuer)(nil), want: `NULL`},
-		{name: "driver.Valuer", val: valuer{}, want: `'driver.Valuer'`},
-		{name: "driver.Valuer ptr", val: &valuer{}, want: `'driver.Valuer'`},
+		{name: "nil driver.Valuer impl", val: (*driverValuer)(nil), want: `NULL`},
+		{name: "driver.Valuer", val: driverValuer{}, want: `'A driver.Valuer'`},
+		{name: "driver.Valuer ptr", val: &driverValuer{}, want: `'A driver.Valuer'`},
 		{name: "true", val: true, want: `TRUE`},
 		{name: "false", val: false, want: `FALSE`},
 		{name: "string", val: "Hello World!", want: `'Hello World!'`},
@@ -75,17 +75,18 @@ WHERE
 	query2formatted := `UPDATE table SET "v1"='',v2=2 ,"v3" = '3'`
 
 	tests := []struct {
-		name  string
-		query string
-		args  []interface{}
-		want  string
+		name   string
+		query  string
+		argFmt string
+		args   []interface{}
+		want   string
 	}{
-		{name: "query1", query: query1, args: []interface{}{createdAt, true, `Erik's Test`}, want: query1formatted},
-		{name: "query2", query: query2, args: []interface{}{"", 2, "3"}, want: query2formatted},
+		{name: "query1", query: query1, argFmt: "$%d", args: []interface{}{createdAt, true, `Erik's Test`}, want: query1formatted},
+		{name: "query2", query: query2, argFmt: "$%d", args: []interface{}{"", 2, "3"}, want: query2formatted},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := FormatQuery(tt.query, tt.args...); got != tt.want {
+			if got := FormatQuery(tt.query, tt.argFmt, tt.args...); got != tt.want {
 				t.Errorf("FormatQuery():\n%q\nWant:\n%q", got, tt.want)
 			}
 		})

@@ -9,14 +9,14 @@ import (
 )
 
 // Update table rows(s) with values using the where statement with passed in args starting at $1.
-func Update(conn sqldb.Connection, table string, values sqldb.Values, where string, args []interface{}) error {
+func Update(conn sqldb.Connection, table string, values sqldb.Values, where, argFmt string, args []interface{}) error {
 	if len(values) == 0 {
 		return fmt.Errorf("Update table %s: no values passed", table)
 	}
 
 	query, vals := buildUpdateQuery(table, values, where, args)
 	err := conn.Exec(query, vals...)
-	return WrapNonNilErrorWithQuery(err, query, vals)
+	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
 }
 
 // UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
@@ -64,7 +64,7 @@ func buildUpdateQuery(table string, values sqldb.Values, where string, args []in
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
-func UpdateStruct(conn sqldb.Connection, table string, rowStruct interface{}, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) error {
+func UpdateStruct(conn sqldb.Connection, table string, rowStruct interface{}, namer sqldb.StructFieldNamer, argFmt string, ignoreColumns, restrictToColumns []string) error {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -116,5 +116,5 @@ func UpdateStruct(conn sqldb.Connection, table string, rowStruct interface{}, na
 
 	err := conn.Exec(query, vals...)
 
-	return WrapNonNilErrorWithQuery(err, query, vals)
+	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
 }

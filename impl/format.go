@@ -71,9 +71,9 @@ func FormatValue(val interface{}) (string, error) {
 	return fmt.Sprint(val), nil
 }
 
-func FormatQuery(query string, args ...interface{}) string {
+func FormatQuery(query, argFmt string, args ...interface{}) string {
 	for i := len(args) - 1; i >= 0; i-- {
-		placeholder := fmt.Sprintf("$%d", i+1)
+		placeholder := fmt.Sprintf(argFmt, i+1)
 		value, err := FormatValue(args[i])
 		if err != nil {
 			value = "FORMATERROR:" + err.Error()
@@ -116,15 +116,6 @@ func FormatQuery(query string, args ...interface{}) string {
 	}
 
 	return strings.Join(lines, "\n")
-}
-
-// WrapNonNilErrorWithQuery wraps non nil errors with a formatted query.
-// nil will be returned if the passed error is nil.
-func WrapNonNilErrorWithQuery(err error, query string, args []interface{}) error {
-	if err == nil {
-		return nil
-	}
-	return fmt.Errorf("%w from query: %s", err, FormatQuery(query, args...))
 }
 
 // QuoteLiteral quotes a 'literal' (e.g. a parameter, often used to pass literal
