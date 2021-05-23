@@ -33,6 +33,7 @@ func (s sentinelError) Error() string {
 const (
 	ErrWithinTransaction    sentinelError = "within a transaction"
 	ErrNotWithinTransaction sentinelError = "not within a transaction"
+	ErrNotSupported         sentinelError = "not supported"
 )
 
 // ConnectionWithError

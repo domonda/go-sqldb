@@ -1,4 +1,4 @@
-package pqconn
+package mysqlconn
 
 import (
 	"context"
@@ -6,21 +6,23 @@ import (
 	"fmt"
 	"time"
 
+	_ "github.com/go-sql-driver/mysql" // Use driver
+
 	"github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/impl"
 )
 
-const argFmt = "$%d"
+const argFmt = "?"
 
 // New creates a new sqldb.Connection using the passed sqldb.Config
-// and github.com/lib/pq as driver implementation.
+// and github.com/go-sql-driver/mysql as driver implementation.
 // The connection is pinged with the passed context,
 // and only returned when there was no error from the ping.
 func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
-	if config.Driver != "postgres" {
-		return nil, fmt.Errorf(`invalid driver %q, pqconn expects "postgres"`, config.Driver)
+	if config.Driver != "mysql" {
+		return nil, fmt.Errorf(`invalid driver %q, mysqlconn expects "mysql"`, config.Driver)
 	}
-	config.DefaultIsolationLevel = sql.LevelReadCommitted // postgres default
+	config.DefaultIsolationLevel = sql.LevelRepeatableRead // mysql default
 
 	db, err := config.Connect(ctx)
 	if err != nil {
@@ -35,7 +37,7 @@ func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 }
 
 // MustNew creates a new sqldb.Connection using the passed sqldb.Config
-// and github.com/lib/pq as driver implementation.
+// and github.com/go-sql-driver/mysql as driver implementation.
 // The connection is pinged with the passed context,
 // and only returned when there was no error from the ping.
 // Errors are paniced.
@@ -202,18 +204,17 @@ func (conn *connection) Rollback() error {
 }
 
 func (conn *connection) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
-	return conn.getOrCreateListener().listenOnChannel(channel, onNotify, onUnlisten)
+	return fmt.Errorf("notifications %w", sqldb.ErrNotSupported)
 }
 
 func (conn *connection) UnlistenChannel(channel string) (err error) {
-	return conn.getListenerOrNil().unlistenChannel(channel)
+	return fmt.Errorf("notifications %w", sqldb.ErrNotSupported)
 }
 
 func (conn *connection) IsListeningOnChannel(channel string) bool {
-	return conn.getListenerOrNil().isListeningOnChannel(channel)
+	return false
 }
 
 func (conn *connection) Close() error {
-	conn.getListenerOrNil().close()
 	return conn.db.Close()
 }

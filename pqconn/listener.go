@@ -7,7 +7,7 @@ import (
 
 	"github.com/lib/pq"
 
-	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb"
 )
 
 var (
