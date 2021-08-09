@@ -29,6 +29,10 @@ func TestFormatValue(t *testing.T) {
 		{name: "false", val: false, want: `FALSE`},
 		{name: "string", val: "Hello World!", want: `'Hello World!'`},
 		{name: "string pointer", val: new(string), want: `''`},
+		{name: "byte string", val: []byte(`Hello World!`), want: `'Hello World!'`},
+		{name: "byte array", val: []byte(`[1,2,3]`), want: `'[1,2,3]'`},
+		{name: "string array", val: `[1,2,3]`, want: `'[1,2,3]'`},
+		{name: "object array", val: []byte(`[{"a":"foo"},{"b":"bar"}]`), want: `'[{"a":"foo"},{"b":"bar"}]'`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

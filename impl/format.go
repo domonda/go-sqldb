@@ -55,16 +55,22 @@ func FormatValue(val interface{}) (string, error) {
 		}
 
 	case reflect.String:
-		return QuoteLiteral(v.String()), nil
+		s := v.String()
+		if l := len(s); l >= 2 && (s[0] == '{' && s[l-1] == '}' || s[0] == '[' && s[l-1] == ']') {
+			return `'` + s + `'`, nil
+		}
+		return QuoteLiteral(s), nil
 
 	case reflect.Slice:
-		if v.Type().Elem().Kind() != reflect.Uint8 {
+		if v.Type().Elem().Kind() == reflect.Uint8 {
 			b := v.Bytes()
-			l := len(b)
-			if l >= 2 && (b[0] == '{' && b[l-1] == '}' || b[0] == '[' && b[l-1] == ']') {
-				return QuoteLiteral(string(b)), nil
+			if !utf8.Valid(b) {
+				return `'\x` + hex.EncodeToString(b) + "'", nil
 			}
-			return `'\x` + hex.EncodeToString(b) + "'", nil
+			if l := len(b); l >= 2 && (b[0] == '{' && b[l-1] == '}' || b[0] == '[' && b[l-1] == ']') {
+				return `'` + string(b) + `'`, nil
+			}
+			return QuoteLiteral(string(b)), nil
 		}
 	}
 
