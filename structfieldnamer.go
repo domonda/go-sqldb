@@ -66,7 +66,7 @@ func (n StructFieldTagNaming) StructFieldName(field reflect.StructField) (name s
 		// Embedded struct fields are ok if not tagged with IgnoreName
 		return "", 0, name != n.IgnoreName
 	}
-	if field.PkgPath != "" {
+	if !field.IsExported() {
 		// Not exported struct fields that are not
 		// anonymously embedded structs are not ok
 		return "", 0, false

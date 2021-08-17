@@ -3,8 +3,6 @@ github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/domonda/go-pretty v0.0.0-20210202131827-b4ff5dbd12fd h1:OGFdhMFO54EShn6noeylOpXu3J2ZEt1K05qlsgpR9L0=
 github.com/domonda/go-pretty v0.0.0-20210202131827-b4ff5dbd12fd/go.mod h1:zUVOQL+81aMK+Ye3kS7eDsk/aWnteWRSJ5fZWHdBWjc=
-github.com/domonda/go-types v0.0.0-20210503094446-0150e712dc0c h1:pBZZumpNGRxAQhHO6+QJcGji8smeFMgvPh5x6U0w7wo=
-github.com/domonda/go-types v0.0.0-20210503094446-0150e712dc0c/go.mod h1:zZHLAWcl5FG0rkQCUBJqiMHqh0nP7jrKGggFnXLYezc=
 github.com/domonda/go-types v0.0.0-20210518114849-50508b2f2d29 h1:tYrZFtQcrKdpuDeO0p0NAAtfc+rGy8rnrKoy4dWf7q8=
 github.com/domonda/go-types v0.0.0-20210518114849-50508b2f2d29/go.mod h1:zZHLAWcl5FG0rkQCUBJqiMHqh0nP7jrKGggFnXLYezc=
 github.com/go-sql-driver/mysql v1.6.0 h1:BCTh4TKNUYmOmMUcQ3IipzF5prigylS7XXjEkfCHuOE=
@@ -16,8 +14,6 @@ github.com/jinzhu/now v1.1.1/go.mod h1:d3SSVoowX0Lcu0IBviAWJpolVfI5UJVZZ7cO71lE/
 github.com/jmespath/go-jmespath v0.4.0/go.mod h1:T8mJZnbsbmF+m6zOOFylbeCJqk5+pHWvzYPziyZiYoo=
 github.com/jmespath/go-jmespath/internal/testify v1.5.1/go.mod h1:L3OGu8Wl2/fWfCI6z80xFu9LTZmf1ZRjMHUOPmWr69U=
 github.com/lib/pq v1.10.0/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
-github.com/lib/pq v1.10.1 h1:6VXZrLU0jHBYyAqrSPa+MgPfnSvTPuMgK+k0o5kVFWo=
-github.com/lib/pq v1.10.1/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
 github.com/lib/pq v1.10.2 h1:AqzbZs4ZoCBp+GtejcpCpcxM3zlSMx29dXbUSeVtJb8=
 github.com/lib/pq v1.10.2/go.mod h1:AlVN5x4E4T544tWzH6hKfbfQvm3HdbOxrmggDNAPY9o=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
