@@ -236,7 +236,7 @@ func convertAssign(dest, src interface{}) error {
 		return nil
 	}
 
-	if dv.Kind() == sv.Kind() && sv.Type().ConvertibleTo(dv.Type()) {
+	if dv.Kind() == sv.Kind() && sv.CanConvert(dv.Type()) {
 		dv.Set(sv.Convert(dv.Type()))
 		return nil
 	}
