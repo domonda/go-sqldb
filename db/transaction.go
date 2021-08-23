@@ -21,7 +21,7 @@ func DebugNoTransaction(ctx context.Context, nonTxFunc func(context.Context) err
 // IsolatedTransaction executes txFunc within a database transaction that is passed in to txFunc as tx Connection.
 // IsolatedTransaction returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, a brand new transaction will begin on the parent's connection.
-// Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
+// Errors and panics from txFunc will rollback the transaction.
 // Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
 func IsolatedTransaction(ctx context.Context, txFunc func(context.Context) error) error {
 	return sqldb.IsolatedTransaction(Conn(ctx), nil, func(tx sqldb.Connection) error {
