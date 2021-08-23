@@ -142,8 +142,8 @@ type Connection interface {
 	TransactionOptions() (*sql.TxOptions, bool)
 
 	// Begin a new transaction.
-	// Returns ErrWithinTransaction if the connection
-	// is already within a transaction.
+	// If the connection is already a transaction, a brand
+	// new transaction will begin on the parent's connection.
 	Begin(opts *sql.TxOptions) (Connection, error)
 
 	// Commit the current transaction.

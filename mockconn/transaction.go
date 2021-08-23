@@ -34,7 +34,10 @@ func (conn transaction) TransactionOptions() (*sql.TxOptions, bool) {
 }
 
 func (conn transaction) Begin(opts *sql.TxOptions) (sqldb.Connection, error) {
-	return nil, sqldb.ErrWithinTransaction
+	if conn.queryWriter != nil {
+		fmt.Fprint(conn.queryWriter, "BEGIN")
+	}
+	return transaction{conn.connection, opts}, nil
 }
 
 func (conn transaction) Commit() error {
