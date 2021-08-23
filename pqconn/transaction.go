@@ -145,7 +145,11 @@ func (conn *transaction) TransactionOptions() (*sql.TxOptions, bool) {
 }
 
 func (conn *transaction) Begin(opts *sql.TxOptions) (sqldb.Connection, error) {
-	return nil, sqldb.ErrWithinTransaction
+	tx, err := conn.parent.db.BeginTx(conn.parent.ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	return newTransaction(conn.parent, tx, opts), nil
 }
 
 func (conn *transaction) Commit() error {
