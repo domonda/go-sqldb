@@ -23,7 +23,7 @@ var (
 //   fmt.Stringer
 //   fmt.GoStringer
 //
-// Val can have one of the following underlying types:
+// When scanned, Val can have one of the following underlying types:
 //   int64
 //   float64
 //   bool
@@ -32,7 +32,7 @@ var (
 //   time.Time
 //   nil - for NULL values
 type AnyValue struct {
-	Val driver.Value
+	Val interface{}
 }
 
 // Scan implements the database/sql.Scanner interface.

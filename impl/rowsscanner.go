@@ -7,6 +7,8 @@ import (
 	sqldb "github.com/domonda/go-sqldb"
 )
 
+var _ sqldb.RowsScanner = &RowsScanner{}
+
 // RowsScanner implements sqldb.RowsScanner with Rows
 type RowsScanner struct {
 	ctx              context.Context // ctx is checked for every row and passed through to callbacks
@@ -37,7 +39,7 @@ func (s *RowsScanner) ScanStructSlice(dest interface{}) error {
 	return nil
 }
 
-func (s *RowsScanner) ScanStrings(headerRow bool) (rows [][]string, err error) {
+func (s *RowsScanner) ScanAllRowsAsStrings(headerRow bool) (rows [][]string, err error) {
 	cols, err := s.rows.Columns()
 	if err != nil {
 		return nil, err
@@ -58,10 +60,7 @@ func (s *RowsScanner) ScanStrings(headerRow bool) (rows [][]string, err error) {
 		rows = append(rows, row)
 		return nil
 	})
-	if err != nil {
-		return nil, err
-	}
-	return rows, nil
+	return rows, err
 }
 
 func (s *RowsScanner) ForEachRow(callback func(sqldb.RowScanner) error) (err error) {

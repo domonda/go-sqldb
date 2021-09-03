@@ -6,6 +6,12 @@ import (
 	sqldb "github.com/domonda/go-sqldb"
 )
 
+var (
+	_ sqldb.RowScanner = &RowScanner{}
+	_ sqldb.RowScanner = CurrentRowScanner{}
+	_ sqldb.RowScanner = SingleRowScanner{}
+)
+
 // RowScanner implements sqldb.RowScanner for a sql.Row
 type RowScanner struct {
 	rows             Rows
@@ -57,6 +63,10 @@ func (s *RowScanner) ScanStruct(dest interface{}) (err error) {
 	return ScanStruct(s.rows, dest, s.structFieldNamer, nil, nil)
 }
 
+func (s *RowScanner) ScanValues() ([]interface{}, error) {
+	return ScanValues(s.rows)
+}
+
 func (s *RowScanner) ScanStrings() ([]string, error) {
 	return ScanStrings(s.rows)
 }
@@ -75,6 +85,10 @@ func (s CurrentRowScanner) ScanStruct(dest interface{}) error {
 	return ScanStruct(s.Rows, dest, s.StructFieldNamer, nil, nil)
 }
 
+func (s CurrentRowScanner) ScanValues() ([]interface{}, error) {
+	return ScanValues(s.Rows)
+}
+
 func (s CurrentRowScanner) ScanStrings() ([]string, error) {
 	return ScanStrings(s.Rows)
 }
@@ -91,6 +105,10 @@ func (s SingleRowScanner) Scan(dest ...interface{}) error {
 
 func (s SingleRowScanner) ScanStruct(dest interface{}) error {
 	return ScanStruct(s.Row, dest, s.StructFieldNamer, nil, nil)
+}
+
+func (s SingleRowScanner) ScanValues() ([]interface{}, error) {
+	return ScanValues(s.Row)
 }
 
 func (s SingleRowScanner) ScanStrings() ([]string, error) {

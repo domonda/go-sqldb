@@ -7,6 +7,12 @@ import (
 	"time"
 )
 
+var (
+	_ Connection  = connectionWithError{}
+	_ RowScanner  = rowScannerWithError{}
+	_ RowsScanner = rowsScannerWithError{}
+)
+
 // ReplaceErrNoRows returns the passed replacement error
 // if errors.Is(err, sql.ErrNoRows),
 // else err is returned unchanged.
@@ -206,6 +212,10 @@ func (e rowScannerWithError) ScanStruct(dest interface{}) error {
 	return e.err
 }
 
+func (e rowScannerWithError) ScanValues() ([]interface{}, error) {
+	return nil, e.err
+}
+
 func (e rowScannerWithError) ScanStrings() ([]string, error) {
 	return nil, e.err
 }
@@ -230,7 +240,7 @@ func (e rowsScannerWithError) ScanStructSlice(dest interface{}) error {
 	return e.err
 }
 
-func (e rowsScannerWithError) ScanStrings(headerRow bool) ([][]string, error) {
+func (e rowsScannerWithError) ScanAllRowsAsStrings(headerRow bool) ([][]string, error) {
 	return nil, e.err
 }
 
