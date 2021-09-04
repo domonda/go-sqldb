@@ -1,6 +1,6 @@
 package impl
 
-// Row is an interface with the methods of sql.Rows
+// Rows is an interface with the methods of sql.Rows
 // that are needed for ScanSlice.
 // Allows mocking for tests without an SQL driver.
 type Rows interface {

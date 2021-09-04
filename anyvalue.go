@@ -37,8 +37,8 @@ type AnyValue struct {
 
 // Scan implements the database/sql.Scanner interface.
 func (any *AnyValue) Scan(val interface{}) error {
-	if b, ok := any.Val.([]byte); ok {
-		// Copy bytes because the won't be valid after this method call
+	if b, ok := val.([]byte); ok {
+		// Copy bytes because they won't be valid after this method call
 		any.Val = append([]byte(nil), b...)
 	} else {
 		any.Val = val

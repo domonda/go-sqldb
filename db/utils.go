@@ -1,11 +1,14 @@
 package db
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
+	"io"
 	"os"
 	"time"
+	"unicode/utf8"
 
 	"github.com/domonda/go-sqldb"
 )
@@ -66,4 +69,56 @@ func TxOptionsString(opts *sql.TxOptions) string {
 	default:
 		return ""
 	}
+}
+
+func PrintlnTable(rows [][]string, err error) error {
+	if err != nil {
+		_, e := fmt.Println(err)
+		return e
+	}
+	return FprintTable(os.Stdout, rows, "|")
+}
+
+func FprintTable(w io.Writer, rows [][]string, columnDelimiter string) error {
+	// Collect column widths
+	var colRuneCount []int
+	for row := range rows {
+		for col, str := range rows[row] {
+			count := utf8.RuneCountInString(str)
+			if col >= len(colRuneCount) {
+				colRuneCount = append(colRuneCount, count)
+			} else if count > colRuneCount[col] {
+				colRuneCount[col] = count
+			}
+		}
+	}
+	// Print with padded cell widths and columnDelimiter
+	line := make([]byte, 0, 1024)
+	for row := range rows {
+		// Append cells of row to line
+		for col, str := range rows[row] {
+			if col > 0 {
+				line = append(line, columnDelimiter...)
+			}
+			line = append(line, str...)
+			if pad := colRuneCount[col] - utf8.RuneCountInString(str); pad > 0 {
+				line = append(line, bytes.Repeat([]byte{' '}, pad)...)
+			}
+		}
+		// In case not all rows have the same number of cells
+		// pad line with empty cells
+		for col := len(rows[row]); col < len(colRuneCount); col++ {
+			if col > 0 {
+				line = append(line, columnDelimiter...)
+			}
+			line = append(line, bytes.Repeat([]byte{' '}, colRuneCount[col])...)
+		}
+		line = append(line, '\n')
+		_, err := w.Write(line)
+		if err != nil {
+			return err
+		}
+		line = line[:0]
+	}
+	return nil
 }
