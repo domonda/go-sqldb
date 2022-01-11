@@ -27,7 +27,7 @@ func NewRowScanner(rows Rows, structFieldNamer sqldb.StructFieldNamer, query, ar
 
 func (s *RowScanner) Scan(dest ...interface{}) (err error) {
 	defer func() {
-		s.rows.Close()
+		err = combineErrors(err, s.rows.Close())
 		err = WrapNonNilErrorWithQuery(err, s.query, s.argFmt, s.args)
 	}()
 
@@ -46,7 +46,7 @@ func (s *RowScanner) Scan(dest ...interface{}) (err error) {
 
 func (s *RowScanner) ScanStruct(dest interface{}) (err error) {
 	defer func() {
-		s.rows.Close()
+		err = combineErrors(err, s.rows.Close())
 		err = WrapNonNilErrorWithQuery(err, s.query, s.argFmt, s.args)
 	}()
 

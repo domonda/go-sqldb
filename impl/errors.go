@@ -28,3 +28,15 @@ func (e errWithQuery) Unwrap() error { return e.err }
 func (e errWithQuery) Error() string {
 	return fmt.Sprintf("%s from query: %s", e.err, FormatQuery(e.query, e.argFmt, e.args...))
 }
+
+func combineErrors(prim, sec error) error {
+	switch {
+	case prim != nil && sec != nil:
+		return fmt.Errorf("%w\n%s", prim, sec)
+	case prim != nil:
+		return prim
+	case sec != nil:
+		return sec
+	}
+	return nil
+}

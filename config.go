@@ -58,7 +58,10 @@ func (c *Config) Connect(ctx context.Context) (*sql.DB, error) {
 	db.SetConnMaxLifetime(c.ConnMaxLifetime)
 	err = db.PingContext(ctx)
 	if err != nil {
-		db.Close()
+		e := db.Close()
+		if e != nil {
+			err = fmt.Errorf("%w, then %s", err, e)
+		}
 		return nil, err
 	}
 	return db, nil

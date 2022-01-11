@@ -65,7 +65,7 @@ func (s *RowsScanner) ScanAllRowsAsStrings(headerRow bool) (rows [][]string, err
 
 func (s *RowsScanner) ForEachRow(callback func(sqldb.RowScanner) error) (err error) {
 	defer func() {
-		s.rows.Close()
+		err = combineErrors(err, s.rows.Close())
 		err = WrapNonNilErrorWithQuery(err, s.query, s.argFmt, s.args)
 	}()
 
