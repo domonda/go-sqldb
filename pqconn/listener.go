@@ -125,7 +125,7 @@ func (l *listener) close() {
 	delete(globalListeners, l.connURL)
 
 	l.ping.Stop()
-	l.conn.Close()
+	l.conn.Close() //#nosec G104 -- Don't care about close errors
 	l.conn = nil
 
 	l.callbacksMtx.Lock()
