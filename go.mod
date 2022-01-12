@@ -3,7 +3,7 @@ module github.com/domonda/go-sqldb
 go 1.17
 
 require (
-	github.com/domonda/go-types v0.0.0-20220103190500-3a9581b100cb
+	github.com/domonda/go-types v0.0.0-20220112160653-23e7b7e40bf7
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/lib/pq v1.10.4
 	github.com/stretchr/testify v1.7.0
@@ -11,7 +11,7 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/domonda/go-pretty v0.0.0-20220111114354-b0f333b12874 // indirect
+	github.com/domonda/go-pretty v0.0.0-20220112155939-e3708bbb291e // indirect
 	github.com/guregu/null v4.0.0+incompatible // indirect
 	github.com/jinzhu/now v1.1.4 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect

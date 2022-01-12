@@ -5,10 +5,14 @@ github.com/domonda/go-pretty v0.0.0-20210202131827-b4ff5dbd12fd h1:OGFdhMFO54ESh
 github.com/domonda/go-pretty v0.0.0-20210202131827-b4ff5dbd12fd/go.mod h1:zUVOQL+81aMK+Ye3kS7eDsk/aWnteWRSJ5fZWHdBWjc=
 github.com/domonda/go-pretty v0.0.0-20220111114354-b0f333b12874 h1:M7oe5FnZzBxC34dTRDLfLu72b88UWocuhhQ7DC/Rwo4=
 github.com/domonda/go-pretty v0.0.0-20220111114354-b0f333b12874/go.mod h1:zUVOQL+81aMK+Ye3kS7eDsk/aWnteWRSJ5fZWHdBWjc=
+github.com/domonda/go-pretty v0.0.0-20220112155939-e3708bbb291e h1:78yCSuJugiciDvOGjaY3IVa8zz7qVLTRvYLnafT1USA=
+github.com/domonda/go-pretty v0.0.0-20220112155939-e3708bbb291e/go.mod h1:zUVOQL+81aMK+Ye3kS7eDsk/aWnteWRSJ5fZWHdBWjc=
 github.com/domonda/go-types v0.0.0-20210915112857-4949b80d597b h1:LjMy+sBIMnsyv+HzU9tcI7/hRHrX5APdJRmVQapO8dc=
 github.com/domonda/go-types v0.0.0-20210915112857-4949b80d597b/go.mod h1:T/Sp+RXj32ZbQpKaWZYTrD2n4nfkN1rVDOc51n7ELCo=
 github.com/domonda/go-types v0.0.0-20220103190500-3a9581b100cb h1:AVDwY+drDWujHfO1jvKm7w9MHvIL/rGTa2ODVxwYnNI=
 github.com/domonda/go-types v0.0.0-20220103190500-3a9581b100cb/go.mod h1:ejtDXRzhZKPmLN6FqDuq5Z5UC136quWpApdTm0TXcUU=
+github.com/domonda/go-types v0.0.0-20220112160653-23e7b7e40bf7 h1:I3EUmkiKcQRUe3a0+Z/2BHkrGzVQKcVIJ/x606pE9VE=
+github.com/domonda/go-types v0.0.0-20220112160653-23e7b7e40bf7/go.mod h1:QMxAhQFLG1w2pEjIjvh8sBrAYJ+ykJYNZTmSZeZ2c4I=
 github.com/go-sql-driver/mysql v1.6.0 h1:BCTh4TKNUYmOmMUcQ3IipzF5prigylS7XXjEkfCHuOE=
 github.com/go-sql-driver/mysql v1.6.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
 github.com/guregu/null v4.0.0+incompatible h1:4zw0ckM7ECd6FNNddc3Fu4aty9nTlpkkzH7dPn4/4Gw=
