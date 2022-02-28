@@ -6,10 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strings"
 	"time"
 
 	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-types/nullable"
 )
 
 // ScanRowsAsSlice scans all srcRows as slice into dest.
@@ -69,103 +69,6 @@ func ScanRowsAsSlice(ctx context.Context, srcRows Rows, dest interface{}, struct
 	return nil
 }
 
-// SplitArray splits an SQL or JSON array into its top level elements.
-// Returns nil in case of an empty array ("{}" or "[]").
-func SplitArray(array string) ([]string, error) {
-	if len(array) < 2 {
-		return nil, fmt.Errorf("%q is too short for an array", array)
-	}
-	first := array[0]
-	last := array[len(array)-1]
-	isJSON := first == '[' && last == ']'
-	isSQL := first == '{' && last == '}'
-	if !isJSON && !isSQL {
-		return nil, fmt.Errorf("%q is not a SQL or JSON array", array)
-	}
-	inner := strings.TrimSpace(array[1 : len(array)-1])
-	if inner == "" {
-		return nil, nil
-	}
-	var (
-		elems        []string
-		objectDepth  = 0
-		bracketDepth = 0
-		elemStart    = 0
-		rLast        rune
-		withinQuote  rune
-	)
-	for i, r := range inner {
-		if withinQuote == 0 {
-			switch r {
-			case ',':
-				if objectDepth == 0 && bracketDepth == 0 {
-					elems = append(elems, strings.TrimSpace(inner[elemStart:i]))
-					elemStart = i + 1
-				}
-
-			case '{':
-				objectDepth++
-
-			case '}':
-				objectDepth--
-				if objectDepth < 0 {
-					return nil, fmt.Errorf("array %q has too many '}'", array)
-				}
-
-			case '[':
-				bracketDepth++
-
-			case ']':
-				bracketDepth--
-				if bracketDepth < 0 {
-					return nil, fmt.Errorf("array %q has too many ']'", array)
-				}
-
-			case '"':
-				// Begin JSON string
-				withinQuote = r
-
-			case '\'':
-				// Begin SQL string
-				withinQuote = r
-			}
-		} else {
-			// withinQuote != 0
-			switch withinQuote {
-			case '\'':
-				if r == '\'' && rLast != '\'' {
-					// End of SQL quote because ' was not escapded as ''
-					withinQuote = 0
-				}
-			case '"':
-				if r == '"' && rLast != '\\' {
-					// End of JSON quote because " was not escapded as \"
-					withinQuote = 0
-				}
-			}
-		}
-
-		rLast = r
-	}
-
-	if objectDepth != 0 {
-		return nil, fmt.Errorf("array %q has not enough '}'", array)
-	}
-	if bracketDepth != 0 {
-		return nil, fmt.Errorf("array %q has not enough ']'", array)
-	}
-	if withinQuote != 0 {
-		return nil, fmt.Errorf("array %q has an unclosed '%s' quote", array, string(withinQuote))
-	}
-
-	// Rameining element after begin and separators
-	if elemStart < len(inner) {
-		elems = append(elems, strings.TrimSpace(inner[elemStart:]))
-	}
-
-	return elems, nil
-}
-
 type SliceScanner struct {
 	destSlice reflect.Value
 }
@@ -191,7 +94,7 @@ func (a *SliceScanner) Scan(src interface{}) error {
 }
 
 func (a *SliceScanner) scanString(src string) error {
-	elems, err := SplitArray(src)
+	elems, err := nullable.SplitArray(src)
 	if err != nil {
 		return err
 	}
