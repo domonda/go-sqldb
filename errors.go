@@ -15,12 +15,18 @@ var (
 
 // ReplaceErrNoRows returns the passed replacement error
 // if errors.Is(err, sql.ErrNoRows),
-// else err is returned unchanged.
+// else the passed err is returned unchanged.
 func ReplaceErrNoRows(err, replacement error) error {
 	if err != nil && errors.Is(err, sql.ErrNoRows) {
 		return replacement
 	}
 	return err
+}
+
+// IsOtherThanErrNoRows returns true if the passed error is not nil
+// and does not unwrap to, or is sql.ErrNoRows.
+func IsOtherThanErrNoRows(err error) bool {
+	return err != nil && errors.Is(err, sql.ErrNoRows)
 }
 
 // sentinelError implements the error interface for a string
