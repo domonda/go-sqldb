@@ -3,7 +3,7 @@ module github.com/domonda/go-sqldb
 go 1.17
 
 require (
-	github.com/domonda/go-types v0.0.0-20220228144452-dde8d262ead4
+	github.com/domonda/go-types v0.0.0-20220304103441-d1c2862c0905
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/lib/pq v1.10.4
 	github.com/stretchr/testify v1.7.0
