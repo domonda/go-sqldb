@@ -57,7 +57,7 @@ func (conn *transaction) Ping(timeout time.Duration) error { return conn.parent.
 func (conn *transaction) Stats() sql.DBStats               { return conn.parent.Stats() }
 func (conn *transaction) Config() *sqldb.Config            { return conn.parent.Config() }
 
-func (conn *transaction) Exec(query string, args ...interface{}) error {
+func (conn *transaction) Exec(query string, args ...any) error {
 	_, err := conn.tx.Exec(query, args...)
 	return WrapNonNilErrorWithQuery(err, query, conn.parent.argFmt, args)
 }
@@ -74,51 +74,51 @@ func (conn *transaction) InsertReturning(table string, values sqldb.Values, retu
 	return InsertReturning(conn, table, conn.parent.argFmt, values, returning)
 }
 
-func (conn *transaction) InsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
+func (conn *transaction) InsertStruct(table string, rowStruct any, restrictToColumns ...string) error {
 	return InsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.parent.argFmt, nil, restrictToColumns)
 }
 
-func (conn *transaction) InsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (conn *transaction) InsertStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error {
 	return InsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.parent.argFmt, ignoreColumns, nil)
 }
 
-func (conn *transaction) InsertUniqueStruct(table string, rowStruct interface{}, onConflict string, restrictToColumns ...string) (inserted bool, err error) {
+func (conn *transaction) InsertUniqueStruct(table string, rowStruct any, onConflict string, restrictToColumns ...string) (inserted bool, err error) {
 	return InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, conn.parent.argFmt, nil, restrictToColumns)
 }
 
-func (conn *transaction) InsertUniqueStructIgnoreColumns(table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
+func (conn *transaction) InsertUniqueStructIgnoreColumns(table string, rowStruct any, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
 	return InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, conn.parent.argFmt, ignoreColumns, nil)
 }
 
-func (conn *transaction) Update(table string, values sqldb.Values, where string, args ...interface{}) error {
+func (conn *transaction) Update(table string, values sqldb.Values, where string, args ...any) error {
 	return Update(conn, table, values, where, conn.parent.argFmt, args)
 }
 
-func (conn *transaction) UpdateReturningRow(table string, values sqldb.Values, returning, where string, args ...interface{}) sqldb.RowScanner {
+func (conn *transaction) UpdateReturningRow(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowScanner {
 	return UpdateReturningRow(conn, table, values, returning, where, args)
 }
 
-func (conn *transaction) UpdateReturningRows(table string, values sqldb.Values, returning, where string, args ...interface{}) sqldb.RowsScanner {
+func (conn *transaction) UpdateReturningRows(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowsScanner {
 	return UpdateReturningRows(conn, table, values, returning, where, args)
 }
 
-func (conn *transaction) UpdateStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
+func (conn *transaction) UpdateStruct(table string, rowStruct any, restrictToColumns ...string) error {
 	return UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, conn.parent.argFmt, nil, restrictToColumns)
 }
 
-func (conn *transaction) UpdateStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (conn *transaction) UpdateStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error {
 	return UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, conn.parent.argFmt, ignoreColumns, nil)
 }
 
-func (conn *transaction) UpsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
+func (conn *transaction) UpsertStruct(table string, rowStruct any, restrictToColumns ...string) error {
 	return UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.parent.argFmt, nil, restrictToColumns)
 }
 
-func (conn *transaction) UpsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (conn *transaction) UpsertStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error {
 	return UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.parent.argFmt, ignoreColumns, nil)
 }
 
-func (conn *transaction) QueryRow(query string, args ...interface{}) sqldb.RowScanner {
+func (conn *transaction) QueryRow(query string, args ...any) sqldb.RowScanner {
 	rows, err := conn.tx.QueryContext(conn.parent.ctx, query, args...)
 	if err != nil {
 		err = WrapNonNilErrorWithQuery(err, query, conn.parent.argFmt, args)
@@ -127,7 +127,7 @@ func (conn *transaction) QueryRow(query string, args ...interface{}) sqldb.RowSc
 	return NewRowScanner(rows, conn.structFieldNamer, query, conn.parent.argFmt, args)
 }
 
-func (conn *transaction) QueryRows(query string, args ...interface{}) sqldb.RowsScanner {
+func (conn *transaction) QueryRows(query string, args ...any) sqldb.RowsScanner {
 	rows, err := conn.tx.QueryContext(conn.parent.ctx, query, args...)
 	if err != nil {
 		err = WrapNonNilErrorWithQuery(err, query, conn.parent.argFmt, args)

@@ -14,16 +14,16 @@ type RowsScanner struct {
 	ctx              context.Context // ctx is checked for every row and passed through to callbacks
 	rows             Rows
 	structFieldNamer sqldb.StructFieldNamer
-	query            string        // for error wrapping
-	argFmt           string        // for error wrapping
-	args             []interface{} // for error wrapping
+	query            string // for error wrapping
+	argFmt           string // for error wrapping
+	args             []any  // for error wrapping
 }
 
-func NewRowsScanner(ctx context.Context, rows Rows, structFieldNamer sqldb.StructFieldNamer, query, argFmt string, args []interface{}) *RowsScanner {
+func NewRowsScanner(ctx context.Context, rows Rows, structFieldNamer sqldb.StructFieldNamer, query, argFmt string, args []any) *RowsScanner {
 	return &RowsScanner{ctx, rows, structFieldNamer, query, argFmt, args}
 }
 
-func (s *RowsScanner) ScanSlice(dest interface{}) error {
+func (s *RowsScanner) ScanSlice(dest any) error {
 	err := ScanRowsAsSlice(s.ctx, s.rows, dest, nil)
 	if err != nil {
 		return fmt.Errorf("%w from query: %s", err, FormatQuery(s.query, s.argFmt, s.args...))
@@ -31,7 +31,7 @@ func (s *RowsScanner) ScanSlice(dest interface{}) error {
 	return nil
 }
 
-func (s *RowsScanner) ScanStructSlice(dest interface{}) error {
+func (s *RowsScanner) ScanStructSlice(dest any) error {
 	err := ScanRowsAsSlice(s.ctx, s.rows, dest, s.structFieldNamer)
 	if err != nil {
 		return fmt.Errorf("%w from query: %s", err, FormatQuery(s.query, s.argFmt, s.args...))
@@ -47,7 +47,7 @@ func (s *RowsScanner) ScanAllRowsAsStrings(headerRow bool) (rows [][]string, err
 	if headerRow {
 		rows = [][]string{cols}
 	}
-	stringScannablePtrs := make([]interface{}, len(cols))
+	stringScannablePtrs := make([]any, len(cols))
 	err = s.ForEachRow(func(rowScanner sqldb.RowScanner) error {
 		row := make([]string, len(cols))
 		for i := range stringScannablePtrs {
@@ -82,7 +82,7 @@ func (s *RowsScanner) ForEachRow(callback func(sqldb.RowScanner) error) (err err
 	return s.rows.Err()
 }
 
-func (s *RowsScanner) ForEachRowCall(callback interface{}) error {
+func (s *RowsScanner) ForEachRowCall(callback any) error {
 	forEachRowFunc, err := ForEachRowCallFunc(s.ctx, callback)
 	if err != nil {
 		return err

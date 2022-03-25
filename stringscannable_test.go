@@ -11,7 +11,7 @@ func TestStringScannable_Scan(t *testing.T) {
 	tests := []struct {
 		name     string
 		expected StringScannable
-		src      interface{}
+		src      any
 		wantErr  bool
 	}{
 		{name: "int64", expected: "-66", src: int64(-66)},

@@ -27,7 +27,7 @@ var (
 // If a non nil error is returned from the callback, then this error
 // is returned immediately by this function without scanning further rows.
 // In case of zero rows, no error will be returned.
-func ForEachRowCallFunc(ctx context.Context, callback interface{}) (f func(sqldb.RowScanner) error, err error) {
+func ForEachRowCallFunc(ctx context.Context, callback any) (f func(sqldb.RowScanner) error, err error) {
 	val := reflect.ValueOf(callback)
 	typ := val.Type()
 	if typ.Kind() != reflect.Func {
@@ -74,7 +74,7 @@ func ForEachRowCallFunc(ctx context.Context, callback interface{}) (f func(sqldb
 
 	f = func(row sqldb.RowScanner) (err error) {
 		// First scan row
-		scannedValPtrs := make([]interface{}, typ.NumIn()-firstArg)
+		scannedValPtrs := make([]any, typ.NumIn()-firstArg)
 		for i := range scannedValPtrs {
 			scannedValPtrs[i] = reflect.New(typ.In(firstArg + i)).Interface()
 		}

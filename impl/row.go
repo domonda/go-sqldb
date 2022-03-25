@@ -9,5 +9,5 @@ type Row interface {
 	// Scan copies the columns in the current row into the values pointed
 	// at by dest. The number of values in dest must be the same as the
 	// number of columns in Rows.
-	Scan(dest ...interface{}) error
+	Scan(dest ...any) error
 }

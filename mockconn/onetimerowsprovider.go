@@ -22,7 +22,7 @@ func NewOneTimeRowsProvider() *OneTimeRowsProvider {
 	}
 }
 
-func (p *OneTimeRowsProvider) AddRowScannerQuery(scanner sqldb.RowScanner, query string, args ...interface{}) {
+func (p *OneTimeRowsProvider) AddRowScannerQuery(scanner sqldb.RowScanner, query string, args ...any) {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 
@@ -33,7 +33,7 @@ func (p *OneTimeRowsProvider) AddRowScannerQuery(scanner sqldb.RowScanner, query
 	p.rowScanners[key] = scanner
 }
 
-func (p *OneTimeRowsProvider) AddRowsScannerQuery(scanner sqldb.RowsScanner, query string, args ...interface{}) {
+func (p *OneTimeRowsProvider) AddRowsScannerQuery(scanner sqldb.RowsScanner, query string, args ...any) {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 
@@ -44,7 +44,7 @@ func (p *OneTimeRowsProvider) AddRowsScannerQuery(scanner sqldb.RowsScanner, que
 	p.rowsScanners[key] = scanner
 }
 
-func (p *OneTimeRowsProvider) QueryRow(structFieldNamer sqldb.StructFieldNamer, query string, args ...interface{}) sqldb.RowScanner {
+func (p *OneTimeRowsProvider) QueryRow(structFieldNamer sqldb.StructFieldNamer, query string, args ...any) sqldb.RowScanner {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 
@@ -54,7 +54,7 @@ func (p *OneTimeRowsProvider) QueryRow(structFieldNamer sqldb.StructFieldNamer, 
 	return scanner
 }
 
-func (p *OneTimeRowsProvider) QueryRows(structFieldNamer sqldb.StructFieldNamer, query string, args ...interface{}) sqldb.RowsScanner {
+func (p *OneTimeRowsProvider) QueryRows(structFieldNamer sqldb.StructFieldNamer, query string, args ...any) sqldb.RowsScanner {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 
@@ -64,7 +64,7 @@ func (p *OneTimeRowsProvider) QueryRows(structFieldNamer sqldb.StructFieldNamer,
 	return scanner
 }
 
-func uniqueQueryString(query string, args []interface{}) string {
+func uniqueQueryString(query string, args []any) string {
 	var b strings.Builder
 	b.WriteString(query)
 	for _, arg := range args {

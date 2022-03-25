@@ -14,7 +14,7 @@ import (
 const timeFormat = "'2006-01-02 15:04:05.999999Z07:00:00'"
 
 // FormatValue formats a value for debugging or logging SQL statements.
-func FormatValue(val interface{}) (string, error) {
+func FormatValue(val any) (string, error) {
 	if val == nil {
 		return "NULL", nil
 	}
@@ -77,7 +77,7 @@ func FormatValue(val interface{}) (string, error) {
 	return fmt.Sprint(val), nil
 }
 
-func FormatQuery(query, argFmt string, args ...interface{}) string {
+func FormatQuery(query, argFmt string, args ...any) string {
 	for i := len(args) - 1; i >= 0; i-- {
 		placeholder := fmt.Sprintf(argFmt, i+1)
 		value, err := FormatValue(args[i])

@@ -7,7 +7,7 @@ import (
 	sqldb "github.com/domonda/go-sqldb"
 )
 
-func ScanStruct(srcRow Row, destStruct interface{}, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) error {
+func ScanStruct(srcRow Row, destStruct any, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) error {
 	v := reflect.ValueOf(destStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -36,7 +36,7 @@ func ScanStruct(srcRow Row, destStruct interface{}, namer sqldb.StructFieldNamer
 		return err
 	}
 
-	fieldPointers := make(map[string]interface{}, len(cols))
+	fieldPointers := make(map[string]any, len(cols))
 	err = getStructFieldPointers(v, namer, ignoreColumns, restrictToColumns, fieldPointers)
 	if err != nil {
 		return err
@@ -48,7 +48,7 @@ func ScanStruct(srcRow Row, destStruct interface{}, namer sqldb.StructFieldNamer
 		return fmt.Errorf("ScanStruct: %T has %d fields to scan, but database row has %d columns: %v", destStruct, len(fieldPointers), len(cols), cols)
 	}
 
-	dest := make([]interface{}, len(cols))
+	dest := make([]any, len(cols))
 	for i, col := range cols {
 		fieldPtr, ok := fieldPointers[col]
 		if !ok {
@@ -69,7 +69,7 @@ func ScanStruct(srcRow Row, destStruct interface{}, namer sqldb.StructFieldNamer
 	return nil
 }
 
-func getStructFieldPointers(v reflect.Value, namer sqldb.StructFieldNamer, ignoreNames, restrictToNames []string, outFieldPtrs map[string]interface{}) error {
+func getStructFieldPointers(v reflect.Value, namer sqldb.StructFieldNamer, ignoreNames, restrictToNames []string, outFieldPtrs map[string]any) error {
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Type().Field(i)
 		name, _, ok := namer.StructFieldName(field)
@@ -105,7 +105,7 @@ func getStructFieldPointers(v reflect.Value, namer sqldb.StructFieldNamer, ignor
 // The same number of pkCol bools will be returend as names, every corresponding bool marking
 // if the name had the ,pk suffix in their struct field naming tag.
 // If false is passed for keepReadOnly then
-func structFieldValues(v reflect.Value, namer sqldb.StructFieldNamer, ignoreNames, restrictToNames []string, keepPK bool) (names []string, flags []sqldb.FieldFlag, vals []interface{}) {
+func structFieldValues(v reflect.Value, namer sqldb.StructFieldNamer, ignoreNames, restrictToNames []string, keepPK bool) (names []string, flags []sqldb.FieldFlag, vals []any) {
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Type().Field(i)
 		name, flag, ok := namer.StructFieldName(field)

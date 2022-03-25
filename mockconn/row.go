@@ -18,7 +18,7 @@ type Row struct {
 	columnNamer  sqldb.StructFieldNamer
 }
 
-func NewRow(rowStruct interface{}, columnNamer sqldb.StructFieldNamer) *Row {
+func NewRow(rowStruct any, columnNamer sqldb.StructFieldNamer) *Row {
 	val := reflect.ValueOf(rowStruct)
 	for val.Kind() == reflect.Ptr {
 		val = val.Elem()
@@ -42,7 +42,7 @@ func (r *Row) Columns() ([]string, error) {
 	return columns, nil
 }
 
-func (r *Row) Scan(dest ...interface{}) error {
+func (r *Row) Scan(dest ...any) error {
 	for i := range dest {
 		src := r.rowStructVal.Field(i).Interface()
 		if valuer, ok := src.(driver.Valuer); ok {
@@ -73,7 +73,7 @@ var errNilPtr = errors.New("destination pointer is nil") // embedded in descript
 // convertAssign copies to dest the value in src, converting it if possible.
 // An error is returned if the copy would result in loss of information.
 // dest should be a pointer type.
-func convertAssign(dest, src interface{}) error {
+func convertAssign(dest, src any) error {
 	// Common cases, without reflect.
 	switch s := src.(type) {
 	case string:
@@ -105,7 +105,7 @@ func convertAssign(dest, src interface{}) error {
 			}
 			*d = string(s)
 			return nil
-		case *interface{}:
+		case *any:
 			if d == nil {
 				return errNilPtr
 			}
@@ -152,7 +152,7 @@ func convertAssign(dest, src interface{}) error {
 		}
 	case nil:
 		switch d := dest.(type) {
-		case *interface{}:
+		case *any:
 			if d == nil {
 				return errNilPtr
 			}
@@ -204,7 +204,7 @@ func convertAssign(dest, src interface{}) error {
 			*d = bv.(bool)
 		}
 		return err
-	case *interface{}:
+	case *any:
 		*d = src
 		return nil
 	}
@@ -323,7 +323,7 @@ func cloneBytes(b []byte) []byte {
 	return c
 }
 
-func asString(src interface{}) string {
+func asString(src any) string {
 	switch v := src.(type) {
 	case string:
 		return v

@@ -14,7 +14,7 @@ type StringScannable string
 // Byte slices will be interpreted as strings,
 // nil (SQL NULL) will be converted to an empty string,
 // all other types are converted with fmt.Sprint(src).
-func (s *StringScannable) Scan(src interface{}) error {
+func (s *StringScannable) Scan(src any) error {
 	switch x := src.(type) {
 	case nil:
 		*s = ""

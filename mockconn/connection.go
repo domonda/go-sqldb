@@ -76,7 +76,7 @@ func (conn *connection) Ping(time.Duration) error {
 	return nil
 }
 
-func (conn *connection) Exec(query string, args ...interface{}) error {
+func (conn *connection) Exec(query string, args ...any) error {
 	if conn.queryWriter != nil {
 		fmt.Fprint(conn.queryWriter, query)
 	}
@@ -95,51 +95,51 @@ func (conn *connection) InsertReturning(table string, values sqldb.Values, retur
 	return impl.InsertReturning(conn, table, conn.argFmt, values, returning)
 }
 
-func (conn *connection) InsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
+func (conn *connection) InsertStruct(table string, rowStruct any, restrictToColumns ...string) error {
 	return impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt, nil, restrictToColumns)
 }
 
-func (conn *connection) InsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (conn *connection) InsertStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error {
 	return impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt, ignoreColumns, nil)
 }
 
-func (conn *connection) InsertUniqueStruct(table string, rowStruct interface{}, onConflict string, restrictToColumns ...string) (inserted bool, err error) {
+func (conn *connection) InsertUniqueStruct(table string, rowStruct any, onConflict string, restrictToColumns ...string) (inserted bool, err error) {
 	return impl.InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, conn.argFmt, nil, restrictToColumns)
 }
 
-func (conn *connection) InsertUniqueStructIgnoreColumns(table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
+func (conn *connection) InsertUniqueStructIgnoreColumns(table string, rowStruct any, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
 	return impl.InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, conn.argFmt, ignoreColumns, nil)
 }
 
-func (conn *connection) Update(table string, values sqldb.Values, where string, args ...interface{}) error {
+func (conn *connection) Update(table string, values sqldb.Values, where string, args ...any) error {
 	return impl.Update(conn, table, values, where, conn.argFmt, args)
 }
 
-func (conn *connection) UpdateReturningRow(table string, values sqldb.Values, returning, where string, args ...interface{}) sqldb.RowScanner {
+func (conn *connection) UpdateReturningRow(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowScanner {
 	return impl.UpdateReturningRow(conn, table, values, returning, where, args)
 }
 
-func (conn *connection) UpdateReturningRows(table string, values sqldb.Values, returning, where string, args ...interface{}) sqldb.RowsScanner {
+func (conn *connection) UpdateReturningRows(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowsScanner {
 	return impl.UpdateReturningRows(conn, table, values, returning, where, args)
 }
 
-func (conn *connection) UpdateStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
+func (conn *connection) UpdateStruct(table string, rowStruct any, restrictToColumns ...string) error {
 	return impl.UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt, nil, restrictToColumns)
 }
 
-func (conn *connection) UpdateStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (conn *connection) UpdateStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error {
 	return impl.UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt, ignoreColumns, nil)
 }
 
-func (conn *connection) UpsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
+func (conn *connection) UpsertStruct(table string, rowStruct any, restrictToColumns ...string) error {
 	return impl.UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt, nil, restrictToColumns)
 }
 
-func (conn *connection) UpsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (conn *connection) UpsertStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error {
 	return impl.UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt, ignoreColumns, nil)
 }
 
-func (conn *connection) QueryRow(query string, args ...interface{}) sqldb.RowScanner {
+func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
 	if conn.ctx.Err() != nil {
 		return sqldb.RowScannerWithError(conn.ctx.Err())
 	}
@@ -152,7 +152,7 @@ func (conn *connection) QueryRow(query string, args ...interface{}) sqldb.RowSca
 	return conn.rowsProvider.QueryRow(conn.structFieldNamer, query, args...)
 }
 
-func (conn *connection) QueryRows(query string, args ...interface{}) sqldb.RowsScanner {
+func (conn *connection) QueryRows(query string, args ...any) sqldb.RowsScanner {
 	if conn.ctx.Err() != nil {
 		return sqldb.RowsScannerWithError(conn.ctx.Err())
 	}

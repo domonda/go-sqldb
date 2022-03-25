@@ -43,7 +43,7 @@ type Connection interface {
 	Config() *Config
 
 	// Exec executes a query with optional args.
-	Exec(query string, args ...interface{}) error
+	Exec(query string, args ...any) error
 
 	// Insert a new row into table using the values.
 	Insert(table string, values Values) error
@@ -61,39 +61,39 @@ type Connection interface {
 	// of rowStruct which have a `db` tag that is not "-".
 	// If restrictToColumns are provided, then only struct fields with a `db` tag
 	// matching any of the passed column names will be used.
-	InsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error
+	InsertStruct(table string, rowStruct any, restrictToColumns ...string) error
 
 	// TODO insert multiple structs with single query if possible
-	// InsertStructs(table string, rowStructs interface{}, restrictToColumns ...string) error
+	// InsertStructs(table string, rowStructs any, restrictToColumns ...string) error
 
 	// InsertStructIgnoreColumns inserts a new row into table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
-	InsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error
+	InsertStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error
 
 	// InsertUniqueStruct inserts a new row into table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// If restrictToColumns are provided, then only struct fields with a `db` tag
 	// matching any of the passed column names will be used.
 	// Does nothing if the onConflict statement applies and returns if a row was inserted.
-	InsertUniqueStruct(table string, rowStruct interface{}, onConflict string, restrictToColumns ...string) (inserted bool, err error)
+	InsertUniqueStruct(table string, rowStruct any, onConflict string, restrictToColumns ...string) (inserted bool, err error)
 
 	// InsertUniqueStructIgnoreColumns inserts a new row into table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	// Does nothing if the onConflict statement applies and returns if a row was inserted.
-	InsertUniqueStructIgnoreColumns(table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error)
+	InsertUniqueStructIgnoreColumns(table string, rowStruct any, onConflict string, ignoreColumns ...string) (inserted bool, err error)
 
 	// Update table rows(s) with values using the where statement with passed in args starting at $1.
-	Update(table string, values Values, where string, args ...interface{}) error
+	Update(table string, values Values, where string, args ...any) error
 
 	// UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
 	// and returning a single row with the columns specified in returning argument.
-	UpdateReturningRow(table string, values Values, returning, where string, args ...interface{}) RowScanner
+	UpdateReturningRow(table string, values Values, returning, where string, args ...any) RowScanner
 
 	// UpdateReturningRows updates table rows with values using the where statement with passed in args starting at $1
 	// and returning multiple rows with the columns specified in returning argument.
-	UpdateReturningRows(table string, values Values, returning, where string, args ...interface{}) RowsScanner
+	UpdateReturningRows(table string, values Values, returning, where string, args ...any) RowsScanner
 
 	// UpdateStruct updates a row in a table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
@@ -101,14 +101,14 @@ type Connection interface {
 	// matching any of the passed column names will be used.
 	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
 	// to mark primary key column(s).
-	UpdateStruct(table string, rowStruct interface{}, restrictToColumns ...string) error
+	UpdateStruct(table string, rowStruct any, restrictToColumns ...string) error
 
 	// UpdateStructIgnoreColumns updates a row in a table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
 	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
 	// to mark primary key column(s).
-	UpdateStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error
+	UpdateStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error
 
 	// UpsertStruct upserts a row to table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
@@ -117,7 +117,7 @@ type Connection interface {
 	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
 	// to mark primary key column(s).
 	// If inserting conflicts on the primary key column(s), then an update is performed.
-	UpsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error
+	UpsertStruct(table string, rowStruct any, restrictToColumns ...string) error
 
 	// UpsertStructIgnoreColumns upserts a row to table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
@@ -125,13 +125,13 @@ type Connection interface {
 	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
 	// to mark primary key column(s).
 	// If inserting conflicts on the primary key column(s), then an update is performed.
-	UpsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error
+	UpsertStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error
 
 	// QueryRow queries a single row and returns a RowScanner for the results.
-	QueryRow(query string, args ...interface{}) RowScanner
+	QueryRow(query string, args ...any) RowScanner
 
 	// QueryRows queries multiple rows and returns a RowsScanner for the results.
-	QueryRows(query string, args ...interface{}) RowsScanner
+	QueryRows(query string, args ...any) RowsScanner
 
 	// IsTransaction returns if the connection is a transaction
 	IsTransaction() bool

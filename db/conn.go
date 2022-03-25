@@ -61,8 +61,8 @@ type contextWithoutCancel struct {
 	parent context.Context
 }
 
-func (contextWithoutCancel) Deadline() (time.Time, bool)         { return time.Time{}, false }
-func (contextWithoutCancel) Done() <-chan struct{}               { return nil }
-func (contextWithoutCancel) Err() error                          { return nil }
-func (c contextWithoutCancel) Value(key interface{}) interface{} { return c.parent.Value(key) }
-func (c contextWithoutCancel) String() string                    { return fmt.Sprintf("%s.WithoutCancel", c.parent) }
+func (contextWithoutCancel) Deadline() (time.Time, bool) { return time.Time{}, false }
+func (contextWithoutCancel) Done() <-chan struct{}       { return nil }
+func (contextWithoutCancel) Err() error                  { return nil }
+func (c contextWithoutCancel) Value(key any) any         { return c.parent.Value(key) }
+func (c contextWithoutCancel) String() string            { return fmt.Sprintf("%s.WithoutCancel", c.parent) }

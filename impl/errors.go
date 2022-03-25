@@ -8,7 +8,7 @@ import (
 // WrapNonNilErrorWithQuery wraps non nil errors with a formatted query
 // if the error was not already wrapped with a query.
 // If the passed error is nil, then nil will be returned.
-func WrapNonNilErrorWithQuery(err error, query, argFmt string, args []interface{}) error {
+func WrapNonNilErrorWithQuery(err error, query, argFmt string, args []any) error {
 	var wrapped errWithQuery
 	if err == nil || errors.As(err, &wrapped) {
 		return err
@@ -20,7 +20,7 @@ type errWithQuery struct {
 	err    error
 	query  string
 	argFmt string
-	args   []interface{}
+	args   []any
 }
 
 func (e errWithQuery) Unwrap() error { return e.err }

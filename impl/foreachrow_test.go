@@ -7,7 +7,7 @@ import (
 func TestForEachRowCallFunc(t *testing.T) {
 	// type args struct {
 	// 	ctx      context.Context
-	// 	callback interface{}
+	// 	callback any
 	// }
 	// tests := []struct {
 	// 	name    string

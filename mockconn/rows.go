@@ -14,7 +14,7 @@ type Rows struct {
 	err    error
 }
 
-func NewRowsFromStructs(rowStructs interface{}, columnNamer sqldb.StructFieldNamer) *Rows {
+func NewRowsFromStructs(rowStructs any, columnNamer sqldb.StructFieldNamer) *Rows {
 	v := reflect.ValueOf(rowStructs)
 	t := v.Type()
 	if t.Kind() != reflect.Array && t.Kind() != reflect.Slice {
@@ -46,7 +46,7 @@ func (r *Rows) Columns() ([]string, error) {
 // Scan copies the columns in the current row into the values pointed
 // at by dest. The number of values in dest must be the same as the
 // number of columns in Rows.
-func (r *Rows) Scan(dest ...interface{}) error {
+func (r *Rows) Scan(dest ...any) error {
 	switch {
 	case r.err != nil:
 		return r.err

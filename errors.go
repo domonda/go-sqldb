@@ -90,7 +90,7 @@ func (e connectionWithError) Config() *Config {
 	return &Config{Driver: "ConnectionWithError"}
 }
 
-func (e connectionWithError) Exec(query string, args ...interface{}) error {
+func (e connectionWithError) Exec(query string, args ...any) error {
 	return e.err
 }
 
@@ -106,55 +106,55 @@ func (e connectionWithError) InsertReturning(table string, values Values, return
 	return RowScannerWithError(e.err)
 }
 
-func (e connectionWithError) InsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
+func (e connectionWithError) InsertStruct(table string, rowStruct any, restrictToColumns ...string) error {
 	return e.err
 }
 
-func (e connectionWithError) InsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (e connectionWithError) InsertStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error {
 	return e.err
 }
 
-func (e connectionWithError) InsertUniqueStruct(table string, rowStruct interface{}, onConflict string, restrictToColumns ...string) (inserted bool, err error) {
+func (e connectionWithError) InsertUniqueStruct(table string, rowStruct any, onConflict string, restrictToColumns ...string) (inserted bool, err error) {
 	return false, e.err
 }
 
-func (e connectionWithError) InsertUniqueStructIgnoreColumns(table string, rowStruct interface{}, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
+func (e connectionWithError) InsertUniqueStructIgnoreColumns(table string, rowStruct any, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
 	return false, e.err
 }
 
-func (e connectionWithError) Update(table string, values Values, where string, args ...interface{}) error {
+func (e connectionWithError) Update(table string, values Values, where string, args ...any) error {
 	return e.err
 }
 
-func (e connectionWithError) UpdateReturningRow(table string, values Values, returning, where string, args ...interface{}) RowScanner {
+func (e connectionWithError) UpdateReturningRow(table string, values Values, returning, where string, args ...any) RowScanner {
 	return RowScannerWithError(e.err)
 }
 
-func (e connectionWithError) UpdateReturningRows(table string, values Values, returning, where string, args ...interface{}) RowsScanner {
+func (e connectionWithError) UpdateReturningRows(table string, values Values, returning, where string, args ...any) RowsScanner {
 	return RowsScannerWithError(e.err)
 }
 
-func (e connectionWithError) UpdateStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
+func (e connectionWithError) UpdateStruct(table string, rowStruct any, restrictToColumns ...string) error {
 	return e.err
 }
 
-func (e connectionWithError) UpdateStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (e connectionWithError) UpdateStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error {
 	return e.err
 }
 
-func (e connectionWithError) UpsertStruct(table string, rowStruct interface{}, restrictToColumns ...string) error {
+func (e connectionWithError) UpsertStruct(table string, rowStruct any, restrictToColumns ...string) error {
 	return e.err
 }
 
-func (e connectionWithError) UpsertStructIgnoreColumns(table string, rowStruct interface{}, ignoreColumns ...string) error {
+func (e connectionWithError) UpsertStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error {
 	return e.err
 }
 
-func (e connectionWithError) QueryRow(query string, args ...interface{}) RowScanner {
+func (e connectionWithError) QueryRow(query string, args ...any) RowScanner {
 	return RowScannerWithError(e.err)
 }
 
-func (e connectionWithError) QueryRows(query string, args ...interface{}) RowsScanner {
+func (e connectionWithError) QueryRows(query string, args ...any) RowsScanner {
 	return RowsScannerWithError(e.err)
 }
 
@@ -210,15 +210,15 @@ type rowScannerWithError struct {
 	err error
 }
 
-func (e rowScannerWithError) Scan(dest ...interface{}) error {
+func (e rowScannerWithError) Scan(dest ...any) error {
 	return e.err
 }
 
-func (e rowScannerWithError) ScanStruct(dest interface{}) error {
+func (e rowScannerWithError) ScanStruct(dest any) error {
 	return e.err
 }
 
-func (e rowScannerWithError) ScanValues() ([]interface{}, error) {
+func (e rowScannerWithError) ScanValues() ([]any, error) {
 	return nil, e.err
 }
 
@@ -238,11 +238,11 @@ type rowsScannerWithError struct {
 	err error
 }
 
-func (e rowsScannerWithError) ScanSlice(dest interface{}) error {
+func (e rowsScannerWithError) ScanSlice(dest any) error {
 	return e.err
 }
 
-func (e rowsScannerWithError) ScanStructSlice(dest interface{}) error {
+func (e rowsScannerWithError) ScanStructSlice(dest any) error {
 	return e.err
 }
 
@@ -254,6 +254,6 @@ func (e rowsScannerWithError) ForEachRow(callback func(RowScanner) error) error 
 	return e.err
 }
 
-func (e rowsScannerWithError) ForEachRowCall(callback interface{}) error {
+func (e rowsScannerWithError) ForEachRowCall(callback any) error {
 	return e.err
 }

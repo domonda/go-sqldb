@@ -18,7 +18,7 @@ import (
 // so that every column maps on exactly one struct field using structFieldNamer.
 // In case of single column rows, nil must be passed for structFieldNamer.
 // ScanRowsAsSlice calls srcRows.Close().
-func ScanRowsAsSlice(ctx context.Context, srcRows Rows, dest interface{}, structFieldNamer sqldb.StructFieldNamer) error {
+func ScanRowsAsSlice(ctx context.Context, srcRows Rows, dest any, structFieldNamer sqldb.StructFieldNamer) error {
 	defer srcRows.Close()
 
 	destVal := reflect.ValueOf(dest)
@@ -73,7 +73,7 @@ type SliceScanner struct {
 	destSlice reflect.Value
 }
 
-func WrapWithSliceScanner(destPtr interface{}) interface{} {
+func WrapWithSliceScanner(destPtr any) any {
 	v := reflect.ValueOf(destPtr)
 	if v.Elem().Kind() != reflect.Slice || v.Type().Implements(typeOfSQLScanner) {
 		return destPtr
@@ -82,7 +82,7 @@ func WrapWithSliceScanner(destPtr interface{}) interface{} {
 }
 
 // Scan implements the sql.Scanner interface.
-func (a *SliceScanner) Scan(src interface{}) error {
+func (a *SliceScanner) Scan(src any) error {
 	switch src := src.(type) {
 	case []byte:
 		return a.scanString(string(src))
@@ -123,7 +123,7 @@ func (a *SliceScanner) scanString(src string) error {
 	return nil
 }
 
-func ScanValue(src interface{}, dest reflect.Value) error {
+func ScanValue(src any, dest reflect.Value) error {
 	if dest.Kind() == reflect.Interface {
 		if src != nil {
 			dest.Set(reflect.ValueOf(src))

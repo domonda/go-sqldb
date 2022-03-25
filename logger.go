@@ -9,7 +9,7 @@ import (
 // information that could not be returned by
 // any of the package functions directly.
 type Logger interface {
-	Printf(format string, v ...interface{})
+	Printf(format string, v ...any)
 }
 
 // ErrLogger will be used to log errors

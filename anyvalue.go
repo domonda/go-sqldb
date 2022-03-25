@@ -32,11 +32,11 @@ var (
 //   time.Time
 //   nil - for NULL values
 type AnyValue struct {
-	Val interface{}
+	Val any
 }
 
 // Scan implements the database/sql.Scanner interface.
-func (any *AnyValue) Scan(val interface{}) error {
+func (any *AnyValue) Scan(val any) error {
 	if b, ok := val.([]byte); ok {
 		// Copy bytes because they won't be valid after this method call
 		any.Val = append([]byte(nil), b...)

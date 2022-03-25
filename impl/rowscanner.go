@@ -16,16 +16,16 @@ var (
 type RowScanner struct {
 	rows             Rows
 	structFieldNamer sqldb.StructFieldNamer
-	query            string        // for error wrapping
-	argFmt           string        // for error wrapping
-	args             []interface{} // for error wrapping
+	query            string // for error wrapping
+	argFmt           string // for error wrapping
+	args             []any  // for error wrapping
 }
 
-func NewRowScanner(rows Rows, structFieldNamer sqldb.StructFieldNamer, query, argFmt string, args []interface{}) *RowScanner {
+func NewRowScanner(rows Rows, structFieldNamer sqldb.StructFieldNamer, query, argFmt string, args []any) *RowScanner {
 	return &RowScanner{rows, structFieldNamer, query, argFmt, args}
 }
 
-func (s *RowScanner) Scan(dest ...interface{}) (err error) {
+func (s *RowScanner) Scan(dest ...any) (err error) {
 	defer func() {
 		err = combineErrors(err, s.rows.Close())
 		err = WrapNonNilErrorWithQuery(err, s.query, s.argFmt, s.args)
@@ -44,7 +44,7 @@ func (s *RowScanner) Scan(dest ...interface{}) (err error) {
 	return s.rows.Scan(dest...)
 }
 
-func (s *RowScanner) ScanStruct(dest interface{}) (err error) {
+func (s *RowScanner) ScanStruct(dest any) (err error) {
 	defer func() {
 		err = combineErrors(err, s.rows.Close())
 		err = WrapNonNilErrorWithQuery(err, s.query, s.argFmt, s.args)
@@ -63,7 +63,7 @@ func (s *RowScanner) ScanStruct(dest interface{}) (err error) {
 	return ScanStruct(s.rows, dest, s.structFieldNamer, nil, nil)
 }
 
-func (s *RowScanner) ScanValues() ([]interface{}, error) {
+func (s *RowScanner) ScanValues() ([]any, error) {
 	return ScanValues(s.rows)
 }
 
@@ -77,15 +77,15 @@ type CurrentRowScanner struct {
 	StructFieldNamer sqldb.StructFieldNamer
 }
 
-func (s CurrentRowScanner) Scan(dest ...interface{}) error {
+func (s CurrentRowScanner) Scan(dest ...any) error {
 	return s.Rows.Scan(dest...)
 }
 
-func (s CurrentRowScanner) ScanStruct(dest interface{}) error {
+func (s CurrentRowScanner) ScanStruct(dest any) error {
 	return ScanStruct(s.Rows, dest, s.StructFieldNamer, nil, nil)
 }
 
-func (s CurrentRowScanner) ScanValues() ([]interface{}, error) {
+func (s CurrentRowScanner) ScanValues() ([]any, error) {
 	return ScanValues(s.Rows)
 }
 
@@ -99,15 +99,15 @@ type SingleRowScanner struct {
 	StructFieldNamer sqldb.StructFieldNamer
 }
 
-func (s SingleRowScanner) Scan(dest ...interface{}) error {
+func (s SingleRowScanner) Scan(dest ...any) error {
 	return s.Row.Scan(dest...)
 }
 
-func (s SingleRowScanner) ScanStruct(dest interface{}) error {
+func (s SingleRowScanner) ScanStruct(dest any) error {
 	return ScanStruct(s.Row, dest, s.StructFieldNamer, nil, nil)
 }
 
-func (s SingleRowScanner) ScanValues() ([]interface{}, error) {
+func (s SingleRowScanner) ScanValues() ([]any, error) {
 	return ScanValues(s.Row)
 }
 

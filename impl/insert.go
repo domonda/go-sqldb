@@ -88,7 +88,7 @@ func writeInsertQuery(w *strings.Builder, table, argFmt string, names []string) 
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
-func InsertStruct(conn sqldb.Connection, table string, rowStruct interface{}, namer sqldb.StructFieldNamer, argFmt string, ignoreColumns, restrictToColumns []string) error {
+func InsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqldb.StructFieldNamer, argFmt string, ignoreColumns, restrictToColumns []string) error {
 	columns, vals, err := insertStructValues(table, rowStruct, namer, ignoreColumns, restrictToColumns)
 	if err != nil {
 		return err
@@ -103,7 +103,7 @@ func InsertStruct(conn sqldb.Connection, table string, rowStruct interface{}, na
 	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
 }
 
-func InsertUniqueStruct(conn sqldb.Connection, table string, rowStruct interface{}, onConflict string, namer sqldb.StructFieldNamer, argFmt string, ignoreColumns, restrictToColumns []string) (inserted bool, err error) {
+func InsertUniqueStruct(conn sqldb.Connection, table string, rowStruct any, onConflict string, namer sqldb.StructFieldNamer, argFmt string, ignoreColumns, restrictToColumns []string) (inserted bool, err error) {
 	columns, vals, err := insertStructValues(table, rowStruct, namer, ignoreColumns, restrictToColumns)
 	if err != nil {
 		return false, err
@@ -124,7 +124,7 @@ func InsertUniqueStruct(conn sqldb.Connection, table string, rowStruct interface
 	return inserted, WrapNonNilErrorWithQuery(err, query, argFmt, vals)
 }
 
-func insertStructValues(table string, rowStruct interface{}, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) (columns []string, vals []interface{}, err error) {
+func insertStructValues(table string, rowStruct any, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) (columns []string, vals []any, err error) {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()

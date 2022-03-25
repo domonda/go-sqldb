@@ -14,7 +14,7 @@ import (
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
 // If inserting conflicts on pkColumn, then an update of the existing row is performed.
-func UpsertStruct(conn sqldb.Connection, table string, rowStruct interface{}, namer sqldb.StructFieldNamer, argFmt string, ignoreColumns, restrictToColumns []string) error {
+func UpsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqldb.StructFieldNamer, argFmt string, ignoreColumns, restrictToColumns []string) error {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()

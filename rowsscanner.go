@@ -7,14 +7,14 @@ type RowsScanner interface {
 	// In case of zero rows, dest will be set to nil and no error will be returned.
 	// In case of an error, dest will not be modified.
 	// It is an error to query more than one column.
-	ScanSlice(dest interface{}) error
+	ScanSlice(dest any) error
 
 	// ScanStructSlice scans every row into the struct fields of dest slice elements.
 	// dest must be a pointer to a slice of structs or struct pointers.
 	// In case of zero rows, dest will be set to nil and no error will be returned.
 	// In case of an error, dest will not be modified.
 	// Every mapped struct field must have a corresponding column in the query results.
-	ScanStructSlice(dest interface{}) error
+	ScanStructSlice(dest any) error
 
 	// ScanAllRowsAsStrings scans the values of all rows as strings.
 	// Byte slices will be interpreted as strings,
@@ -38,5 +38,5 @@ type RowsScanner interface {
 	// If a non nil error is returned from the callback, then this error
 	// is returned immediately by this function without scanning further rows.
 	// In case of zero rows, no error will be returned.
-	ForEachRowCall(callback interface{}) error
+	ForEachRowCall(callback any) error
 }

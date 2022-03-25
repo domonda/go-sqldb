@@ -16,7 +16,7 @@ type YesNo bool
 // 	}
 // }
 
-func (y *YesNo) Scan(value interface{}) error {
+func (y *YesNo) Scan(value any) error {
 	switch x := value.(type) {
 	case bool:
 		*y = YesNo(x)
@@ -41,7 +41,7 @@ func (y *YesNo) Scan(value interface{}) error {
 // interface to scan NULL as an empty string.
 type String string
 
-func (y *String) Scan(value interface{}) error {
+func (y *String) Scan(value any) error {
 	switch x := value.(type) {
 	case nil:
 		*y = ""

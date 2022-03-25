@@ -12,7 +12,7 @@ func TestWrapNonNilErrorWithQuery(t *testing.T) {
 		err    error
 		query  string
 		argFmt string
-		args   []interface{}
+		args   []any
 	}
 	tests := []struct {
 		name      string
@@ -26,7 +26,7 @@ func TestWrapNonNilErrorWithQuery(t *testing.T) {
 				err:    sql.ErrNoRows,
 				query:  `SELECT * FROM table WHERE b = $2 and a = $1`,
 				argFmt: "$%d",
-				args:   []interface{}{1, "2"},
+				args:   []any{1, "2"},
 			},
 			wantError: fmt.Sprintf("%s from query: %s", sql.ErrNoRows, `SELECT * FROM table WHERE b = '2' and a = 1`),
 		},

@@ -43,7 +43,7 @@ func Now(ctx context.Context) (time.Time, error) {
 // and appending the transaction state of the connection
 // and the current time of the database using `select now()`
 // or an error if the time could not be queried.
-func DebugPrintConn(ctx context.Context, args ...interface{}) {
+func DebugPrintConn(ctx context.Context, args ...any) {
 	opts, isTx := Conn(ctx).TransactionOptions()
 	if isTx {
 		args = append(args, "SQL-Transaction")

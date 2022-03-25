@@ -15,7 +15,7 @@ func (v driverValuer) Value() (driver.Value, error) {
 func TestFormatValue(t *testing.T) {
 	tests := []struct {
 		name    string
-		val     interface{}
+		val     any
 		want    string
 		wantErr bool
 	}{
@@ -82,11 +82,11 @@ WHERE
 		name   string
 		query  string
 		argFmt string
-		args   []interface{}
+		args   []any
 		want   string
 	}{
-		{name: "query1", query: query1, argFmt: "$%d", args: []interface{}{createdAt, true, `Erik's Test`}, want: query1formatted},
-		{name: "query2", query: query2, argFmt: "$%d", args: []interface{}{"", 2, "3"}, want: query2formatted},
+		{name: "query1", query: query1, argFmt: "$%d", args: []any{createdAt, true, `Erik's Test`}, want: query1formatted},
+		{name: "query2", query: query2, argFmt: "$%d", args: []any{"", 2, "3"}, want: query2formatted},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -5,14 +5,14 @@ import "github.com/domonda/go-sqldb"
 // ScanValues returns the values of a row exactly how they are
 // passed from the database driver to an sql.Scanner.
 // Byte slices will be copied.
-func ScanValues(src Row) ([]interface{}, error) {
+func ScanValues(src Row) ([]any, error) {
 	cols, err := src.Columns()
 	if err != nil {
 		return nil, err
 	}
 	var (
 		anys = make([]sqldb.AnyValue, len(cols))
-		vals = make([]interface{}, len(cols))
+		vals = make([]any, len(cols))
 	)
 	for i := range vals {
 		vals[i] = &anys[i]
@@ -38,7 +38,7 @@ func ScanStrings(src Row) ([]string, error) {
 	}
 	var (
 		strs = make([]string, len(cols))
-		args = make([]interface{}, len(cols))
+		args = make([]any, len(cols))
 	)
 	for i := range args {
 		args[i] = (*sqldb.StringScannable)(&strs[i])

@@ -7,7 +7,7 @@ import (
 
 // IsNull returns if val would be interpreted as NULL by a SQL driver.
 // It checks if val is nil, implements driver.Valuer or is a nil pointer, slice, or map.
-func IsNull(val interface{}) bool {
+func IsNull(val any) bool {
 	if val == nil {
 		return true
 	}
