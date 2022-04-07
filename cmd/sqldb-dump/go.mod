@@ -8,8 +8,10 @@ require (
 )
 
 require (
+	github.com/domonda/go-errs v0.0.0-20220317124005-ae77873647f5 // indirect
 	github.com/domonda/go-types v0.0.0-20220406183531-66c6125b4053 // indirect
 	github.com/lib/pq v1.10.4 // indirect
+	golang.org/x/exp v0.0.0-20220407100705-7b9b53b0aca4 // indirect
 )
 
 replace github.com/domonda/go-sqldb => ../..

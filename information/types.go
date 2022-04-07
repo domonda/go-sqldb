@@ -149,9 +149,9 @@ type Column struct {
 	DomainCatalog          String `db:"domain_catalog"`
 	DomainSchema           String `db:"domain_schema"`
 	DomainName             String `db:"domain_name"`
-	UdtCatalog             String `db:"udt_catalog"`
-	UdtSchema              String `db:"udt_schema"`
-	UdtName                String `db:"udt_name"`
+	UDTCatalog             String `db:"udt_catalog"`
+	UDTSchema              String `db:"udt_schema"`
+	UDTName                String `db:"udt_name"`
 	ScopeCatalog           String `db:"scope_catalog"`
 	ScopeSchema            String `db:"scope_schema"`
 	ScopeName              String `db:"scope_name"`
@@ -202,9 +202,9 @@ type Domains struct {
 	IntervalType           String `db:"interval_type"`
 	IntervalPrecision      *int   `db:"interval_precision"`
 	DomainDefault          String `db:"domain_default"`
-	UdtCatalog             String `db:"udt_catalog"`
-	UdtSchema              String `db:"udt_schema"`
-	UdtName                String `db:"udt_name"`
+	UDTCatalog             String `db:"udt_catalog"`
+	UDTSchema              String `db:"udt_schema"`
+	UDTName                String `db:"udt_name"`
 	ScopeCatalog           String `db:"scope_catalog"`
 	ScopeSchema            String `db:"scope_schema"`
 	ScopeName              String `db:"scope_name"`
