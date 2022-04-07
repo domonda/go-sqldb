@@ -39,6 +39,10 @@ func (s *RowsScanner) ScanStructSlice(dest any) error {
 	return nil
 }
 
+func (s *RowsScanner) Columns() ([]string, error) {
+	return s.rows.Columns()
+}
+
 func (s *RowsScanner) ScanAllRowsAsStrings(headerRow bool) (rows [][]string, err error) {
 	cols, err := s.rows.Columns()
 	if err != nil {

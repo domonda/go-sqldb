@@ -226,6 +226,10 @@ func (e rowScannerWithError) ScanStrings() ([]string, error) {
 	return nil, e.err
 }
 
+func (e rowScannerWithError) Columns() ([]string, error) {
+	return nil, e.err
+}
+
 // RowsScannerWithError
 
 // RowsScannerWithError returns a dummy RowsScanner
@@ -244,6 +248,10 @@ func (e rowsScannerWithError) ScanSlice(dest any) error {
 
 func (e rowsScannerWithError) ScanStructSlice(dest any) error {
 	return e.err
+}
+
+func (e rowsScannerWithError) Columns() ([]string, error) {
+	return nil, e.err
 }
 
 func (e rowsScannerWithError) ScanAllRowsAsStrings(headerRow bool) ([][]string, error) {

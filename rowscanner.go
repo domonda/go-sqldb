@@ -18,4 +18,7 @@ type RowScanner interface {
 	// nil (SQL NULL) will be converted to an empty string,
 	// all other types are converted with fmt.Sprint(src).
 	ScanStrings() ([]string, error)
+
+	// Columns returns the column names.
+	Columns() ([]string, error)
 }

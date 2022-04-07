@@ -24,6 +24,9 @@ type RowsScanner interface {
 	// with the column names will be prepended.
 	ScanAllRowsAsStrings(headerRow bool) (rows [][]string, err error)
 
+	// Columns returns the column names.
+	Columns() ([]string, error)
+
 	// ForEachRow will call the passed callback with a RowScanner for every row.
 	// In case of zero rows, no error will be returned.
 	ForEachRow(callback func(RowScanner) error) error

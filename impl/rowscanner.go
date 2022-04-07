@@ -71,6 +71,10 @@ func (s *RowScanner) ScanStrings() ([]string, error) {
 	return ScanStrings(s.rows)
 }
 
+func (s *RowScanner) Columns() ([]string, error) {
+	return s.rows.Columns()
+}
+
 // CurrentRowScanner calls Rows.Scan without Rows.Next and Rows.Close
 type CurrentRowScanner struct {
 	Rows             Rows
@@ -93,6 +97,10 @@ func (s CurrentRowScanner) ScanStrings() ([]string, error) {
 	return ScanStrings(s.Rows)
 }
 
+func (s CurrentRowScanner) Columns() ([]string, error) {
+	return s.Rows.Columns()
+}
+
 // SingleRowScanner always uses the same Row
 type SingleRowScanner struct {
 	Row              Row
@@ -113,4 +121,8 @@ func (s SingleRowScanner) ScanValues() ([]any, error) {
 
 func (s SingleRowScanner) ScanStrings() ([]string, error) {
 	return ScanStrings(s.Row)
+}
+
+func (s SingleRowScanner) Columns() ([]string, error) {
+	return s.Row.Columns()
 }
