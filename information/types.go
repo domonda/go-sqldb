@@ -1,7 +1,10 @@
 package information
 
 import (
+	"context"
 	"fmt"
+
+	"github.com/domonda/go-sqldb/db"
 )
 
 // YesNo is a bool type that implements the sql.Scanner
@@ -83,6 +86,33 @@ type Table struct {
 	CommitAction              String `db:"commit_action"`
 }
 
+func GetTable(ctx context.Context, catalog, schema, name string) (table *Table, err error) {
+	err = db.Conn(ctx).QueryRow(
+		`select *
+			from information_schema.tables
+			where table_catalog = $1
+				and table_schema = $2
+				and table_name = $3`,
+		catalog,
+		schema,
+		name,
+	).ScanStruct(&table)
+	if err != nil {
+		return nil, err
+	}
+	return table, nil
+}
+
+func GetAllTables(ctx context.Context) (tables []*Table, err error) {
+	err = db.Conn(ctx).QueryRows(
+		`select * from information_schema.tables`,
+	).ScanStructSlice(&tables)
+	if err != nil {
+		return nil, err
+	}
+	return tables, nil
+}
+
 type View struct {
 	CatalogName                String `db:"catalog_name"`
 	SchemaName                 String `db:"schema_name"`
@@ -102,14 +132,14 @@ type Column struct {
 	ColumnDefault          String `db:"column_default"`
 	IsNullable             YesNo  `db:"is_nullable"`
 	DataType               String `db:"data_type"`
-	CharacterMaximumLength int    `db:"character_maximum_length"`
-	CharacterOctetLength   int    `db:"character_octet_length"`
-	NumericPrecision       int    `db:"numeric_precision"`
-	NumericPrecisionRadix  int    `db:"numeric_precision_radix"`
-	NumericScale           int    `db:"numeric_scale"`
-	DatetimePrecision      int    `db:"datetime_precision"`
+	CharacterMaximumLength *int   `db:"character_maximum_length"`
+	CharacterOctetLength   *int   `db:"character_octet_length"`
+	NumericPrecision       *int   `db:"numeric_precision"`
+	NumericPrecisionRadix  *int   `db:"numeric_precision_radix"`
+	NumericScale           *int   `db:"numeric_scale"`
+	DatetimePrecision      *int   `db:"datetime_precision"`
 	IntervalType           String `db:"interval_type"`
-	IntervalPrecision      int    `db:"interval_precision"`
+	IntervalPrecision      *int   `db:"interval_precision"`
 	CharacterSetCatalog    String `db:"character_set_catalog"`
 	CharacterSetSchema     String `db:"character_set_schema"`
 	CharacterSetName       String `db:"character_set_name"`
@@ -125,7 +155,7 @@ type Column struct {
 	ScopeCatalog           String `db:"scope_catalog"`
 	ScopeSchema            String `db:"scope_schema"`
 	ScopeName              String `db:"scope_name"`
-	MaximumCardinality     int    `db:"maximum_cardinality"`
+	MaximumCardinality     *int   `db:"maximum_cardinality"`
 	DTDIdentifier          String `db:"dtd_identifier"`
 	IsSelfReferencing      YesNo  `db:"is_self_referencing"`
 	IsIdentity             YesNo  `db:"is_identity"`
@@ -149,7 +179,7 @@ type KeyColumnUsage struct {
 	TableName                  String `db:"table_name"`
 	ColumnName                 String `db:"column_name"`
 	OrdinalPosition            int    `db:"ordinal_position"`
-	PositionInUniqueConstraint int    `db:"position_in_unique_constraint"`
+	PositionInUniqueConstraint *int   `db:"position_in_unique_constraint"`
 }
 
 type Domains struct {
@@ -157,20 +187,20 @@ type Domains struct {
 	DomainSchema           String `db:"domain_schema"`
 	DomainName             String `db:"domain_name"`
 	DataType               String `db:"data_type"`
-	CharacterMaximumLength int    `db:"character_maximum_length"`
-	CharacterOctetLength   int    `db:"character_octet_length"`
+	CharacterMaximumLength *int   `db:"character_maximum_length"`
+	CharacterOctetLength   *int   `db:"character_octet_length"`
 	CharacterSetCatalog    String `db:"character_set_catalog"`
 	CharacterSetSchema     String `db:"character_set_schema"`
 	CharacterSetName       String `db:"character_set_name"`
 	CollationCatalog       String `db:"collation_catalog"`
 	CollationSchema        String `db:"collation_schema"`
 	CollationName          String `db:"collation_name"`
-	NumericPrecision       int    `db:"numeric_precision"`
-	NumericPrecisionRadix  int    `db:"numeric_precision_radix"`
-	NumericScale           int    `db:"numeric_scale"`
-	DatetimePrecision      int    `db:"datetime_precision"`
+	NumericPrecision       *int   `db:"numeric_precision"`
+	NumericPrecisionRadix  *int   `db:"numeric_precision_radix"`
+	NumericScale           *int   `db:"numeric_scale"`
+	DatetimePrecision      *int   `db:"datetime_precision"`
 	IntervalType           String `db:"interval_type"`
-	IntervalPrecision      int    `db:"interval_precision"`
+	IntervalPrecision      *int   `db:"interval_precision"`
 	DomainDefault          String `db:"domain_default"`
 	UdtCatalog             String `db:"udt_catalog"`
 	UdtSchema              String `db:"udt_schema"`
@@ -178,7 +208,7 @@ type Domains struct {
 	ScopeCatalog           String `db:"scope_catalog"`
 	ScopeSchema            String `db:"scope_schema"`
 	ScopeName              String `db:"scope_name"`
-	MaximumCardinality     int    `db:"maximum_cardinality"`
+	MaximumCardinality     *int   `db:"maximum_cardinality"`
 	DTDIdentifier          String `db:"dtd_identifier"`
 }
 

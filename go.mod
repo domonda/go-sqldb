@@ -16,6 +16,6 @@ require (
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/ungerik/go-reflection v0.0.0-20220113085621-6c5fc1f2694a // indirect
-	golang.org/x/exp v0.0.0-20220328175248-053ad81199eb // indirect
+	golang.org/x/exp v0.0.0-20220407100705-7b9b53b0aca4 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
