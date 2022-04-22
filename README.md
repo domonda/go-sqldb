@@ -15,11 +15,13 @@ The design patterns evolved mostly through discovery led by the desire to minimi
 * Option to store the db connection and transactions in the context argument to pass it down into nested functions
 
 
-### Database drivers
+## Database drivers
 
 * [pqconn](https://pkg.go.dev/github.com/domonda/go-sqldb/pqconn) using [github.com/lib/pq](https://github.com/lib/pq) 
 * [mysqlconn](https://pkg.go.dev/github.com/domonda/go-sqldb/mysqlconn) using [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)
 
+
+## Usage
 
 ### Creating a connection
 
