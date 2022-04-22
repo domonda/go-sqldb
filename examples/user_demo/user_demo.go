@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/db"
 	"github.com/domonda/go-sqldb/pqconn"
 	"github.com/domonda/go-types/email"
 	"github.com/domonda/go-types/nullable"
@@ -101,4 +104,70 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	txOpts := &sql.TxOptions{Isolation: sql.LevelWriteCommitted}
+
+	err = sqldb.Transaction(conn, txOpts, func(tx sqldb.Connection) error {
+		err := tx.Exec("...")
+		if err != nil {
+			return err
+		}
+		return tx.Exec("...")
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	err = conn.WithContext(ctx).Exec("...")
+	if err != nil {
+		panic(err)
+	}
+
+	_ = http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		err := conn.WithContext(request.Context()).Exec("...")
+		if err != nil {
+			http.Error(response, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		response.Write([]byte("OK"))
+	})
+
+	// Full example with db package
+
+	db.SetConn(conn)
+
+	err = db.Conn(ctx).Exec("...")
+	if err != nil {
+		panic(err)
+	}
+
+	userID := uu.IDFrom("b26200df-5973-4ea5-a284-24dd15b6b85b")
+
+	err = db.Transaction(ctx, func(ctx context.Context) error {
+		user, err := GetUserOrNil(ctx, userID)
+		if err != nil {
+			return err
+		}
+		if user == nil {
+			return db.Conn(ctx).Exec("...")
+		}
+		return db.Conn(ctx).Exec("...")
+	})
+	if err != nil {
+		panic(err)
+	}
+}
+
+func GetUserOrNil(ctx context.Context, userID uu.ID) (user *User, err error) {
+	err = db.Conn(ctx).QueryRow(
+		`select * from public.user where id = $1`,
+		userID,
+	).ScanStruct(&user)
+	if err != nil {
+		return nil, db.ReplaceErrNoRows(err, nil)
+	}
+	return user, nil
 }

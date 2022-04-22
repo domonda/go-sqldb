@@ -65,7 +65,7 @@ err = conn.QueryRow(`select exists(select from public.user where email = $1)`, u
 ### Multi rows query
 
 ```go
-var users []User
+var users []*User
 err = conn.QueryRows(`select * from public.user`).ScanStructSlice(&users)
 
 var userEmails []string
@@ -109,4 +109,115 @@ err = conn.Insert("public.user", sqldb.Values{
     "name":  "Erik Unger",
     "email": "erik@domonda.com",
 })
+```
+
+### Transactions
+
+```go
+txOpts := &sql.TxOptions{Isolation: sql.LevelWriteCommitted}
+
+err = sqldb.Transaction(conn, txOpts, func(tx sqldb.Connection) error {
+    err := tx.Exec("...")
+    if err != nil {
+        return err // roll back tx
+    }
+    return tx.Exec("...")
+})
+```
+
+### Using the context
+
+Saving a context in a struct is an antipattern in Go
+but it turns out that it allows very nice call chaining pattern.
+
+```go
+ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+defer cancel()
+
+// Note that this timout is a deadline and does not restart for every query
+err = conn.WithContext(ctx).Exec("...")
+
+// Usually the context comes from some top-level handler
+_ = http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+    // Pass request cancellation through to db query
+    err := conn.WithContext(request.Context()).Exec("...")
+    if err != nil {
+        http.Error(response, err.Error(), http.StatusInternalServerError)
+        return
+    }
+    response.Write([]byte("OK"))
+})
+```
+
+### Putting it all together with the db package
+
+The [github.com/domonda/go-sqldb/db](https://pkg.go.dev/github.com/domonda/go-sqldb/db)
+package enables a design patter where a "current" db connection or transaction
+can be stored in context and then retrieved by nested functions
+from the context without having to know if this connection is a transaction or not.
+This allows re-using the same functions within transactions or standalone.
+
+```go
+// Configure the global parent connection
+db.SetConn(conn)
+
+// db.Conn(ctx) is the standard pattern
+// to retrieve a connection anywhere in the code base
+err = db.Conn(ctx).Exec("...")
+```
+
+```go
+func GetUserOrNil(ctx context.Context, userID uu.ID) (user *User, err error) {
+	err = db.Conn(ctx).QueryRow(
+		`select * from public.user where id = $1`,
+		userID,
+	).ScanStruct(&user)
+	if err != nil {
+		return nil, db.ReplaceErrNoRows(err, nil)
+	}
+	return user, nil
+}
+
+func DoStuffWithinTransation(ctx context.Context, userID uu.ID) error {
+	return db.Transaction(ctx, func(ctx context.Context) error {
+		user, err := GetUserOrNil(ctx, userID)
+		if err != nil {
+			return err
+		}
+		if user == nil {
+			return db.Conn(ctx).Exec("...")
+		}
+		return db.Conn(ctx).Exec("...")
+	})
+}
+```
+
+Small helpers:
+
+```go
+err = db.TransactionOpts(ctx, &sql.TxOptions{ReadOnly: true}, func(context.Context) error { ... })
+
+err = db.TransactionReadOnly(ctx, func(context.Context) error { ... })
+
+// Execute the passed function without transaction
+err = db.DebugNoTransaction(ctx, func(context.Context) error { ... })
+```
+
+More sophisticated transactions:
+
+Serialized transactions are typically necessary when an insert depends on a previous select within
+the transaction, but that pre-insert select can't lock the table like it's possible with SELECT FOR UPDATE.
+```go
+err = db.SerializedTransaction(ctx, func(context.Context) error { ... })
+```
+
+TransactionSavepoint executes txFunc within a database transaction or uses savepoints for rollback.
+If the passed context already has a database transaction connection,
+then a savepoint with a random name is created before the execution of txFunc.
+If txFunc returns an error, then the transaction is rolled back to the savepoint
+but the transaction from the context is not rolled back.
+If the passed context does not have a database transaction connection,
+then Transaction(ctx, txFunc) is called without savepoints.
+```go
+err = db.TransactionSavepoint(ctx, func(context.Context) error { ... })
 ```
