@@ -47,6 +47,8 @@ conn, err := pqconn.New(context.Background(), config)
 Every new connection initially uses `DefaultStructFieldTagNaming`
 
 ```go
+package sqldb
+
 // DefaultStructFieldTagNaming provides the default StructFieldTagNaming
 // using "db" as NameTag and IgnoreStructField as UntaggedNameFunc.
 // Implements StructFieldNamer.
