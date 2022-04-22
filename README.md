@@ -4,7 +4,7 @@
 
 This package started out as an extension wrapper of [github.com/jmoiron/sqlx](https://github.com/jmoiron/sqlx) but turned into a complete rewrite using the same philisophy of representing table rows as Go structs.
 
-It has been used and refined for years in production by [domonda](https://domonda.com) together with the database driver [github.com/lib/pq](https://github.com/lib/pq).
+It has been used and refined for years in production by [domonda](https://domonda.com) using the database driver [github.com/lib/pq](https://github.com/lib/pq).
 
 The design patters evolved mostly through discovery lead by the deisire tominimize boilerplate code while maintaining the full power of SQL. 
 
