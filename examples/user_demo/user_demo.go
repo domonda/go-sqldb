@@ -45,6 +45,12 @@ func main() {
 		panic(err)
 	}
 
+	conn = conn.WithStructFieldNamer(sqldb.StructFieldTagNaming{
+		NameTag:          "col",
+		IgnoreName:       "ignore",
+		UntaggedNameFunc: sqldb.ToSnakeCase,
+	})
+
 	var users []User
 	err = conn.QueryRows(`select * from public.user`).ScanStructSlice(&users)
 	if err != nil {

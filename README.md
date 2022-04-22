@@ -42,6 +42,31 @@ fmt.Println("Connecting to:", config.ConnectURL())
 conn, err := pqconn.New(context.Background(), config)
 ```
 
+### Struct field mapping
+
+Every new connection initially uses `DefaultStructFieldTagNaming`
+
+```go
+// DefaultStructFieldTagNaming provides the default StructFieldTagNaming
+// using "db" as NameTag and IgnoreStructField as UntaggedNameFunc.
+// Implements StructFieldNamer.
+var DefaultStructFieldTagNaming = StructFieldTagNaming{
+	NameTag:          "db",
+	IgnoreName:       "-",
+	UntaggedNameFunc: IgnoreStructField,
+}
+```
+
+Use a different mapping:
+
+```go
+conn = conn.WithStructFieldNamer(sqldb.StructFieldTagNaming{
+    NameTag:          "col",
+    IgnoreName:       "_ignore_",
+    UntaggedNameFunc: sqldb.ToSnakeCase,
+})
+```
+
 ### Exec SQL without reading rows
 
 ```go
