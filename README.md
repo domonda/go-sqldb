@@ -8,7 +8,7 @@ It has been used and refined for years in production by [domonda](https://domond
 
 The design patterns evolved mostly through discovery led by the desire to minimize boilerplate code while maintaining the full power of SQL.
 
-## Philosopy
+## Philosophy
 
 * Use reflection to map db rows to structs, but not as full blown ORM that replaces SQL queries (just as much ORM to increase productivity but not alienate developers who like the full power of SQL)
 * Transactions are run in callback functions that can be nested
