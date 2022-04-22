@@ -153,7 +153,7 @@ _ = http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
 
 The [github.com/domonda/go-sqldb/db](https://pkg.go.dev/github.com/domonda/go-sqldb/db)
 package enables a design patter where a "current" db connection or transaction
-can be stored in context and then retrieved by nested functions
+can be stored in the context and then retrieved by nested functions
 from the context without having to know if this connection is a transaction or not.
 This allows re-using the same functions within transactions or standalone.
 
@@ -165,6 +165,13 @@ db.SetConn(conn)
 // to retrieve a connection anywhere in the code base
 err = db.Conn(ctx).Exec("...")
 ```
+
+Here if `GetUserOrNil` will use the global db connection if
+no other connection is stored in the context.
+
+But when called from withing the function passed to `db.Transaction`
+it will re-use the transaction saved in the context.
+
 
 ```go
 func GetUserOrNil(ctx context.Context, userID uu.ID) (user *User, err error) {
@@ -206,18 +213,18 @@ err = db.DebugNoTransaction(ctx, func(context.Context) error { ... })
 More sophisticated transactions:
 
 Serialized transactions are typically necessary when an insert depends on a previous select within
-the transaction, but that pre-insert select can't lock the table like it's possible with SELECT FOR UPDATE.
+the transaction, but that pre-insert select can't lock the table like it's possible with `SELECT FOR UPDATE`.
 ```go
 err = db.SerializedTransaction(ctx, func(context.Context) error { ... })
 ```
 
-TransactionSavepoint executes txFunc within a database transaction or uses savepoints for rollback.
+`TransactionSavepoint` executes `txFunc` within a database transaction or uses savepoints for rollback.
 If the passed context already has a database transaction connection,
-then a savepoint with a random name is created before the execution of txFunc.
-If txFunc returns an error, then the transaction is rolled back to the savepoint
+then a savepoint with a random name is created before the execution of `txFunc`.
+If `txFunc` returns an error, then the transaction is rolled back to the savepoint
 but the transaction from the context is not rolled back.
 If the passed context does not have a database transaction connection,
-then Transaction(ctx, txFunc) is called without savepoints.
+then `Transaction(ctx, txFunc)` is called without savepoints.
 ```go
 err = db.TransactionSavepoint(ctx, func(context.Context) error { ... })
 ```
