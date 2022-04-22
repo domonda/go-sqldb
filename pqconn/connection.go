@@ -14,7 +14,7 @@ const argFmt = "$%d"
 
 // New creates a new sqldb.Connection using the passed sqldb.Config
 // and github.com/lib/pq as driver implementation.
-// The connection is pinged with the passed context,
+// The connection is pinged with the passed context
 // and only returned when there was no error from the ping.
 func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 	if config.Driver != "postgres" {

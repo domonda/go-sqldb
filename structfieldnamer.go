@@ -11,13 +11,19 @@ import (
 // of how struct fields relate to database columns.
 type FieldFlag uint
 
+// IsPrimaryKey indicates if FieldFlagPrimaryKey is set
+func (f FieldFlag) IsPrimaryKey() bool { return f&FieldFlagPrimaryKey != 0 }
+
+// IsReadOnly indicates if FieldFlagReadOnly is set
+func (f FieldFlag) IsReadOnly() bool { return f&FieldFlagReadOnly != 0 }
+
 const (
+	// FieldFlagPrimaryKey marks a field as primary key
 	FieldFlagPrimaryKey FieldFlag = 1 << iota
+
+	// FieldFlagReadOnly marks a field as read-only
 	FieldFlagReadOnly
 )
-
-func (f FieldFlag) IsPrimaryKey() bool { return f&FieldFlagPrimaryKey != 0 }
-func (f FieldFlag) IsReadOnly() bool   { return f&FieldFlagReadOnly != 0 }
 
 // StructFieldNamer is used to map struct type fields to column names
 // and indicate special column properies via flags.

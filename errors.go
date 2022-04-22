@@ -43,9 +43,19 @@ func (s sentinelError) Error() string {
 // Transaction errors
 
 const (
-	ErrWithinTransaction    sentinelError = "within a transaction"
+	// ErrWithinTransaction is returned by methods
+	// that are not allowed within DB transactions
+	// when the DB connection is a transaction.
+	ErrWithinTransaction sentinelError = "within a transaction"
+
+	// ErrNotWithinTransaction is returned by methods
+	// that are are only allowed within DB transactions
+	// when the DB connection is not a transaction.
 	ErrNotWithinTransaction sentinelError = "not within a transaction"
-	ErrNotSupported         sentinelError = "not supported"
+
+	// ErrNotSupported is returned when a connection
+	// does not support a certain method.
+	ErrNotSupported sentinelError = "not supported"
 )
 
 // ConnectionWithError

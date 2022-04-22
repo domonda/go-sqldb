@@ -7,7 +7,10 @@ import (
 )
 
 type (
-	OnNotifyFunc   func(channel, payload string)
+	// OnNotifyFunc is a callback type passed to Connection.ListenOnChannel
+	OnNotifyFunc func(channel, payload string)
+
+	// OnUnlistenFunc is a callback type passed to Connection.ListenOnChannel
 	OnUnlistenFunc func(channel string)
 )
 

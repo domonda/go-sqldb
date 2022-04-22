@@ -77,6 +77,9 @@ func TxOptionsString(opts *sql.TxOptions) string {
 	}
 }
 
+// PrintlnTable prints a string table to stdout
+// padding the table with spaces and using '|' as
+// delimiter between columns.
 func PrintlnTable(rows [][]string, err error) error {
 	if err != nil {
 		_, e := fmt.Println(err)
@@ -85,6 +88,9 @@ func PrintlnTable(rows [][]string, err error) error {
 	return FprintTable(os.Stdout, rows, "|")
 }
 
+// FprintTable prints a string table to an io.Writer
+// padding the table with spaces and using the passed
+// columnDelimiter between columns.
 func FprintTable(w io.Writer, rows [][]string, columnDelimiter string) error {
 	// Collect column widths
 	var colRuneCount []int
