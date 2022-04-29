@@ -76,7 +76,7 @@ func UpdateStruct(conn sqldb.Connection, table string, rowStruct any, namer sqld
 		return fmt.Errorf("UpdateStruct of table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, flags, vals := structFieldValues(v, namer, ignoreColumns, restrictToColumns, true)
+	columns, flags, vals := writeableStructFieldValues(v, namer, ignoreColumns, restrictToColumns, true)
 	if len(columns) == 0 {
 		return fmt.Errorf("UpdateStruct of table %s: %T has no exported struct fields with `db` tag", table, rowStruct) // TODO better error message
 	}

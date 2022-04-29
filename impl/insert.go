@@ -136,7 +136,7 @@ func insertStructValues(table string, rowStruct any, namer sqldb.StructFieldName
 		return nil, nil, fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, _, vals = structFieldValues(v, namer, ignoreColumns, restrictToColumns, false)
+	columns, _, vals = writeableStructFieldValues(v, namer, ignoreColumns, restrictToColumns, false)
 	if len(columns) == 0 {
 		return nil, nil, fmt.Errorf("InsertStruct into table %s: %T has no exported struct fields with `db` tag", table, rowStruct) // TODO better error message
 	}

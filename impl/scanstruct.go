@@ -96,7 +96,7 @@ func getStructFieldPointers(v reflect.Value, namer sqldb.StructFieldNamer, ignor
 	return nil
 }
 
-// structFieldValues returns the struct field names using the passed namer ignoring names in ignoreNames
+// writeableStructFieldValues returns the struct field names using the passed namer ignoring names in ignoreNames
 // and if restrictToNames is not empty, then filtering out names not in it.
 // struct fields with ,readonly suffix in their struct field naming tag will not be returned
 // because this function is intended for getting struct values for writing.
@@ -105,7 +105,7 @@ func getStructFieldPointers(v reflect.Value, namer sqldb.StructFieldNamer, ignor
 // The same number of pkCol bools will be returend as names, every corresponding bool marking
 // if the name had the ,pk suffix in their struct field naming tag.
 // If false is passed for keepReadOnly then
-func structFieldValues(v reflect.Value, namer sqldb.StructFieldNamer, ignoreNames, restrictToNames []string, keepPK bool) (names []string, flags []sqldb.FieldFlag, vals []any) {
+func writeableStructFieldValues(v reflect.Value, namer sqldb.StructFieldNamer, ignoreNames, restrictToNames []string, keepPK bool) (names []string, flags []sqldb.FieldFlag, vals []any) {
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Type().Field(i)
 		name, flag, ok := namer.StructFieldName(field)
@@ -114,7 +114,7 @@ func structFieldValues(v reflect.Value, namer sqldb.StructFieldNamer, ignoreName
 		}
 
 		if field.Anonymous {
-			embedNames, embedFlags, embedValues := structFieldValues(v.Field(i), namer, ignoreNames, restrictToNames, keepPK)
+			embedNames, embedFlags, embedValues := writeableStructFieldValues(v.Field(i), namer, ignoreNames, restrictToNames, keepPK)
 			names = append(names, embedNames...)
 			flags = append(flags, embedFlags...)
 			vals = append(vals, embedValues...)
