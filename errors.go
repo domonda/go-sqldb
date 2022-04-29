@@ -120,6 +120,10 @@ func (e connectionWithError) InsertStruct(table string, rowStruct any, restrictT
 	return e.err
 }
 
+func (e connectionWithError) InsertStructNonDefault(table string, rowStruct any) error {
+	return e.err
+}
+
 func (e connectionWithError) InsertStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error {
 	return e.err
 }

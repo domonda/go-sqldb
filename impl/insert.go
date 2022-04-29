@@ -131,14 +131,61 @@ func insertStructValues(table string, rowStruct any, namer sqldb.StructFieldName
 	}
 	switch {
 	case v.Kind() == reflect.Ptr && v.IsNil():
-		return nil, nil, fmt.Errorf("InsertStruct into table %s: can't upsert nil", table)
+		return nil, nil, fmt.Errorf("InsertStruct into table %s: can't insert nil", table)
 	case v.Kind() != reflect.Struct:
 		return nil, nil, fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
 	}
 
 	columns, _, vals = structFieldValues(v, namer, ignoreColumns, restrictToColumns, false)
 	if len(columns) == 0 {
-		return nil, nil, fmt.Errorf("InsertStruct into table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
+		return nil, nil, fmt.Errorf("InsertStruct into table %s: %T has no exported struct fields with `db` tag", table, rowStruct) // TODO better error message
 	}
 	return columns, vals, nil
+}
+
+func InsertStructNonDefault(conn sqldb.Connection, table string, rowStruct any, namer sqldb.StructFieldNamer, argFmt string) error {
+	v := reflect.ValueOf(rowStruct)
+	for v.Kind() == reflect.Ptr && !v.IsNil() {
+		v = v.Elem()
+	}
+	switch {
+	case v.Kind() == reflect.Ptr && v.IsNil():
+		return fmt.Errorf("InsertStructNonDefault into table %s: can't insert nil", table)
+	case v.Kind() != reflect.Struct:
+		return fmt.Errorf("InsertStructNonDefault into table %s: expected struct but got %T", table, rowStruct)
+	}
+
+	columns, vals := structFieldNonDefaultValues(v, namer)
+	if len(columns) == 0 {
+		return fmt.Errorf("InsertStructNonDefault into table %s: %T has no exported struct fields with `db` tag", table, rowStruct) // TODO better error message
+	}
+
+	var b strings.Builder
+	writeInsertQuery(&b, table, argFmt, columns)
+	query := b.String()
+
+	err := conn.Exec(query, vals...)
+
+	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
+}
+
+func structFieldNonDefaultValues(v reflect.Value, namer sqldb.StructFieldNamer) (names []string, vals []any) {
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Type().Field(i)
+		name, flags, ok := namer.StructFieldName(field)
+		if !ok || flags.ReadOnly() || flags.Default() {
+			continue
+		}
+
+		if field.Anonymous {
+			embedNames, embedValues := structFieldNonDefaultValues(v.Field(i), namer)
+			names = append(names, embedNames...)
+			vals = append(vals, embedValues...)
+			continue
+		}
+
+		names = append(names, name)
+		vals = append(vals, v.Field(i).Interface())
+	}
+	return names, vals
 }

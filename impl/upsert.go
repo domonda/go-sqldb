@@ -28,7 +28,7 @@ func UpsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqld
 
 	columns, flags, vals := structFieldValues(v, namer, ignoreColumns, restrictToColumns, true)
 	if len(columns) == 0 {
-		return fmt.Errorf("UpsertStruct to table %s: %T has no exported struct fields with `db` tag", table, rowStruct)
+		return fmt.Errorf("UpsertStruct to table %s: %T has no exported struct fields with `db` tag", table, rowStruct) // TODO better error message
 	}
 
 	var b strings.Builder
@@ -36,7 +36,7 @@ func UpsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqld
 	b.WriteString(` ON CONFLICT(`)
 	hasPK := false
 	for i := range columns {
-		if !flags[i].IsPrimaryKey() {
+		if !flags[i].PrimaryKey() {
 			continue
 		}
 		if !hasPK {
@@ -53,7 +53,7 @@ func UpsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqld
 	b.WriteString(`) DO UPDATE SET `)
 	first := true
 	for i := range columns {
-		if f := flags[i]; f.IsPrimaryKey() || f.IsReadOnly() {
+		if f := flags[i]; f.PrimaryKey() || f.ReadOnly() {
 			continue
 		}
 		if first {

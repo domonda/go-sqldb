@@ -11,11 +11,14 @@ import (
 // of how struct fields relate to database columns.
 type FieldFlag uint
 
-// IsPrimaryKey indicates if FieldFlagPrimaryKey is set
-func (f FieldFlag) IsPrimaryKey() bool { return f&FieldFlagPrimaryKey != 0 }
+// PrimaryKey indicates if FieldFlagPrimaryKey is set
+func (f FieldFlag) PrimaryKey() bool { return f&FieldFlagPrimaryKey != 0 }
 
-// IsReadOnly indicates if FieldFlagReadOnly is set
-func (f FieldFlag) IsReadOnly() bool { return f&FieldFlagReadOnly != 0 }
+// ReadOnly indicates if FieldFlagReadOnly is set
+func (f FieldFlag) ReadOnly() bool { return f&FieldFlagReadOnly != 0 }
+
+// Default indicates if FieldFlagDefault is set
+func (f FieldFlag) Default() bool { return f&FieldFlagDefault != 0 }
 
 const (
 	// FieldFlagPrimaryKey marks a field as primary key
@@ -23,6 +26,9 @@ const (
 
 	// FieldFlagReadOnly marks a field as read-only
 	FieldFlagReadOnly
+
+	// FieldFlagDefault marks a field as having a column default value
+	FieldFlagDefault
 )
 
 // StructFieldNamer is used to map struct type fields to column names
@@ -92,6 +98,8 @@ func (n StructFieldTagNaming) StructFieldName(field reflect.StructField) (name s
 				flags |= FieldFlagPrimaryKey
 			case "readonly":
 				flags |= FieldFlagReadOnly
+			case "default":
+				flags |= FieldFlagDefault
 			}
 		}
 	} else {

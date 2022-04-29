@@ -78,6 +78,10 @@ func (conn *transaction) InsertStruct(table string, rowStruct any, restrictToCol
 	return InsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.parent.argFmt, nil, restrictToColumns)
 }
 
+func (conn *transaction) InsertStructNonDefault(table string, rowStruct any) error {
+	return InsertStructNonDefault(conn, table, rowStruct, conn.structFieldNamer, conn.parent.argFmt)
+}
+
 func (conn *transaction) InsertStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error {
 	return InsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.parent.argFmt, ignoreColumns, nil)
 }

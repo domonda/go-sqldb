@@ -119,6 +119,10 @@ func (conn *connection) InsertStruct(table string, rowStruct any, restrictToColu
 	return impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, nil, restrictToColumns)
 }
 
+func (conn *connection) InsertStructNonDefault(table string, rowStruct any) error {
+	return impl.InsertStructNonDefault(conn, table, rowStruct, conn.structFieldNamer, argFmt)
+}
+
 func (conn *connection) InsertStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error {
 	return impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns, nil)
 }

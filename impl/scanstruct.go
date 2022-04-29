@@ -109,7 +109,7 @@ func structFieldValues(v reflect.Value, namer sqldb.StructFieldNamer, ignoreName
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Type().Field(i)
 		name, flag, ok := namer.StructFieldName(field)
-		if !ok || flag.IsReadOnly() {
+		if !ok || flag.ReadOnly() {
 			continue
 		}
 
@@ -121,7 +121,7 @@ func structFieldValues(v reflect.Value, namer sqldb.StructFieldNamer, ignoreName
 			continue
 		}
 
-		if validName(name, ignoreNames, restrictToNames) || (flag.IsPrimaryKey() && keepPK && validName(name, nil, nil)) {
+		if validName(name, ignoreNames, restrictToNames) || (flag.PrimaryKey() && keepPK && validName(name, nil, nil)) {
 			names = append(names, name)
 			flags = append(flags, flag)
 			vals = append(vals, v.Field(i).Interface())

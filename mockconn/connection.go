@@ -87,6 +87,10 @@ func (conn *connection) Insert(table string, columValues sqldb.Values) error {
 	return impl.Insert(conn, table, conn.argFmt, columValues)
 }
 
+func (conn *connection) InsertStructNonDefault(table string, rowStruct any) error {
+	return impl.InsertStructNonDefault(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt)
+}
+
 func (conn *connection) InsertUnique(table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
 	return impl.InsertUnique(conn, table, conn.argFmt, values, onConflict)
 }

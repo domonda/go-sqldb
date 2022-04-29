@@ -66,6 +66,11 @@ type Connection interface {
 	// matching any of the passed column names will be used.
 	InsertStruct(table string, rowStruct any, restrictToColumns ...string) error
 
+	// InsertStructNonDefault inserts a new row into table using the exported fields
+	// of rowStruct which have a `db` tag that is not "-".
+	// Struct fields with the `db` tags ",default" or ",readonly" will not be inserted.
+	InsertStructNonDefault(table string, rowStruct any) error
+
 	// TODO insert multiple structs with single query if possible
 	// InsertStructs(table string, rowStructs any, restrictToColumns ...string) error
 
