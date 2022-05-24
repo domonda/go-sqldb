@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"time"
 	"unicode/utf8"
 
 	"github.com/domonda/go-sqldb"
@@ -26,19 +25,6 @@ func IsOtherThanErrNoRows(err error) bool {
 	return sqldb.IsOtherThanErrNoRows(err)
 }
 
-// Now returns the result of the SQL now() function
-// using the sqldb.Connection from the passed context.
-// This is useful to get the timestamp of a
-// SQL transaction for use in Go code.
-func Now(ctx context.Context) (time.Time, error) {
-	var now time.Time
-	err := Conn(ctx).QueryRow(`select now()`).Scan(&now)
-	if err != nil {
-		return time.Time{}, err
-	}
-	return now, nil
-}
-
 // DebugPrintConn prints a line to stderr using the passed args
 // and appending the transaction state of the connection
 // and the current time of the database using `select now()`
@@ -51,7 +37,7 @@ func DebugPrintConn(ctx context.Context, args ...any) {
 			args = append(args, "Isolation", optsStr)
 		}
 	}
-	now, err := Now(ctx)
+	now, err := Conn(ctx).Now()
 	if err == nil {
 		args = append(args, "NOW():", now)
 	} else {
