@@ -98,6 +98,10 @@ func (conn *connection) Config() *sqldb.Config {
 	return conn.config
 }
 
+func (conn *connection) Now() (time.Time, error) {
+	return impl.Now(conn)
+}
+
 func (conn *connection) Exec(query string, args ...any) error {
 	_, err := conn.db.ExecContext(conn.ctx, query, args...)
 	return impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)

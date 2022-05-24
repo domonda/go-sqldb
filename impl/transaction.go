@@ -57,6 +57,10 @@ func (conn *transaction) Ping(timeout time.Duration) error { return conn.parent.
 func (conn *transaction) Stats() sql.DBStats               { return conn.parent.Stats() }
 func (conn *transaction) Config() *sqldb.Config            { return conn.parent.Config() }
 
+func (conn *transaction) Now() (time.Time, error) {
+	return Now(conn)
+}
+
 func (conn *transaction) Exec(query string, args ...any) error {
 	_, err := conn.tx.Exec(query, args...)
 	return WrapNonNilErrorWithQuery(err, query, conn.parent.argFmt, args)

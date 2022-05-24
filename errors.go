@@ -100,6 +100,10 @@ func (e connectionWithError) Config() *Config {
 	return &Config{Driver: "ConnectionWithError"}
 }
 
+func (e connectionWithError) Now() (time.Time, error) {
+	return time.Time{}, e.err
+}
+
 func (e connectionWithError) Exec(query string, args ...any) error {
 	return e.err
 }
