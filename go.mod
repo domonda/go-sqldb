@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/domonda/go-errs v0.0.0-20220429185920-b85918b964f9
-	github.com/domonda/go-types v0.0.0-20220513100758-7818d7fcb7bb
+	github.com/domonda/go-types v0.0.0-20220525115110-58b4488326ea
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/lib/pq v1.10.6
 	github.com/stretchr/testify v1.7.1
