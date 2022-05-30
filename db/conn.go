@@ -30,7 +30,7 @@ func Conn(ctx context.Context) sqldb.Connection {
 // The returned connection will use the passed context.
 // See sqldb.Connection.WithContext
 func ConnDefault(ctx context.Context, defaultConn sqldb.Connection) sqldb.Connection {
-	c, _ := ctx.Value(connKey).(sqldb.Connection)
+	c, _ := ctx.Value(&connCtxKey).(sqldb.Connection)
 	if c == nil {
 		c = defaultConn
 	}
@@ -45,7 +45,7 @@ func ConnDefault(ctx context.Context, defaultConn sqldb.Connection) sqldb.Connec
 // Passing a nil connection causes Conn(ctx)
 // to return the global connection set with SetConn.
 func ContextWithConn(ctx context.Context, conn sqldb.Connection) context.Context {
-	return context.WithValue(ctx, connKey, conn)
+	return context.WithValue(ctx, &connCtxKey, conn)
 }
 
 // ContextWithoutCancel returns a new context that inherits

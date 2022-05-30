@@ -13,14 +13,9 @@ var (
 	SerializedTransactionRetries = 10
 )
 
-type (
-	connKeyType         struct{} // unique type for this package
-	serializedTxKeyType struct{} // unique type for this package
-)
-
 var (
-	conn    = sqldb.ConnectionWithError(context.Background(), errors.New("database connection not initialized"))
-	connKey connKeyType
+	conn       = sqldb.ConnectionWithError(context.Background(), errors.New("database connection not initialized"))
+	connCtxKey struct{}
 
-	serializedTxKey serializedTxKeyType
+	serializedTransactionCtxKey struct{}
 )

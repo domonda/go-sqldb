@@ -25,7 +25,7 @@ func DebugNoTransaction(ctx context.Context, nonTxFunc func(context.Context) err
 // Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
 func IsolatedTransaction(ctx context.Context, txFunc func(context.Context) error) error {
 	return sqldb.IsolatedTransaction(Conn(ctx), nil, func(tx sqldb.Connection) error {
-		return txFunc(context.WithValue(ctx, connKey, tx))
+		return txFunc(context.WithValue(ctx, &connCtxKey, tx))
 	})
 }
 
@@ -38,7 +38,7 @@ func IsolatedTransaction(ctx context.Context, txFunc func(context.Context) error
 // Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
 func Transaction(ctx context.Context, txFunc func(context.Context) error) error {
 	return sqldb.Transaction(Conn(ctx), nil, func(tx sqldb.Connection) error {
-		return txFunc(context.WithValue(ctx, connKey, tx))
+		return txFunc(context.WithValue(ctx, &connCtxKey, tx))
 	})
 }
 
@@ -80,14 +80,14 @@ func Transaction(ctx context.Context, txFunc func(context.Context) error) error 
 func SerializedTransaction(ctx context.Context, txFunc func(context.Context) error) error {
 	// Pass nested serialized transactions through
 	if Conn(ctx).IsTransaction() {
-		if ctx.Value(serializedTxKey) == nil {
+		if ctx.Value(&serializedTransactionCtxKey) == nil {
 			return errors.New("SerializedTransaction called from within a non-serialized transaction")
 		}
 		return txFunc(ctx)
 	}
 
 	// Add value to context to check for nested serialized transactions
-	ctx = context.WithValue(ctx, serializedTxKey, struct{}{})
+	ctx = context.WithValue(ctx, &serializedTransactionCtxKey, struct{}{})
 
 	opts := sql.TxOptions{Isolation: sql.LevelSerializable}
 	for i := 0; i < SerializedTransactionRetries; i++ {
@@ -109,7 +109,7 @@ func SerializedTransaction(ctx context.Context, txFunc func(context.Context) err
 // Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
 func TransactionOpts(ctx context.Context, opts *sql.TxOptions, txFunc func(context.Context) error) error {
 	return sqldb.Transaction(Conn(ctx), opts, func(tx sqldb.Connection) error {
-		return txFunc(context.WithValue(ctx, connKey, tx))
+		return txFunc(context.WithValue(ctx, &connCtxKey, tx))
 	})
 }
 
@@ -123,7 +123,7 @@ func TransactionOpts(ctx context.Context, opts *sql.TxOptions, txFunc func(conte
 func TransactionReadOnly(ctx context.Context, txFunc func(context.Context) error) error {
 	opts := sql.TxOptions{ReadOnly: true}
 	return sqldb.Transaction(Conn(ctx), &opts, func(tx sqldb.Connection) error {
-		return txFunc(context.WithValue(ctx, connKey, tx))
+		return txFunc(context.WithValue(ctx, &connCtxKey, tx))
 	})
 }
 
