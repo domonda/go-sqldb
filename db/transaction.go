@@ -12,6 +12,32 @@ import (
 	"github.com/domonda/go-sqldb"
 )
 
+// ValidateWithinTransaction returns sqldb.ErrNotWithinTransaction
+// if the database connection from the context is not a transaction.
+func ValidateWithinTransaction(ctx context.Context) error {
+	conn := Conn(ctx)
+	if err := conn.Config().Err; err != nil {
+		return err
+	}
+	if !conn.IsTransaction() {
+		return sqldb.ErrNotWithinTransaction
+	}
+	return nil
+}
+
+// ValidateNotWithinTransaction returns sqldb.ErrWithinTransaction
+// if the database connection from the context is a transaction.
+func ValidateNotWithinTransaction(ctx context.Context) error {
+	conn := Conn(ctx)
+	if err := conn.Config().Err; err != nil {
+		return err
+	}
+	if conn.IsTransaction() {
+		return sqldb.ErrWithinTransaction
+	}
+	return nil
+}
+
 // DebugNoTransaction executes nonTxFunc without a database transaction.
 // Useful to temporarely replace Transaction to debug the same code without using a transaction.
 func DebugNoTransaction(ctx context.Context, nonTxFunc func(context.Context) error) error {

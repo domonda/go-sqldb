@@ -69,7 +69,7 @@ func (conn *connection) Stats() sql.DBStats {
 }
 
 func (conn *connection) Config() *sqldb.Config {
-	return &sqldb.Config{Driver: "mockconn"}
+	return &sqldb.Config{Driver: "mockconn", Host: "localhost", Database: "mock"}
 }
 
 func (conn *connection) Ping(time.Duration) error {
