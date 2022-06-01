@@ -15,7 +15,7 @@ var (
 
 var (
 	conn       = sqldb.ConnectionWithError(context.Background(), errors.New("database connection not initialized"))
-	connCtxKey struct{}
+	connCtxKey int
 
-	serializedTransactionCtxKey struct{}
+	serializedTransactionCtxKey int
 )
