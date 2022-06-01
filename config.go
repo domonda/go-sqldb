@@ -22,6 +22,26 @@ type Config struct {
 	MaxIdleConns          int                `json:"maxIdleConns,omitempty"`
 	ConnMaxLifetime       time.Duration      `json:"connMaxLifetime,omitempty"`
 	DefaultIsolationLevel sql.IsolationLevel `json:"-"`
+	Err                   error              `json:"-"`
+}
+
+// Validate returns Config.Err if it is not nil
+// or an error if the Config does not have
+// a Driver, Host, or Database.
+func (c *Config) Validate() error {
+	if c.Err != nil {
+		return c.Err
+	}
+	if c.Driver == "" {
+		return fmt.Errorf("missing sqldb.Config.Driver")
+	}
+	if c.Host == "" {
+		return fmt.Errorf("missing sqldb.Config.Host")
+	}
+	if c.Database == "" {
+		return fmt.Errorf("missing sqldb.Config.Database")
+	}
+	return nil
 }
 
 // ConnectURL for connecting to a database
@@ -49,6 +69,10 @@ func (c *Config) ConnectURL() string {
 // sets all Config values and performs a ping with ctx.
 // The sql.DB will be returned if the ping was successful.
 func (c *Config) Connect(ctx context.Context) (*sql.DB, error) {
+	err := c.Validate()
+	if err != nil {
+		return nil, err
+	}
 	db, err := sql.Open(c.Driver, c.ConnectURL())
 	if err != nil {
 		return nil, err

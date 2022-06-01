@@ -97,7 +97,7 @@ func (e connectionWithError) Stats() sql.DBStats {
 }
 
 func (e connectionWithError) Config() *Config {
-	return &Config{Driver: "ConnectionWithError"}
+	return &Config{Err: e.err}
 }
 
 func (e connectionWithError) Now() (time.Time, error) {
