@@ -26,9 +26,9 @@ func QueryRowStruct[S any](ctx context.Context, table string, pkValues ...any) (
 	if len(pkColumns) != len(pkValues) {
 		return nil, fmt.Errorf("got %d primary key values, but struct %s has %d primary key fields", len(pkValues), t, len(pkColumns))
 	}
-	query := fmt.Sprintf(`SELECT * FROM %s WHERE "%s" = $1`, table, pkValues[0])
-	for i := 1; i < len(pkValues); i++ {
-		query += fmt.Sprintf(` AND "%s" = $%d`, pkValues[i], i+1)
+	query := fmt.Sprintf(`SELECT * FROM %s WHERE "%s" = $1`, table, pkColumns[0])
+	for i := 1; i < len(pkColumns); i++ {
+		query += fmt.Sprintf(` AND "%s" = $%d`, pkColumns[i], i+1)
 	}
 	err = conn.QueryRow(query, pkValues...).ScanStruct(&row)
 	if err != nil {
