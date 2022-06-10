@@ -31,93 +31,111 @@ const (
 	FieldFlagDefault
 )
 
-// StructFieldNamer is used to map struct type fields to column names
+// StructFieldMapper is used to map struct type fields to column names
 // and indicate special column properies via flags.
-type StructFieldNamer interface {
-	// StructFieldName returns the column name for reflected struct field
+type StructFieldMapper interface {
+	// MapStructField returns the column name for a reflected struct field
 	// and flags for special column properies.
-	// If the struct field can't be mapped, false is returned for ok.
-	StructFieldName(field reflect.StructField) (name string, flags FieldFlag, ok bool)
+	// If false is returned for use then the field is not mapped.
+	// An empty name and true for use indicates an embedded struct
+	// field whose fields should be recursively mapped.
+	MapStructField(field reflect.StructField) (table, column string, flags FieldFlag, use bool)
 }
 
-// DefaultStructFieldTagNaming provides the default StructFieldTagNaming
+// NewTaggedStructFieldMapping returns a default mapping.
+func NewTaggedStructFieldMapping() *TaggedStructFieldMapping {
+	return &TaggedStructFieldMapping{
+		NameTag:          "db",
+		Ignore:           "-",
+		PrimaryKey:       "pk",
+		ReadOnly:         "readonly",
+		Default:          "default",
+		UntaggedNameFunc: IgnoreStructField,
+	}
+}
+
+// DefaultStructFieldMapping provides the default StructFieldTagNaming
 // using "db" as NameTag and IgnoreStructField as UntaggedNameFunc.
-// Implements StructFieldNamer.
-var DefaultStructFieldTagNaming = StructFieldTagNaming{
-	NameTag:          "db",
-	IgnoreName:       "-",
-	UntaggedNameFunc: IgnoreStructField,
-}
+// Implements StructFieldMapper.
+var DefaultStructFieldMapping = NewTaggedStructFieldMapping()
 
-// StructFieldTagNaming implements StructFieldNamer with a struct field NameTag
+// TaggedStructFieldMapping implements StructFieldMapper with a struct field NameTag
 // to be used for naming and a UntaggedNameFunc in case the NameTag is not set.
-type StructFieldTagNaming struct {
+type TaggedStructFieldMapping struct {
 	_Named_Fields_Required struct{}
 
 	// NameTag is the struct field tag to be used as column name
 	NameTag string
 
-	// IgnoreName will cause a struct field to be ignored if it has that name
-	IgnoreName string
+	// Ignore will cause a struct field to be ignored if it has that name
+	Ignore string
+
+	PrimaryKey string
+	ReadOnly   string
+	Default    string
 
 	// UntaggedNameFunc will be called with the struct field name to
 	// return a column name in case the struct field has no tag named NameTag.
 	UntaggedNameFunc func(fieldName string) string
 }
 
-func (n StructFieldTagNaming) StructFieldName(field reflect.StructField) (name string, flags FieldFlag, ok bool) {
+func (m *TaggedStructFieldMapping) MapStructField(field reflect.StructField) (table, column string, flags FieldFlag, use bool) {
 	if field.Anonymous {
-		name, hasTag := field.Tag.Lookup(n.NameTag)
+		column, hasTag := field.Tag.Lookup(m.NameTag)
 		if !hasTag {
 			// Embedded struct fields are ok if not tagged with IgnoreName
-			return "", 0, true
+			return "", "", 0, true
 		}
-		if i := strings.IndexByte(name, ','); i != -1 {
-			name = name[:i]
+		if i := strings.IndexByte(column, ','); i != -1 {
+			column = column[:i]
 		}
 		// Embedded struct fields are ok if not tagged with IgnoreName
-		return "", 0, name != n.IgnoreName
+		return "", "", 0, column != m.Ignore
 	}
 	if !field.IsExported() {
 		// Not exported struct fields that are not
 		// anonymously embedded structs are not ok
-		return "", 0, false
+		return "", "", 0, false
 	}
 
-	tag, hasTag := field.Tag.Lookup(n.NameTag)
+	tag, hasTag := field.Tag.Lookup(m.NameTag)
 	if hasTag {
 		for i, part := range strings.Split(tag, ",") {
 			// First part is the name
 			if i == 0 {
-				name = part
+				column = part
 				continue
 			}
 			// Follow on parts are flags
-			switch part {
-			case "pk":
+			flag, value, _ := strings.Cut(part, "=")
+			switch flag {
+			case "":
+				// Ignore empty flags
+			case m.PrimaryKey:
 				flags |= FieldFlagPrimaryKey
-			case "readonly":
+				table = value
+			case m.ReadOnly:
 				flags |= FieldFlagReadOnly
-			case "default":
+			case m.Default:
 				flags |= FieldFlagDefault
 			}
 		}
 	} else {
-		name = n.UntaggedNameFunc(field.Name)
+		column = m.UntaggedNameFunc(field.Name)
 	}
 
-	if name == "" || name == n.IgnoreName {
-		return "", 0, false
+	if column == "" || column == m.Ignore {
+		return "", "", 0, false
 	}
-	return name, flags, true
+	return table, column, flags, true
 }
 
-func (n StructFieldTagNaming) String() string {
+func (n TaggedStructFieldMapping) String() string {
 	return fmt.Sprintf("NameTag: %q", n.NameTag)
 }
 
-// IgnoreStructField can be used as StructFieldTagNaming.UntaggedNameFunc
-// to ignore fields that don't have StructFieldTagNaming.NameTag.
+// IgnoreStructField can be used as TaggedStructFieldMapping.UntaggedNameFunc
+// to ignore fields that don't have TaggedStructFieldMapping.NameTag.
 func IgnoreStructField(string) string { return "" }
 
 // ToSnakeCase converts s to snake case

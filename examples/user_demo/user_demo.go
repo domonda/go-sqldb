@@ -16,7 +16,7 @@ import (
 )
 
 type User struct {
-	ID uu.ID `db:"id,pk"`
+	ID uu.ID `db:"id,pk,default"`
 
 	Email email.NullableAddress   `db:"email"`
 	Title nullable.NonEmptyString `db:"title"`
@@ -24,8 +24,8 @@ type User struct {
 
 	SessionToken nullable.NonEmptyString `db:"session_token"`
 
-	CreatedAt  time.Time     `db:"created_at"`
-	UpdatedAt  time.Time     `db:"updated_at"`
+	CreatedAt  time.Time     `db:"created_at,default"`
+	UpdatedAt  time.Time     `db:"updated_at,default"`
 	DisabledAt nullable.Time `db:"disabled_at"`
 }
 
@@ -45,9 +45,9 @@ func main() {
 		panic(err)
 	}
 
-	conn = conn.WithStructFieldNamer(sqldb.StructFieldTagNaming{
+	conn = conn.WithStructFieldNamer(&sqldb.TaggedStructFieldMapping{
 		NameTag:          "col",
-		IgnoreName:       "ignore",
+		Ignore:           "ignore",
 		UntaggedNameFunc: sqldb.ToSnakeCase,
 	})
 
@@ -93,7 +93,7 @@ func main() {
 		panic(err)
 	}
 
-	err = conn.InsertStructIgnoreColumns("public.user", newUser, "created_at", "updated_at")
+	err = conn.InsertStruct("public.user", newUser, sqldb.IgnoreNullOrZeroDefault)
 	if err != nil {
 		panic(err)
 	}
@@ -106,7 +106,7 @@ func main() {
 		panic(err)
 	}
 
-	err = conn.UpsertStructIgnoreColumns("public.user", newUser, "created_at")
+	err = conn.UpsertStruct("public.user", newUser, sqldb.IgnoreColumns("created_at"))
 	if err != nil {
 		panic(err)
 	}

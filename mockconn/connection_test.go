@@ -27,12 +27,12 @@ type testRow struct {
 	ReadOnly      int     `db:"read_only,readonly"`
 	Ignore        int     `db:"-"`
 	UntaggedField int
-	CreatedAt     time.Time    `db:"created_at"`
+	CreatedAt     time.Time    `db:"created_at,default"`
 	Bools         pq.BoolArray `db:"bools"`
 }
 
 func TestInsertQuery(t *testing.T) {
-	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	naming := &sqldb.TaggedStructFieldMapping{NameTag: "db", Ignore: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
 	queryOutput := bytes.NewBuffer(nil)
 	rowProvider := NewSingleRowProvider(NewRow(struct{ True bool }{true}, naming))
 	conn := New(context.Background(), queryOutput, rowProvider).WithStructFieldNamer(naming)
@@ -65,7 +65,14 @@ func TestInsertQuery(t *testing.T) {
 
 func TestInsertStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	naming := &sqldb.TaggedStructFieldMapping{
+		NameTag:          "db",
+		Ignore:           "-",
+		PrimaryKey:       "pk",
+		ReadOnly:         "readonly",
+		Default:          "default",
+		UntaggedNameFunc: sqldb.ToSnakeCase,
+	}
 	conn := New(context.Background(), queryOutput, nil).WithStructFieldNamer(naming)
 
 	row := new(testRow)
@@ -77,20 +84,27 @@ func TestInsertStructQuery(t *testing.T) {
 
 	queryOutput.Reset()
 	expected = `INSERT INTO public.table("id","untagged_field","bools") VALUES($1,$2,$3)`
-	err = conn.InsertStruct("public.table", row, "id", "untagged_field", "bools")
+	err = conn.InsertStruct("public.table", row, sqldb.OnlyColumns("id", "untagged_field", "bools"))
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 
 	queryOutput.Reset()
 	expected = `INSERT INTO public.table("id","int","bool","str","str_ptr","bools") VALUES($1,$2,$3,$4,$5,$6)`
-	err = conn.InsertStructIgnoreColumns("public.table", row, "nil_ptr", "untagged_field", "created_at")
+	err = conn.InsertStruct("public.table", row, sqldb.IgnoreColumns("nil_ptr", "untagged_field", "created_at"))
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 }
 
 func TestInsertUniqueStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	naming := &sqldb.TaggedStructFieldMapping{
+		NameTag:          "db",
+		Ignore:           "-",
+		PrimaryKey:       "pk",
+		ReadOnly:         "readonly",
+		Default:          "default",
+		UntaggedNameFunc: sqldb.ToSnakeCase,
+	}
 	rowProvider := NewSingleRowProvider(NewRow(struct{ True bool }{true}, naming))
 	conn := New(context.Background(), queryOutput, rowProvider).WithStructFieldNamer(naming)
 
@@ -104,14 +118,14 @@ func TestInsertUniqueStructQuery(t *testing.T) {
 
 	queryOutput.Reset()
 	expected = `INSERT INTO public.table("id","untagged_field","bools") VALUES($1,$2,$3) ON CONFLICT (id, untagged_field) DO NOTHING RETURNING TRUE`
-	inserted, err = conn.InsertUniqueStruct("public.table", row, "(id, untagged_field)", "id", "untagged_field", "bools")
+	inserted, err = conn.InsertUniqueStruct("public.table", row, "(id, untagged_field)", sqldb.OnlyColumns("id", "untagged_field", "bools"))
 	assert.NoError(t, err)
 	assert.True(t, inserted)
 	assert.Equal(t, expected, queryOutput.String())
 
 	queryOutput.Reset()
 	expected = `INSERT INTO public.table("id","int","bool","str","str_ptr","bools") VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING RETURNING TRUE`
-	inserted, err = conn.InsertUniqueStructIgnoreColumns("public.table", row, "(id)", "nil_ptr", "untagged_field", "created_at")
+	inserted, err = conn.InsertUniqueStruct("public.table", row, "(id)", sqldb.IgnoreColumns("nil_ptr", "untagged_field", "created_at"))
 	assert.NoError(t, err)
 	assert.True(t, inserted)
 	assert.Equal(t, expected, queryOutput.String())
@@ -119,7 +133,7 @@ func TestInsertUniqueStructQuery(t *testing.T) {
 
 func TestUpdateQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	naming := &sqldb.TaggedStructFieldMapping{NameTag: "db", Ignore: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
 	conn := New(context.Background(), queryOutput, nil).WithStructFieldNamer(naming)
 
 	str := "Hello World!"
@@ -148,7 +162,7 @@ func TestUpdateQuery(t *testing.T) {
 
 func TestUpdateReturningQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	naming := &sqldb.TaggedStructFieldMapping{NameTag: "db", Ignore: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
 	conn := New(context.Background(), queryOutput, nil).WithStructFieldNamer(naming)
 
 	str := "Hello World!"
@@ -177,7 +191,14 @@ func TestUpdateReturningQuery(t *testing.T) {
 
 func TestUpdateStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	naming := &sqldb.TaggedStructFieldMapping{
+		NameTag:          "db",
+		Ignore:           "-",
+		PrimaryKey:       "pk",
+		ReadOnly:         "readonly",
+		Default:          "default",
+		UntaggedNameFunc: sqldb.ToSnakeCase,
+	}
 	conn := New(context.Background(), queryOutput, nil).WithStructFieldNamer(naming)
 
 	row := new(testRow)
@@ -189,20 +210,27 @@ func TestUpdateStructQuery(t *testing.T) {
 
 	queryOutput.Reset()
 	expected = `UPDATE public.table SET "bool"=$2,"str"=$3,"created_at"=$4 WHERE "id"=$1`
-	err = conn.UpdateStruct("public.table", row, "bool", "str", "created_at")
+	err = conn.UpdateStruct("public.table", row, sqldb.OnlyColumns("id", "bool", "str", "created_at"))
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 
 	queryOutput.Reset()
 	expected = `UPDATE public.table SET "int"=$2,"bool"=$3,"str_ptr"=$4,"nil_ptr"=$5,"created_at"=$6 WHERE "id"=$1`
-	err = conn.UpdateStructIgnoreColumns("public.table", row, "untagged_field", "str", "bools")
+	err = conn.UpdateStruct("public.table", row, sqldb.IgnoreColumns("untagged_field", "str", "bools"))
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 }
 
 func TestUpsertStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	naming := &sqldb.TaggedStructFieldMapping{
+		NameTag:          "db",
+		Ignore:           "-",
+		PrimaryKey:       "pk",
+		ReadOnly:         "readonly",
+		Default:          "default",
+		UntaggedNameFunc: sqldb.ToSnakeCase,
+	}
 	conn := New(context.Background(), queryOutput, nil).WithStructFieldNamer(naming)
 
 	row := new(testRow)
@@ -224,7 +252,14 @@ type multiPrimaryKeyRow struct {
 
 func TestUpsertStructMultiPKQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	naming := &sqldb.TaggedStructFieldMapping{
+		NameTag:          "db",
+		Ignore:           "-",
+		PrimaryKey:       "pk",
+		ReadOnly:         "readonly",
+		Default:          "default",
+		UntaggedNameFunc: sqldb.ToSnakeCase,
+	}
 	conn := New(context.Background(), queryOutput, nil).WithStructFieldNamer(naming)
 
 	row := new(multiPrimaryKeyRow)
@@ -237,7 +272,14 @@ func TestUpsertStructMultiPKQuery(t *testing.T) {
 
 func TestUpdateStructMultiPKQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	naming := &sqldb.TaggedStructFieldMapping{
+		NameTag:          "db",
+		Ignore:           "-",
+		PrimaryKey:       "pk",
+		ReadOnly:         "readonly",
+		Default:          "default",
+		UntaggedNameFunc: sqldb.ToSnakeCase,
+	}
 	conn := New(context.Background(), queryOutput, nil).WithStructFieldNamer(naming)
 
 	row := new(multiPrimaryKeyRow)

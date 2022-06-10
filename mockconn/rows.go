@@ -14,7 +14,7 @@ type Rows struct {
 	err    error
 }
 
-func NewRowsFromStructs(rowStructs any, columnNamer sqldb.StructFieldNamer) *Rows {
+func NewRowsFromStructs(rowStructs any, columnNamer sqldb.StructFieldMapper) *Rows {
 	v := reflect.ValueOf(rowStructs)
 	t := v.Type()
 	if t.Kind() != reflect.Array && t.Kind() != reflect.Slice {

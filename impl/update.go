@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	sqldb "github.com/domonda/go-sqldb"
+	"golang.org/x/exp/slices"
 )
 
 // Update table rows(s) with values using the where statement with passed in args starting at $1.
@@ -64,7 +65,7 @@ func buildUpdateQuery(table string, values sqldb.Values, where string, args []an
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
-func UpdateStruct(conn sqldb.Connection, table string, rowStruct any, namer sqldb.StructFieldNamer, argFmt string, ignoreColumns, restrictToColumns []string) error {
+func UpdateStruct(conn sqldb.Connection, table string, rowStruct any, namer sqldb.StructFieldMapper, argFmt string, ignoreColumns []sqldb.ColumnFilter) error {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -76,16 +77,16 @@ func UpdateStruct(conn sqldb.Connection, table string, rowStruct any, namer sqld
 		return fmt.Errorf("UpdateStruct of table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, flags, vals := writeableStructFieldValues(v, namer, ignoreColumns, restrictToColumns, true)
-	if len(columns) == 0 {
-		return fmt.Errorf("UpdateStruct of table %s: %T has no exported struct fields with `db` tag", table, rowStruct) // TODO better error message
+	columns, pkCols, vals := ReflectStructValues(v, namer, append(ignoreColumns, sqldb.IgnoreReadOnly))
+	if len(pkCols) == 0 {
+		return fmt.Errorf("UpdateStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
 
 	var b strings.Builder
 	fmt.Fprintf(&b, `UPDATE %s SET `, table)
 	first := true
 	for i := range columns {
-		if f := flags[i]; f.PrimaryKey() || f.ReadOnly() {
+		if slices.Contains(pkCols, i) {
 			continue
 		}
 		if first {
@@ -97,21 +98,13 @@ func UpdateStruct(conn sqldb.Connection, table string, rowStruct any, namer sqld
 	}
 
 	b.WriteString(` WHERE `)
-	hasPK := false
-	for i := range columns {
-		if !flags[i].PrimaryKey() {
-			continue
-		}
-		if !hasPK {
-			hasPK = true
-		} else {
+	for i, pkCol := range pkCols {
+		if i > 0 {
 			b.WriteString(` AND `)
 		}
-		fmt.Fprintf(&b, `"%s"=$%d`, columns[i], i+1)
+		fmt.Fprintf(&b, `"%s"=$%d`, columns[pkCol], i+1)
 	}
-	if !hasPK {
-		return fmt.Errorf("UpdateStruct of table %s: %T has no exported struct fields with ,pk tag value suffix to mark primary key column(s)", table, rowStruct)
-	}
+
 	query := b.String()
 
 	err := conn.Exec(query, vals...)

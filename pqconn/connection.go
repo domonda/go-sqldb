@@ -30,7 +30,7 @@ func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 		ctx:              ctx,
 		db:               db,
 		config:           config,
-		structFieldNamer: sqldb.DefaultStructFieldTagNaming,
+		structFieldNamer: sqldb.DefaultStructFieldMapping,
 	}, nil
 }
 
@@ -51,7 +51,7 @@ type connection struct {
 	ctx              context.Context
 	db               *sql.DB
 	config           *sqldb.Config
-	structFieldNamer sqldb.StructFieldNamer
+	structFieldNamer sqldb.StructFieldMapper
 }
 
 func (conn *connection) clone() *connection {
@@ -70,13 +70,13 @@ func (conn *connection) WithContext(ctx context.Context) sqldb.Connection {
 	return c
 }
 
-func (conn *connection) WithStructFieldNamer(namer sqldb.StructFieldNamer) sqldb.Connection {
+func (conn *connection) WithStructFieldNamer(namer sqldb.StructFieldMapper) sqldb.Connection {
 	c := conn.clone()
 	c.structFieldNamer = namer
 	return c
 }
 
-func (conn *connection) StructFieldNamer() sqldb.StructFieldNamer {
+func (conn *connection) StructFieldNamer() sqldb.StructFieldMapper {
 	return conn.structFieldNamer
 }
 
@@ -119,24 +119,12 @@ func (conn *connection) InsertReturning(table string, values sqldb.Values, retur
 	return impl.InsertReturning(conn, table, argFmt, values, returning)
 }
 
-func (conn *connection) InsertStruct(table string, rowStruct any, restrictToColumns ...string) error {
-	return impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, nil, restrictToColumns)
+func (conn *connection) InsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
+	return impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns)
 }
 
-func (conn *connection) InsertStructNonDefault(table string, rowStruct any) error {
-	return impl.InsertStructNonDefault(conn, table, rowStruct, conn.structFieldNamer, argFmt)
-}
-
-func (conn *connection) InsertStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error {
-	return impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns, nil)
-}
-
-func (conn *connection) InsertUniqueStruct(table string, rowStruct any, onConflict string, restrictToColumns ...string) (inserted bool, err error) {
-	return impl.InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, argFmt, nil, restrictToColumns)
-}
-
-func (conn *connection) InsertUniqueStructIgnoreColumns(table string, rowStruct any, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
-	return impl.InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, argFmt, ignoreColumns, nil)
+func (conn *connection) InsertUniqueStruct(table string, rowStruct any, onConflict string, ignoreColumns ...sqldb.ColumnFilter) (inserted bool, err error) {
+	return impl.InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, argFmt, ignoreColumns)
 }
 
 func (conn *connection) Update(table string, values sqldb.Values, where string, args ...any) error {
@@ -151,20 +139,12 @@ func (conn *connection) UpdateReturningRows(table string, values sqldb.Values, r
 	return impl.UpdateReturningRows(conn, table, values, returning, where, args)
 }
 
-func (conn *connection) UpdateStruct(table string, rowStruct any, restrictToColumns ...string) error {
-	return impl.UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, nil, restrictToColumns)
+func (conn *connection) UpdateStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
+	return impl.UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns)
 }
 
-func (conn *connection) UpdateStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error {
-	return impl.UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns, nil)
-}
-
-func (conn *connection) UpsertStruct(table string, rowStruct any, restrictToColumns ...string) error {
-	return impl.UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, nil, restrictToColumns)
-}
-
-func (conn *connection) UpsertStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error {
-	return impl.UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns, nil)
+func (conn *connection) UpsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
+	return impl.UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns)
 }
 
 func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {

@@ -1,14 +1,15 @@
-package impl
+package sqldb
 
 import (
 	"database/sql"
+	"fmt"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
+	"time"
 
 	"github.com/domonda/go-types/date"
 	"github.com/domonda/go-types/notnull"
 	"github.com/domonda/go-types/nullable"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestIsNull(t *testing.T) {
@@ -54,4 +55,25 @@ func TestIsNull(t *testing.T) {
 	assert.False(t, IsNull(nna))
 	nna = []int64{}
 	assert.False(t, IsNull(nna))
+}
+
+func TestIsNullOrZero(t *testing.T) {
+	tests := []struct {
+		val  any
+		want bool
+	}{
+		{val: time.Time{}, want: true},
+
+		// Not null or zero
+		{val: new(int), want: false},
+
+		// TODO more tests
+	}
+	for _, tt := range tests {
+		t.Run(fmt.Sprint(tt.val), func(t *testing.T) {
+			if got := IsNullOrZero(tt.val); got != tt.want {
+				t.Errorf("IsNullOrZero(%#v) = %t, want %t", tt.val, got, tt.want)
+			}
+		})
+	}
 }

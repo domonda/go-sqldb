@@ -5,6 +5,6 @@ import (
 )
 
 type RowsProvider interface {
-	QueryRow(structFieldNamer sqldb.StructFieldNamer, query string, args ...any) sqldb.RowScanner
-	QueryRows(structFieldNamer sqldb.StructFieldNamer, query string, args ...any) sqldb.RowsScanner
+	QueryRow(structFieldNamer sqldb.StructFieldMapper, query string, args ...any) sqldb.RowScanner
+	QueryRows(structFieldNamer sqldb.StructFieldMapper, query string, args ...any) sqldb.RowsScanner
 }

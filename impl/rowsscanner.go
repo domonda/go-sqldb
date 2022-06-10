@@ -13,13 +13,13 @@ var _ sqldb.RowsScanner = &RowsScanner{}
 type RowsScanner struct {
 	ctx              context.Context // ctx is checked for every row and passed through to callbacks
 	rows             Rows
-	structFieldNamer sqldb.StructFieldNamer
+	structFieldNamer sqldb.StructFieldMapper
 	query            string // for error wrapping
 	argFmt           string // for error wrapping
 	args             []any  // for error wrapping
 }
 
-func NewRowsScanner(ctx context.Context, rows Rows, structFieldNamer sqldb.StructFieldNamer, query, argFmt string, args []any) *RowsScanner {
+func NewRowsScanner(ctx context.Context, rows Rows, structFieldNamer sqldb.StructFieldMapper, query, argFmt string, args []any) *RowsScanner {
 	return &RowsScanner{ctx, rows, structFieldNamer, query, argFmt, args}
 }
 
