@@ -15,10 +15,10 @@ import (
 // Row implements impl.Row with the fields of a struct as column values.
 type Row struct {
 	rowStructVal reflect.Value
-	columnNamer  sqldb.StructFieldNamer
+	columnNamer  sqldb.StructFieldMapper
 }
 
-func NewRow(rowStruct any, columnNamer sqldb.StructFieldNamer) *Row {
+func NewRow(rowStruct any, columnNamer sqldb.StructFieldMapper) *Row {
 	val := reflect.ValueOf(rowStruct)
 	for val.Kind() == reflect.Ptr {
 		val = val.Elem()
@@ -29,7 +29,7 @@ func NewRow(rowStruct any, columnNamer sqldb.StructFieldNamer) *Row {
 	}
 }
 
-func (r *Row) StructFieldNamer() sqldb.StructFieldNamer {
+func (r *Row) StructFieldNamer() sqldb.StructFieldMapper {
 	return r.columnNamer
 }
 
@@ -37,7 +37,7 @@ func (r *Row) Columns() ([]string, error) {
 	columns := make([]string, r.rowStructVal.NumField())
 	for i := range columns {
 		field := r.rowStructVal.Type().Field(i)
-		columns[i], _, _ = r.columnNamer.StructFieldName(field)
+		_, columns[i], _, _ = r.columnNamer.MapStructField(field)
 	}
 	return columns, nil
 }

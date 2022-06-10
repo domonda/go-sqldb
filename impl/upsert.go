@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	sqldb "github.com/domonda/go-sqldb"
+	"golang.org/x/exp/slices"
 )
 
 // UpsertStruct upserts a row to table using the exported fields
@@ -14,7 +15,7 @@ import (
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
 // If inserting conflicts on pkColumn, then an update of the existing row is performed.
-func UpsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqldb.StructFieldNamer, argFmt string, ignoreColumns, restrictToColumns []string) error {
+func UpsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqldb.StructFieldMapper, argFmt string, ignoreColumns []sqldb.ColumnFilter) error {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -26,34 +27,25 @@ func UpsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqld
 		return fmt.Errorf("UpsertStruct to table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, flags, vals := writeableStructFieldValues(v, namer, ignoreColumns, restrictToColumns, true)
-	if len(columns) == 0 {
-		return fmt.Errorf("UpsertStruct to table %s: %T has no exported struct fields with `db` tag", table, rowStruct) // TODO better error message
+	columns, pkCols, vals := ReflectStructValues(v, namer, append(ignoreColumns, sqldb.IgnoreReadOnly))
+	if len(pkCols) == 0 {
+		return fmt.Errorf("UpsertStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
 
 	var b strings.Builder
 	writeInsertQuery(&b, table, argFmt, columns)
 	b.WriteString(` ON CONFLICT(`)
-	hasPK := false
-	for i := range columns {
-		if !flags[i].PrimaryKey() {
-			continue
-		}
-		if !hasPK {
-			hasPK = true
-		} else {
+	for i, pkCol := range pkCols {
+		if i > 0 {
 			b.WriteByte(',')
 		}
-		fmt.Fprintf(&b, `"%s"`, columns[i])
-	}
-	if !hasPK {
-		return fmt.Errorf("UpsertStruct to table %s: %T has no exported struct fields with ,pk tag value suffix to mark primary key column(s)", table, rowStruct)
+		fmt.Fprintf(&b, `"%s"`, columns[pkCol])
 	}
 
 	b.WriteString(`) DO UPDATE SET `)
 	first := true
 	for i := range columns {
-		if f := flags[i]; f.PrimaryKey() || f.ReadOnly() {
+		if slices.Contains(pkCols, i) {
 			continue
 		}
 		if first {

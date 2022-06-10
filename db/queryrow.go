@@ -12,8 +12,8 @@ import (
 // QueryRowStruct uses the passed pkValues to query a table row
 // and scan it into a struct of type S that must have tagged fields
 // with primary key flags to identify the primary key column names
-// for the passed pkValues.
-func QueryRowStruct[S any](ctx context.Context, table string, pkValues ...any) (row *S, err error) {
+// for the passed pkValues and a table name.
+func QueryRowStruct[S any](ctx context.Context, pkValues ...any) (row *S, err error) {
 	if len(pkValues) == 0 {
 		return nil, errors.New("no primaryKeyValues passed")
 	}
@@ -22,7 +22,10 @@ func QueryRowStruct[S any](ctx context.Context, table string, pkValues ...any) (
 		return nil, fmt.Errorf("expected struct template type instead of %s", t)
 	}
 	conn := Conn(ctx)
-	pkColumns := pkColumnsOfStruct(t, conn.StructFieldNamer())
+	table, pkColumns, err := pkColumnsOfStruct(t, conn.StructFieldNamer())
+	if err != nil {
+		return nil, err
+	}
 	if len(pkColumns) != len(pkValues) {
 		return nil, fmt.Errorf("got %d primary key values, but struct %s has %d primary key fields", len(pkValues), t, len(pkColumns))
 	}
@@ -37,18 +40,35 @@ func QueryRowStruct[S any](ctx context.Context, table string, pkValues ...any) (
 	return row, nil
 }
 
-func pkColumnsOfStruct(t reflect.Type, namer sqldb.StructFieldNamer) (columns []string) {
+func pkColumnsOfStruct(t reflect.Type, mapper sqldb.StructFieldMapper) (table string, columns []string, err error) {
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
-		name, flags, ok := namer.StructFieldName(field)
+		fieldTable, column, flags, ok := mapper.MapStructField(field)
 		if !ok {
 			continue
 		}
-		if name == "" {
-			columns = append(columns, pkColumnsOfStruct(field.Type, namer)...)
+		if fieldTable != "" && fieldTable != table {
+			if table != "" {
+				return "", nil, fmt.Errorf("table name not unique (%s vs %s) in struct %s", table, fieldTable, t)
+			}
+			table = fieldTable
+		}
+
+		if column == "" {
+			fieldTable, columnsEmbed, err := pkColumnsOfStruct(field.Type, mapper)
+			if err != nil {
+				return "", nil, err
+			}
+			if fieldTable != "" && fieldTable != table {
+				if table != "" {
+					return "", nil, fmt.Errorf("table name not unique (%s vs %s) in struct %s", table, fieldTable, t)
+				}
+				table = fieldTable
+			}
+			columns = append(columns, columnsEmbed...)
 		} else if flags.PrimaryKey() {
-			columns = append(columns, name)
+			columns = append(columns, column)
 		}
 	}
-	return columns
+	return table, columns, nil
 }

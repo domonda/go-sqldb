@@ -20,10 +20,10 @@ type singleRowProvider struct {
 	argFmt string
 }
 
-func (p *singleRowProvider) QueryRow(structFieldNamer sqldb.StructFieldNamer, query string, args ...any) sqldb.RowScanner {
+func (p *singleRowProvider) QueryRow(structFieldNamer sqldb.StructFieldMapper, query string, args ...any) sqldb.RowScanner {
 	return impl.NewRowScanner(impl.RowAsRows(p.row), structFieldNamer, query, p.argFmt, args)
 }
 
-func (p *singleRowProvider) QueryRows(structFieldNamer sqldb.StructFieldNamer, query string, args ...any) sqldb.RowsScanner {
+func (p *singleRowProvider) QueryRows(structFieldNamer sqldb.StructFieldMapper, query string, args ...any) sqldb.RowsScanner {
 	return impl.NewRowsScanner(context.Background(), NewRows(p.row), structFieldNamer, query, p.argFmt, args)
 }

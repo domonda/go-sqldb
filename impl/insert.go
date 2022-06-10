@@ -83,13 +83,11 @@ func writeInsertQuery(w *strings.Builder, table, argFmt string, names []string) 
 	w.WriteByte(')')
 }
 
-// InsertStruct inserts a new row into table using the exported fields
-// of rowStruct which have a `db` tag that is not "-".
-// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
-// If restrictToColumns are provided, then only struct fields with a `db` tag
-// matching any of the passed column names will be used.
-func InsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqldb.StructFieldNamer, argFmt string, ignoreColumns, restrictToColumns []string) error {
-	columns, vals, err := insertStructValues(table, rowStruct, namer, ignoreColumns, restrictToColumns)
+// InsertStruct inserts a new row into table using the connection's
+// StructFieldNamer to map struct fields to column names.
+// Optional ColumnFilter can be passed to ignore mapped columns.
+func InsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqldb.StructFieldMapper, argFmt string, ignoreColumns []sqldb.ColumnFilter) error {
+	columns, vals, err := insertStructValues(table, rowStruct, namer, ignoreColumns)
 	if err != nil {
 		return err
 	}
@@ -103,8 +101,13 @@ func InsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqld
 	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
 }
 
-func InsertUniqueStruct(conn sqldb.Connection, table string, rowStruct any, onConflict string, namer sqldb.StructFieldNamer, argFmt string, ignoreColumns, restrictToColumns []string) (inserted bool, err error) {
-	columns, vals, err := insertStructValues(table, rowStruct, namer, ignoreColumns, restrictToColumns)
+// InsertUniqueStruct inserts a new row into table using the connection's
+// StructFieldNamer to map struct fields to column names.
+// Optional ColumnFilter can be passed to ignore mapped columns.
+// Does nothing if the onConflict statement applies
+// and returns if a row was inserted.
+func InsertUniqueStruct(conn sqldb.Connection, table string, rowStruct any, onConflict string, namer sqldb.StructFieldMapper, argFmt string, ignoreColumns []sqldb.ColumnFilter) (inserted bool, err error) {
+	columns, vals, err := insertStructValues(table, rowStruct, namer, ignoreColumns)
 	if err != nil {
 		return false, err
 	}
@@ -124,7 +127,7 @@ func InsertUniqueStruct(conn sqldb.Connection, table string, rowStruct any, onCo
 	return inserted, WrapNonNilErrorWithQuery(err, query, argFmt, vals)
 }
 
-func insertStructValues(table string, rowStruct any, namer sqldb.StructFieldNamer, ignoreColumns, restrictToColumns []string) (columns []string, vals []any, err error) {
+func insertStructValues(table string, rowStruct any, namer sqldb.StructFieldMapper, ignoreColumns []sqldb.ColumnFilter) (columns []string, vals []any, err error) {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -136,56 +139,6 @@ func insertStructValues(table string, rowStruct any, namer sqldb.StructFieldName
 		return nil, nil, fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, _, vals = writeableStructFieldValues(v, namer, ignoreColumns, restrictToColumns, false)
-	if len(columns) == 0 {
-		return nil, nil, fmt.Errorf("InsertStruct into table %s: %T has no exported struct fields with `db` tag", table, rowStruct) // TODO better error message
-	}
+	columns, _, vals = ReflectStructValues(v, namer, append(ignoreColumns, sqldb.IgnoreReadOnly))
 	return columns, vals, nil
-}
-
-func InsertStructNonDefault(conn sqldb.Connection, table string, rowStruct any, namer sqldb.StructFieldNamer, argFmt string) error {
-	v := reflect.ValueOf(rowStruct)
-	for v.Kind() == reflect.Ptr && !v.IsNil() {
-		v = v.Elem()
-	}
-	switch {
-	case v.Kind() == reflect.Ptr && v.IsNil():
-		return fmt.Errorf("InsertStructNonDefault into table %s: can't insert nil", table)
-	case v.Kind() != reflect.Struct:
-		return fmt.Errorf("InsertStructNonDefault into table %s: expected struct but got %T", table, rowStruct)
-	}
-
-	columns, vals := structFieldNonDefaultValues(v, namer)
-	if len(columns) == 0 {
-		return fmt.Errorf("InsertStructNonDefault into table %s: %T has no exported struct fields with `db` tag", table, rowStruct) // TODO better error message
-	}
-
-	var b strings.Builder
-	writeInsertQuery(&b, table, argFmt, columns)
-	query := b.String()
-
-	err := conn.Exec(query, vals...)
-
-	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
-}
-
-func structFieldNonDefaultValues(v reflect.Value, namer sqldb.StructFieldNamer) (names []string, vals []any) {
-	for i := 0; i < v.NumField(); i++ {
-		field := v.Type().Field(i)
-		name, flags, ok := namer.StructFieldName(field)
-		if !ok || flags.ReadOnly() || flags.Default() {
-			continue
-		}
-
-		if field.Anonymous {
-			embedNames, embedValues := structFieldNonDefaultValues(v.Field(i), namer)
-			names = append(names, embedNames...)
-			vals = append(vals, embedValues...)
-			continue
-		}
-
-		names = append(names, name)
-		vals = append(vals, v.Field(i).Interface())
-	}
-	return names, vals
 }

@@ -15,13 +15,13 @@ var (
 // RowScanner implements sqldb.RowScanner for a sql.Row
 type RowScanner struct {
 	rows             Rows
-	structFieldNamer sqldb.StructFieldNamer
+	structFieldNamer sqldb.StructFieldMapper
 	query            string // for error wrapping
 	argFmt           string // for error wrapping
 	args             []any  // for error wrapping
 }
 
-func NewRowScanner(rows Rows, structFieldNamer sqldb.StructFieldNamer, query, argFmt string, args []any) *RowScanner {
+func NewRowScanner(rows Rows, structFieldNamer sqldb.StructFieldMapper, query, argFmt string, args []any) *RowScanner {
 	return &RowScanner{rows, structFieldNamer, query, argFmt, args}
 }
 
@@ -60,7 +60,7 @@ func (s *RowScanner) ScanStruct(dest any) (err error) {
 		return sql.ErrNoRows
 	}
 
-	return ScanStruct(s.rows, dest, s.structFieldNamer, nil, nil)
+	return ScanStruct(s.rows, dest, s.structFieldNamer)
 }
 
 func (s *RowScanner) ScanValues() ([]any, error) {
@@ -78,7 +78,7 @@ func (s *RowScanner) Columns() ([]string, error) {
 // CurrentRowScanner calls Rows.Scan without Rows.Next and Rows.Close
 type CurrentRowScanner struct {
 	Rows             Rows
-	StructFieldNamer sqldb.StructFieldNamer
+	StructFieldNamer sqldb.StructFieldMapper
 }
 
 func (s CurrentRowScanner) Scan(dest ...any) error {
@@ -86,7 +86,7 @@ func (s CurrentRowScanner) Scan(dest ...any) error {
 }
 
 func (s CurrentRowScanner) ScanStruct(dest any) error {
-	return ScanStruct(s.Rows, dest, s.StructFieldNamer, nil, nil)
+	return ScanStruct(s.Rows, dest, s.StructFieldNamer)
 }
 
 func (s CurrentRowScanner) ScanValues() ([]any, error) {
@@ -104,7 +104,7 @@ func (s CurrentRowScanner) Columns() ([]string, error) {
 // SingleRowScanner always uses the same Row
 type SingleRowScanner struct {
 	Row              Row
-	StructFieldNamer sqldb.StructFieldNamer
+	StructFieldNamer sqldb.StructFieldMapper
 }
 
 func (s SingleRowScanner) Scan(dest ...any) error {
@@ -112,7 +112,7 @@ func (s SingleRowScanner) Scan(dest ...any) error {
 }
 
 func (s SingleRowScanner) ScanStruct(dest any) error {
-	return ScanStruct(s.Row, dest, s.StructFieldNamer, nil, nil)
+	return ScanStruct(s.Row, dest, s.StructFieldNamer)
 }
 
 func (s SingleRowScanner) ScanValues() ([]any, error) {

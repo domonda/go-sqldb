@@ -26,10 +26,10 @@ type Connection interface {
 
 	// WithStructFieldNamer returns a copy of the connection
 	// that will use the passed StructFieldNamer.
-	WithStructFieldNamer(namer StructFieldNamer) Connection
+	WithStructFieldNamer(namer StructFieldMapper) Connection
 
 	// StructFieldNamer used by methods of this Connection.
-	StructFieldNamer() StructFieldNamer
+	StructFieldNamer() StructFieldMapper
 
 	// Ping returns an error if the database
 	// does not answer on this connection
@@ -66,37 +66,17 @@ type Connection interface {
 	// and returns values from the inserted row listed in returning.
 	InsertReturning(table string, values Values, returning string) RowScanner
 
-	// InsertStruct inserts a new row into table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// If restrictToColumns are provided, then only struct fields with a `db` tag
-	// matching any of the passed column names will be used.
-	InsertStruct(table string, rowStruct any, restrictToColumns ...string) error
+	// InsertStruct inserts a new row into table using the connection's
+	// StructFieldNamer to map struct fields to column names.
+	// Optional ColumnFilter can be passed to ignore mapped columns.
+	InsertStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error
 
-	// InsertStructNonDefault inserts a new row into table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// Struct fields with the `db` tags ",default" or ",readonly" will not be inserted.
-	InsertStructNonDefault(table string, rowStruct any) error
-
-	// TODO insert multiple structs with single query if possible
-	// InsertStructs(table string, rowStructs any, restrictToColumns ...string) error
-
-	// InsertStructIgnoreColumns inserts a new row into table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
-	InsertStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error
-
-	// InsertUniqueStruct inserts a new row into table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// If restrictToColumns are provided, then only struct fields with a `db` tag
-	// matching any of the passed column names will be used.
-	// Does nothing if the onConflict statement applies and returns if a row was inserted.
-	InsertUniqueStruct(table string, rowStruct any, onConflict string, restrictToColumns ...string) (inserted bool, err error)
-
-	// InsertUniqueStructIgnoreColumns inserts a new row into table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
-	// Does nothing if the onConflict statement applies and returns if a row was inserted.
-	InsertUniqueStructIgnoreColumns(table string, rowStruct any, onConflict string, ignoreColumns ...string) (inserted bool, err error)
+	// InsertUniqueStruct inserts a new row into table using the connection's
+	// StructFieldNamer to map struct fields to column names.
+	// Optional ColumnFilter can be passed to ignore mapped columns.
+	// Does nothing if the onConflict statement applies
+	// and returns if a row was inserted.
+	InsertUniqueStruct(table string, rowStruct any, onConflict string, ignoreColumns ...ColumnFilter) (inserted bool, err error)
 
 	// Update table rows(s) with values using the where statement with passed in args starting at $1.
 	Update(table string, values Values, where string, args ...any) error
@@ -115,14 +95,7 @@ type Connection interface {
 	// matching any of the passed column names will be used.
 	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
 	// to mark primary key column(s).
-	UpdateStruct(table string, rowStruct any, restrictToColumns ...string) error
-
-	// UpdateStructIgnoreColumns updates a row in a table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
-	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
-	// to mark primary key column(s).
-	UpdateStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error
+	UpdateStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error
 
 	// UpsertStruct upserts a row to table using the exported fields
 	// of rowStruct which have a `db` tag that is not "-".
@@ -131,15 +104,7 @@ type Connection interface {
 	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
 	// to mark primary key column(s).
 	// If inserting conflicts on the primary key column(s), then an update is performed.
-	UpsertStruct(table string, rowStruct any, restrictToColumns ...string) error
-
-	// UpsertStructIgnoreColumns upserts a row to table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
-	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
-	// to mark primary key column(s).
-	// If inserting conflicts on the primary key column(s), then an update is performed.
-	UpsertStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error
+	UpsertStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error
 
 	// QueryRow queries a single row and returns a RowScanner for the results.
 	QueryRow(query string, args ...any) RowScanner

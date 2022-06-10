@@ -80,12 +80,12 @@ func (e connectionWithError) WithContext(ctx context.Context) Connection {
 	return connectionWithError{ctx: ctx, err: e.err}
 }
 
-func (e connectionWithError) WithStructFieldNamer(namer StructFieldNamer) Connection {
+func (e connectionWithError) WithStructFieldNamer(namer StructFieldMapper) Connection {
 	return e
 }
 
-func (e connectionWithError) StructFieldNamer() StructFieldNamer {
-	return &DefaultStructFieldTagNaming
+func (e connectionWithError) StructFieldNamer() StructFieldMapper {
+	return DefaultStructFieldMapping
 }
 
 func (e connectionWithError) Ping(time.Duration) error {
@@ -120,23 +120,11 @@ func (e connectionWithError) InsertReturning(table string, values Values, return
 	return RowScannerWithError(e.err)
 }
 
-func (e connectionWithError) InsertStruct(table string, rowStruct any, restrictToColumns ...string) error {
+func (e connectionWithError) InsertStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error {
 	return e.err
 }
 
-func (e connectionWithError) InsertStructNonDefault(table string, rowStruct any) error {
-	return e.err
-}
-
-func (e connectionWithError) InsertStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error {
-	return e.err
-}
-
-func (e connectionWithError) InsertUniqueStruct(table string, rowStruct any, onConflict string, restrictToColumns ...string) (inserted bool, err error) {
-	return false, e.err
-}
-
-func (e connectionWithError) InsertUniqueStructIgnoreColumns(table string, rowStruct any, onConflict string, ignoreColumns ...string) (inserted bool, err error) {
+func (e connectionWithError) InsertUniqueStruct(table string, rowStruct any, onConflict string, ignoreColumns ...ColumnFilter) (inserted bool, err error) {
 	return false, e.err
 }
 
@@ -152,19 +140,11 @@ func (e connectionWithError) UpdateReturningRows(table string, values Values, re
 	return RowsScannerWithError(e.err)
 }
 
-func (e connectionWithError) UpdateStruct(table string, rowStruct any, restrictToColumns ...string) error {
+func (e connectionWithError) UpdateStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error {
 	return e.err
 }
 
-func (e connectionWithError) UpdateStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error {
-	return e.err
-}
-
-func (e connectionWithError) UpsertStruct(table string, rowStruct any, restrictToColumns ...string) error {
-	return e.err
-}
-
-func (e connectionWithError) UpsertStructIgnoreColumns(table string, rowStruct any, ignoreColumns ...string) error {
+func (e connectionWithError) UpsertStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error {
 	return e.err
 }
 
