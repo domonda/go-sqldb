@@ -9,20 +9,20 @@ import (
 	"github.com/domonda/go-sqldb"
 )
 
-// QueryRowStruct uses the passed pkValues to query a table row
+// QueryStruct uses the passed pkValues to query a table row
 // and scan it into a struct of type S that must have tagged fields
 // with primary key flags to identify the primary key column names
 // for the passed pkValues and a table name.
-func QueryRowStruct[S any](ctx context.Context, pkValues ...any) (row *S, err error) {
+func QueryStruct[S any](ctx context.Context, pkValues ...any) (row *S, err error) {
 	if len(pkValues) == 0 {
-		return nil, errors.New("no primaryKeyValues passed")
+		return nil, errors.New("missing primary key values")
 	}
 	t := reflect.TypeOf(row).Elem()
 	if t.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("expected struct template type instead of %s", t)
 	}
 	conn := Conn(ctx)
-	table, pkColumns, err := pkColumnsOfStruct(t, conn.StructFieldNamer())
+	table, pkColumns, err := pkColumnsOfStruct(conn, t)
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,8 @@ func QueryRowStruct[S any](ctx context.Context, pkValues ...any) (row *S, err er
 	return row, nil
 }
 
-func pkColumnsOfStruct(t reflect.Type, mapper sqldb.StructFieldMapper) (table string, columns []string, err error) {
+func pkColumnsOfStruct(conn sqldb.Connection, t reflect.Type) (table string, columns []string, err error) {
+	mapper := conn.StructFieldMapper()
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		fieldTable, column, flags, ok := mapper.MapStructField(field)
@@ -55,7 +56,7 @@ func pkColumnsOfStruct(t reflect.Type, mapper sqldb.StructFieldMapper) (table st
 		}
 
 		if column == "" {
-			fieldTable, columnsEmbed, err := pkColumnsOfStruct(field.Type, mapper)
+			fieldTable, columnsEmbed, err := pkColumnsOfStruct(conn, field.Type)
 			if err != nil {
 				return "", nil, err
 			}
@@ -67,6 +68,9 @@ func pkColumnsOfStruct(t reflect.Type, mapper sqldb.StructFieldMapper) (table st
 			}
 			columns = append(columns, columnsEmbed...)
 		} else if flags.PrimaryKey() {
+			if err = conn.ValidateColumnName(column); err != nil {
+				return "", nil, fmt.Errorf("%w in struct field %s.%s", err, t, field.Name)
+			}
 			columns = append(columns, column)
 		}
 	}

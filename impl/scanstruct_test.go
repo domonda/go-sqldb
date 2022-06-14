@@ -31,7 +31,7 @@ package impl
 
 // 	type args struct {
 // 		t     reflect.Type
-// 		namer sqldb.StructFieldNamer
+// 		namer sqldb.StructFieldMapper
 // 	}
 // 	tests := []struct {
 // 		name             string

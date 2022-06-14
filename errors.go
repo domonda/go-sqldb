@@ -80,11 +80,11 @@ func (e connectionWithError) WithContext(ctx context.Context) Connection {
 	return connectionWithError{ctx: ctx, err: e.err}
 }
 
-func (e connectionWithError) WithStructFieldNamer(namer StructFieldMapper) Connection {
+func (e connectionWithError) WithStructFieldMapper(namer StructFieldMapper) Connection {
 	return e
 }
 
-func (e connectionWithError) StructFieldNamer() StructFieldMapper {
+func (e connectionWithError) StructFieldMapper() StructFieldMapper {
 	return DefaultStructFieldMapping
 }
 
@@ -98,6 +98,10 @@ func (e connectionWithError) Stats() sql.DBStats {
 
 func (e connectionWithError) Config() *Config {
 	return &Config{Err: e.err}
+}
+
+func (e connectionWithError) ValidateColumnName(name string) error {
+	return e.err
 }
 
 func (e connectionWithError) Now() (time.Time, error) {

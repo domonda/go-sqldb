@@ -70,13 +70,13 @@ func (conn *connection) WithContext(ctx context.Context) sqldb.Connection {
 	return c
 }
 
-func (conn *connection) WithStructFieldNamer(namer sqldb.StructFieldMapper) sqldb.Connection {
+func (conn *connection) WithStructFieldMapper(namer sqldb.StructFieldMapper) sqldb.Connection {
 	c := conn.clone()
 	c.structFieldNamer = namer
 	return c
 }
 
-func (conn *connection) StructFieldNamer() sqldb.StructFieldMapper {
+func (conn *connection) StructFieldMapper() sqldb.StructFieldMapper {
 	return conn.structFieldNamer
 }
 
@@ -96,6 +96,10 @@ func (conn *connection) Stats() sql.DBStats {
 
 func (conn *connection) Config() *sqldb.Config {
 	return conn.config
+}
+
+func (conn *connection) ValidateColumnName(name string) error {
+	return validateColumnName(name)
 }
 
 func (conn *connection) Now() (time.Time, error) {

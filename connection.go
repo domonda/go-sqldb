@@ -24,12 +24,12 @@ type Connection interface {
 	// context for its operations.
 	WithContext(ctx context.Context) Connection
 
-	// WithStructFieldNamer returns a copy of the connection
-	// that will use the passed StructFieldNamer.
-	WithStructFieldNamer(namer StructFieldMapper) Connection
+	// WithStructFieldMapper returns a copy of the connection
+	// that will use the passed StructFieldMapper.
+	WithStructFieldMapper(StructFieldMapper) Connection
 
-	// StructFieldNamer used by methods of this Connection.
-	StructFieldNamer() StructFieldMapper
+	// StructFieldMapper used by methods of this Connection.
+	StructFieldMapper() StructFieldMapper
 
 	// Ping returns an error if the database
 	// does not answer on this connection
@@ -44,6 +44,11 @@ type Connection interface {
 	// Config returns the configuration used
 	// to create this connection.
 	Config() *Config
+
+	// ValidateColumnName returns an error
+	// if the passed name is not valid for a
+	// column of the connection's database.
+	ValidateColumnName(name string) error
 
 	// Now returns the result of the SQL now()
 	// function for the current connection.
@@ -67,12 +72,12 @@ type Connection interface {
 	InsertReturning(table string, values Values, returning string) RowScanner
 
 	// InsertStruct inserts a new row into table using the connection's
-	// StructFieldNamer to map struct fields to column names.
+	// StructFieldMapper to map struct fields to column names.
 	// Optional ColumnFilter can be passed to ignore mapped columns.
 	InsertStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error
 
 	// InsertUniqueStruct inserts a new row into table using the connection's
-	// StructFieldNamer to map struct fields to column names.
+	// StructFieldMapper to map struct fields to column names.
 	// Optional ColumnFilter can be passed to ignore mapped columns.
 	// Does nothing if the onConflict statement applies
 	// and returns if a row was inserted.

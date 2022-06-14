@@ -43,19 +43,23 @@ func (conn *transaction) WithContext(ctx context.Context) sqldb.Connection {
 	return newTransaction(parent, conn.tx, conn.opts)
 }
 
-func (conn *transaction) WithStructFieldNamer(namer sqldb.StructFieldMapper) sqldb.Connection {
+func (conn *transaction) WithStructFieldMapper(namer sqldb.StructFieldMapper) sqldb.Connection {
 	c := conn.clone()
 	c.structFieldNamer = namer
 	return c
 }
 
-func (conn *transaction) StructFieldNamer() sqldb.StructFieldMapper {
+func (conn *transaction) StructFieldMapper() sqldb.StructFieldMapper {
 	return conn.structFieldNamer
 }
 
 func (conn *transaction) Ping(timeout time.Duration) error { return conn.parent.Ping(timeout) }
 func (conn *transaction) Stats() sql.DBStats               { return conn.parent.Stats() }
 func (conn *transaction) Config() *sqldb.Config            { return conn.parent.Config() }
+
+func (conn *transaction) ValidateColumnName(name string) error {
+	return validateColumnName(name)
+}
 
 func (conn *transaction) Now() (time.Time, error) {
 	return impl.Now(conn)

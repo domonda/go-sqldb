@@ -84,7 +84,7 @@ func writeInsertQuery(w *strings.Builder, table, argFmt string, names []string) 
 }
 
 // InsertStruct inserts a new row into table using the connection's
-// StructFieldNamer to map struct fields to column names.
+// StructFieldMapper to map struct fields to column names.
 // Optional ColumnFilter can be passed to ignore mapped columns.
 func InsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqldb.StructFieldMapper, argFmt string, ignoreColumns []sqldb.ColumnFilter) error {
 	columns, vals, err := insertStructValues(table, rowStruct, namer, ignoreColumns)
@@ -102,7 +102,7 @@ func InsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqld
 }
 
 // InsertUniqueStruct inserts a new row into table using the connection's
-// StructFieldNamer to map struct fields to column names.
+// StructFieldMapper to map struct fields to column names.
 // Optional ColumnFilter can be passed to ignore mapped columns.
 // Does nothing if the onConflict statement applies
 // and returns if a row was inserted.

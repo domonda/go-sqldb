@@ -77,8 +77,8 @@ func (s *RowScanner) Columns() ([]string, error) {
 
 // CurrentRowScanner calls Rows.Scan without Rows.Next and Rows.Close
 type CurrentRowScanner struct {
-	Rows             Rows
-	StructFieldNamer sqldb.StructFieldMapper
+	Rows              Rows
+	StructFieldMapper sqldb.StructFieldMapper
 }
 
 func (s CurrentRowScanner) Scan(dest ...any) error {
@@ -86,7 +86,7 @@ func (s CurrentRowScanner) Scan(dest ...any) error {
 }
 
 func (s CurrentRowScanner) ScanStruct(dest any) error {
-	return ScanStruct(s.Rows, dest, s.StructFieldNamer)
+	return ScanStruct(s.Rows, dest, s.StructFieldMapper)
 }
 
 func (s CurrentRowScanner) ScanValues() ([]any, error) {
@@ -103,8 +103,8 @@ func (s CurrentRowScanner) Columns() ([]string, error) {
 
 // SingleRowScanner always uses the same Row
 type SingleRowScanner struct {
-	Row              Row
-	StructFieldNamer sqldb.StructFieldMapper
+	Row               Row
+	StructFieldMapper sqldb.StructFieldMapper
 }
 
 func (s SingleRowScanner) Scan(dest ...any) error {
@@ -112,7 +112,7 @@ func (s SingleRowScanner) Scan(dest ...any) error {
 }
 
 func (s SingleRowScanner) ScanStruct(dest any) error {
-	return ScanStruct(s.Row, dest, s.StructFieldNamer)
+	return ScanStruct(s.Row, dest, s.StructFieldMapper)
 }
 
 func (s SingleRowScanner) ScanValues() ([]any, error) {

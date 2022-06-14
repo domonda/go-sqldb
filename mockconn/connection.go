@@ -49,7 +49,7 @@ func (conn *connection) WithContext(ctx context.Context) sqldb.Connection {
 	}
 }
 
-func (conn *connection) WithStructFieldNamer(namer sqldb.StructFieldMapper) sqldb.Connection {
+func (conn *connection) WithStructFieldMapper(namer sqldb.StructFieldMapper) sqldb.Connection {
 	return &connection{
 		ctx:              conn.ctx,
 		queryWriter:      conn.queryWriter,
@@ -60,7 +60,7 @@ func (conn *connection) WithStructFieldNamer(namer sqldb.StructFieldMapper) sqld
 	}
 }
 
-func (conn *connection) StructFieldNamer() sqldb.StructFieldMapper {
+func (conn *connection) StructFieldMapper() sqldb.StructFieldMapper {
 	return conn.structFieldNamer
 }
 
@@ -70,6 +70,10 @@ func (conn *connection) Stats() sql.DBStats {
 
 func (conn *connection) Config() *sqldb.Config {
 	return &sqldb.Config{Driver: "mockconn", Host: "localhost", Database: "mock"}
+}
+
+func (conn *connection) ValidateColumnName(name string) error {
+	return validateColumnName(name)
 }
 
 func (conn *connection) Ping(time.Duration) error {

@@ -29,7 +29,7 @@ func NewRow(rowStruct any, columnNamer sqldb.StructFieldMapper) *Row {
 	}
 }
 
-func (r *Row) StructFieldNamer() sqldb.StructFieldMapper {
+func (r *Row) StructFieldMapper() sqldb.StructFieldMapper {
 	return r.columnNamer
 }
 

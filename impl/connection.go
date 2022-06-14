@@ -13,22 +13,24 @@ import (
 // for an existing sql.DB connection.
 // argFmt is the format string for argument placeholders like "?" or "$%d"
 // that will be replaced error messages to format a complete query.
-func Connection(ctx context.Context, db *sql.DB, config *sqldb.Config, argFmt string) sqldb.Connection {
+func Connection(ctx context.Context, db *sql.DB, config *sqldb.Config, validateColumnName func(string) error, argFmt string) sqldb.Connection {
 	return &connection{
-		ctx:              ctx,
-		db:               db,
-		config:           config,
-		structFieldNamer: sqldb.DefaultStructFieldMapping,
-		argFmt:           argFmt,
+		ctx:                ctx,
+		db:                 db,
+		config:             config,
+		structFieldNamer:   sqldb.DefaultStructFieldMapping,
+		argFmt:             argFmt,
+		validateColumnName: validateColumnName,
 	}
 }
 
 type connection struct {
-	ctx              context.Context
-	db               *sql.DB
-	config           *sqldb.Config
-	structFieldNamer sqldb.StructFieldMapper
-	argFmt           string
+	ctx                context.Context
+	db                 *sql.DB
+	config             *sqldb.Config
+	structFieldNamer   sqldb.StructFieldMapper
+	argFmt             string
+	validateColumnName func(string) error
 }
 
 func (conn *connection) clone() *connection {
@@ -47,13 +49,13 @@ func (conn *connection) WithContext(ctx context.Context) sqldb.Connection {
 	return c
 }
 
-func (conn *connection) WithStructFieldNamer(namer sqldb.StructFieldMapper) sqldb.Connection {
+func (conn *connection) WithStructFieldMapper(namer sqldb.StructFieldMapper) sqldb.Connection {
 	c := conn.clone()
 	c.structFieldNamer = namer
 	return c
 }
 
-func (conn *connection) StructFieldNamer() sqldb.StructFieldMapper {
+func (conn *connection) StructFieldMapper() sqldb.StructFieldMapper {
 	return conn.structFieldNamer
 }
 
@@ -73,6 +75,10 @@ func (conn *connection) Stats() sql.DBStats {
 
 func (conn *connection) Config() *sqldb.Config {
 	return conn.config
+}
+
+func (conn *connection) ValidateColumnName(name string) error {
+	return conn.validateColumnName(name)
 }
 
 func (conn *connection) Now() (time.Time, error) {
