@@ -40,6 +40,17 @@ func QueryStruct[S any](ctx context.Context, pkValues ...any) (row *S, err error
 	return row, nil
 }
 
+// QueryStructOrNil uses the passed pkValues to query a table row
+// and scan it into a struct of type S that must have tagged fields
+// with primary key flags to identify the primary key column names
+// for the passed pkValues and a table name.
+// Returns nil as row and error if no row could be found with the
+// passed pkValues.
+func QueryStructOrNil[S any](ctx context.Context, pkValues ...any) (row *S, err error) {
+	row, err = QueryStruct[S](ctx, pkValues...)
+	return row, ReplaceErrNoRows(err, nil)
+}
+
 func pkColumnsOfStruct(conn sqldb.Connection, t reflect.Type) (table string, columns []string, err error) {
 	mapper := conn.StructFieldMapper()
 	for i := 0; i < t.NumField(); i++ {
