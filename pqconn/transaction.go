@@ -12,18 +12,18 @@ import (
 type transaction struct {
 	// The parent non-transaction connection is needed
 	// for its ctx, Ping(), Stats(), and Config()
-	parent           *connection
-	tx               *sql.Tx
-	opts             *sql.TxOptions
-	structFieldNamer reflection.StructFieldMapper
+	parent            *connection
+	tx                *sql.Tx
+	opts              *sql.TxOptions
+	structFieldMapper reflection.StructFieldMapper
 }
 
 func newTransaction(parent *connection, tx *sql.Tx, opts *sql.TxOptions) *transaction {
 	return &transaction{
-		parent:           parent,
-		tx:               tx,
-		opts:             opts,
-		structFieldNamer: parent.structFieldNamer,
+		parent:            parent,
+		tx:                tx,
+		opts:              opts,
+		structFieldMapper: parent.structFieldMapper,
 	}
 }
 
@@ -45,12 +45,12 @@ func (conn *transaction) WithContext(ctx context.Context) sqldb.Connection {
 
 func (conn *transaction) WithStructFieldMapper(mapper reflection.StructFieldMapper) sqldb.Connection {
 	c := conn.clone()
-	c.structFieldNamer = mapper
+	c.structFieldMapper = mapper
 	return c
 }
 
 func (conn *transaction) StructFieldMapper() reflection.StructFieldMapper {
-	return conn.structFieldNamer
+	return conn.structFieldMapper
 }
 
 func (conn *transaction) Ping(timeout time.Duration) error { return conn.parent.Ping(timeout) }
@@ -88,7 +88,7 @@ func (conn *transaction) QueryRow(query string, args ...any) sqldb.RowScanner {
 		err = sqldb.WrapNonNilErrorWithQuery(err, query, argFmt, args)
 		return sqldb.RowScannerWithError(err)
 	}
-	return sqldb.NewRowScanner(rows, conn.structFieldNamer, query, argFmt, args)
+	return sqldb.NewRowScanner(rows, conn.structFieldMapper, query, argFmt, args)
 }
 
 func (conn *transaction) QueryRows(query string, args ...any) sqldb.RowsScanner {
@@ -97,7 +97,7 @@ func (conn *transaction) QueryRows(query string, args ...any) sqldb.RowsScanner 
 		err = sqldb.WrapNonNilErrorWithQuery(err, query, argFmt, args)
 		return sqldb.RowsScannerWithError(err)
 	}
-	return sqldb.NewRowsScanner(conn.parent.ctx, rows, conn.structFieldNamer, query, argFmt, args)
+	return sqldb.NewRowsScanner(conn.parent.ctx, rows, conn.structFieldMapper, query, argFmt, args)
 }
 
 func (conn *transaction) IsTransaction() bool {

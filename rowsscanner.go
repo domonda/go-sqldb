@@ -55,16 +55,16 @@ var _ RowsScanner = &rowsScanner{}
 
 // rowsScanner implements rowsScanner with Rows
 type rowsScanner struct {
-	ctx              context.Context // ctx is checked for every row and passed through to callbacks
-	rows             Rows
-	structFieldNamer reflection.StructFieldMapper
-	query            string // for error wrapping
-	argFmt           string // for error wrapping
-	args             []any  // for error wrapping
+	ctx               context.Context // ctx is checked for every row and passed through to callbacks
+	rows              Rows
+	structFieldMapper reflection.StructFieldMapper
+	query             string // for error wrapping
+	argFmt            string // for error wrapping
+	args              []any  // for error wrapping
 }
 
-func NewRowsScanner(ctx context.Context, rows Rows, structFieldNamer reflection.StructFieldMapper, query, argFmt string, args []any) *rowsScanner {
-	return &rowsScanner{ctx, rows, structFieldNamer, query, argFmt, args}
+func NewRowsScanner(ctx context.Context, rows Rows, structFieldMapper reflection.StructFieldMapper, query, argFmt string, args []any) *rowsScanner {
+	return &rowsScanner{ctx, rows, structFieldMapper, query, argFmt, args}
 }
 
 func (s *rowsScanner) ScanSlice(dest any) error {
@@ -76,7 +76,7 @@ func (s *rowsScanner) ScanSlice(dest any) error {
 }
 
 func (s *rowsScanner) ScanStructSlice(dest any) error {
-	err := reflection.ScanRowsAsSlice(s.ctx, s.rows, dest, s.structFieldNamer)
+	err := reflection.ScanRowsAsSlice(s.ctx, s.rows, dest, s.structFieldMapper)
 	if err != nil {
 		return fmt.Errorf("%w from query: %s", err, FormatQuery(s.query, s.argFmt, s.args...))
 	}
@@ -122,7 +122,7 @@ func (s *rowsScanner) ForEachRow(callback func(RowScanner) error) (err error) {
 			return s.ctx.Err()
 		}
 
-		err := callback(CurrentRowScanner{s.rows, s.structFieldNamer})
+		err := callback(CurrentRowScanner{s.rows, s.structFieldMapper})
 		if err != nil {
 			return err
 		}

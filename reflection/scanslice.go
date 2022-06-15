@@ -18,10 +18,10 @@ var (
 // ScanRowsAsSlice scans all srcRows as slice into dest.
 // The rows must either have only one column compatible with the element type of the slice,
 // or if multiple columns are returned then the slice element type must me a struct or struction pointer
-// so that every column maps on exactly one struct field using structFieldNamer.
-// In case of single column rows, nil must be passed for structFieldNamer.
+// so that every column maps on exactly one struct field using structFieldMapper.
+// In case of single column rows, nil must be passed for structFieldMapper.
 // ScanRowsAsSlice calls srcRows.Close().
-func ScanRowsAsSlice(ctx context.Context, srcRows Rows, dest any, structFieldNamer StructFieldMapper) error {
+func ScanRowsAsSlice(ctx context.Context, srcRows Rows, dest any, structFieldMapper StructFieldMapper) error {
 	defer srcRows.Close()
 
 	destVal := reflect.ValueOf(dest)
@@ -46,8 +46,8 @@ func ScanRowsAsSlice(ctx context.Context, srcRows Rows, dest any, structFieldNam
 
 		newSlice = reflect.Append(newSlice, reflect.Zero(sliceElemType))
 		target := newSlice.Index(newSlice.Len() - 1).Addr()
-		if structFieldNamer != nil {
-			err := ScanStruct(srcRows, target.Interface(), structFieldNamer)
+		if structFieldMapper != nil {
+			err := ScanStruct(srcRows, target.Interface(), structFieldMapper)
 			if err != nil {
 				return err
 			}

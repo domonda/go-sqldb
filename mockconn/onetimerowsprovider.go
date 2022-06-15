@@ -45,7 +45,7 @@ func (p *OneTimeRowsProvider) AddRowsScannerQuery(scanner sqldb.RowsScanner, que
 	p.rowsScanners[key] = scanner
 }
 
-func (p *OneTimeRowsProvider) QueryRow(structFieldNamer reflection.StructFieldMapper, query string, args ...any) sqldb.RowScanner {
+func (p *OneTimeRowsProvider) QueryRow(structFieldMapper reflection.StructFieldMapper, query string, args ...any) sqldb.RowScanner {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 
@@ -55,7 +55,7 @@ func (p *OneTimeRowsProvider) QueryRow(structFieldNamer reflection.StructFieldMa
 	return scanner
 }
 
-func (p *OneTimeRowsProvider) QueryRows(structFieldNamer reflection.StructFieldMapper, query string, args ...any) sqldb.RowsScanner {
+func (p *OneTimeRowsProvider) QueryRows(structFieldMapper reflection.StructFieldMapper, query string, args ...any) sqldb.RowsScanner {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 

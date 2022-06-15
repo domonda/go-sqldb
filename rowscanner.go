@@ -37,15 +37,15 @@ var (
 
 // rowScanner implements rowScanner for a sql.Row
 type rowScanner struct {
-	rows             Rows
-	structFieldNamer reflection.StructFieldMapper
-	query            string // for error wrapping
-	argFmt           string // for error wrapping
-	args             []any  // for error wrapping
+	rows              Rows
+	structFieldMapper reflection.StructFieldMapper
+	query             string // for error wrapping
+	argFmt            string // for error wrapping
+	args              []any  // for error wrapping
 }
 
-func NewRowScanner(rows Rows, structFieldNamer reflection.StructFieldMapper, query, argFmt string, args []any) *rowScanner {
-	return &rowScanner{rows, structFieldNamer, query, argFmt, args}
+func NewRowScanner(rows Rows, structFieldMapper reflection.StructFieldMapper, query, argFmt string, args []any) *rowScanner {
+	return &rowScanner{rows, structFieldMapper, query, argFmt, args}
 }
 
 func (s *rowScanner) Scan(dest ...any) (err error) {
@@ -83,7 +83,7 @@ func (s *rowScanner) ScanStruct(dest any) (err error) {
 		return sql.ErrNoRows
 	}
 
-	return reflection.ScanStruct(s.rows, dest, s.structFieldNamer)
+	return reflection.ScanStruct(s.rows, dest, s.structFieldMapper)
 }
 
 func (s *rowScanner) ScanValues() ([]any, error) {
