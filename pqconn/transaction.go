@@ -61,6 +61,14 @@ func (conn *transaction) ValidateColumnName(name string) error {
 	return validateColumnName(name)
 }
 
+func (*transaction) ArgFmt() string {
+	return argFmt
+}
+
+func (conn *transaction) Err() error {
+	return conn.parent.config.Err
+}
+
 func (conn *transaction) Now() (time.Time, error) {
 	return impl.Now(conn)
 }
@@ -68,26 +76,6 @@ func (conn *transaction) Now() (time.Time, error) {
 func (conn *transaction) Exec(query string, args ...any) error {
 	_, err := conn.tx.Exec(query, args...)
 	return impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
-}
-
-func (conn *transaction) Insert(table string, columValues sqldb.Values) error {
-	return impl.Insert(conn, table, argFmt, columValues)
-}
-
-func (conn *transaction) InsertUnique(table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
-	return impl.InsertUnique(conn, table, argFmt, values, onConflict)
-}
-
-func (conn *transaction) InsertReturning(table string, values sqldb.Values, returning string) sqldb.RowScanner {
-	return impl.InsertReturning(conn, table, argFmt, values, returning)
-}
-
-func (conn *transaction) InsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns)
-}
-
-func (conn *transaction) InsertUniqueStruct(table string, rowStruct any, onConflict string, ignoreColumns ...sqldb.ColumnFilter) (inserted bool, err error) {
-	return impl.InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, argFmt, ignoreColumns)
 }
 
 func (conn *transaction) Update(table string, values sqldb.Values, where string, args ...any) error {

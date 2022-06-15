@@ -12,18 +12,18 @@ import (
 type transaction struct {
 	// The parent non-transaction connection is needed
 	// for its ctx, Ping(), Stats(), and Config()
-	parent           *connection
-	tx               *sql.Tx
-	opts             *sql.TxOptions
-	structFieldNamer sqldb.StructFieldMapper
+	parent            *connection
+	tx                *sql.Tx
+	opts              *sql.TxOptions
+	structFieldMapper sqldb.StructFieldMapper
 }
 
 func newTransaction(parent *connection, tx *sql.Tx, opts *sql.TxOptions) *transaction {
 	return &transaction{
-		parent:           parent,
-		tx:               tx,
-		opts:             opts,
-		structFieldNamer: parent.structFieldNamer,
+		parent:            parent,
+		tx:                tx,
+		opts:              opts,
+		structFieldMapper: parent.structFieldMapper,
 	}
 }
 
@@ -45,12 +45,12 @@ func (conn *transaction) WithContext(ctx context.Context) sqldb.Connection {
 
 func (conn *transaction) WithStructFieldMapper(namer sqldb.StructFieldMapper) sqldb.Connection {
 	c := conn.clone()
-	c.structFieldNamer = namer
+	c.structFieldMapper = namer
 	return c
 }
 
 func (conn *transaction) StructFieldMapper() sqldb.StructFieldMapper {
-	return conn.structFieldNamer
+	return conn.structFieldMapper
 }
 
 func (conn *transaction) Ping(timeout time.Duration) error { return conn.parent.Ping(timeout) }
@@ -61,6 +61,14 @@ func (conn *transaction) ValidateColumnName(name string) error {
 	return conn.parent.validateColumnName(name)
 }
 
+func (conn *transaction) ArgFmt() string {
+	return conn.parent.argFmt
+}
+
+func (conn *transaction) Err() error {
+	return conn.parent.Err()
+}
+
 func (conn *transaction) Now() (time.Time, error) {
 	return Now(conn)
 }
@@ -68,26 +76,6 @@ func (conn *transaction) Now() (time.Time, error) {
 func (conn *transaction) Exec(query string, args ...any) error {
 	_, err := conn.tx.Exec(query, args...)
 	return WrapNonNilErrorWithQuery(err, query, conn.parent.argFmt, args)
-}
-
-func (conn *transaction) Insert(table string, columValues sqldb.Values) error {
-	return Insert(conn, table, conn.parent.argFmt, columValues)
-}
-
-func (conn *transaction) InsertUnique(table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
-	return InsertUnique(conn, table, conn.parent.argFmt, values, onConflict)
-}
-
-func (conn *transaction) InsertReturning(table string, values sqldb.Values, returning string) sqldb.RowScanner {
-	return InsertReturning(conn, table, conn.parent.argFmt, values, returning)
-}
-
-func (conn *transaction) InsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return InsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.parent.argFmt, ignoreColumns)
-}
-
-func (conn *transaction) InsertUniqueStruct(table string, rowStruct any, onConflict string, ignoreColumns ...sqldb.ColumnFilter) (inserted bool, err error) {
-	return InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, conn.parent.argFmt, ignoreColumns)
 }
 
 func (conn *transaction) Update(table string, values sqldb.Values, where string, args ...any) error {
@@ -103,11 +91,11 @@ func (conn *transaction) UpdateReturningRows(table string, values sqldb.Values, 
 }
 
 func (conn *transaction) UpdateStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, conn.parent.argFmt, ignoreColumns)
+	return UpdateStruct(conn, table, rowStruct, conn.structFieldMapper, conn.parent.argFmt, ignoreColumns)
 }
 
 func (conn *transaction) UpsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.parent.argFmt, ignoreColumns)
+	return UpsertStruct(conn, table, rowStruct, conn.structFieldMapper, conn.parent.argFmt, ignoreColumns)
 }
 
 func (conn *transaction) QueryRow(query string, args ...any) sqldb.RowScanner {
@@ -116,7 +104,7 @@ func (conn *transaction) QueryRow(query string, args ...any) sqldb.RowScanner {
 		err = WrapNonNilErrorWithQuery(err, query, conn.parent.argFmt, args)
 		return sqldb.RowScannerWithError(err)
 	}
-	return NewRowScanner(rows, conn.structFieldNamer, query, conn.parent.argFmt, args)
+	return NewRowScanner(rows, conn.structFieldMapper, query, conn.parent.argFmt, args)
 }
 
 func (conn *transaction) QueryRows(query string, args ...any) sqldb.RowsScanner {
@@ -125,7 +113,7 @@ func (conn *transaction) QueryRows(query string, args ...any) sqldb.RowsScanner 
 		err = WrapNonNilErrorWithQuery(err, query, conn.parent.argFmt, args)
 		return sqldb.RowsScannerWithError(err)
 	}
-	return NewRowsScanner(conn.parent.ctx, rows, conn.structFieldNamer, query, conn.parent.argFmt, args)
+	return NewRowsScanner(conn.parent.ctx, rows, conn.structFieldMapper, query, conn.parent.argFmt, args)
 }
 
 func (conn *transaction) IsTransaction() bool {

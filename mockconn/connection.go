@@ -68,6 +68,10 @@ func (conn *connection) Stats() sql.DBStats {
 	return sql.DBStats{}
 }
 
+func (conn *connection) Ping(time.Duration) error {
+	return nil
+}
+
 func (conn *connection) Config() *sqldb.Config {
 	return &sqldb.Config{Driver: "mockconn", Host: "localhost", Database: "mock"}
 }
@@ -76,7 +80,11 @@ func (conn *connection) ValidateColumnName(name string) error {
 	return validateColumnName(name)
 }
 
-func (conn *connection) Ping(time.Duration) error {
+func (conn *connection) ArgFmt() string {
+	return conn.argFmt
+}
+
+func (conn *connection) Err() error {
 	return nil
 }
 
@@ -89,26 +97,6 @@ func (conn *connection) Exec(query string, args ...any) error {
 		fmt.Fprint(conn.queryWriter, query)
 	}
 	return nil
-}
-
-func (conn *connection) Insert(table string, columValues sqldb.Values) error {
-	return impl.Insert(conn, table, conn.argFmt, columValues)
-}
-
-func (conn *connection) InsertUnique(table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
-	return impl.InsertUnique(conn, table, conn.argFmt, values, onConflict)
-}
-
-func (conn *connection) InsertReturning(table string, values sqldb.Values, returning string) sqldb.RowScanner {
-	return impl.InsertReturning(conn, table, conn.argFmt, values, returning)
-}
-
-func (conn *connection) InsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt, ignoreColumns)
-}
-
-func (conn *connection) InsertUniqueStruct(table string, rowStruct any, onConflict string, ignoreColumns ...sqldb.ColumnFilter) (inserted bool, err error) {
-	return impl.InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, conn.argFmt, ignoreColumns)
 }
 
 func (conn *connection) Update(table string, values sqldb.Values, where string, args ...any) error {

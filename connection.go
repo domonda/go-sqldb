@@ -25,7 +25,7 @@ type Connection interface {
 	WithContext(ctx context.Context) Connection
 
 	// WithStructFieldMapper returns a copy of the connection
-	// that will use the passed StructFieldMapper.
+	// that will use the passed StructFieldNamer.
 	WithStructFieldMapper(StructFieldMapper) Connection
 
 	// StructFieldMapper used by methods of this Connection.
@@ -50,6 +50,12 @@ type Connection interface {
 	// column of the connection's database.
 	ValidateColumnName(name string) error
 
+	// ArgFmt returns the format for SQL query arguments
+	ArgFmt() string
+
+	// Err returns any current error of the connection
+	Err() error
+
 	// Now returns the result of the SQL now()
 	// function for the current connection.
 	// Useful for getting the timestamp of a
@@ -58,30 +64,6 @@ type Connection interface {
 
 	// Exec executes a query with optional args.
 	Exec(query string, args ...any) error
-
-	// Insert a new row into table using the values.
-	Insert(table string, values Values) error
-
-	// InsertUnique inserts a new row into table using the passed values
-	// or does nothing if the onConflict statement applies.
-	// Returns if a row was inserted.
-	InsertUnique(table string, values Values, onConflict string) (inserted bool, err error)
-
-	// InsertReturning inserts a new row into table using values
-	// and returns values from the inserted row listed in returning.
-	InsertReturning(table string, values Values, returning string) RowScanner
-
-	// InsertStruct inserts a new row into table using the connection's
-	// StructFieldMapper to map struct fields to column names.
-	// Optional ColumnFilter can be passed to ignore mapped columns.
-	InsertStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error
-
-	// InsertUniqueStruct inserts a new row into table using the connection's
-	// StructFieldMapper to map struct fields to column names.
-	// Optional ColumnFilter can be passed to ignore mapped columns.
-	// Does nothing if the onConflict statement applies
-	// and returns if a row was inserted.
-	InsertUniqueStruct(table string, rowStruct any, onConflict string, ignoreColumns ...ColumnFilter) (inserted bool, err error)
 
 	// Update table rows(s) with values using the where statement with passed in args starting at $1.
 	Update(table string, values Values, where string, args ...any) error

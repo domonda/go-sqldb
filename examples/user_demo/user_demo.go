@@ -16,7 +16,7 @@ import (
 )
 
 type User struct {
-	ID uu.ID `db:"id,pk,default"`
+	ID uu.ID `db:"id,pk=public.user,default"`
 
 	Email email.NullableAddress   `db:"email"`
 	Title nullable.NonEmptyString `db:"title"`
@@ -87,18 +87,20 @@ func main() {
 		panic(err)
 	}
 
+	ctx := context.Background()
+
 	newUser := &User{ /* ... */ }
-	err = conn.InsertStruct("public.user", newUser)
+	err = db.InsertStruct(ctx, newUser)
 	if err != nil {
 		panic(err)
 	}
 
-	err = conn.InsertStruct("public.user", newUser, sqldb.IgnoreNullOrZeroDefault)
+	err = db.InsertStruct(ctx, newUser, sqldb.IgnoreNullOrZeroDefault)
 	if err != nil {
 		panic(err)
 	}
 
-	err = conn.Insert("public.user", sqldb.Values{
+	err = db.Insert(ctx, "public.user", sqldb.Values{
 		"name":  "Erik Unger",
 		"email": "erik@domonda.com",
 	})

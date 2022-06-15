@@ -102,6 +102,14 @@ func (conn *connection) ValidateColumnName(name string) error {
 	return validateColumnName(name)
 }
 
+func (*connection) ArgFmt() string {
+	return argFmt
+}
+
+func (conn *connection) Err() error {
+	return conn.config.Err
+}
+
 func (conn *connection) Now() (time.Time, error) {
 	return impl.Now(conn)
 }
@@ -109,26 +117,6 @@ func (conn *connection) Now() (time.Time, error) {
 func (conn *connection) Exec(query string, args ...any) error {
 	_, err := conn.db.ExecContext(conn.ctx, query, args...)
 	return impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
-}
-
-func (conn *connection) Insert(table string, columValues sqldb.Values) error {
-	return impl.Insert(conn, table, argFmt, columValues)
-}
-
-func (conn *connection) InsertUnique(table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
-	return impl.InsertUnique(conn, table, argFmt, values, onConflict)
-}
-
-func (conn *connection) InsertReturning(table string, values sqldb.Values, returning string) sqldb.RowScanner {
-	return impl.InsertReturning(conn, table, argFmt, values, returning)
-}
-
-func (conn *connection) InsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns)
-}
-
-func (conn *connection) InsertUniqueStruct(table string, rowStruct any, onConflict string, ignoreColumns ...sqldb.ColumnFilter) (inserted bool, err error) {
-	return impl.InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, argFmt, ignoreColumns)
 }
 
 func (conn *connection) Update(table string, values sqldb.Values, where string, args ...any) error {

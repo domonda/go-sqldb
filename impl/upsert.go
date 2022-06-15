@@ -61,3 +61,24 @@ func UpsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqld
 
 	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
 }
+
+// TODO replace
+func writeInsertQuery(w *strings.Builder, table, argFmt string, names []string) {
+	fmt.Fprintf(w, `INSERT INTO %s(`, table)
+	for i, name := range names {
+		if i > 0 {
+			w.WriteByte(',')
+		}
+		w.WriteByte('"')
+		w.WriteString(name)
+		w.WriteByte('"')
+	}
+	w.WriteString(`) VALUES(`)
+	for i := range names {
+		if i > 0 {
+			w.WriteByte(',')
+		}
+		fmt.Fprintf(w, argFmt, i+1)
+	}
+	w.WriteByte(')')
+}

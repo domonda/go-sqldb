@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/db"
 	"github.com/domonda/go-types/uu"
 )
 
@@ -18,7 +19,7 @@ type embed struct {
 }
 
 type testRow struct {
-	ID  uu.ID `db:"id,pk"`
+	ID  uu.ID `db:"id,pk=public.table"`
 	Int int   `db:"int"`
 	embed
 	Str           string  `db:"str"`
@@ -32,10 +33,11 @@ type testRow struct {
 }
 
 func TestInsertQuery(t *testing.T) {
+	context.Background()
 	naming := &sqldb.TaggedStructFieldMapping{NameTag: "db", Ignore: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
 	queryOutput := bytes.NewBuffer(nil)
 	rowProvider := NewSingleRowProvider(NewRow(struct{ True bool }{true}, naming))
-	conn := New(context.Background(), queryOutput, rowProvider).WithStructFieldMapper(naming)
+	ctx := db.ContextWithConn(context.Background(), New(context.Background(), queryOutput, rowProvider).WithStructFieldMapper(naming))
 
 	str := "Hello World!"
 	values := sqldb.Values{
@@ -51,13 +53,13 @@ func TestInsertQuery(t *testing.T) {
 	}
 
 	expected := `INSERT INTO public.table("bool","bools","created_at","id","int","nil_ptr","str","str_ptr","untagged_field") VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`
-	err := conn.Insert("public.table", values)
+	err := db.Insert(ctx, "public.table", values)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 
 	queryOutput.Reset()
 	expected = `INSERT INTO public.table("bool","bools","created_at","id","int","nil_ptr","str","str_ptr","untagged_field") VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING RETURNING TRUE`
-	inserted, err := conn.InsertUnique("public.table", values, "id")
+	inserted, err := db.InsertUnique(ctx, "public.table", values, "id")
 	assert.NoError(t, err)
 	assert.True(t, inserted)
 	assert.Equal(t, expected, queryOutput.String())
@@ -73,24 +75,24 @@ func TestInsertStructQuery(t *testing.T) {
 		Default:          "default",
 		UntaggedNameFunc: sqldb.ToSnakeCase,
 	}
-	conn := New(context.Background(), queryOutput, nil).WithStructFieldMapper(naming)
+	ctx := db.ContextWithConn(context.Background(), New(context.Background(), queryOutput, nil).WithStructFieldMapper(naming))
 
 	row := new(testRow)
 
 	expected := `INSERT INTO public.table("id","int","bool","str","str_ptr","nil_ptr","untagged_field","created_at","bools") VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`
-	err := conn.InsertStruct("public.table", row)
+	err := db.InsertStruct(ctx, row)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 
 	queryOutput.Reset()
 	expected = `INSERT INTO public.table("id","untagged_field","bools") VALUES($1,$2,$3)`
-	err = conn.InsertStruct("public.table", row, sqldb.OnlyColumns("id", "untagged_field", "bools"))
+	err = db.InsertStruct(ctx, row, sqldb.OnlyColumns("id", "untagged_field", "bools"))
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 
 	queryOutput.Reset()
 	expected = `INSERT INTO public.table("id","int","bool","str","str_ptr","bools") VALUES($1,$2,$3,$4,$5,$6)`
-	err = conn.InsertStruct("public.table", row, sqldb.IgnoreColumns("nil_ptr", "untagged_field", "created_at"))
+	err = db.InsertStruct(ctx, row, sqldb.IgnoreColumns("nil_ptr", "untagged_field", "created_at"))
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 }
@@ -106,26 +108,26 @@ func TestInsertUniqueStructQuery(t *testing.T) {
 		UntaggedNameFunc: sqldb.ToSnakeCase,
 	}
 	rowProvider := NewSingleRowProvider(NewRow(struct{ True bool }{true}, naming))
-	conn := New(context.Background(), queryOutput, rowProvider).WithStructFieldMapper(naming)
+	ctx := db.ContextWithConn(context.Background(), New(context.Background(), queryOutput, rowProvider).WithStructFieldMapper(naming))
 
 	row := new(testRow)
 
 	expected := `INSERT INTO public.table("id","int","bool","str","str_ptr","nil_ptr","untagged_field","created_at","bools") VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT (id) DO NOTHING RETURNING TRUE`
-	inserted, err := conn.InsertUniqueStruct("public.table", row, "(id)")
+	inserted, err := db.InsertUniqueStruct(ctx, row, "(id)")
 	assert.NoError(t, err)
 	assert.True(t, inserted)
 	assert.Equal(t, expected, queryOutput.String())
 
 	queryOutput.Reset()
 	expected = `INSERT INTO public.table("id","untagged_field","bools") VALUES($1,$2,$3) ON CONFLICT (id, untagged_field) DO NOTHING RETURNING TRUE`
-	inserted, err = conn.InsertUniqueStruct("public.table", row, "(id, untagged_field)", sqldb.OnlyColumns("id", "untagged_field", "bools"))
+	inserted, err = db.InsertUniqueStruct(ctx, row, "(id, untagged_field)", sqldb.OnlyColumns("id", "untagged_field", "bools"))
 	assert.NoError(t, err)
 	assert.True(t, inserted)
 	assert.Equal(t, expected, queryOutput.String())
 
 	queryOutput.Reset()
 	expected = `INSERT INTO public.table("id","int","bool","str","str_ptr","bools") VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT (id) DO NOTHING RETURNING TRUE`
-	inserted, err = conn.InsertUniqueStruct("public.table", row, "(id)", sqldb.IgnoreColumns("nil_ptr", "untagged_field", "created_at"))
+	inserted, err = db.InsertUniqueStruct(ctx, row, "(id)", sqldb.IgnoreColumns("nil_ptr", "untagged_field", "created_at"))
 	assert.NoError(t, err)
 	assert.True(t, inserted)
 	assert.Equal(t, expected, queryOutput.String())
