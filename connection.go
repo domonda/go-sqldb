@@ -52,8 +52,10 @@ type Connection interface {
 	// column of the connection's database.
 	ValidateColumnName(name string) error
 
-	// ArgFmt returns the format for SQL query arguments
-	ArgFmt() string
+	// ParamPlaceholder returns a parameter value placeholder
+	// for the parameter with the passed zero based index
+	// specific to the database type of the connection.
+	ParamPlaceholder(index int) string
 
 	// Err returns any current error of the connection
 	Err() error

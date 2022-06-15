@@ -24,7 +24,6 @@ func UpsertStruct(ctx context.Context, rowStruct any, ignoreColumns ...reflectio
 	}
 
 	conn := Conn(ctx)
-	argFmt := conn.ArgFmt()
 	mapper := conn.StructFieldMapper()
 	table, columns, pkCols, vals, err := reflection.ReflectStructValues(v, mapper, append(ignoreColumns, sqldb.IgnoreReadOnly))
 	if err != nil {
@@ -38,7 +37,7 @@ func UpsertStruct(ctx context.Context, rowStruct any, ignoreColumns ...reflectio
 	}
 
 	var b strings.Builder
-	writeInsertQuery(&b, table, argFmt, columns)
+	writeInsertQuery(&b, table, conn, columns)
 	b.WriteString(` ON CONFLICT(`)
 	for i, pkCol := range pkCols {
 		if i > 0 {
@@ -64,5 +63,5 @@ func UpsertStruct(ctx context.Context, rowStruct any, ignoreColumns ...reflectio
 
 	err = conn.Exec(query, vals...)
 
-	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
+	return sqldb.WrapNonNilErrorWithQuery(err, query, conn, vals)
 }

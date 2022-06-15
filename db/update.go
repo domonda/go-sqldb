@@ -19,10 +19,9 @@ func Update(ctx context.Context, table string, values sqldb.Values, where string
 	}
 
 	conn := Conn(ctx)
-	argFmt := conn.ArgFmt()
-	query, vals := buildUpdateQuery(table, values, where, argFmt, args)
+	query, vals := buildUpdateQuery(table, values, where, conn, args)
 	err := conn.Exec(query, vals...)
-	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
+	return sqldb.WrapNonNilErrorWithQuery(err, query, conn, vals)
 }
 
 // UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
@@ -33,7 +32,7 @@ func UpdateReturningRow(ctx context.Context, table string, values sqldb.Values, 
 	}
 
 	conn := Conn(ctx)
-	query, vals := buildUpdateQuery(table, values, where, conn.ArgFmt(), args)
+	query, vals := buildUpdateQuery(table, values, where, conn, args)
 	query += " RETURNING " + returning
 	return conn.QueryRow(query, vals...)
 }
@@ -46,12 +45,12 @@ func UpdateReturningRows(ctx context.Context, table string, values sqldb.Values,
 	}
 
 	conn := Conn(ctx)
-	query, vals := buildUpdateQuery(table, values, where, conn.ArgFmt(), args)
+	query, vals := buildUpdateQuery(table, values, where, conn, args)
 	query += " RETURNING " + returning
 	return conn.QueryRows(query, vals...)
 }
 
-func buildUpdateQuery(table string, values sqldb.Values, where, argFmt string, args []any) (string, []any) {
+func buildUpdateQuery(table string, values sqldb.Values, where string, argFmt sqldb.ParamPlaceholderFormatter, args []any) (string, []any) {
 	names, vals := values.Sorted()
 
 	var query strings.Builder
@@ -60,7 +59,7 @@ func buildUpdateQuery(table string, values sqldb.Values, where, argFmt string, a
 		if i > 0 {
 			query.WriteByte(',')
 		}
-		fmt.Fprintf(&query, `"%s"=%s`, names[i], fmt.Sprintf(argFmt, 1+len(args)+i))
+		fmt.Fprintf(&query, `"%s"=%s`, names[i], argFmt.ParamPlaceholder(len(args)+i))
 	}
 	fmt.Fprintf(&query, ` WHERE %s`, where)
 
@@ -79,7 +78,6 @@ func UpdateStruct(ctx context.Context, rowStruct any, ignoreColumns ...reflectio
 	}
 
 	conn := Conn(ctx)
-	argFmt := conn.ArgFmt()
 	mapper := conn.StructFieldMapper()
 	table, columns, pkCols, vals, err := reflection.ReflectStructValues(v, mapper, append(ignoreColumns, sqldb.IgnoreReadOnly))
 	if err != nil {
@@ -119,7 +117,7 @@ func UpdateStruct(ctx context.Context, rowStruct any, ignoreColumns ...reflectio
 
 	err = conn.Exec(query, vals...)
 
-	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
+	return sqldb.WrapNonNilErrorWithQuery(err, query, conn, vals)
 }
 
 func derefStruct(rowStruct any) (reflect.Value, error) {

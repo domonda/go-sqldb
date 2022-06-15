@@ -39,12 +39,12 @@ var (
 type rowScanner struct {
 	rows              Rows
 	structFieldMapper reflection.StructFieldMapper
-	query             string // for error wrapping
-	argFmt            string // for error wrapping
-	args              []any  // for error wrapping
+	query             string                    // for error wrapping
+	argFmt            ParamPlaceholderFormatter // for error wrapping
+	args              []any                     // for error wrapping
 }
 
-func NewRowScanner(rows Rows, structFieldMapper reflection.StructFieldMapper, query, argFmt string, args []any) *rowScanner {
+func NewRowScanner(rows Rows, structFieldMapper reflection.StructFieldMapper, query string, argFmt ParamPlaceholderFormatter, args []any) *rowScanner {
 	return &rowScanner{rows, structFieldMapper, query, argFmt, args}
 }
 

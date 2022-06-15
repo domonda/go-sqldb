@@ -61,8 +61,8 @@ func (conn *transaction) ValidateColumnName(name string) error {
 	return validateColumnName(name)
 }
 
-func (*transaction) ArgFmt() string {
-	return argFmt
+func (conn *transaction) ParamPlaceholder(index int) string {
+	return conn.parent.ParamPlaceholder(index)
 }
 
 func (conn *transaction) Err() error {
@@ -79,25 +79,25 @@ func (conn *transaction) Now() (now time.Time, err error) {
 
 func (conn *transaction) Exec(query string, args ...any) error {
 	_, err := conn.tx.Exec(query, args...)
-	return sqldb.WrapNonNilErrorWithQuery(err, query, argFmt, args)
+	return sqldb.WrapNonNilErrorWithQuery(err, query, conn, args)
 }
 
 func (conn *transaction) QueryRow(query string, args ...any) sqldb.RowScanner {
 	rows, err := conn.tx.QueryContext(conn.parent.ctx, query, args...)
 	if err != nil {
-		err = sqldb.WrapNonNilErrorWithQuery(err, query, argFmt, args)
+		err = sqldb.WrapNonNilErrorWithQuery(err, query, conn, args)
 		return sqldb.RowScannerWithError(err)
 	}
-	return sqldb.NewRowScanner(rows, conn.structFieldMapper, query, argFmt, args)
+	return sqldb.NewRowScanner(rows, conn.structFieldMapper, query, conn, args)
 }
 
 func (conn *transaction) QueryRows(query string, args ...any) sqldb.RowsScanner {
 	rows, err := conn.tx.QueryContext(conn.parent.ctx, query, args...)
 	if err != nil {
-		err = sqldb.WrapNonNilErrorWithQuery(err, query, argFmt, args)
+		err = sqldb.WrapNonNilErrorWithQuery(err, query, conn, args)
 		return sqldb.RowsScannerWithError(err)
 	}
-	return sqldb.NewRowsScanner(conn.parent.ctx, rows, conn.structFieldMapper, query, argFmt, args)
+	return sqldb.NewRowsScanner(conn.parent.ctx, rows, conn.structFieldMapper, query, conn, args)
 }
 
 func (conn *transaction) IsTransaction() bool {

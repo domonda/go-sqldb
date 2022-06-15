@@ -60,7 +60,7 @@ const (
 // WrapNonNilErrorWithQuery wraps non nil errors with a formatted query
 // if the error was not already wrapped with a query.
 // If the passed error is nil, then nil will be returned.
-func WrapNonNilErrorWithQuery(err error, query, argFmt string, args []any) error {
+func WrapNonNilErrorWithQuery(err error, query string, argFmt ParamPlaceholderFormatter, args []any) error {
 	var wrapped errWithQuery
 	if err == nil || errors.As(err, &wrapped) {
 		return err
@@ -71,7 +71,7 @@ func WrapNonNilErrorWithQuery(err error, query, argFmt string, args []any) error
 type errWithQuery struct {
 	err    error
 	query  string
-	argFmt string
+	argFmt ParamPlaceholderFormatter
 	args   []any
 }
 

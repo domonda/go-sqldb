@@ -10,8 +10,6 @@ import (
 	"github.com/domonda/go-sqldb/reflection"
 )
 
-const argFmt = "$%d"
-
 // New creates a new sqldb.Connection using the passed sqldb.Config
 // and github.com/lib/pq as driver implementation.
 // The connection is pinged with the passed context
@@ -102,8 +100,8 @@ func (conn *connection) ValidateColumnName(name string) error {
 	return validateColumnName(name)
 }
 
-func (*connection) ArgFmt() string {
-	return argFmt
+func (*connection) ParamPlaceholder(index int) string {
+	return fmt.Sprintf("$%d", index+1)
 }
 
 func (conn *connection) Err() error {
@@ -120,25 +118,25 @@ func (conn *connection) Now() (now time.Time, err error) {
 
 func (conn *connection) Exec(query string, args ...any) error {
 	_, err := conn.db.ExecContext(conn.ctx, query, args...)
-	return sqldb.WrapNonNilErrorWithQuery(err, query, argFmt, args)
+	return sqldb.WrapNonNilErrorWithQuery(err, query, conn, args)
 }
 
 func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
 	if err != nil {
-		err = sqldb.WrapNonNilErrorWithQuery(err, query, argFmt, args)
+		err = sqldb.WrapNonNilErrorWithQuery(err, query, conn, args)
 		return sqldb.RowScannerWithError(err)
 	}
-	return sqldb.NewRowScanner(rows, conn.structFieldMapper, query, argFmt, args)
+	return sqldb.NewRowScanner(rows, conn.structFieldMapper, query, conn, args)
 }
 
 func (conn *connection) QueryRows(query string, args ...any) sqldb.RowsScanner {
 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
 	if err != nil {
-		err = sqldb.WrapNonNilErrorWithQuery(err, query, argFmt, args)
+		err = sqldb.WrapNonNilErrorWithQuery(err, query, conn, args)
 		return sqldb.RowsScannerWithError(err)
 	}
-	return sqldb.NewRowsScanner(conn.ctx, rows, conn.structFieldMapper, query, argFmt, args)
+	return sqldb.NewRowsScanner(conn.ctx, rows, conn.structFieldMapper, query, conn, args)
 }
 
 func (conn *connection) IsTransaction() bool {

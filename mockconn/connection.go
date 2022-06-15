@@ -11,7 +11,7 @@ import (
 	"github.com/domonda/go-sqldb/reflection"
 )
 
-var DefaultArgFmt = "$%d"
+var DefaultParamPlaceholderFormatter = sqldb.NewParamPlaceholderFormatter("$%d", 1)
 
 func New(ctx context.Context, queryWriter io.Writer, rowsProvider RowsProvider) sqldb.Connection {
 	return &connection{
@@ -20,7 +20,6 @@ func New(ctx context.Context, queryWriter io.Writer, rowsProvider RowsProvider) 
 		listening:         newBoolMap(),
 		rowsProvider:      rowsProvider,
 		structFieldMapper: sqldb.DefaultStructFieldMapping,
-		argFmt:            DefaultArgFmt,
 	}
 }
 
@@ -30,7 +29,6 @@ type connection struct {
 	listening         *boolMap
 	rowsProvider      RowsProvider
 	structFieldMapper reflection.StructFieldMapper
-	argFmt            string
 }
 
 func (conn *connection) Context() context.Context { return conn.ctx }
@@ -45,7 +43,6 @@ func (conn *connection) WithContext(ctx context.Context) sqldb.Connection {
 		listening:         conn.listening,
 		rowsProvider:      conn.rowsProvider,
 		structFieldMapper: conn.structFieldMapper,
-		argFmt:            conn.argFmt,
 	}
 }
 
@@ -56,7 +53,6 @@ func (conn *connection) WithStructFieldMapper(mapper reflection.StructFieldMappe
 		listening:         conn.listening,
 		rowsProvider:      conn.rowsProvider,
 		structFieldMapper: mapper,
-		argFmt:            conn.argFmt,
 	}
 }
 
@@ -80,8 +76,8 @@ func (conn *connection) ValidateColumnName(name string) error {
 	return validateColumnName(name)
 }
 
-func (conn *connection) ArgFmt() string {
-	return conn.argFmt
+func (*connection) ParamPlaceholder(index int) string {
+	return fmt.Sprintf("$%d", index+1)
 }
 
 func (conn *connection) Err() error {

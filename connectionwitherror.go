@@ -3,6 +3,7 @@ package sqldb
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/domonda/go-sqldb/reflection"
@@ -52,8 +53,8 @@ func (e connectionWithError) ValidateColumnName(name string) error {
 	return e.err
 }
 
-func (e connectionWithError) ArgFmt() string {
-	return ""
+func (e connectionWithError) ParamPlaceholder(index int) string {
+	return fmt.Sprintf(":%d", index+1)
 }
 
 func (e connectionWithError) Err() error {

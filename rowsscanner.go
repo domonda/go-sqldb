@@ -58,12 +58,12 @@ type rowsScanner struct {
 	ctx               context.Context // ctx is checked for every row and passed through to callbacks
 	rows              Rows
 	structFieldMapper reflection.StructFieldMapper
-	query             string // for error wrapping
-	argFmt            string // for error wrapping
-	args              []any  // for error wrapping
+	query             string                    // for error wrapping
+	argFmt            ParamPlaceholderFormatter // for error wrapping
+	args              []any                     // for error wrapping
 }
 
-func NewRowsScanner(ctx context.Context, rows Rows, structFieldMapper reflection.StructFieldMapper, query, argFmt string, args []any) *rowsScanner {
+func NewRowsScanner(ctx context.Context, rows Rows, structFieldMapper reflection.StructFieldMapper, query string, argFmt ParamPlaceholderFormatter, args []any) *rowsScanner {
 	return &rowsScanner{ctx, rows, structFieldMapper, query, argFmt, args}
 }
 

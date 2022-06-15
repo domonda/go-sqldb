@@ -12,8 +12,6 @@ import (
 
 type Values = sqldb.Values
 
-var WrapNonNilErrorWithQuery = sqldb.WrapNonNilErrorWithQuery
-
 // Insert a new row into table using the values.
 func Insert(ctx context.Context, table string, values Values) error {
 	if len(values) == 0 {
@@ -21,15 +19,14 @@ func Insert(ctx context.Context, table string, values Values) error {
 	}
 
 	conn := Conn(ctx)
-	argFmt := conn.ArgFmt()
 	names, vals := values.Sorted()
 	b := strings.Builder{}
-	writeInsertQuery(&b, table, argFmt, names)
+	writeInsertQuery(&b, table, conn, names)
 	query := b.String()
 
 	err := conn.Exec(query, vals...)
 
-	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
+	return sqldb.WrapNonNilErrorWithQuery(err, query, conn, vals)
 }
 
 // InsertUnique inserts a new row into table using the passed values
@@ -45,16 +42,15 @@ func InsertUnique(ctx context.Context, table string, values Values, onConflict s
 	}
 
 	conn := Conn(ctx)
-	argFmt := conn.ArgFmt()
 	names, vals := values.Sorted()
 	var query strings.Builder
-	writeInsertQuery(&query, table, argFmt, names)
+	writeInsertQuery(&query, table, conn, names)
 	fmt.Fprintf(&query, " ON CONFLICT (%s) DO NOTHING RETURNING TRUE", onConflict)
 
 	err = conn.QueryRow(query.String(), vals...).Scan(&inserted)
 
 	err = sqldb.ReplaceErrNoRows(err, nil)
-	err = WrapNonNilErrorWithQuery(err, query.String(), argFmt, vals)
+	err = sqldb.WrapNonNilErrorWithQuery(err, query.String(), conn, vals)
 	return inserted, err
 }
 
@@ -66,10 +62,9 @@ func InsertReturning(ctx context.Context, table string, values Values, returning
 	}
 
 	conn := Conn(ctx)
-	argFmt := conn.ArgFmt()
 	names, vals := values.Sorted()
 	var query strings.Builder
-	writeInsertQuery(&query, table, argFmt, names)
+	writeInsertQuery(&query, table, conn, names)
 	query.WriteString(" RETURNING ")
 	query.WriteString(returning)
 	return conn.QueryRow(query.String(), vals...)
@@ -80,7 +75,6 @@ func InsertReturning(ctx context.Context, table string, values Values, returning
 // Optional ColumnFilter can be passed to ignore mapped columns.
 func InsertStruct(ctx context.Context, rowStruct any, ignoreColumns ...reflection.ColumnFilter) error {
 	conn := Conn(ctx)
-	argFmt := conn.ArgFmt()
 	mapper := conn.StructFieldMapper()
 
 	table, columns, vals, err := insertStructValues(rowStruct, mapper, ignoreColumns)
@@ -89,12 +83,12 @@ func InsertStruct(ctx context.Context, rowStruct any, ignoreColumns ...reflectio
 	}
 
 	var b strings.Builder
-	writeInsertQuery(&b, table, argFmt, columns)
+	writeInsertQuery(&b, table, conn, columns)
 	query := b.String()
 
 	err = conn.Exec(query, vals...)
 
-	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
+	return sqldb.WrapNonNilErrorWithQuery(err, query, conn, vals)
 }
 
 // InsertUniqueStruct inserts a new row into table using the connection's
@@ -104,7 +98,6 @@ func InsertStruct(ctx context.Context, rowStruct any, ignoreColumns ...reflectio
 // and returns if a row was inserted.
 func InsertUniqueStruct(ctx context.Context, rowStruct any, onConflict string, ignoreColumns ...reflection.ColumnFilter) (inserted bool, err error) {
 	conn := Conn(ctx)
-	argFmt := conn.ArgFmt()
 	mapper := conn.StructFieldMapper()
 
 	table, columns, vals, err := insertStructValues(rowStruct, mapper, ignoreColumns)
@@ -117,17 +110,17 @@ func InsertUniqueStruct(ctx context.Context, rowStruct any, onConflict string, i
 	}
 
 	var b strings.Builder
-	writeInsertQuery(&b, table, argFmt, columns)
+	writeInsertQuery(&b, table, conn, columns)
 	fmt.Fprintf(&b, " ON CONFLICT (%s) DO NOTHING RETURNING TRUE", onConflict)
 	query := b.String()
 
 	err = conn.QueryRow(query, vals...).Scan(&inserted)
 	err = sqldb.ReplaceErrNoRows(err, nil)
 
-	return inserted, WrapNonNilErrorWithQuery(err, query, argFmt, vals)
+	return inserted, sqldb.WrapNonNilErrorWithQuery(err, query, conn, vals)
 }
 
-func writeInsertQuery(w *strings.Builder, table, argFmt string, names []string) {
+func writeInsertQuery(w *strings.Builder, table string, argFmt sqldb.ParamPlaceholderFormatter, names []string) {
 	fmt.Fprintf(w, `INSERT INTO %s(`, table)
 	for i, name := range names {
 		if i > 0 {
@@ -142,7 +135,7 @@ func writeInsertQuery(w *strings.Builder, table, argFmt string, names []string) 
 		if i > 0 {
 			w.WriteByte(',')
 		}
-		fmt.Fprintf(w, argFmt, i+1)
+		w.WriteString(argFmt.ParamPlaceholder(i))
 	}
 	w.WriteByte(')')
 }

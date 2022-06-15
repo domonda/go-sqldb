@@ -10,14 +10,14 @@ import (
 // NewSingleRowProvider a RowsProvider implementation
 // with a single row that will be re-used for every query.
 func NewSingleRowProvider(row *Row) RowsProvider {
-	return &singleRowProvider{row: row, argFmt: DefaultArgFmt}
+	return &singleRowProvider{row: row, argFmt: DefaultParamPlaceholderFormatter}
 }
 
 // SingleRowProvider implements RowsProvider with a single Row
 // that will be re-used for every query.
 type singleRowProvider struct {
 	row    *Row
-	argFmt string
+	argFmt sqldb.ParamPlaceholderFormatter
 }
 
 func (p *singleRowProvider) QueryRow(mapper reflection.StructFieldMapper, query string, args ...any) sqldb.RowScanner {
