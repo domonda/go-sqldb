@@ -118,3 +118,12 @@ func pkColumnsOfStruct(conn sqldb.Connection, t reflect.Type) (table string, col
 	}
 	return table, columns, nil
 }
+
+// QueryStructSlice returns queried rows as slice of pointers to the generic struct type S
+func QueryStructSlice[S any](ctx context.Context, query string, args ...any) (rows []*S, err error) {
+	err = Conn(ctx).QueryRows(query, args...).ScanStructSlice(&rows)
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
+}
