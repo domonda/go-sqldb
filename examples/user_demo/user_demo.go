@@ -108,7 +108,7 @@ func main() {
 		panic(err)
 	}
 
-	err = conn.UpsertStruct("public.user", newUser, sqldb.IgnoreColumns("created_at"))
+	err = db.UpsertStruct(ctx, newUser, sqldb.IgnoreColumns("created_at"))
 	if err != nil {
 		panic(err)
 	}

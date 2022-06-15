@@ -89,33 +89,17 @@ func (conn *connection) Err() error {
 	return nil
 }
 
-func (conn *connection) Now() (time.Time, error) {
-	return Now(conn)
+func (conn *connection) Now() (now time.Time, err error) {
+	err = conn.QueryRow(`select now()`).Scan(&now)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return now, nil
 }
 
 func (conn *connection) Exec(query string, args ...any) error {
 	_, err := conn.db.ExecContext(conn.ctx, query, args...)
 	return WrapNonNilErrorWithQuery(err, query, conn.argFmt, args)
-}
-
-func (conn *connection) Update(table string, values sqldb.Values, where string, args ...any) error {
-	return Update(conn, table, values, where, conn.argFmt, args)
-}
-
-func (conn *connection) UpdateReturningRow(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowScanner {
-	return UpdateReturningRow(conn, table, values, returning, where, args)
-}
-
-func (conn *connection) UpdateReturningRows(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowsScanner {
-	return UpdateReturningRows(conn, table, values, returning, where, args)
-}
-
-func (conn *connection) UpdateStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return UpdateStruct(conn, table, rowStruct, conn.structFieldMapper, conn.argFmt, ignoreColumns)
-}
-
-func (conn *connection) UpsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return UpsertStruct(conn, table, rowStruct, conn.structFieldMapper, conn.argFmt, ignoreColumns)
 }
 
 func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {

@@ -131,3 +131,17 @@ func ignoreColumn(filters []sqldb.ColumnFilter, name string, flags sqldb.FieldFl
 	}
 	return false
 }
+
+func derefStruct(rowStruct any) (reflect.Value, error) {
+	v := reflect.ValueOf(rowStruct)
+	for v.Kind() == reflect.Ptr && !v.IsNil() {
+		v = v.Elem()
+	}
+	switch {
+	case v.Kind() == reflect.Ptr && v.IsNil():
+		return reflect.Value{}, errors.New("can't use nil pointer")
+	case v.Kind() != reflect.Struct:
+		return reflect.Value{}, fmt.Errorf("expected struct but got %T", rowStruct)
+	}
+	return v, nil
+}

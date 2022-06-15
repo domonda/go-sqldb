@@ -65,34 +65,6 @@ type Connection interface {
 	// Exec executes a query with optional args.
 	Exec(query string, args ...any) error
 
-	// Update table rows(s) with values using the where statement with passed in args starting at $1.
-	Update(table string, values Values, where string, args ...any) error
-
-	// UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
-	// and returning a single row with the columns specified in returning argument.
-	UpdateReturningRow(table string, values Values, returning, where string, args ...any) RowScanner
-
-	// UpdateReturningRows updates table rows with values using the where statement with passed in args starting at $1
-	// and returning multiple rows with the columns specified in returning argument.
-	UpdateReturningRows(table string, values Values, returning, where string, args ...any) RowsScanner
-
-	// UpdateStruct updates a row in a table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// If restrictToColumns are provided, then only struct fields with a `db` tag
-	// matching any of the passed column names will be used.
-	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
-	// to mark primary key column(s).
-	UpdateStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error
-
-	// UpsertStruct upserts a row to table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// If restrictToColumns are provided, then only struct fields with a `db` tag
-	// matching any of the passed column names will be used.
-	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
-	// to mark primary key column(s).
-	// If inserting conflicts on the primary key column(s), then an update is performed.
-	UpsertStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error
-
 	// QueryRow queries a single row and returns a RowScanner for the results.
 	QueryRow(query string, args ...any) RowScanner
 

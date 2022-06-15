@@ -69,33 +69,17 @@ func (conn *transaction) Err() error {
 	return conn.parent.config.Err
 }
 
-func (conn *transaction) Now() (time.Time, error) {
-	return impl.Now(conn)
+func (conn *transaction) Now() (now time.Time, err error) {
+	err = conn.QueryRow(`select now()`).Scan(&now)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return now, nil
 }
 
 func (conn *transaction) Exec(query string, args ...any) error {
 	_, err := conn.tx.Exec(query, args...)
 	return impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
-}
-
-func (conn *transaction) Update(table string, values sqldb.Values, where string, args ...any) error {
-	return impl.Update(conn, table, values, where, argFmt, args)
-}
-
-func (conn *transaction) UpdateReturningRow(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowScanner {
-	return impl.UpdateReturningRow(conn, table, values, returning, where, args)
-}
-
-func (conn *transaction) UpdateReturningRows(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowsScanner {
-	return impl.UpdateReturningRows(conn, table, values, returning, where, args)
-}
-
-func (conn *transaction) UpdateStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns)
-}
-
-func (conn *transaction) UpsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns)
 }
 
 func (conn *transaction) QueryRow(query string, args ...any) sqldb.RowScanner {
