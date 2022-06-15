@@ -14,10 +14,10 @@ var (
 )
 
 var (
-	conn = sqldb.ConnectionWithError(
+	globalConn = sqldb.ConnectionWithError(
 		context.Background(),
 		errors.New("database connection not initialized"),
 	)
-	connCtxKey                  int
+	globalConnCtxKey            int
 	serializedTransactionCtxKey int
 )

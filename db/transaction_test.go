@@ -10,7 +10,7 @@ import (
 )
 
 func TestSerializedTransaction(t *testing.T) {
-	conn = mockconn.New(context.Background(), os.Stdout, nil)
+	globalConn = mockconn.New(context.Background(), os.Stdout, nil)
 
 	expectSerialized := func(ctx context.Context) error {
 		if !Conn(ctx).IsTransaction() {
@@ -64,7 +64,7 @@ func TestSerializedTransaction(t *testing.T) {
 }
 
 func TestTransaction(t *testing.T) {
-	conn = mockconn.New(context.Background(), os.Stdout, nil)
+	globalConn = mockconn.New(context.Background(), os.Stdout, nil)
 
 	expectNonSerialized := func(ctx context.Context) error {
 		if !Conn(ctx).IsTransaction() {

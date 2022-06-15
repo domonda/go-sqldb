@@ -51,7 +51,7 @@ func DebugNoTransaction(ctx context.Context, nonTxFunc func(context.Context) err
 // Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
 func IsolatedTransaction(ctx context.Context, txFunc func(context.Context) error) error {
 	return sqldb.IsolatedTransaction(Conn(ctx), nil, func(tx sqldb.Connection) error {
-		return txFunc(context.WithValue(ctx, &connCtxKey, tx))
+		return txFunc(context.WithValue(ctx, &globalConnCtxKey, tx))
 	})
 }
 
@@ -64,7 +64,7 @@ func IsolatedTransaction(ctx context.Context, txFunc func(context.Context) error
 // Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
 func Transaction(ctx context.Context, txFunc func(context.Context) error) error {
 	return sqldb.Transaction(Conn(ctx), nil, func(tx sqldb.Connection) error {
-		return txFunc(context.WithValue(ctx, &connCtxKey, tx))
+		return txFunc(context.WithValue(ctx, &globalConnCtxKey, tx))
 	})
 }
 
@@ -135,7 +135,7 @@ func SerializedTransaction(ctx context.Context, txFunc func(context.Context) err
 // Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
 func TransactionOpts(ctx context.Context, opts *sql.TxOptions, txFunc func(context.Context) error) error {
 	return sqldb.Transaction(Conn(ctx), opts, func(tx sqldb.Connection) error {
-		return txFunc(context.WithValue(ctx, &connCtxKey, tx))
+		return txFunc(context.WithValue(ctx, &globalConnCtxKey, tx))
 	})
 }
 
@@ -149,7 +149,7 @@ func TransactionOpts(ctx context.Context, opts *sql.TxOptions, txFunc func(conte
 func TransactionReadOnly(ctx context.Context, txFunc func(context.Context) error) error {
 	opts := sql.TxOptions{ReadOnly: true}
 	return sqldb.Transaction(Conn(ctx), &opts, func(tx sqldb.Connection) error {
-		return txFunc(context.WithValue(ctx, &connCtxKey, tx))
+		return txFunc(context.WithValue(ctx, &globalConnCtxKey, tx))
 	})
 }
 
