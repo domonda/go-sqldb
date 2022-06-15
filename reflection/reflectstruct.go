@@ -1,4 +1,4 @@
-package db
+package reflection
 
 import (
 	"errors"
@@ -7,11 +7,9 @@ import (
 	"strings"
 
 	"golang.org/x/exp/slices"
-
-	"github.com/domonda/go-sqldb"
 )
 
-func ReflectStructValues(structVal reflect.Value, mapper sqldb.StructFieldMapper, ignoreColumns []sqldb.ColumnFilter) (table string, columns []string, pkCols []int, values []any, err error) {
+func ReflectStructValues(structVal reflect.Value, mapper StructFieldMapper, ignoreColumns []ColumnFilter) (table string, columns []string, pkCols []int, values []any, err error) {
 	structType := structVal.Type()
 	for i := 0; i < structType.NumField(); i++ {
 		fieldType := structType.Field(i)
@@ -60,7 +58,7 @@ func ReflectStructValues(structVal reflect.Value, mapper sqldb.StructFieldMapper
 	return table, columns, pkCols, values, nil
 }
 
-func ReflectStructColumnPointers(structVal reflect.Value, mapper sqldb.StructFieldMapper, columns []string) (pointers []any, err error) {
+func ReflectStructColumnPointers(structVal reflect.Value, mapper StructFieldMapper, columns []string) (pointers []any, err error) {
 	if len(columns) == 0 {
 		return nil, errors.New("no columns")
 	}
@@ -88,7 +86,7 @@ func ReflectStructColumnPointers(structVal reflect.Value, mapper sqldb.StructFie
 	return pointers, nil
 }
 
-func reflectStructColumnPointers(structVal reflect.Value, mapper sqldb.StructFieldMapper, columns []string, pointers []any) error {
+func reflectStructColumnPointers(structVal reflect.Value, mapper StructFieldMapper, columns []string, pointers []any) error {
 	var (
 		structType = structVal.Type()
 	)
@@ -123,25 +121,11 @@ func reflectStructColumnPointers(structVal reflect.Value, mapper sqldb.StructFie
 	return nil
 }
 
-func ignoreColumn(filters []sqldb.ColumnFilter, name string, flags sqldb.FieldFlag, fieldType reflect.StructField, fieldValue reflect.Value) bool {
+func ignoreColumn(filters []ColumnFilter, name string, flags FieldFlag, fieldType reflect.StructField, fieldValue reflect.Value) bool {
 	for _, filter := range filters {
 		if filter.IgnoreColumn(name, flags, fieldType, fieldValue) {
 			return true
 		}
 	}
 	return false
-}
-
-func derefStruct(rowStruct any) (reflect.Value, error) {
-	v := reflect.ValueOf(rowStruct)
-	for v.Kind() == reflect.Ptr && !v.IsNil() {
-		v = v.Elem()
-	}
-	switch {
-	case v.Kind() == reflect.Ptr && v.IsNil():
-		return reflect.Value{}, errors.New("can't use nil pointer")
-	case v.Kind() != reflect.Struct:
-		return reflect.Value{}, fmt.Errorf("expected struct but got %T", rowStruct)
-	}
-	return v, nil
 }

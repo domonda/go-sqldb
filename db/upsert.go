@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/reflection"
 	"golang.org/x/exp/slices"
 )
 
@@ -16,7 +17,7 @@ import (
 // The struct must have at least one field with a `db` tag value having a ",pk" suffix
 // to mark primary key column(s).
 // If inserting conflicts on the primary key column(s), then an update is performed.
-func UpsertStruct(ctx context.Context, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
+func UpsertStruct(ctx context.Context, rowStruct any, ignoreColumns ...reflection.ColumnFilter) error {
 	v, err := derefStruct(rowStruct)
 	if err != nil {
 		return err
@@ -25,7 +26,7 @@ func UpsertStruct(ctx context.Context, rowStruct any, ignoreColumns ...sqldb.Col
 	conn := Conn(ctx)
 	argFmt := conn.ArgFmt()
 	mapper := conn.StructFieldMapper()
-	table, columns, pkCols, vals, err := ReflectStructValues(v, mapper, append(ignoreColumns, sqldb.IgnoreReadOnly))
+	table, columns, pkCols, vals, err := reflection.ReflectStructValues(v, mapper, append(ignoreColumns, sqldb.IgnoreReadOnly))
 	if err != nil {
 		return err
 	}

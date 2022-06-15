@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/impl"
+	"github.com/domonda/go-sqldb/reflection"
 )
 
 const argFmt = "$%d"
@@ -51,7 +51,7 @@ type connection struct {
 	ctx              context.Context
 	db               *sql.DB
 	config           *sqldb.Config
-	structFieldNamer sqldb.StructFieldMapper
+	structFieldNamer reflection.StructFieldMapper
 }
 
 func (conn *connection) clone() *connection {
@@ -70,13 +70,13 @@ func (conn *connection) WithContext(ctx context.Context) sqldb.Connection {
 	return c
 }
 
-func (conn *connection) WithStructFieldMapper(namer sqldb.StructFieldMapper) sqldb.Connection {
+func (conn *connection) WithStructFieldMapper(mapper reflection.StructFieldMapper) sqldb.Connection {
 	c := conn.clone()
-	c.structFieldNamer = namer
+	c.structFieldNamer = mapper
 	return c
 }
 
-func (conn *connection) StructFieldMapper() sqldb.StructFieldMapper {
+func (conn *connection) StructFieldMapper() reflection.StructFieldMapper {
 	return conn.structFieldNamer
 }
 
@@ -120,25 +120,25 @@ func (conn *connection) Now() (now time.Time, err error) {
 
 func (conn *connection) Exec(query string, args ...any) error {
 	_, err := conn.db.ExecContext(conn.ctx, query, args...)
-	return impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
+	return sqldb.WrapNonNilErrorWithQuery(err, query, argFmt, args)
 }
 
 func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
 	if err != nil {
-		err = impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
+		err = sqldb.WrapNonNilErrorWithQuery(err, query, argFmt, args)
 		return sqldb.RowScannerWithError(err)
 	}
-	return impl.NewRowScanner(rows, conn.structFieldNamer, query, argFmt, args)
+	return sqldb.NewRowScanner(rows, conn.structFieldNamer, query, argFmt, args)
 }
 
 func (conn *connection) QueryRows(query string, args ...any) sqldb.RowsScanner {
 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
 	if err != nil {
-		err = impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
+		err = sqldb.WrapNonNilErrorWithQuery(err, query, argFmt, args)
 		return sqldb.RowsScannerWithError(err)
 	}
-	return impl.NewRowsScanner(conn.ctx, rows, conn.structFieldNamer, query, argFmt, args)
+	return sqldb.NewRowsScanner(conn.ctx, rows, conn.structFieldNamer, query, argFmt, args)
 }
 
 func (conn *connection) IsTransaction() bool {

@@ -11,6 +11,7 @@ import (
 
 	sqldb "github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/db"
+	"github.com/domonda/go-sqldb/reflection"
 	"github.com/domonda/go-types/uu"
 )
 
@@ -34,7 +35,7 @@ type testRow struct {
 
 func TestInsertQuery(t *testing.T) {
 	context.Background()
-	naming := &sqldb.TaggedStructFieldMapping{NameTag: "db", Ignore: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	naming := &reflection.TaggedStructFieldMapping{NameTag: "db", Ignore: "-", UntaggedNameFunc: reflection.ToSnakeCase}
 	queryOutput := bytes.NewBuffer(nil)
 	rowProvider := NewSingleRowProvider(NewRow(struct{ True bool }{true}, naming))
 	ctx := db.ContextWithConn(context.Background(), New(context.Background(), queryOutput, rowProvider).WithStructFieldMapper(naming))
@@ -67,13 +68,13 @@ func TestInsertQuery(t *testing.T) {
 
 func TestInsertStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	naming := &sqldb.TaggedStructFieldMapping{
+	naming := &reflection.TaggedStructFieldMapping{
 		NameTag:          "db",
 		Ignore:           "-",
 		PrimaryKey:       "pk",
 		ReadOnly:         "readonly",
 		Default:          "default",
-		UntaggedNameFunc: sqldb.ToSnakeCase,
+		UntaggedNameFunc: reflection.ToSnakeCase,
 	}
 	ctx := db.ContextWithConn(context.Background(), New(context.Background(), queryOutput, nil).WithStructFieldMapper(naming))
 
@@ -99,13 +100,13 @@ func TestInsertStructQuery(t *testing.T) {
 
 func TestInsertUniqueStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	naming := &sqldb.TaggedStructFieldMapping{
+	naming := &reflection.TaggedStructFieldMapping{
 		NameTag:          "db",
 		Ignore:           "-",
 		PrimaryKey:       "pk",
 		ReadOnly:         "readonly",
 		Default:          "default",
-		UntaggedNameFunc: sqldb.ToSnakeCase,
+		UntaggedNameFunc: reflection.ToSnakeCase,
 	}
 	rowProvider := NewSingleRowProvider(NewRow(struct{ True bool }{true}, naming))
 	ctx := db.ContextWithConn(context.Background(), New(context.Background(), queryOutput, rowProvider).WithStructFieldMapper(naming))
@@ -135,7 +136,7 @@ func TestInsertUniqueStructQuery(t *testing.T) {
 
 func TestUpdateQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	naming := &sqldb.TaggedStructFieldMapping{NameTag: "db", Ignore: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	naming := &reflection.TaggedStructFieldMapping{NameTag: "db", Ignore: "-", UntaggedNameFunc: reflection.ToSnakeCase}
 	ctx := db.ContextWithConn(context.Background(), New(context.Background(), queryOutput, nil).WithStructFieldMapper(naming))
 
 	str := "Hello World!"
@@ -164,7 +165,7 @@ func TestUpdateQuery(t *testing.T) {
 
 func TestUpdateReturningQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	naming := &sqldb.TaggedStructFieldMapping{NameTag: "db", Ignore: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	naming := &reflection.TaggedStructFieldMapping{NameTag: "db", Ignore: "-", UntaggedNameFunc: reflection.ToSnakeCase}
 	ctx := db.ContextWithConn(context.Background(), New(context.Background(), queryOutput, nil).WithStructFieldMapper(naming))
 
 	str := "Hello World!"
@@ -193,13 +194,13 @@ func TestUpdateReturningQuery(t *testing.T) {
 
 func TestUpdateStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	naming := &sqldb.TaggedStructFieldMapping{
+	naming := &reflection.TaggedStructFieldMapping{
 		NameTag:          "db",
 		Ignore:           "-",
 		PrimaryKey:       "pk",
 		ReadOnly:         "readonly",
 		Default:          "default",
-		UntaggedNameFunc: sqldb.ToSnakeCase,
+		UntaggedNameFunc: reflection.ToSnakeCase,
 	}
 	ctx := db.ContextWithConn(context.Background(), New(context.Background(), queryOutput, nil).WithStructFieldMapper(naming))
 
@@ -225,13 +226,13 @@ func TestUpdateStructQuery(t *testing.T) {
 
 func TestUpsertStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	naming := &sqldb.TaggedStructFieldMapping{
+	naming := &reflection.TaggedStructFieldMapping{
 		NameTag:          "db",
 		Ignore:           "-",
 		PrimaryKey:       "pk",
 		ReadOnly:         "readonly",
 		Default:          "default",
-		UntaggedNameFunc: sqldb.ToSnakeCase,
+		UntaggedNameFunc: reflection.ToSnakeCase,
 	}
 	ctx := db.ContextWithConn(context.Background(), New(context.Background(), queryOutput, nil).WithStructFieldMapper(naming))
 
@@ -254,13 +255,13 @@ type multiPrimaryKeyRow struct {
 
 func TestUpsertStructMultiPKQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	naming := &sqldb.TaggedStructFieldMapping{
+	naming := &reflection.TaggedStructFieldMapping{
 		NameTag:          "db",
 		Ignore:           "-",
 		PrimaryKey:       "pk",
 		ReadOnly:         "readonly",
 		Default:          "default",
-		UntaggedNameFunc: sqldb.ToSnakeCase,
+		UntaggedNameFunc: reflection.ToSnakeCase,
 	}
 	ctx := db.ContextWithConn(context.Background(), New(context.Background(), queryOutput, nil).WithStructFieldMapper(naming))
 
@@ -274,13 +275,13 @@ func TestUpsertStructMultiPKQuery(t *testing.T) {
 
 func TestUpdateStructMultiPKQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
-	naming := &sqldb.TaggedStructFieldMapping{
+	naming := &reflection.TaggedStructFieldMapping{
 		NameTag:          "db",
 		Ignore:           "-",
 		PrimaryKey:       "pk",
 		ReadOnly:         "readonly",
 		Default:          "default",
-		UntaggedNameFunc: sqldb.ToSnakeCase,
+		UntaggedNameFunc: reflection.ToSnakeCase,
 	}
 	ctx := db.ContextWithConn(context.Background(), New(context.Background(), queryOutput, nil).WithStructFieldMapper(naming))
 

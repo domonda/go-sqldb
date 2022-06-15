@@ -4,7 +4,7 @@ import (
 	"errors"
 	"reflect"
 
-	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/reflection"
 )
 
 type Rows struct {
@@ -14,7 +14,7 @@ type Rows struct {
 	err    error
 }
 
-func NewRowsFromStructs(rowStructs any, columnNamer sqldb.StructFieldMapper) *Rows {
+func NewRowsFromStructs(rowStructs any, columnNamer reflection.StructFieldMapper) *Rows {
 	v := reflect.ValueOf(rowStructs)
 	t := v.Type()
 	if t.Kind() != reflect.Array && t.Kind() != reflect.Slice {

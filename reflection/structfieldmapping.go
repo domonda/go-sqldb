@@ -1,4 +1,4 @@
-package sqldb
+package reflection
 
 import (
 	"fmt"
@@ -53,11 +53,6 @@ func NewTaggedStructFieldMapping() *TaggedStructFieldMapping {
 		UntaggedNameFunc: IgnoreStructField,
 	}
 }
-
-// DefaultStructFieldMapping provides the default StructFieldTagNaming
-// using "db" as NameTag and IgnoreStructField as UntaggedNameFunc.
-// Implements StructFieldMapper.
-var DefaultStructFieldMapping = NewTaggedStructFieldMapping()
 
 // TaggedStructFieldMapping implements StructFieldMapper with a struct field NameTag
 // to be used for naming and a UntaggedNameFunc in case the NameTag is not set.

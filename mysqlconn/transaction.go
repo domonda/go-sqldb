@@ -1,4 +1,4 @@
-package impl
+package mysqlconn
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/reflection"
 )
 
 type transaction struct {
@@ -15,7 +16,7 @@ type transaction struct {
 	parent            *connection
 	tx                *sql.Tx
 	opts              *sql.TxOptions
-	structFieldMapper sqldb.StructFieldMapper
+	structFieldMapper reflection.StructFieldMapper
 }
 
 func newTransaction(parent *connection, tx *sql.Tx, opts *sql.TxOptions) *transaction {
@@ -43,13 +44,13 @@ func (conn *transaction) WithContext(ctx context.Context) sqldb.Connection {
 	return newTransaction(parent, conn.tx, conn.opts)
 }
 
-func (conn *transaction) WithStructFieldMapper(namer sqldb.StructFieldMapper) sqldb.Connection {
+func (conn *transaction) WithStructFieldMapper(mapper reflection.StructFieldMapper) sqldb.Connection {
 	c := conn.clone()
-	c.structFieldMapper = namer
+	c.structFieldMapper = mapper
 	return c
 }
 
-func (conn *transaction) StructFieldMapper() sqldb.StructFieldMapper {
+func (conn *transaction) StructFieldMapper() reflection.StructFieldMapper {
 	return conn.structFieldMapper
 }
 
@@ -58,7 +59,7 @@ func (conn *transaction) Stats() sql.DBStats               { return conn.parent.
 func (conn *transaction) Config() *sqldb.Config            { return conn.parent.Config() }
 
 func (conn *transaction) ValidateColumnName(name string) error {
-	return conn.parent.validateColumnName(name)
+	return validateColumnName(name)
 }
 
 func (conn *transaction) ArgFmt() string {
@@ -79,25 +80,25 @@ func (conn *transaction) Now() (now time.Time, err error) {
 
 func (conn *transaction) Exec(query string, args ...any) error {
 	_, err := conn.tx.Exec(query, args...)
-	return WrapNonNilErrorWithQuery(err, query, conn.parent.argFmt, args)
+	return sqldb.WrapNonNilErrorWithQuery(err, query, conn.parent.argFmt, args)
 }
 
 func (conn *transaction) QueryRow(query string, args ...any) sqldb.RowScanner {
 	rows, err := conn.tx.QueryContext(conn.parent.ctx, query, args...)
 	if err != nil {
-		err = WrapNonNilErrorWithQuery(err, query, conn.parent.argFmt, args)
+		err = sqldb.WrapNonNilErrorWithQuery(err, query, conn.parent.argFmt, args)
 		return sqldb.RowScannerWithError(err)
 	}
-	return NewRowScanner(rows, conn.structFieldMapper, query, conn.parent.argFmt, args)
+	return sqldb.NewRowScanner(rows, conn.structFieldMapper, query, conn.parent.argFmt, args)
 }
 
 func (conn *transaction) QueryRows(query string, args ...any) sqldb.RowsScanner {
 	rows, err := conn.tx.QueryContext(conn.parent.ctx, query, args...)
 	if err != nil {
-		err = WrapNonNilErrorWithQuery(err, query, conn.parent.argFmt, args)
+		err = sqldb.WrapNonNilErrorWithQuery(err, query, conn.parent.argFmt, args)
 		return sqldb.RowsScannerWithError(err)
 	}
-	return NewRowsScanner(conn.parent.ctx, rows, conn.structFieldMapper, query, conn.parent.argFmt, args)
+	return sqldb.NewRowsScanner(conn.parent.ctx, rows, conn.structFieldMapper, query, conn.parent.argFmt, args)
 }
 
 func (conn *transaction) IsTransaction() bool {

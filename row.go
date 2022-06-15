@@ -1,4 +1,4 @@
-package impl
+package sqldb
 
 // Row is an interface with the methods of sql.Rows
 // that are needed for ScanStruct.

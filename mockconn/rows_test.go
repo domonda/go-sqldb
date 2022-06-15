@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/domonda/go-sqldb/reflection"
 	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
-
-	sqldb "github.com/domonda/go-sqldb"
 )
 
 func TestRows(t *testing.T) {
@@ -26,8 +25,8 @@ func TestRows(t *testing.T) {
 		input = append(input, &Struct{"myID", i, -1, &str, nil, pq.BoolArray{true, false, i%2 == 0}})
 	}
 
-	naming := &sqldb.TaggedStructFieldMapping{NameTag: "db", Ignore: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
-	rows := NewRowsFromStructs(input, naming)
+	mapping := &reflection.TaggedStructFieldMapping{NameTag: "db", Ignore: "-", UntaggedNameFunc: reflection.ToSnakeCase}
+	rows := NewRowsFromStructs(input, mapping)
 
 	cols, err := rows.Columns()
 	assert.NoError(t, err)

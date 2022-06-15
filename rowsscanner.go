@@ -1,5 +1,12 @@
 package sqldb
 
+import (
+	"context"
+	"fmt"
+
+	"github.com/domonda/go-sqldb/reflection"
+)
+
 // RowsScanner scans the values from multiple rows.
 type RowsScanner interface {
 	// ScanSlice scans one value per row into one slice element of dest.
@@ -42,4 +49,91 @@ type RowsScanner interface {
 	// is returned immediately by this function without scanning further rows.
 	// In case of zero rows, no error will be returned.
 	ForEachRowCall(callback any) error
+}
+
+var _ RowsScanner = &rowsScanner{}
+
+// rowsScanner implements rowsScanner with Rows
+type rowsScanner struct {
+	ctx              context.Context // ctx is checked for every row and passed through to callbacks
+	rows             Rows
+	structFieldNamer reflection.StructFieldMapper
+	query            string // for error wrapping
+	argFmt           string // for error wrapping
+	args             []any  // for error wrapping
+}
+
+func NewRowsScanner(ctx context.Context, rows Rows, structFieldNamer reflection.StructFieldMapper, query, argFmt string, args []any) *rowsScanner {
+	return &rowsScanner{ctx, rows, structFieldNamer, query, argFmt, args}
+}
+
+func (s *rowsScanner) ScanSlice(dest any) error {
+	err := reflection.ScanRowsAsSlice(s.ctx, s.rows, dest, nil)
+	if err != nil {
+		return fmt.Errorf("%w from query: %s", err, FormatQuery(s.query, s.argFmt, s.args...))
+	}
+	return nil
+}
+
+func (s *rowsScanner) ScanStructSlice(dest any) error {
+	err := reflection.ScanRowsAsSlice(s.ctx, s.rows, dest, s.structFieldNamer)
+	if err != nil {
+		return fmt.Errorf("%w from query: %s", err, FormatQuery(s.query, s.argFmt, s.args...))
+	}
+	return nil
+}
+
+func (s *rowsScanner) Columns() ([]string, error) {
+	return s.rows.Columns()
+}
+
+func (s *rowsScanner) ScanAllRowsAsStrings(headerRow bool) (rows [][]string, err error) {
+	cols, err := s.rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+	if headerRow {
+		rows = [][]string{cols}
+	}
+	stringScannablePtrs := make([]any, len(cols))
+	err = s.ForEachRow(func(rowScanner RowScanner) error {
+		row := make([]string, len(cols))
+		for i := range stringScannablePtrs {
+			stringScannablePtrs[i] = (*StringScannable)(&row[i])
+		}
+		err := rowScanner.Scan(stringScannablePtrs...)
+		if err != nil {
+			return err
+		}
+		rows = append(rows, row)
+		return nil
+	})
+	return rows, err
+}
+
+func (s *rowsScanner) ForEachRow(callback func(RowScanner) error) (err error) {
+	defer func() {
+		err = combineErrors(err, s.rows.Close())
+		err = WrapNonNilErrorWithQuery(err, s.query, s.argFmt, s.args)
+	}()
+
+	for s.rows.Next() {
+		if s.ctx.Err() != nil {
+			return s.ctx.Err()
+		}
+
+		err := callback(CurrentRowScanner{s.rows, s.structFieldNamer})
+		if err != nil {
+			return err
+		}
+	}
+	return s.rows.Err()
+}
+
+func (s *rowsScanner) ForEachRowCall(callback any) error {
+	forEachRowFunc, err := forEachRowCallFunc(s.ctx, callback)
+	if err != nil {
+		return err
+	}
+	return s.ForEachRow(forEachRowFunc)
 }

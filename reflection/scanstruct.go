@@ -1,13 +1,11 @@
-package impl
+package reflection
 
 import (
 	"fmt"
 	"reflect"
-
-	sqldb "github.com/domonda/go-sqldb"
 )
 
-func ScanStruct(srcRow Row, destStruct any, namer sqldb.StructFieldMapper) error {
+func ScanStruct(srcRow Row, destStruct any, namer StructFieldMapper) error {
 	v := reflect.ValueOf(destStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()

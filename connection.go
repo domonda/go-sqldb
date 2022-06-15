@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	"github.com/domonda/go-sqldb/reflection"
 )
 
 type (
@@ -25,11 +27,11 @@ type Connection interface {
 	WithContext(ctx context.Context) Connection
 
 	// WithStructFieldMapper returns a copy of the connection
-	// that will use the passed StructFieldNamer.
-	WithStructFieldMapper(StructFieldMapper) Connection
+	// that will use the passed reflection.StructFieldMapper.
+	WithStructFieldMapper(reflection.StructFieldMapper) Connection
 
 	// StructFieldMapper used by methods of this Connection.
-	StructFieldMapper() StructFieldMapper
+	StructFieldMapper() reflection.StructFieldMapper
 
 	// Ping returns an error if the database
 	// does not answer on this connection

@@ -1,4 +1,4 @@
-package impl
+package reflection
 
 import (
 	"context"
@@ -8,8 +8,11 @@ import (
 	"reflect"
 	"time"
 
-	sqldb "github.com/domonda/go-sqldb"
 	"github.com/domonda/go-types/nullable"
+)
+
+var (
+	typeOfSQLScanner = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
 )
 
 // ScanRowsAsSlice scans all srcRows as slice into dest.
@@ -18,7 +21,7 @@ import (
 // so that every column maps on exactly one struct field using structFieldNamer.
 // In case of single column rows, nil must be passed for structFieldNamer.
 // ScanRowsAsSlice calls srcRows.Close().
-func ScanRowsAsSlice(ctx context.Context, srcRows Rows, dest any, structFieldNamer sqldb.StructFieldMapper) error {
+func ScanRowsAsSlice(ctx context.Context, srcRows Rows, dest any, structFieldNamer StructFieldMapper) error {
 	defer srcRows.Close()
 
 	destVal := reflect.ValueOf(dest)

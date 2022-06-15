@@ -10,6 +10,7 @@ import (
 	"github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/db"
 	"github.com/domonda/go-sqldb/pqconn"
+	"github.com/domonda/go-sqldb/reflection"
 	"github.com/domonda/go-types/email"
 	"github.com/domonda/go-types/nullable"
 	"github.com/domonda/go-types/uu"
@@ -45,10 +46,10 @@ func main() {
 		panic(err)
 	}
 
-	conn = conn.WithStructFieldMapper(&sqldb.TaggedStructFieldMapping{
+	conn = conn.WithStructFieldMapper(&reflection.TaggedStructFieldMapping{
 		NameTag:          "col",
 		Ignore:           "ignore",
-		UntaggedNameFunc: sqldb.ToSnakeCase,
+		UntaggedNameFunc: reflection.ToSnakeCase,
 	})
 
 	var users []User

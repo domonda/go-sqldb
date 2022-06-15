@@ -1,4 +1,4 @@
-package impl
+package reflection
 
 // func TestGetStructFieldIndices(t *testing.T) {
 // 	type DeepEmbeddedStruct struct {

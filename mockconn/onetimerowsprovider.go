@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/reflection"
 )
 
 type OneTimeRowsProvider struct {
@@ -44,7 +45,7 @@ func (p *OneTimeRowsProvider) AddRowsScannerQuery(scanner sqldb.RowsScanner, que
 	p.rowsScanners[key] = scanner
 }
 
-func (p *OneTimeRowsProvider) QueryRow(structFieldNamer sqldb.StructFieldMapper, query string, args ...any) sqldb.RowScanner {
+func (p *OneTimeRowsProvider) QueryRow(structFieldNamer reflection.StructFieldMapper, query string, args ...any) sqldb.RowScanner {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 
@@ -54,7 +55,7 @@ func (p *OneTimeRowsProvider) QueryRow(structFieldNamer sqldb.StructFieldMapper,
 	return scanner
 }
 
-func (p *OneTimeRowsProvider) QueryRows(structFieldNamer sqldb.StructFieldMapper, query string, args ...any) sqldb.RowsScanner {
+func (p *OneTimeRowsProvider) QueryRows(structFieldNamer reflection.StructFieldMapper, query string, args ...any) sqldb.RowsScanner {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 

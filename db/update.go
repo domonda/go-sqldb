@@ -2,10 +2,13 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 
 	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/reflection"
 	"golang.org/x/exp/slices"
 )
 
@@ -69,7 +72,7 @@ func buildUpdateQuery(table string, values sqldb.Values, where, argFmt string, a
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
-func UpdateStruct(ctx context.Context, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
+func UpdateStruct(ctx context.Context, rowStruct any, ignoreColumns ...reflection.ColumnFilter) error {
 	v, err := derefStruct(rowStruct)
 	if err != nil {
 		return err
@@ -78,7 +81,7 @@ func UpdateStruct(ctx context.Context, rowStruct any, ignoreColumns ...sqldb.Col
 	conn := Conn(ctx)
 	argFmt := conn.ArgFmt()
 	mapper := conn.StructFieldMapper()
-	table, columns, pkCols, vals, err := ReflectStructValues(v, mapper, append(ignoreColumns, sqldb.IgnoreReadOnly))
+	table, columns, pkCols, vals, err := reflection.ReflectStructValues(v, mapper, append(ignoreColumns, sqldb.IgnoreReadOnly))
 	if err != nil {
 		return err
 	}
@@ -117,4 +120,18 @@ func UpdateStruct(ctx context.Context, rowStruct any, ignoreColumns ...sqldb.Col
 	err = conn.Exec(query, vals...)
 
 	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
+}
+
+func derefStruct(rowStruct any) (reflect.Value, error) {
+	v := reflect.ValueOf(rowStruct)
+	for v.Kind() == reflect.Ptr && !v.IsNil() {
+		v = v.Elem()
+	}
+	switch {
+	case v.Kind() == reflect.Ptr && v.IsNil():
+		return reflect.Value{}, errors.New("can't use nil pointer")
+	case v.Kind() != reflect.Struct:
+		return reflect.Value{}, fmt.Errorf("expected struct but got %T", rowStruct)
+	}
+	return v, nil
 }

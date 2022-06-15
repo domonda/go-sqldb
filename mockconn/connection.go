@@ -8,28 +8,29 @@ import (
 	"time"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/reflection"
 )
 
 var DefaultArgFmt = "$%d"
 
 func New(ctx context.Context, queryWriter io.Writer, rowsProvider RowsProvider) sqldb.Connection {
 	return &connection{
-		ctx:              ctx,
-		queryWriter:      queryWriter,
-		listening:        newBoolMap(),
-		rowsProvider:     rowsProvider,
-		structFieldNamer: sqldb.DefaultStructFieldMapping,
-		argFmt:           DefaultArgFmt,
+		ctx:               ctx,
+		queryWriter:       queryWriter,
+		listening:         newBoolMap(),
+		rowsProvider:      rowsProvider,
+		structFieldMapper: sqldb.DefaultStructFieldMapping,
+		argFmt:            DefaultArgFmt,
 	}
 }
 
 type connection struct {
-	ctx              context.Context
-	queryWriter      io.Writer
-	listening        *boolMap
-	rowsProvider     RowsProvider
-	structFieldNamer sqldb.StructFieldMapper
-	argFmt           string
+	ctx               context.Context
+	queryWriter       io.Writer
+	listening         *boolMap
+	rowsProvider      RowsProvider
+	structFieldMapper reflection.StructFieldMapper
+	argFmt            string
 }
 
 func (conn *connection) Context() context.Context { return conn.ctx }
@@ -39,28 +40,28 @@ func (conn *connection) WithContext(ctx context.Context) sqldb.Connection {
 		return conn
 	}
 	return &connection{
-		ctx:              ctx,
-		queryWriter:      conn.queryWriter,
-		listening:        conn.listening,
-		rowsProvider:     conn.rowsProvider,
-		structFieldNamer: conn.structFieldNamer,
-		argFmt:           conn.argFmt,
+		ctx:               ctx,
+		queryWriter:       conn.queryWriter,
+		listening:         conn.listening,
+		rowsProvider:      conn.rowsProvider,
+		structFieldMapper: conn.structFieldMapper,
+		argFmt:            conn.argFmt,
 	}
 }
 
-func (conn *connection) WithStructFieldMapper(namer sqldb.StructFieldMapper) sqldb.Connection {
+func (conn *connection) WithStructFieldMapper(mapper reflection.StructFieldMapper) sqldb.Connection {
 	return &connection{
-		ctx:              conn.ctx,
-		queryWriter:      conn.queryWriter,
-		listening:        conn.listening,
-		rowsProvider:     conn.rowsProvider,
-		structFieldNamer: namer,
-		argFmt:           conn.argFmt,
+		ctx:               conn.ctx,
+		queryWriter:       conn.queryWriter,
+		listening:         conn.listening,
+		rowsProvider:      conn.rowsProvider,
+		structFieldMapper: mapper,
+		argFmt:            conn.argFmt,
 	}
 }
 
-func (conn *connection) StructFieldMapper() sqldb.StructFieldMapper {
-	return conn.structFieldNamer
+func (conn *connection) StructFieldMapper() reflection.StructFieldMapper {
+	return conn.structFieldMapper
 }
 
 func (conn *connection) Stats() sql.DBStats {
@@ -108,7 +109,7 @@ func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
 	if conn.rowsProvider == nil {
 		return sqldb.RowScannerWithError(nil)
 	}
-	return conn.rowsProvider.QueryRow(conn.structFieldNamer, query, args...)
+	return conn.rowsProvider.QueryRow(conn.structFieldMapper, query, args...)
 }
 
 func (conn *connection) QueryRows(query string, args ...any) sqldb.RowsScanner {
@@ -121,7 +122,7 @@ func (conn *connection) QueryRows(query string, args ...any) sqldb.RowsScanner {
 	if conn.rowsProvider == nil {
 		return sqldb.RowsScannerWithError(nil)
 	}
-	return conn.rowsProvider.QueryRows(conn.structFieldNamer, query, args...)
+	return conn.rowsProvider.QueryRows(conn.structFieldMapper, query, args...)
 }
 
 func (conn *connection) IsTransaction() bool {

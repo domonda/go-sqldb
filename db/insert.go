@@ -7,12 +7,12 @@ import (
 	"strings"
 
 	"github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/impl"
+	"github.com/domonda/go-sqldb/reflection"
 )
 
 type Values = sqldb.Values
 
-var WrapNonNilErrorWithQuery = impl.WrapNonNilErrorWithQuery
+var WrapNonNilErrorWithQuery = sqldb.WrapNonNilErrorWithQuery
 
 // Insert a new row into table using the values.
 func Insert(ctx context.Context, table string, values Values) error {
@@ -78,7 +78,7 @@ func InsertReturning(ctx context.Context, table string, values Values, returning
 // InsertStruct inserts a new row into table using the connection's
 // StructFieldMapper to map struct fields to column names.
 // Optional ColumnFilter can be passed to ignore mapped columns.
-func InsertStruct(ctx context.Context, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
+func InsertStruct(ctx context.Context, rowStruct any, ignoreColumns ...reflection.ColumnFilter) error {
 	conn := Conn(ctx)
 	argFmt := conn.ArgFmt()
 	mapper := conn.StructFieldMapper()
@@ -102,7 +102,7 @@ func InsertStruct(ctx context.Context, rowStruct any, ignoreColumns ...sqldb.Col
 // Optional ColumnFilter can be passed to ignore mapped columns.
 // Does nothing if the onConflict statement applies
 // and returns if a row was inserted.
-func InsertUniqueStruct(ctx context.Context, rowStruct any, onConflict string, ignoreColumns ...sqldb.ColumnFilter) (inserted bool, err error) {
+func InsertUniqueStruct(ctx context.Context, rowStruct any, onConflict string, ignoreColumns ...reflection.ColumnFilter) (inserted bool, err error) {
 	conn := Conn(ctx)
 	argFmt := conn.ArgFmt()
 	mapper := conn.StructFieldMapper()
@@ -147,7 +147,7 @@ func writeInsertQuery(w *strings.Builder, table, argFmt string, names []string) 
 	w.WriteByte(')')
 }
 
-func insertStructValues(rowStruct any, mapper sqldb.StructFieldMapper, ignoreColumns []sqldb.ColumnFilter) (table string, columns []string, vals []any, err error) {
+func insertStructValues(rowStruct any, mapper reflection.StructFieldMapper, ignoreColumns []reflection.ColumnFilter) (table string, columns []string, vals []any, err error) {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -159,6 +159,6 @@ func insertStructValues(rowStruct any, mapper sqldb.StructFieldMapper, ignoreCol
 		return "", nil, nil, fmt.Errorf("expected struct but got %T", rowStruct)
 	}
 
-	table, columns, _, vals, err = ReflectStructValues(v, mapper, append(ignoreColumns, sqldb.IgnoreReadOnly))
+	table, columns, _, vals, err = reflection.ReflectStructValues(v, mapper, append(ignoreColumns, sqldb.IgnoreReadOnly))
 	return table, columns, vals, err
 }
