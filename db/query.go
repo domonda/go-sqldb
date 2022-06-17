@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"reflect"
@@ -34,10 +35,27 @@ func QueryRows(ctx context.Context, query string, args ...any) sqldb.RowsScanner
 }
 
 // QueryValue queries a single value of type T.
-func QueryValue[T any](ctx context.Context, query string, args ...any) (T, error) {
-	var val T
-	err := Conn(ctx).QueryRow(query, args...).Scan(&val)
-	return val, err
+func QueryValue[T any](ctx context.Context, query string, args ...any) (value T, err error) {
+	err = Conn(ctx).QueryRow(query, args...).Scan(&value)
+	if err != nil {
+		var zero T
+		return zero, err
+	}
+	return value, nil
+}
+
+// QueryValueOrDefault queries a single value of type T
+// or returns the default zero value of T in case of sql.ErrNoRows.
+func QueryValueOrDefault[T any](ctx context.Context, query string, args ...any) (value T, err error) {
+	err = Conn(ctx).QueryRow(query, args...).Scan(&value)
+	if err != nil {
+		var zero T
+		if errors.Is(err, sql.ErrNoRows) {
+			return zero, nil
+		}
+		return zero, err
+	}
+	return value, err
 }
 
 // QueryStruct uses the passed pkValues to query a table row
@@ -79,7 +97,13 @@ func QueryStruct[S any](ctx context.Context, pkValues ...any) (row *S, err error
 // passed pkValues.
 func QueryStructOrNil[S any](ctx context.Context, pkValues ...any) (row *S, err error) {
 	row, err = QueryStruct[S](ctx, pkValues...)
-	return row, ReplaceErrNoRows(err, nil)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return row, nil
 }
 
 func pkColumnsOfStruct(conn sqldb.Connection, t reflect.Type) (table string, columns []string, err error) {
