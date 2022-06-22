@@ -1,4 +1,4 @@
-package impl
+package reflection
 
 // Rows is an interface with the methods of sql.Rows
 // that are needed for ScanSlice.
@@ -24,18 +24,3 @@ type Rows interface {
 	// Err may be called after an explicit or implicit Close.
 	Err() error
 }
-
-// RowAsRows implements the methods of Rows for a Row as no-ops.
-// Note that Next() always returns true leading to an endless loop
-// if used to scan multiple rows.
-func RowAsRows(row Row) Rows {
-	return rowAsRows{Row: row}
-}
-
-type rowAsRows struct {
-	Row
-}
-
-func (rowAsRows) Close() error { return nil }
-func (rowAsRows) Next() bool   { return true }
-func (rowAsRows) Err() error   { return nil }

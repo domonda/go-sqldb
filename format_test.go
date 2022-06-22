@@ -1,4 +1,4 @@
-package impl
+package sqldb
 
 import (
 	"database/sql/driver"
@@ -81,12 +81,12 @@ WHERE
 	tests := []struct {
 		name   string
 		query  string
-		argFmt string
+		argFmt ParamPlaceholderFormatter
 		args   []any
 		want   string
 	}{
-		{name: "query1", query: query1, argFmt: "$%d", args: []any{createdAt, true, `Erik's Test`}, want: query1formatted},
-		{name: "query2", query: query2, argFmt: "$%d", args: []any{"", 2, "3"}, want: query2formatted},
+		{name: "query1", query: query1, argFmt: NewParamPlaceholderFormatter("$%d", 1), args: []any{createdAt, true, `Erik's Test`}, want: query1formatted},
+		{name: "query2", query: query2, argFmt: NewParamPlaceholderFormatter("$%d", 1), args: []any{"", 2, "3"}, want: query2formatted},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

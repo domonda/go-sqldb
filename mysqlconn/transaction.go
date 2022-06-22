@@ -1,8 +1,9 @@
-package pqconn
+package mysqlconn
 
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"github.com/domonda/go-sqldb"
@@ -66,7 +67,7 @@ func (conn *transaction) ParamPlaceholder(index int) string {
 }
 
 func (conn *transaction) Err() error {
-	return conn.parent.config.Err
+	return conn.parent.Err()
 }
 
 func (conn *transaction) Now() (now time.Time, err error) {
@@ -125,11 +126,11 @@ func (conn *transaction) Rollback() error {
 }
 
 func (conn *transaction) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
-	return sqldb.ErrWithinTransaction
+	return fmt.Errorf("notifications %w", sqldb.ErrNotSupported)
 }
 
 func (conn *transaction) UnlistenChannel(channel string) (err error) {
-	return sqldb.ErrWithinTransaction
+	return fmt.Errorf("notifications %w", sqldb.ErrNotSupported)
 }
 
 func (conn *transaction) IsListeningOnChannel(channel string) bool {

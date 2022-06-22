@@ -7,10 +7,8 @@ import (
 	"time"
 
 	"github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/impl"
+	"github.com/domonda/go-sqldb/reflection"
 )
-
-const argFmt = "$%d"
 
 // New creates a new sqldb.Connection using the passed sqldb.Config
 // and github.com/lib/pq as driver implementation.
@@ -27,10 +25,10 @@ func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 		return nil, err
 	}
 	return &connection{
-		ctx:              ctx,
-		db:               db,
-		config:           config,
-		structFieldNamer: sqldb.DefaultStructFieldMapping,
+		ctx:               ctx,
+		db:                db,
+		config:            config,
+		structFieldMapper: sqldb.DefaultStructFieldMapping,
 	}, nil
 }
 
@@ -48,10 +46,10 @@ func MustNew(ctx context.Context, config *sqldb.Config) sqldb.Connection {
 }
 
 type connection struct {
-	ctx              context.Context
-	db               *sql.DB
-	config           *sqldb.Config
-	structFieldNamer sqldb.StructFieldMapper
+	ctx               context.Context
+	db                *sql.DB
+	config            *sqldb.Config
+	structFieldMapper reflection.StructFieldMapper
 }
 
 func (conn *connection) clone() *connection {
@@ -70,14 +68,14 @@ func (conn *connection) WithContext(ctx context.Context) sqldb.Connection {
 	return c
 }
 
-func (conn *connection) WithStructFieldMapper(namer sqldb.StructFieldMapper) sqldb.Connection {
+func (conn *connection) WithStructFieldMapper(mapper reflection.StructFieldMapper) sqldb.Connection {
 	c := conn.clone()
-	c.structFieldNamer = namer
+	c.structFieldMapper = mapper
 	return c
 }
 
-func (conn *connection) StructFieldMapper() sqldb.StructFieldMapper {
-	return conn.structFieldNamer
+func (conn *connection) StructFieldMapper() reflection.StructFieldMapper {
+	return conn.structFieldMapper
 }
 
 func (conn *connection) Ping(timeout time.Duration) error {
@@ -102,71 +100,43 @@ func (conn *connection) ValidateColumnName(name string) error {
 	return validateColumnName(name)
 }
 
-func (conn *connection) Now() (time.Time, error) {
-	return impl.Now(conn)
+func (*connection) ParamPlaceholder(index int) string {
+	return fmt.Sprintf("$%d", index+1)
+}
+
+func (conn *connection) Err() error {
+	return conn.config.Err
+}
+
+func (conn *connection) Now() (now time.Time, err error) {
+	err = conn.QueryRow(`select now()`).Scan(&now)
+	if err != nil {
+		return time.Time{}, err
+	}
+	return now, nil
 }
 
 func (conn *connection) Exec(query string, args ...any) error {
 	_, err := conn.db.ExecContext(conn.ctx, query, args...)
-	return impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
-}
-
-func (conn *connection) Insert(table string, columValues sqldb.Values) error {
-	return impl.Insert(conn, table, argFmt, columValues)
-}
-
-func (conn *connection) InsertUnique(table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
-	return impl.InsertUnique(conn, table, argFmt, values, onConflict)
-}
-
-func (conn *connection) InsertReturning(table string, values sqldb.Values, returning string) sqldb.RowScanner {
-	return impl.InsertReturning(conn, table, argFmt, values, returning)
-}
-
-func (conn *connection) InsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns)
-}
-
-func (conn *connection) InsertUniqueStruct(table string, rowStruct any, onConflict string, ignoreColumns ...sqldb.ColumnFilter) (inserted bool, err error) {
-	return impl.InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, argFmt, ignoreColumns)
-}
-
-func (conn *connection) Update(table string, values sqldb.Values, where string, args ...any) error {
-	return impl.Update(conn, table, values, where, argFmt, args)
-}
-
-func (conn *connection) UpdateReturningRow(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowScanner {
-	return impl.UpdateReturningRow(conn, table, values, returning, where, args)
-}
-
-func (conn *connection) UpdateReturningRows(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowsScanner {
-	return impl.UpdateReturningRows(conn, table, values, returning, where, args)
-}
-
-func (conn *connection) UpdateStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns)
-}
-
-func (conn *connection) UpsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns)
+	return sqldb.WrapNonNilErrorWithQuery(err, query, conn, args)
 }
 
 func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
 	if err != nil {
-		err = impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
+		err = sqldb.WrapNonNilErrorWithQuery(err, query, conn, args)
 		return sqldb.RowScannerWithError(err)
 	}
-	return impl.NewRowScanner(rows, conn.structFieldNamer, query, argFmt, args)
+	return sqldb.NewRowScanner(rows, conn.structFieldMapper, query, conn, args)
 }
 
 func (conn *connection) QueryRows(query string, args ...any) sqldb.RowsScanner {
 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
 	if err != nil {
-		err = impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
+		err = sqldb.WrapNonNilErrorWithQuery(err, query, conn, args)
 		return sqldb.RowsScannerWithError(err)
 	}
-	return impl.NewRowsScanner(conn.ctx, rows, conn.structFieldNamer, query, argFmt, args)
+	return sqldb.NewRowsScanner(conn.ctx, rows, conn.structFieldMapper, query, conn, args)
 }
 
 func (conn *connection) IsTransaction() bool {

@@ -1,4 +1,4 @@
-package impl
+package sqldb
 
 import (
 	"database/sql"
@@ -11,7 +11,7 @@ func TestWrapNonNilErrorWithQuery(t *testing.T) {
 	type args struct {
 		err    error
 		query  string
-		argFmt string
+		argFmt ParamPlaceholderFormatter
 		args   []any
 	}
 	tests := []struct {
@@ -25,7 +25,7 @@ func TestWrapNonNilErrorWithQuery(t *testing.T) {
 			args: args{
 				err:    sql.ErrNoRows,
 				query:  `SELECT * FROM table WHERE b = $2 and a = $1`,
-				argFmt: "$%d",
+				argFmt: NewParamPlaceholderFormatter("$%d", 1),
 				args:   []any{1, "2"},
 			},
 			wantError: fmt.Sprintf("%s from query: %s", sql.ErrNoRows, `SELECT * FROM table WHERE b = '2' and a = 1`),

@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	"github.com/domonda/go-sqldb/reflection"
 )
 
 type (
@@ -25,11 +27,11 @@ type Connection interface {
 	WithContext(ctx context.Context) Connection
 
 	// WithStructFieldMapper returns a copy of the connection
-	// that will use the passed StructFieldMapper.
-	WithStructFieldMapper(StructFieldMapper) Connection
+	// that will use the passed reflection.StructFieldMapper.
+	WithStructFieldMapper(reflection.StructFieldMapper) Connection
 
 	// StructFieldMapper used by methods of this Connection.
-	StructFieldMapper() StructFieldMapper
+	StructFieldMapper() reflection.StructFieldMapper
 
 	// Ping returns an error if the database
 	// does not answer on this connection
@@ -50,6 +52,14 @@ type Connection interface {
 	// column of the connection's database.
 	ValidateColumnName(name string) error
 
+	// ParamPlaceholder returns a parameter value placeholder
+	// for the parameter with the passed zero based index
+	// specific to the database type of the connection.
+	ParamPlaceholder(index int) string
+
+	// Err returns any current error of the connection
+	Err() error
+
 	// Now returns the result of the SQL now()
 	// function for the current connection.
 	// Useful for getting the timestamp of a
@@ -58,58 +68,6 @@ type Connection interface {
 
 	// Exec executes a query with optional args.
 	Exec(query string, args ...any) error
-
-	// Insert a new row into table using the values.
-	Insert(table string, values Values) error
-
-	// InsertUnique inserts a new row into table using the passed values
-	// or does nothing if the onConflict statement applies.
-	// Returns if a row was inserted.
-	InsertUnique(table string, values Values, onConflict string) (inserted bool, err error)
-
-	// InsertReturning inserts a new row into table using values
-	// and returns values from the inserted row listed in returning.
-	InsertReturning(table string, values Values, returning string) RowScanner
-
-	// InsertStruct inserts a new row into table using the connection's
-	// StructFieldMapper to map struct fields to column names.
-	// Optional ColumnFilter can be passed to ignore mapped columns.
-	InsertStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error
-
-	// InsertUniqueStruct inserts a new row into table using the connection's
-	// StructFieldMapper to map struct fields to column names.
-	// Optional ColumnFilter can be passed to ignore mapped columns.
-	// Does nothing if the onConflict statement applies
-	// and returns if a row was inserted.
-	InsertUniqueStruct(table string, rowStruct any, onConflict string, ignoreColumns ...ColumnFilter) (inserted bool, err error)
-
-	// Update table rows(s) with values using the where statement with passed in args starting at $1.
-	Update(table string, values Values, where string, args ...any) error
-
-	// UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
-	// and returning a single row with the columns specified in returning argument.
-	UpdateReturningRow(table string, values Values, returning, where string, args ...any) RowScanner
-
-	// UpdateReturningRows updates table rows with values using the where statement with passed in args starting at $1
-	// and returning multiple rows with the columns specified in returning argument.
-	UpdateReturningRows(table string, values Values, returning, where string, args ...any) RowsScanner
-
-	// UpdateStruct updates a row in a table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// If restrictToColumns are provided, then only struct fields with a `db` tag
-	// matching any of the passed column names will be used.
-	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
-	// to mark primary key column(s).
-	UpdateStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error
-
-	// UpsertStruct upserts a row to table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// If restrictToColumns are provided, then only struct fields with a `db` tag
-	// matching any of the passed column names will be used.
-	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
-	// to mark primary key column(s).
-	// If inserting conflicts on the primary key column(s), then an update is performed.
-	UpsertStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error
 
 	// QueryRow queries a single row and returns a RowScanner for the results.
 	QueryRow(query string, args ...any) RowScanner

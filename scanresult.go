@@ -1,6 +1,4 @@
-package impl
-
-import "github.com/domonda/go-sqldb"
+package sqldb
 
 // ScanValues returns the values of a row exactly how they are
 // passed from the database driver to an sql.Scanner.
@@ -11,7 +9,7 @@ func ScanValues(src Row) ([]any, error) {
 		return nil, err
 	}
 	var (
-		anys = make([]sqldb.AnyValue, len(cols))
+		anys = make([]AnyValue, len(cols))
 		vals = make([]any, len(cols))
 	)
 	for i := range vals {
@@ -41,7 +39,7 @@ func ScanStrings(src Row) ([]string, error) {
 		args = make([]any, len(cols))
 	)
 	for i := range args {
-		args[i] = (*sqldb.StringScannable)(&strs[i])
+		args[i] = (*StringScannable)(&strs[i])
 	}
 	err = src.Scan(args...)
 	if err != nil {

@@ -9,35 +9,35 @@ import (
 	"strconv"
 	"time"
 
-	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/reflection"
 )
 
 // Row implements impl.Row with the fields of a struct as column values.
 type Row struct {
-	rowStructVal reflect.Value
-	columnNamer  sqldb.StructFieldMapper
+	rowStructVal      reflect.Value
+	structFieldMapper reflection.StructFieldMapper
 }
 
-func NewRow(rowStruct any, columnNamer sqldb.StructFieldMapper) *Row {
+func NewRow(rowStruct any, mapper reflection.StructFieldMapper) *Row {
 	val := reflect.ValueOf(rowStruct)
 	for val.Kind() == reflect.Ptr {
 		val = val.Elem()
 	}
 	return &Row{
-		rowStructVal: val,
-		columnNamer:  columnNamer,
+		rowStructVal:      val,
+		structFieldMapper: mapper,
 	}
 }
 
-func (r *Row) StructFieldMapper() sqldb.StructFieldMapper {
-	return r.columnNamer
+func (r *Row) StructFieldMapper() reflection.StructFieldMapper {
+	return r.structFieldMapper
 }
 
 func (r *Row) Columns() ([]string, error) {
 	columns := make([]string, r.rowStructVal.NumField())
 	for i := range columns {
 		field := r.rowStructVal.Type().Field(i)
-		_, columns[i], _, _ = r.columnNamer.MapStructField(field)
+		_, columns[i], _, _ = r.structFieldMapper.MapStructField(field)
 	}
 	return columns, nil
 }

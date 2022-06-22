@@ -1,4 +1,4 @@
-package impl
+package sqldb
 
 import (
 	"context"
@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"time"
-
-	sqldb "github.com/domonda/go-sqldb"
 )
 
 var (
@@ -27,17 +25,17 @@ var (
 // If a non nil error is returned from the callback, then this error
 // is returned immediately by this function without scanning further rows.
 // In case of zero rows, no error will be returned.
-func ForEachRowCallFunc(ctx context.Context, callback any) (f func(sqldb.RowScanner) error, err error) {
+func forEachRowCallFunc(ctx context.Context, callback any) (f func(RowScanner) error, err error) {
 	val := reflect.ValueOf(callback)
 	typ := val.Type()
 	if typ.Kind() != reflect.Func {
-		return nil, fmt.Errorf("ForEachRowCall expected callback function, got %s", typ)
+		return nil, fmt.Errorf("ForEachRowCallFunc expected callback function, got %s", typ)
 	}
 	if typ.IsVariadic() {
-		return nil, fmt.Errorf("ForEachRowCall callback function must not be varidic: %s", typ)
+		return nil, fmt.Errorf("ForEachRowCallFunc callback function must not be varidic: %s", typ)
 	}
 	if typ.NumIn() == 0 || (typ.NumIn() == 1 && typ.In(0) == typeOfContext) {
-		return nil, fmt.Errorf("ForEachRowCall callback function has no arguments: %s", typ)
+		return nil, fmt.Errorf("ForEachRowCallFunc callback function has no arguments: %s", typ)
 	}
 	firstArg := 0
 	if typ.In(0) == typeOfContext {
@@ -58,21 +56,21 @@ func ForEachRowCallFunc(ctx context.Context, callback any) (f func(sqldb.RowScan
 				continue
 			}
 			if structArg {
-				return nil, fmt.Errorf("ForEachRowCall callback function must not have further argument after struct: %s", typ)
+				return nil, fmt.Errorf("ForEachRowCallFunc callback function must not have further argument after struct: %s", typ)
 			}
 			structArg = true
 		case reflect.Chan, reflect.Func:
-			return nil, fmt.Errorf("ForEachRowCall callback function has invalid argument type: %s", typ.In(i))
+			return nil, fmt.Errorf("ForEachRowCallFunc callback function has invalid argument type: %s", typ.In(i))
 		}
 	}
 	if typ.NumOut() > 1 {
-		return nil, fmt.Errorf("ForEachRowCall callback function can only have one result value: %s", typ)
+		return nil, fmt.Errorf("ForEachRowCallFunc callback function can only have one result value: %s", typ)
 	}
 	if typ.NumOut() == 1 && typ.Out(0) != typeOfError {
-		return nil, fmt.Errorf("ForEachRowCall callback function result must be of type error: %s", typ)
+		return nil, fmt.Errorf("ForEachRowCallFunc callback function result must be of type error: %s", typ)
 	}
 
-	f = func(row sqldb.RowScanner) (err error) {
+	f = func(row RowScanner) (err error) {
 		// First scan row
 		scannedValPtrs := make([]any, typ.NumIn()-firstArg)
 		for i := range scannedValPtrs {

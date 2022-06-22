@@ -10,13 +10,14 @@ import (
 	"github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/db"
 	"github.com/domonda/go-sqldb/pqconn"
+	"github.com/domonda/go-sqldb/reflection"
 	"github.com/domonda/go-types/email"
 	"github.com/domonda/go-types/nullable"
 	"github.com/domonda/go-types/uu"
 )
 
 type User struct {
-	ID uu.ID `db:"id,pk,default"`
+	ID uu.ID `db:"id,pk=public.user,default"`
 
 	Email email.NullableAddress   `db:"email"`
 	Title nullable.NonEmptyString `db:"title"`
@@ -45,10 +46,10 @@ func main() {
 		panic(err)
 	}
 
-	conn = conn.WithStructFieldMapper(&sqldb.TaggedStructFieldMapping{
+	conn = conn.WithStructFieldMapper(&reflection.TaggedStructFieldMapping{
 		NameTag:          "col",
 		Ignore:           "ignore",
-		UntaggedNameFunc: sqldb.ToSnakeCase,
+		UntaggedNameFunc: reflection.ToSnakeCase,
 	})
 
 	var users []User
@@ -87,18 +88,20 @@ func main() {
 		panic(err)
 	}
 
+	ctx := context.Background()
+
 	newUser := &User{ /* ... */ }
-	err = conn.InsertStruct("public.user", newUser)
+	err = db.InsertStruct(ctx, newUser)
 	if err != nil {
 		panic(err)
 	}
 
-	err = conn.InsertStruct("public.user", newUser, sqldb.IgnoreNullOrZeroDefault)
+	err = db.InsertStruct(ctx, newUser, sqldb.IgnoreNullOrZeroDefault)
 	if err != nil {
 		panic(err)
 	}
 
-	err = conn.Insert("public.user", sqldb.Values{
+	err = db.Insert(ctx, "public.user", sqldb.Values{
 		"name":  "Erik Unger",
 		"email": "erik@domonda.com",
 	})
@@ -106,7 +109,7 @@ func main() {
 		panic(err)
 	}
 
-	err = conn.UpsertStruct("public.user", newUser, sqldb.IgnoreColumns("created_at"))
+	err = db.UpsertStruct(ctx, newUser, sqldb.IgnoreColumns("created_at"))
 	if err != nil {
 		panic(err)
 	}

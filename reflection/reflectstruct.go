@@ -1,4 +1,4 @@
-package impl
+package reflection
 
 import (
 	"errors"
@@ -7,14 +7,13 @@ import (
 	"strings"
 
 	"golang.org/x/exp/slices"
-
-	"github.com/domonda/go-sqldb"
 )
 
-func ReflectStructValues(structVal reflect.Value, namer sqldb.StructFieldMapper, ignoreColumns []sqldb.ColumnFilter) (columns []string, pkCols []int, values []any) {
-	for i := 0; i < structVal.NumField(); i++ {
-		fieldType := structVal.Type().Field(i)
-		_, column, flags, use := namer.MapStructField(fieldType)
+func ReflectStructValues(structVal reflect.Value, mapper StructFieldMapper, ignoreColumns []ColumnFilter) (table string, columns []string, pkCols []int, values []any, err error) {
+	structType := structVal.Type()
+	for i := 0; i < structType.NumField(); i++ {
+		fieldType := structType.Field(i)
+		fieldTable, column, flags, use := mapper.MapStructField(fieldType)
 		if !use {
 			continue
 		}
@@ -22,7 +21,16 @@ func ReflectStructValues(structVal reflect.Value, namer sqldb.StructFieldMapper,
 
 		if column == "" {
 			// Embedded struct field
-			columnsEmbed, pkColsEmbed, valuesEmbed := ReflectStructValues(fieldValue, namer, ignoreColumns)
+			fieldTable, columnsEmbed, pkColsEmbed, valuesEmbed, err := ReflectStructValues(fieldValue, mapper, ignoreColumns)
+			if err != nil {
+				return "", nil, nil, nil, err
+			}
+			if fieldTable != "" && fieldTable != table {
+				if table != "" {
+					return "", nil, nil, nil, fmt.Errorf("table name not unique (%s vs %s) in struct %s", table, fieldTable, structType)
+				}
+				table = fieldTable
+			}
 			for _, pkCol := range pkColsEmbed {
 				pkCols = append(pkCols, pkCol+len(columns))
 			}
@@ -35,21 +43,27 @@ func ReflectStructValues(structVal reflect.Value, namer sqldb.StructFieldMapper,
 			continue
 		}
 
+		if fieldTable != "" && fieldTable != table {
+			if table != "" {
+				return "", nil, nil, nil, fmt.Errorf("table name not unique (%s vs %s) in struct %s", table, fieldTable, structType)
+			}
+			table = fieldTable
+		}
 		if flags.PrimaryKey() {
 			pkCols = append(pkCols, len(columns))
 		}
 		columns = append(columns, column)
 		values = append(values, fieldValue.Interface())
 	}
-	return columns, pkCols, values
+	return table, columns, pkCols, values, nil
 }
 
-func ReflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFieldMapper, columns []string) (pointers []any, err error) {
+func ReflectStructColumnPointers(structVal reflect.Value, mapper StructFieldMapper, columns []string) (pointers []any, err error) {
 	if len(columns) == 0 {
 		return nil, errors.New("no columns")
 	}
 	pointers = make([]any, len(columns))
-	err = reflectStructColumnPointers(structVal, namer, columns, pointers)
+	err = reflectStructColumnPointers(structVal, mapper, columns, pointers)
 	if err != nil {
 		return nil, err
 	}
@@ -72,13 +86,13 @@ func ReflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFiel
 	return pointers, nil
 }
 
-func reflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFieldMapper, columns []string, pointers []any) error {
+func reflectStructColumnPointers(structVal reflect.Value, mapper StructFieldMapper, columns []string, pointers []any) error {
 	var (
 		structType = structVal.Type()
 	)
 	for i := 0; i < structType.NumField(); i++ {
 		fieldType := structType.Field(i)
-		_, column, _, use := namer.MapStructField(fieldType)
+		_, column, _, use := mapper.MapStructField(fieldType)
 		if !use {
 			continue
 		}
@@ -86,7 +100,7 @@ func reflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFiel
 
 		if column == "" {
 			// Embedded struct field
-			err := reflectStructColumnPointers(fieldValue, namer, columns, pointers)
+			err := reflectStructColumnPointers(fieldValue, mapper, columns, pointers)
 			if err != nil {
 				return err
 			}
@@ -107,7 +121,7 @@ func reflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFiel
 	return nil
 }
 
-func ignoreColumn(filters []sqldb.ColumnFilter, name string, flags sqldb.FieldFlag, fieldType reflect.StructField, fieldValue reflect.Value) bool {
+func ignoreColumn(filters []ColumnFilter, name string, flags FieldFlag, fieldType reflect.StructField, fieldValue reflect.Value) bool {
 	for _, filter := range filters {
 		if filter.IgnoreColumn(name, flags, fieldType, fieldValue) {
 			return true
