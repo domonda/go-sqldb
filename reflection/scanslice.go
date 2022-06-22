@@ -6,14 +6,64 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"time"
 
 	"github.com/domonda/go-types/nullable"
 )
 
-var (
-	typeOfSQLScanner = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
-)
+// // TODO doc
+// // ScanSlice scans one value per row into one slice element of dest.
+// // dest must be a pointer to a slice with a row value compatible element type.
+// // In case of zero rows, dest will be set to nil and no error will be returned.
+// // In case of an error, dest will not be modified.
+// // It is an error to query more than one column.func (s *rowsScanner) ScanSlice(dest any) error {
+// 	err := reflection.ScanRowsAsSlice(s.ctx, s.rows, dest, nil)
+// 	if err != nil {
+// 		return fmt.Errorf("%w from query: %s", err, FormatQuery(s.query, s.argFmt, s.args...))
+// 	}
+// 	return nil
+// }
+// 	// ScanStructSlice scans every row into the struct fields of dest slice elements.
+// 	// dest must be a pointer to a slice of structs or struct pointers.
+// 	// In case of zero rows, dest will be set to nil and no error will be returned.
+// 	// In case of an error, dest will not be modified.
+// 	// Every mapped struct field must have a corresponding column in the query results.
+// func (s *rowsScanner) ScanStructSlice(dest any) error {
+// 	err := reflection.ScanRowsAsSlice(s.ctx, s.rows, dest, s.structFieldMapper)
+// 	if err != nil {
+// 		return fmt.Errorf("%w from query: %s", err, FormatQuery(s.query, s.argFmt, s.args...))
+// 	}
+// 	return nil
+// }
+
+// // ScanAllRowsAsStrings scans the values of all rows as strings.
+// // Byte slices will be interpreted as strings,
+// // nil (SQL NULL) will be converted to an empty string,
+// // all other types are converted with fmt.Sprint.
+// // If true is passed for headerRow, then a row
+// // with the column names will be prepended.
+// func (s *rowsScanner) ScanAllRowsAsStrings(headerRow bool) (rows [][]string, err error) {
+// 	cols, err := s.rows.Columns()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	if headerRow {
+// 		rows = [][]string{cols}
+// 	}
+// 	stringScannablePtrs := make([]any, len(cols))
+// 	err = s.ForEachRow(func(rowScanner RowScanner) error {
+// 		row := make([]string, len(cols))
+// 		for i := range stringScannablePtrs {
+// 			stringScannablePtrs[i] = (*StringScannable)(&row[i])
+// 		}
+// 		err := rowScanner.Scan(stringScannablePtrs...)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		rows = append(rows, row)
+// 		return nil
+// 	})
+// 	return rows, err
+// }
 
 // ScanRowsAsSlice scans all srcRows as slice into dest.
 // The rows must either have only one column compatible with the element type of the slice,
@@ -124,86 +174,4 @@ func (a *SliceScanner) scanString(src string) error {
 	}
 	a.destSlice.Set(newSlice)
 	return nil
-}
-
-func ScanValue(src any, dest reflect.Value) error {
-	if dest.Kind() == reflect.Interface {
-		if src != nil {
-			dest.Set(reflect.ValueOf(src))
-		} else {
-			dest.Set(reflect.Zero(dest.Type()))
-		}
-		return nil
-	}
-
-	if dest.Addr().Type().Implements(typeOfSQLScanner) {
-		return dest.Addr().Interface().(sql.Scanner).Scan(src)
-	}
-
-	switch x := src.(type) {
-	case int64:
-		switch dest.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			dest.SetInt(x)
-			return nil
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			dest.SetUint(uint64(x))
-			return nil
-		case reflect.Float32, reflect.Float64:
-			dest.SetFloat(float64(x))
-			return nil
-		}
-
-	case float64:
-		switch dest.Kind() {
-		case reflect.Float32, reflect.Float64:
-			dest.SetFloat(x)
-			return nil
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			dest.SetInt(int64(x))
-			return nil
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-			dest.SetUint(uint64(x))
-			return nil
-		}
-
-	case bool:
-		dest.SetBool(x)
-		return nil
-
-	case []byte:
-		switch {
-		case dest.Kind() == reflect.String:
-			dest.SetString(string(x))
-			return nil
-		case dest.Kind() == reflect.Slice && dest.Type().Elem().Kind() == reflect.Uint8:
-			dest.Set(reflect.ValueOf(x))
-			return nil
-		}
-
-	case string:
-		switch {
-		case dest.Kind() == reflect.String:
-			dest.SetString(x)
-			return nil
-		case dest.Kind() == reflect.Slice && dest.Type().Elem().Kind() == reflect.Uint8:
-			dest.Set(reflect.ValueOf([]byte(x)))
-			return nil
-		}
-
-	case time.Time:
-		if srcVal := reflect.ValueOf(src); srcVal.Type().AssignableTo(dest.Type()) {
-			dest.Set(srcVal)
-			return nil
-		}
-
-	case nil:
-		switch dest.Kind() {
-		case reflect.Ptr, reflect.Slice, reflect.Map:
-			dest.Set(reflect.Zero(dest.Type()))
-			return nil
-		}
-	}
-
-	return fmt.Errorf("can't scan %#v as %s", src, dest.Type())
 }

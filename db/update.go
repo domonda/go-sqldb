@@ -21,14 +21,14 @@ func Update(ctx context.Context, table string, values sqldb.Values, where string
 	conn := Conn(ctx)
 	query, vals := buildUpdateQuery(table, values, where, conn, args)
 	err := conn.Exec(query, vals...)
-	return sqldb.WrapNonNilErrorWithQuery(err, query, conn, vals)
+	return sqldb.WrapErrorWithQuery(err, query, conn, vals)
 }
 
 // UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
 // and returning a single row with the columns specified in returning argument.
-func UpdateReturningRow(ctx context.Context, table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowScanner {
+func UpdateReturningRow(ctx context.Context, table string, values sqldb.Values, returning, where string, args ...any) sqldb.Row {
 	if len(values) == 0 {
-		return sqldb.RowScannerWithError(fmt.Errorf("UpdateReturningRow table %s: no values passed", table))
+		return sqldb.RowWithError(fmt.Errorf("UpdateReturningRow table %s: no values passed", table))
 	}
 
 	conn := Conn(ctx)
@@ -39,9 +39,9 @@ func UpdateReturningRow(ctx context.Context, table string, values sqldb.Values, 
 
 // UpdateReturningRows updates table rows with values using the where statement with passed in args starting at $1
 // and returning multiple rows with the columns specified in returning argument.
-func UpdateReturningRows(ctx context.Context, table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowsScanner {
+func UpdateReturningRows(ctx context.Context, table string, values sqldb.Values, returning, where string, args ...any) sqldb.Rows {
 	if len(values) == 0 {
-		return sqldb.RowsScannerWithError(fmt.Errorf("UpdateReturningRows table %s: no values passed", table))
+		return sqldb.RowsWithError(fmt.Errorf("UpdateReturningRows table %s: no values passed", table))
 	}
 
 	conn := Conn(ctx)
@@ -78,8 +78,7 @@ func UpdateStruct(ctx context.Context, rowStruct any, ignoreColumns ...reflectio
 	}
 
 	conn := Conn(ctx)
-	mapper := conn.StructFieldMapper()
-	table, columns, pkCols, vals, err := reflection.ReflectStructValues(v, mapper, append(ignoreColumns, sqldb.IgnoreReadOnly))
+	table, columns, pkCols, vals, err := reflection.ReflectStructValues(v, DefaultStructFieldMapping, append(ignoreColumns, sqldb.IgnoreReadOnly))
 	if err != nil {
 		return err
 	}
@@ -117,7 +116,7 @@ func UpdateStruct(ctx context.Context, rowStruct any, ignoreColumns ...reflectio
 
 	err = conn.Exec(query, vals...)
 
-	return sqldb.WrapNonNilErrorWithQuery(err, query, conn, vals)
+	return sqldb.WrapErrorWithQuery(err, query, conn, vals)
 }
 
 func derefStruct(rowStruct any) (reflect.Value, error) {

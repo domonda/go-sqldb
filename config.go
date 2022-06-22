@@ -3,34 +3,52 @@ package sqldb
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/url"
 	"time"
-
-	"github.com/domonda/go-sqldb/reflection"
 )
-
-// DefaultStructFieldMapping provides the default StructFieldTagNaming
-// using "db" as NameTag and IgnoreStructField as UntaggedNameFunc.
-// Implements StructFieldMapper.
-var DefaultStructFieldMapping = reflection.NewTaggedStructFieldMapping()
 
 // Config for a connection.
 // For tips see https://www.alexedwards.net/blog/configuring-sqldb
 type Config struct {
-	Driver                string             `json:"driver"`
-	Host                  string             `json:"host"`
-	Port                  uint16             `json:"port,omitempty"`
-	User                  string             `json:"user,omitempty"`
-	Password              string             `json:"password,omitempty"`
-	Database              string             `json:"database"`
-	Extra                 map[string]string  `json:"misc,omitempty"`
-	MaxOpenConns          int                `json:"maxOpenConns,omitempty"`
-	MaxIdleConns          int                `json:"maxIdleConns,omitempty"`
-	ConnMaxLifetime       time.Duration      `json:"connMaxLifetime,omitempty"`
+	Driver          string            `json:"driver"`
+	Host            string            `json:"host"`
+	Port            uint16            `json:"port,omitempty"`
+	User            string            `json:"user,omitempty"`
+	Password        string            `json:"password,omitempty"`
+	Database        string            `json:"database"`
+	Extra           map[string]string `json:"misc,omitempty"`
+	MaxOpenConns    int               `json:"maxOpenConns,omitempty"`
+	MaxIdleConns    int               `json:"maxIdleConns,omitempty"`
+	ConnMaxLifetime time.Duration     `json:"connMaxLifetime,omitempty"`
+
+	// ValidateColumnName returns an error
+	// if the passed name is not valid for a
+	// column of the connection's database.
+	ValidateColumnName func(name string) error `json:"-"`
+
+	// ParamPlaceholder returns a parameter value placeholder
+	// for the parameter with the passed zero based index
+	// specific to the database type of the connection.
+	ParamPlaceholderFormatter `json:"-"`
+
 	DefaultIsolationLevel sql.IsolationLevel `json:"-"`
-	Err                   error              `json:"-"`
+
+	// Err will be returned from Connection.Err()
+	Err error `json:"-"`
 }
+
+// func (c *DBConnection) ValidateColumnName(name string) error {
+// 	if name == "" {
+// 		return errors.New("empty column name")
+// 	}
+// 	return nil
+// }
+
+// func (c *DBConnection) ParamPlaceholder(index int) string {
+// 	return fmt.Sprintf(":%d", index+1)
+// }
 
 // Validate returns Config.Err if it is not nil
 // or an error if the Config does not have
@@ -39,19 +57,25 @@ func (c *Config) Validate() error {
 	if c.Err != nil {
 		return c.Err
 	}
+	if c.ValidateColumnName == nil {
+		return errors.New("missing sqldb.Config.ValidateColumnName")
+	}
+	if c.ParamPlaceholderFormatter == nil {
+		return errors.New("missing sqldb.Config.ParamPlaceholderFormatter")
+	}
 	if c.Driver == "" {
-		return fmt.Errorf("missing sqldb.Config.Driver")
+		return errors.New("missing sqldb.Config.Driver")
 	}
 	if c.Host == "" {
-		return fmt.Errorf("missing sqldb.Config.Host")
+		return errors.New("missing sqldb.Config.Host")
 	}
 	if c.Database == "" {
-		return fmt.Errorf("missing sqldb.Config.Database")
+		return errors.New("missing sqldb.Config.Database")
 	}
 	return nil
 }
 
-// ConnectURL for connecting to a database
+// ConnectURL returns a connection URL for the Config
 func (c *Config) ConnectURL() string {
 	extra := make(url.Values)
 	for key, val := range c.Extra {

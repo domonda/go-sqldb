@@ -65,7 +65,7 @@ func main() {
 	}
 
 	err = conn.QueryRows(`select name, email from public.user`).ForEachRow(
-		func(row sqldb.RowScanner) error {
+		func(row sqldb.Row) error {
 			var name, email string
 			err := row.Scan(&name, &email)
 			if err != nil {

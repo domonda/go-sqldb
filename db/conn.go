@@ -22,23 +22,23 @@ func SetConn(c sqldb.Connection) {
 // The returned connection will use the passed context.
 // See sqldb.Connection.WithContext
 func Conn(ctx context.Context) sqldb.Connection {
-	return ConnDefault(ctx, globalConn)
-}
-
-// ConnDefault returns a non nil sqldb.Connection from ctx
-// or the passed defaultConn.
-// The returned connection will use the passed context.
-// See sqldb.Connection.WithContext
-func ConnDefault(ctx context.Context, defaultConn sqldb.Connection) sqldb.Connection {
-	c, _ := ctx.Value(&globalConnCtxKey).(sqldb.Connection)
-	if c == nil {
-		c = defaultConn
-	}
-	if c.Context() == ctx {
+	if c, _ := ctx.Value(&globalConnCtxKey).(sqldb.Connection); c != nil {
 		return c
 	}
-	return c.WithContext(ctx)
+	return globalConn
 }
+
+// // ConnDefault returns a non nil sqldb.Connection from ctx
+// // or the passed defaultConn.
+// // The returned connection will use the passed context.
+// // See sqldb.Connection.WithContext
+// func ConnDefault(ctx context.Context, defaultConn sqldb.Connection) sqldb.Connection {
+// 	c, _ := ctx.Value(&globalConnCtxKey).(sqldb.Connection)
+// 	if c == nil {
+// 		return defaultConn
+// 	}
+// 	return c
+// }
 
 // ContextWithConn returns a new context with the passed sqldb.Connection
 // added as value so it can be retrieved again using Conn(ctx).

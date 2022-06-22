@@ -11,19 +11,19 @@ import (
 )
 
 type OneTimeRowsProvider struct {
-	rowScanners  map[string]sqldb.RowScanner
-	rowsScanners map[string]sqldb.RowsScanner
+	rowScanners  map[string]sqldb.Row
+	rowsScanners map[string]sqldb.Rows
 	mtx          sync.Mutex
 }
 
 func NewOneTimeRowsProvider() *OneTimeRowsProvider {
 	return &OneTimeRowsProvider{
-		rowScanners:  make(map[string]sqldb.RowScanner),
-		rowsScanners: make(map[string]sqldb.RowsScanner),
+		rowScanners:  make(map[string]sqldb.Row),
+		rowsScanners: make(map[string]sqldb.Rows),
 	}
 }
 
-func (p *OneTimeRowsProvider) AddRowScannerQuery(scanner sqldb.RowScanner, query string, args ...any) {
+func (p *OneTimeRowsProvider) AddRowQuery(scanner sqldb.Row, query string, args ...any) {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 
@@ -34,7 +34,7 @@ func (p *OneTimeRowsProvider) AddRowScannerQuery(scanner sqldb.RowScanner, query
 	p.rowScanners[key] = scanner
 }
 
-func (p *OneTimeRowsProvider) AddRowsScannerQuery(scanner sqldb.RowsScanner, query string, args ...any) {
+func (p *OneTimeRowsProvider) AddRowsQuery(scanner sqldb.Rows, query string, args ...any) {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 
@@ -45,7 +45,7 @@ func (p *OneTimeRowsProvider) AddRowsScannerQuery(scanner sqldb.RowsScanner, que
 	p.rowsScanners[key] = scanner
 }
 
-func (p *OneTimeRowsProvider) QueryRow(structFieldMapper reflection.StructFieldMapper, query string, args ...any) sqldb.RowScanner {
+func (p *OneTimeRowsProvider) QueryRow(structFieldMapper reflection.StructFieldMapper, query string, args ...any) sqldb.Row {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 
@@ -55,7 +55,7 @@ func (p *OneTimeRowsProvider) QueryRow(structFieldMapper reflection.StructFieldM
 	return scanner
 }
 
-func (p *OneTimeRowsProvider) QueryRows(structFieldMapper reflection.StructFieldMapper, query string, args ...any) sqldb.RowsScanner {
+func (p *OneTimeRowsProvider) QueryRows(structFieldMapper reflection.StructFieldMapper, query string, args ...any) sqldb.Rows {
 	p.mtx.Lock()
 	defer p.mtx.Unlock()
 

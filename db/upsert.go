@@ -24,8 +24,7 @@ func UpsertStruct(ctx context.Context, rowStruct any, ignoreColumns ...reflectio
 	}
 
 	conn := Conn(ctx)
-	mapper := conn.StructFieldMapper()
-	table, columns, pkCols, vals, err := reflection.ReflectStructValues(v, mapper, append(ignoreColumns, sqldb.IgnoreReadOnly))
+	table, columns, pkCols, vals, err := reflection.ReflectStructValues(v, DefaultStructFieldMapping, append(ignoreColumns, sqldb.IgnoreReadOnly))
 	if err != nil {
 		return err
 	}
@@ -63,5 +62,5 @@ func UpsertStruct(ctx context.Context, rowStruct any, ignoreColumns ...reflectio
 
 	err = conn.Exec(query, vals...)
 
-	return sqldb.WrapNonNilErrorWithQuery(err, query, conn, vals)
+	return sqldb.WrapErrorWithQuery(err, query, conn, vals)
 }

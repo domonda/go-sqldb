@@ -33,7 +33,7 @@ func TestWrapNonNilErrorWithQuery(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := WrapNonNilErrorWithQuery(tt.args.err, tt.args.query, tt.args.argFmt, tt.args.args)
+			err := WrapErrorWithQuery(tt.args.err, tt.args.query, tt.args.argFmt, tt.args.args)
 			if tt.wantError == "" && err != nil || tt.wantError != "" && (err == nil || err.Error() != tt.wantError) {
 				t.Errorf("WrapNonNilErrorWithQuery() error = %v, wantErr %v", err, tt.wantError)
 			}

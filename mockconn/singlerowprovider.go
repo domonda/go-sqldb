@@ -4,7 +4,6 @@ import (
 	"context"
 
 	sqldb "github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/reflection"
 )
 
 // NewSingleRowProvider a RowsProvider implementation
@@ -20,10 +19,10 @@ type singleRowProvider struct {
 	argFmt sqldb.ParamPlaceholderFormatter
 }
 
-func (p *singleRowProvider) QueryRow(mapper reflection.StructFieldMapper, query string, args ...any) sqldb.RowScanner {
-	return sqldb.NewRowScanner(sqldb.RowAsRows(p.row), mapper, query, p.argFmt, args)
+func (p *singleRowProvider) QueryRow(query string, args ...any) sqldb.Row {
+	return sqldb.NewRow(context.Background(), sqldb.RowAsRows(p.row), query, p.argFmt, args)
 }
 
-func (p *singleRowProvider) QueryRows(mapper reflection.StructFieldMapper, query string, args ...any) sqldb.RowsScanner {
-	return sqldb.NewRowsScanner(context.Background(), NewRows(p.row), mapper, query, p.argFmt, args)
+func (p *singleRowProvider) QueryRows(query string, args ...any) sqldb.Rows {
+	return sqldb.NewRows(context.Background(), sqldb.NewRows(p.row), query, p.argFmt, args)
 }

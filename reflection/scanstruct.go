@@ -5,7 +5,8 @@ import (
 	"reflect"
 )
 
-func ScanStruct(srcRow Row, destStruct any, namer StructFieldMapper) error {
+// ScanStruct scans values of a srcRow into a destStruct which must be passed as pointer.
+func ScanStruct(srcRow Row, destStruct any, mapper StructFieldMapper) error {
 	v := reflect.ValueOf(destStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -33,7 +34,7 @@ func ScanStruct(srcRow Row, destStruct any, namer StructFieldMapper) error {
 		return err
 	}
 
-	fieldPointers, err := ReflectStructColumnPointers(v, namer, columns)
+	fieldPointers, err := ReflectStructColumnPointers(v, mapper, columns)
 	if err != nil {
 		return fmt.Errorf("ScanStruct: %w", err)
 	}

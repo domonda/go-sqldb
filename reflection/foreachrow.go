@@ -1,4 +1,4 @@
-package sqldb
+package reflection
 
 import (
 	"context"
@@ -25,7 +25,7 @@ var (
 // If a non nil error is returned from the callback, then this error
 // is returned immediately by this function without scanning further rows.
 // In case of zero rows, no error will be returned.
-func forEachRowCallFunc(ctx context.Context, callback any) (f func(RowScanner) error, err error) {
+func ForEachRowCallFunc(ctx context.Context, mapper StructFieldMapper, callback any) (f func(Row) error, err error) {
 	val := reflect.ValueOf(callback)
 	typ := val.Type()
 	if typ.Kind() != reflect.Func {
@@ -70,14 +70,14 @@ func forEachRowCallFunc(ctx context.Context, callback any) (f func(RowScanner) e
 		return nil, fmt.Errorf("ForEachRowCallFunc callback function result must be of type error: %s", typ)
 	}
 
-	f = func(row RowScanner) (err error) {
+	f = func(row Row) (err error) {
 		// First scan row
 		scannedValPtrs := make([]any, typ.NumIn()-firstArg)
 		for i := range scannedValPtrs {
 			scannedValPtrs[i] = reflect.New(typ.In(firstArg + i)).Interface()
 		}
 		if structArg {
-			err = row.ScanStruct(scannedValPtrs[0])
+			err = ScanStruct(row, scannedValPtrs[0], mapper)
 		} else {
 			err = row.Scan(scannedValPtrs...)
 		}

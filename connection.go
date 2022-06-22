@@ -4,8 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"time"
-
-	"github.com/domonda/go-sqldb/reflection"
 )
 
 type (
@@ -18,75 +16,44 @@ type (
 
 // Connection represents a database connection or transaction
 type Connection interface {
-	// Context that all connection operations use.
-	// See also WithContext.
-	Context() context.Context
+	// Config returns the configuration used
+	// to create this connection.
+	Config() *Config
 
-	// WithContext returns a connection that uses the passed
-	// context for its operations.
-	WithContext(ctx context.Context) Connection
-
-	// WithStructFieldMapper returns a copy of the connection
-	// that will use the passed reflection.StructFieldMapper.
-	WithStructFieldMapper(reflection.StructFieldMapper) Connection
-
-	// StructFieldMapper used by methods of this Connection.
-	StructFieldMapper() reflection.StructFieldMapper
+	// Stats returns the sql.DBStats of this connection.
+	Stats() sql.DBStats
 
 	// Ping returns an error if the database
 	// does not answer on this connection
 	// with an optional timeout.
 	// The passed timeout has to be greater zero
 	// to be considered.
-	Ping(timeout time.Duration) error
-
-	// Stats returns the sql.DBStats of this connection.
-	Stats() sql.DBStats
-
-	// Config returns the configuration used
-	// to create this connection.
-	Config() *Config
-
-	// ValidateColumnName returns an error
-	// if the passed name is not valid for a
-	// column of the connection's database.
-	ValidateColumnName(name string) error
-
-	// ParamPlaceholder returns a parameter value placeholder
-	// for the parameter with the passed zero based index
-	// specific to the database type of the connection.
-	ParamPlaceholder(index int) string
+	Ping(ctx context.Context, timeout time.Duration) error
 
 	// Err returns any current error of the connection
 	Err() error
 
-	// Now returns the result of the SQL now()
-	// function for the current connection.
-	// Useful for getting the timestamp of a
-	// SQL transaction for use in Go code.
-	Now() (time.Time, error)
-
 	// Exec executes a query with optional args.
-	Exec(query string, args ...any) error
+	Exec(ctx context.Context, query string, args ...any) error
 
 	// QueryRow queries a single row and returns a RowScanner for the results.
-	QueryRow(query string, args ...any) RowScanner
+	QueryRow(ctx context.Context, query string, args ...any) Row
 
 	// QueryRows queries multiple rows and returns a RowsScanner for the results.
-	QueryRows(query string, args ...any) RowsScanner
+	QueryRows(ctx context.Context, query string, args ...any) Rows
 
 	// IsTransaction returns if the connection is a transaction
 	IsTransaction() bool
 
-	// TransactionOptions returns the sql.TxOptions of the
-	// current transaction and true as second result value,
-	// or false if the connection is not a transaction.
-	TransactionOptions() (*sql.TxOptions, bool)
+	// TxOptions returns the sql.TxOptions of the
+	// current transaction which can be nil for the default options.
+	// Use IsTransaction to check if the connection is a transaction.
+	TxOptions() *sql.TxOptions
 
 	// Begin a new transaction.
 	// If the connection is already a transaction, a brand
 	// new transaction will begin on the parent's connection.
-	Begin(opts *sql.TxOptions) (Connection, error)
+	Begin(ctx context.Context, opts *sql.TxOptions) (Connection, error)
 
 	// Commit the current transaction.
 	// Returns ErrNotWithinTransaction if the connection
