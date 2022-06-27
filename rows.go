@@ -22,17 +22,17 @@ type Rows interface {
 // RowsWithError returns dummy Rows
 // where all methods return the passed error.
 func RowsWithError(err error) Rows {
-	return rowsWithError{err}
+	return errRows{err}
 }
 
-type rowsWithError struct{ err error }
+type errRows struct{ err error }
 
-func (e rowsWithError) ForEachRow(func(Row) error) error { return e.err }
-func (e rowsWithError) Close() error                     { return e.err }
+func (e errRows) ForEachRow(func(Row) error) error { return e.err }
+func (e errRows) Close() error                     { return e.err }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-type rowsWrapper struct {
+type sqlRows struct {
 	ctx   context.Context // ctx is checked for every row and passed through to callbacks
 	rows  *sql.Rows
 	conn  Connection // for error wrapping
@@ -41,10 +41,10 @@ type rowsWrapper struct {
 }
 
 func NewRows(ctx context.Context, rows *sql.Rows, conn Connection, query string, args []any) Rows {
-	return &rowsWrapper{ctx, rows, conn, query, args}
+	return &sqlRows{ctx, rows, conn, query, args}
 }
 
-func (r *rowsWrapper) ForEachRow(callback func(Row) error) (err error) {
+func (r *sqlRows) ForEachRow(callback func(Row) error) (err error) {
 	defer func() {
 		err = combineTwoErrors(err, r.rows.Close())
 		if err != nil {
@@ -65,7 +65,7 @@ func (r *rowsWrapper) ForEachRow(callback func(Row) error) (err error) {
 	return r.rows.Err()
 }
 
-func (r *rowsWrapper) Close() error {
+func (r *sqlRows) Close() error {
 	return r.rows.Close()
 }
 

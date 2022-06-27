@@ -55,18 +55,18 @@ func TestTaggedStructFieldMapping_StructFieldName(t *testing.T) {
 		structField reflect.StructField
 		wantTable   string
 		wantColumn  string
-		wantFlags   FieldFlag
+		wantFlags   StructFieldFlags
 		wantOk      bool
 	}{
-		{name: "index", structField: st.Field(0), wantTable: "public.my_table", wantColumn: "index", wantFlags: FieldFlagPrimaryKey, wantOk: true},
-		{name: "index_b", structField: st.Field(1), wantTable: "", wantColumn: "index_b", wantFlags: FieldFlagPrimaryKey, wantOk: true},
+		{name: "index", structField: st.Field(0), wantTable: "public.my_table", wantColumn: "index", wantFlags: FlagPrimaryKey, wantOk: true},
+		{name: "index_b", structField: st.Field(1), wantTable: "", wantColumn: "index_b", wantFlags: FlagPrimaryKey, wantOk: true},
 		{name: "named_str", structField: st.Field(2), wantColumn: "named_str", wantFlags: 0, wantOk: true},
-		{name: "read_only", structField: st.Field(3), wantColumn: "read_only", wantFlags: FieldFlagReadOnly, wantOk: true},
+		{name: "read_only", structField: st.Field(3), wantColumn: "read_only", wantFlags: FlagReadOnly, wantOk: true},
 		{name: "untagged_field", structField: st.Field(4), wantColumn: "untagged_field", wantFlags: 0, wantOk: true},
 		{name: "ignore", structField: st.Field(5), wantColumn: "", wantFlags: 0, wantOk: false},
-		{name: "pk_read_only", structField: st.Field(6), wantColumn: "pk_read_only", wantFlags: FieldFlagPrimaryKey | FieldFlagReadOnly, wantOk: true},
+		{name: "pk_read_only", structField: st.Field(6), wantColumn: "pk_read_only", wantFlags: FlagPrimaryKey | FlagReadOnly, wantOk: true},
 		{name: "no_flag", structField: st.Field(7), wantColumn: "no_flag", wantFlags: 0, wantOk: true},
-		{name: "malformed_flags", structField: st.Field(8), wantColumn: "malformed_flags", wantFlags: FieldFlagReadOnly, wantOk: true},
+		{name: "malformed_flags", structField: st.Field(8), wantColumn: "malformed_flags", wantFlags: FlagReadOnly, wantOk: true},
 		{name: "Embedded", structField: st.Field(9), wantColumn: "", wantFlags: 0, wantOk: true},
 	}
 	for _, tt := range tests {

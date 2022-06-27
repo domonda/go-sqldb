@@ -5,5 +5,5 @@ import (
 )
 
 type ColumnFilter interface {
-	IgnoreColumn(name string, flags FieldFlag, fieldType reflect.StructField, fieldValue reflect.Value) bool
+	IgnoreColumn(*StructColumn, reflect.Value) bool
 }

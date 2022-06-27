@@ -23,17 +23,17 @@ type Row interface {
 // RowWithError returns a dummy Row
 // where all methods return the passed error.
 func RowWithError(err error) Row {
-	return rowWithError{err}
+	return errRow{err}
 }
 
-type rowWithError struct{ err error }
+type errRow struct{ err error }
 
-func (e rowWithError) Columns() ([]string, error) { return nil, e.err }
-func (e rowWithError) Scan(dest ...any) error     { return e.err }
+func (e errRow) Columns() ([]string, error) { return nil, e.err }
+func (e errRow) Scan(dest ...any) error     { return e.err }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-type rowWrapper struct {
+type sqlRow struct {
 	ctx   context.Context // ctx is checked for every row and passed through to callbacks
 	rows  *sql.Rows
 	conn  Connection // for error wrapping
@@ -42,10 +42,10 @@ type rowWrapper struct {
 }
 
 func NewRow(ctx context.Context, rows *sql.Rows, conn Connection, query string, args []any) Row {
-	return &rowWrapper{ctx, rows, conn, query, args}
+	return &sqlRow{ctx, rows, conn, query, args}
 }
 
-func (r *rowWrapper) Columns() ([]string, error) {
+func (r *sqlRow) Columns() ([]string, error) {
 	columns, err := r.rows.Columns()
 	if err != nil {
 		return nil, WrapErrorWithQuery(err, r.query, r.args, r.conn.Config().ParamPlaceholderFormatter)
@@ -53,7 +53,7 @@ func (r *rowWrapper) Columns() ([]string, error) {
 	return columns, nil
 }
 
-func (r *rowWrapper) Scan(dest ...any) (err error) {
+func (r *sqlRow) Scan(dest ...any) (err error) {
 	defer func() {
 		err = combineTwoErrors(err, r.rows.Close())
 		if err != nil {

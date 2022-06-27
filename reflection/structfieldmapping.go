@@ -7,30 +7,6 @@ import (
 	"unicode"
 )
 
-// FieldFlag is a bitmask for special properties
-// of how struct fields relate to database columns.
-type FieldFlag uint
-
-// PrimaryKey indicates if FieldFlagPrimaryKey is set
-func (f FieldFlag) PrimaryKey() bool { return f&FieldFlagPrimaryKey != 0 }
-
-// ReadOnly indicates if FieldFlagReadOnly is set
-func (f FieldFlag) ReadOnly() bool { return f&FieldFlagReadOnly != 0 }
-
-// Default indicates if FieldFlagDefault is set
-func (f FieldFlag) Default() bool { return f&FieldFlagDefault != 0 }
-
-const (
-	// FieldFlagPrimaryKey marks a field as primary key
-	FieldFlagPrimaryKey FieldFlag = 1 << iota
-
-	// FieldFlagReadOnly marks a field as read-only
-	FieldFlagReadOnly
-
-	// FieldFlagDefault marks a field as having a column default value
-	FieldFlagDefault
-)
-
 // StructFieldMapper is used to map struct type fields to column names
 // and indicate special column properies via flags.
 type StructFieldMapper interface {
@@ -39,7 +15,7 @@ type StructFieldMapper interface {
 	// If false is returned for use then the field is not mapped.
 	// An empty name and true for use indicates an embedded struct
 	// field whose fields should be recursively mapped.
-	MapStructField(field reflect.StructField) (table, column string, flags FieldFlag, use bool)
+	MapStructField(field reflect.StructField) (table, column string, flags StructFieldFlags, use bool)
 }
 
 // NewTaggedStructFieldMapping returns a default mapping.
@@ -74,7 +50,7 @@ type TaggedStructFieldMapping struct {
 	UntaggedNameFunc func(fieldName string) string
 }
 
-func (m *TaggedStructFieldMapping) MapStructField(field reflect.StructField) (table, column string, flags FieldFlag, use bool) {
+func (m *TaggedStructFieldMapping) MapStructField(field reflect.StructField) (table, column string, flags StructFieldFlags, use bool) {
 	if field.Anonymous {
 		column, hasTag := field.Tag.Lookup(m.NameTag)
 		if !hasTag {
@@ -107,12 +83,12 @@ func (m *TaggedStructFieldMapping) MapStructField(field reflect.StructField) (ta
 			case "":
 				// Ignore empty flags
 			case m.PrimaryKey:
-				flags |= FieldFlagPrimaryKey
+				flags |= FlagPrimaryKey
 				table = value
 			case m.ReadOnly:
-				flags |= FieldFlagReadOnly
+				flags |= FlagReadOnly
 			case m.Default:
-				flags |= FieldFlagDefault
+				flags |= FlagHasDefault
 			}
 		}
 	} else {
