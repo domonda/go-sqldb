@@ -63,9 +63,9 @@ func QueryValueOrDefault[T any](ctx context.Context, query string, args ...any) 
 // with primary key flags to identify the primary key column names
 // for the passed pkValue+pkValues and a table name.
 func QueryStruct[S any](ctx context.Context, pkValue any, pkValues ...any) (row *S, err error) {
-	if len(pkValues) > 0 {
-		pkValues = append([]any{pkValue}, pkValues...)
-	}
+	// Using explicit first pkValue value
+	// to not be able to compile without any value
+	pkValues = append([]any{pkValue}, pkValues...)
 	t := reflect.TypeOf(row).Elem()
 	if t.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("expected struct template type instead of %s", t)
