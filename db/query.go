@@ -58,13 +58,13 @@ func QueryValueOrDefault[T any](ctx context.Context, query string, args ...any) 
 	return value, err
 }
 
-// QueryStruct uses the passed pkValues to query a table row
+// QueryStruct uses the passed pkValue+pkValues to query a table row
 // and scan it into a struct of type S that must have tagged fields
 // with primary key flags to identify the primary key column names
-// for the passed pkValues and a table name.
-func QueryStruct[S any](ctx context.Context, pkValues ...any) (row *S, err error) {
-	if len(pkValues) == 0 {
-		return nil, errors.New("missing primary key values")
+// for the passed pkValue+pkValues and a table name.
+func QueryStruct[S any](ctx context.Context, pkValue any, pkValues ...any) (row *S, err error) {
+	if len(pkValues) > 0 {
+		pkValues = append([]any{pkValues}, pkValues...)
 	}
 	t := reflect.TypeOf(row).Elem()
 	if t.Kind() != reflect.Struct {
@@ -89,14 +89,14 @@ func QueryStruct[S any](ctx context.Context, pkValues ...any) (row *S, err error
 	return row, nil
 }
 
-// QueryStructOrNil uses the passed pkValues to query a table row
+// QueryStructOrNil uses the passed pkValue+pkValues to query a table row
 // and scan it into a struct of type S that must have tagged fields
 // with primary key flags to identify the primary key column names
-// for the passed pkValues and a table name.
+// for the passed pkValue+pkValues and a table name.
 // Returns nil as row and error if no row could be found with the
-// passed pkValues.
-func QueryStructOrNil[S any](ctx context.Context, pkValues ...any) (row *S, err error) {
-	row, err = QueryStruct[S](ctx, pkValues...)
+// passed pkValue+pkValues.
+func QueryStructOrNil[S any](ctx context.Context, pkValue any, pkValues ...any) (row *S, err error) {
+	row, err = QueryStruct[S](ctx, pkValue, pkValues...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
