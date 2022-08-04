@@ -64,7 +64,7 @@ func QueryValueOrDefault[T any](ctx context.Context, query string, args ...any) 
 // for the passed pkValue+pkValues and a table name.
 func QueryStruct[S any](ctx context.Context, pkValue any, pkValues ...any) (row *S, err error) {
 	if len(pkValues) > 0 {
-		pkValues = append([]any{pkValues}, pkValues...)
+		pkValues = append([]any{pkValue}, pkValues...)
 	}
 	t := reflect.TypeOf(row).Elem()
 	if t.Kind() != reflect.Struct {
