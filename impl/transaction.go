@@ -86,6 +86,10 @@ func (conn *transaction) InsertStruct(table string, rowStruct any, ignoreColumns
 	return InsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.parent.argFmt, ignoreColumns)
 }
 
+func (conn *transaction) InsertStructs(table string, rowStructs any, ignoreColumns ...sqldb.ColumnFilter) error {
+	return InsertStructs(conn, table, rowStructs, ignoreColumns...)
+}
+
 func (conn *transaction) InsertUniqueStruct(table string, rowStruct any, onConflict string, ignoreColumns ...sqldb.ColumnFilter) (inserted bool, err error) {
 	return InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, conn.parent.argFmt, ignoreColumns)
 }

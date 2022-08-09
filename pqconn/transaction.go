@@ -110,6 +110,10 @@ func (conn *transaction) UpsertStruct(table string, rowStruct any, ignoreColumns
 	return impl.UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns)
 }
 
+func (conn *transaction) InsertStructs(table string, rowStructs any, ignoreColumns ...sqldb.ColumnFilter) error {
+	return impl.InsertStructs(conn, table, rowStructs, ignoreColumns...)
+}
+
 func (conn *transaction) QueryRow(query string, args ...any) sqldb.RowScanner {
 	rows, err := conn.tx.QueryContext(conn.parent.ctx, query, args...)
 	if err != nil {

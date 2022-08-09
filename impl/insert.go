@@ -142,3 +142,18 @@ func insertStructValues(table string, rowStruct any, namer sqldb.StructFieldMapp
 	columns, _, vals = ReflectStructValues(v, namer, append(ignoreColumns, sqldb.IgnoreReadOnly))
 	return columns, vals, nil
 }
+
+func InsertStructs(conn sqldb.Connection, table string, rowStructs any, ignoreColumns ...sqldb.ColumnFilter) error {
+	v := reflect.ValueOf(rowStructs)
+	if k := v.Type().Kind(); k != reflect.Slice && k != reflect.Array {
+		return fmt.Errorf("InsertStructs needs slice or array, got %T", rowStructs)
+	}
+	l := v.Len()
+	for i := 0; i < l; i++ {
+		err := conn.InsertStruct(table, v.Index(i).Interface(), ignoreColumns...)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}

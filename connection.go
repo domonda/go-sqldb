@@ -76,9 +76,14 @@ type Connection interface {
 	// Optional ColumnFilter can be passed to ignore mapped columns.
 	InsertStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error
 
+	// InsertStructs inserts a slice or array of structs
+	// as new rows into table using the connection's
+	// StructFieldMapper to map struct fields to column names.
+	// Optional ColumnFilter can be passed to ignore mapped columns.
+	//
 	// TODO optimized version with single query if possible
 	// split into multiple queries depending or maxArgs for query
-	// InsertStructs(table string, rowStructs any, ignoreColumns ...ColumnFilter) error
+	InsertStructs(table string, rowStructs any, ignoreColumns ...ColumnFilter) error
 
 	// InsertUniqueStruct inserts a new row into table using the connection's
 	// StructFieldMapper to map struct fields to column names.

@@ -33,7 +33,8 @@ func IsOtherThanErrNoRows(err error) bool {
 // and is meant to be used to declare const sentinel errors.
 //
 // Example:
-//   const ErrUserNotFound impl.sentinelError = "user not found"
+//
+//	const ErrUserNotFound impl.sentinelError = "user not found"
 type sentinelError string
 
 func (s sentinelError) Error() string {
@@ -125,6 +126,10 @@ func (e connectionWithError) InsertReturning(table string, values Values, return
 }
 
 func (e connectionWithError) InsertStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error {
+	return e.err
+}
+
+func (e connectionWithError) InsertStructs(table string, rowStructs any, ignoreColumns ...ColumnFilter) error {
 	return e.err
 }
 

@@ -107,6 +107,10 @@ func (conn *connection) InsertStruct(table string, rowStruct any, ignoreColumns 
 	return impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt, ignoreColumns)
 }
 
+func (conn *connection) InsertStructs(table string, rowStructs any, ignoreColumns ...sqldb.ColumnFilter) error {
+	return impl.InsertStructs(conn, table, rowStructs, ignoreColumns...)
+}
+
 func (conn *connection) InsertUniqueStruct(table string, rowStruct any, onConflict string, ignoreColumns ...sqldb.ColumnFilter) (inserted bool, err error) {
 	return impl.InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, conn.argFmt, ignoreColumns)
 }
