@@ -5,12 +5,13 @@ import (
 	"database/sql"
 	"fmt"
 
-	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb"
 )
 
 type transaction struct {
 	*connection
 	opts *sql.TxOptions
+	no   uint64
 }
 
 func (conn transaction) Context() context.Context { return conn.connection.ctx }
@@ -22,6 +23,7 @@ func (conn transaction) WithContext(ctx context.Context) sqldb.Connection {
 	return transaction{
 		connection: conn.connection.WithContext(ctx).(*connection),
 		opts:       conn.opts,
+		no:         conn.no,
 	}
 }
 
@@ -29,15 +31,19 @@ func (conn transaction) IsTransaction() bool {
 	return true
 }
 
+func (conn transaction) TransactionNo() uint64 {
+	return conn.no
+}
+
 func (conn transaction) TransactionOptions() (*sql.TxOptions, bool) {
 	return conn.opts, true
 }
 
-func (conn transaction) Begin(opts *sql.TxOptions) (sqldb.Connection, error) {
+func (conn transaction) Begin(opts *sql.TxOptions, no uint64) (sqldb.Connection, error) {
 	if conn.queryWriter != nil {
 		fmt.Fprint(conn.queryWriter, "BEGIN")
 	}
-	return transaction{conn.connection, opts}, nil
+	return transaction{conn.connection, opts, no}, nil
 }
 
 func (conn transaction) Commit() error {

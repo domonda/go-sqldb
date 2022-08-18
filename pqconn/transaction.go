@@ -15,14 +15,16 @@ type transaction struct {
 	parent           *connection
 	tx               *sql.Tx
 	opts             *sql.TxOptions
+	no               uint64
 	structFieldNamer sqldb.StructFieldMapper
 }
 
-func newTransaction(parent *connection, tx *sql.Tx, opts *sql.TxOptions) *transaction {
+func newTransaction(parent *connection, tx *sql.Tx, opts *sql.TxOptions, no uint64) *transaction {
 	return &transaction{
 		parent:           parent,
 		tx:               tx,
 		opts:             opts,
+		no:               no,
 		structFieldNamer: parent.structFieldNamer,
 	}
 }
@@ -40,7 +42,7 @@ func (conn *transaction) WithContext(ctx context.Context) sqldb.Connection {
 	}
 	parent := conn.parent.clone()
 	parent.ctx = ctx
-	return newTransaction(parent, conn.tx, conn.opts)
+	return newTransaction(parent, conn.tx, conn.opts, conn.no)
 }
 
 func (conn *transaction) WithStructFieldMapper(namer sqldb.StructFieldMapper) sqldb.Connection {
@@ -136,16 +138,20 @@ func (conn *transaction) IsTransaction() bool {
 	return true
 }
 
+func (conn *transaction) TransactionNo() uint64 {
+	return conn.no
+}
+
 func (conn *transaction) TransactionOptions() (*sql.TxOptions, bool) {
 	return conn.opts, true
 }
 
-func (conn *transaction) Begin(opts *sql.TxOptions) (sqldb.Connection, error) {
+func (conn *transaction) Begin(opts *sql.TxOptions, no uint64) (sqldb.Connection, error) {
 	tx, err := conn.parent.db.BeginTx(conn.parent.ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	return newTransaction(conn.parent, tx, opts), nil
+	return newTransaction(conn.parent, tx, opts, no), nil
 }
 
 func (conn *transaction) Commit() error {

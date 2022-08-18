@@ -156,16 +156,20 @@ func (conn *connection) IsTransaction() bool {
 	return false
 }
 
+func (conn *connection) TransactionNo() uint64 {
+	return 0
+}
+
 func (conn *connection) TransactionOptions() (*sql.TxOptions, bool) {
 	return nil, false
 }
 
-func (conn *connection) Begin(opts *sql.TxOptions) (sqldb.Connection, error) {
+func (conn *connection) Begin(opts *sql.TxOptions, no uint64) (sqldb.Connection, error) {
 	tx, err := conn.db.BeginTx(conn.ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	return newTransaction(conn, tx, opts), nil
+	return newTransaction(conn, tx, opts, no), nil
 }
 
 func (conn *connection) Commit() error {

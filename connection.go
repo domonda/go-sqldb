@@ -129,15 +129,25 @@ type Connection interface {
 	// IsTransaction returns if the connection is a transaction
 	IsTransaction() bool
 
+	// TransactionNo returns the globally unique number of the transaction
+	// or zero if the connection is not a transaction.
+	// Implementations should use the package function NextTransactionNo
+	// to aquire a new number in a threadsafe way.
+	TransactionNo() uint64
+
 	// TransactionOptions returns the sql.TxOptions of the
 	// current transaction and true as second result value,
 	// or false if the connection is not a transaction.
 	TransactionOptions() (*sql.TxOptions, bool)
 
 	// Begin a new transaction.
-	// If the connection is already a transaction, a brand
+	// If the connection is already a transaction then a brand
 	// new transaction will begin on the parent's connection.
-	Begin(opts *sql.TxOptions) (Connection, error)
+	// The passed no will be returnd from the transaction's
+	// Connection.TransactionNo method.
+	// Implementations should use the package function NextTransactionNo
+	// to aquire a new number in a threadsafe way.
+	Begin(opts *sql.TxOptions, no uint64) (Connection, error)
 
 	// Commit the current transaction.
 	// Returns ErrNotWithinTransaction if the connection

@@ -4,7 +4,19 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sync/atomic"
 )
+
+var txCounter atomic.Uint64
+
+// NextTransactionNo returns the next globally unique number
+// for a new transaction in a threadsafe way.
+//
+// Use Connection.TransactionNo() to get the number
+// from a transaction connection.
+func NextTransactionNo() uint64 {
+	return txCounter.Add(1)
+}
 
 // Transaction executes txFunc within a database transaction that is passed in to txFunc as tx Connection.
 // Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
@@ -31,9 +43,10 @@ func Transaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Conn
 // Errors and panics from txFunc will rollback the transaction.
 // Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
 func IsolatedTransaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Connection) error) (err error) {
-	tx, e := parentConn.Begin(opts)
+	txNo := NextTransactionNo()
+	tx, e := parentConn.Begin(opts, txNo)
 	if e != nil {
-		return fmt.Errorf("Transaction Begin error: %w", e)
+		return fmt.Errorf("Transaction %d Begin error: %w", txNo, e)
 	}
 
 	defer func() {
@@ -42,7 +55,7 @@ func IsolatedTransaction(parentConn Connection, opts *sql.TxOptions, txFunc func
 			e := tx.Rollback()
 			if e != nil && !errors.Is(e, sql.ErrTxDone) {
 				// Double error situation, log e so it doesn't get lost
-				ErrLogger.Printf("Transaction error (%s) from rollback after panic: %+v", e, r)
+				ErrLogger.Printf("Transaction %d error (%s) from rollback after panic: %+v", txNo, e, r)
 			}
 			panic(r) // re-throw panic after Rollback
 		}
@@ -52,7 +65,7 @@ func IsolatedTransaction(parentConn Connection, opts *sql.TxOptions, txFunc func
 			e := tx.Rollback()
 			if e != nil && !errors.Is(e, sql.ErrTxDone) {
 				// Double error situation, wrap err with e so it doesn't get lost
-				err = fmt.Errorf("Transaction error (%s) from rollback after error: %w", e, err)
+				err = fmt.Errorf("Transaction %d error (%s) from rollback after error: %w", txNo, e, err)
 			}
 			return
 		}
@@ -60,7 +73,7 @@ func IsolatedTransaction(parentConn Connection, opts *sql.TxOptions, txFunc func
 		e := tx.Commit()
 		if e != nil {
 			// Set Commit error as function return value
-			err = fmt.Errorf("Transaction Commit error: %w", e)
+			err = fmt.Errorf("Transaction %d Commit error: %w", txNo, e)
 		}
 	}()
 

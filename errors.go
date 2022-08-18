@@ -169,11 +169,15 @@ func (e connectionWithError) IsTransaction() bool {
 	return false
 }
 
+func (e connectionWithError) TransactionNo() uint64 {
+	return 0
+}
+
 func (ce connectionWithError) TransactionOptions() (*sql.TxOptions, bool) {
 	return nil, false
 }
 
-func (e connectionWithError) Begin(opts *sql.TxOptions) (Connection, error) {
+func (e connectionWithError) Begin(opts *sql.TxOptions, no uint64) (Connection, error) {
 	return nil, e.err
 }
 

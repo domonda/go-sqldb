@@ -11,16 +11,43 @@ import (
 // Config for a connection.
 // For tips see https://www.alexedwards.net/blog/configuring-sqldb
 type Config struct {
-	Driver                string             `json:"driver"`
-	Host                  string             `json:"host"`
-	Port                  uint16             `json:"port,omitempty"`
-	User                  string             `json:"user,omitempty"`
-	Password              string             `json:"password,omitempty"`
-	Database              string             `json:"database"`
-	Extra                 map[string]string  `json:"misc,omitempty"`
-	MaxOpenConns          int                `json:"maxOpenConns,omitempty"`
-	MaxIdleConns          int                `json:"maxIdleConns,omitempty"`
-	ConnMaxLifetime       time.Duration      `json:"connMaxLifetime,omitempty"`
+	Driver   string            `json:"driver"`
+	Host     string            `json:"host"`
+	Port     uint16            `json:"port,omitempty"`
+	User     string            `json:"user,omitempty"`
+	Password string            `json:"password,omitempty"`
+	Database string            `json:"database"`
+	Extra    map[string]string `json:"misc,omitempty"`
+
+	// MaxOpenConns sets the maximum number of open connections to the database.
+	//
+	// If MaxIdleConns is greater than 0 and the new MaxOpenConns is less than
+	// MaxIdleConns, then MaxIdleConns will be reduced to match the new
+	// MaxOpenConns limit.
+	//
+	// If MaxOpenConns <= 0, then there is no limit on the number of open connections.
+	// The default is 0 (unlimited).
+	MaxOpenConns int `json:"maxOpenConns,omitempty"`
+
+	// MaxIdleConns sets the maximum number of connections in the idle
+	// connection pool.
+	//
+	// If MaxOpenConns is greater than 0 but less than the new MaxIdleConns,
+	// then the new MaxIdleConns will be reduced to match the MaxOpenConns limit.
+	//
+	// If MaxIdleConns <= 0, no idle connections are retained.
+	//
+	// The default max idle connections is currently 2. This may change in
+	// a future release.
+	MaxIdleConns int `json:"maxIdleConns,omitempty"`
+
+	// ConnMaxLifetime sets the maximum amount of time a connection may be reused.
+	//
+	// Expired connections may be closed lazily before reuse.
+	//
+	// If ConnMaxLifetime <= 0, connections are not closed due to a connection's age.
+	ConnMaxLifetime time.Duration `json:"connMaxLifetime,omitempty"`
+
 	DefaultIsolationLevel sql.IsolationLevel `json:"-"`
 	Err                   error              `json:"-"`
 }
