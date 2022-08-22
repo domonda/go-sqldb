@@ -5,8 +5,8 @@ github.com/domonda/go-errs v0.0.0-20220803101145-9c94ff28df79 h1:fBQtqAIzfFx/pGW
 github.com/domonda/go-errs v0.0.0-20220803101145-9c94ff28df79/go.mod h1:WvIoE59Dfs0hhB2GYSlwowlBr2WWGXf/F74bg6HWUpQ=
 github.com/domonda/go-pretty v0.0.0-20220317123925-dd9e6bef129a h1:6/Is0KGl5Ot3E8ZLAgAFWYiSRdU+3t3jL38+5yIlCV4=
 github.com/domonda/go-pretty v0.0.0-20220317123925-dd9e6bef129a/go.mod h1:3QkM8UJdyJMeKZiIo7hYzSkQBpRS3k0gOHw4ysyEIB4=
-github.com/domonda/go-types v0.0.0-20220803103538-ba179df4d6de h1:JQpcRcKuUG15dmfT1LkrRgLl+wpRAvIcHLqOS6/Q2Lo=
-github.com/domonda/go-types v0.0.0-20220803103538-ba179df4d6de/go.mod h1:OBigUM85hSP8diN6QHh2PVGD0GamVO1C4TeJHWxBePA=
+github.com/domonda/go-types v0.0.0-20220819111803-c069f85545c7 h1:2NUJm94/XoZzLhYmU8zDPSjKP3GhKvIVrs9AaBnslWA=
+github.com/domonda/go-types v0.0.0-20220819111803-c069f85545c7/go.mod h1:OBigUM85hSP8diN6QHh2PVGD0GamVO1C4TeJHWxBePA=
 github.com/go-sql-driver/mysql v1.6.0 h1:BCTh4TKNUYmOmMUcQ3IipzF5prigylS7XXjEkfCHuOE=
 github.com/go-sql-driver/mysql v1.6.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
 github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=

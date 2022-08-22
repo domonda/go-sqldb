@@ -1,10 +1,10 @@
 module github.com/domonda/go-sqldb
 
-go 1.18
+go 1.19
 
 require (
 	github.com/domonda/go-errs v0.0.0-20220803101145-9c94ff28df79
-	github.com/domonda/go-types v0.0.0-20220803103538-ba179df4d6de
+	github.com/domonda/go-types v0.0.0-20220819111803-c069f85545c7
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/lib/pq v1.10.6
 	github.com/stretchr/testify v1.8.0
