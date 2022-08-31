@@ -17,3 +17,9 @@ func SanitizeString(s string) string {
 		s,
 	)
 }
+
+// SanitizeStringTrimSpace returns valid UTF-8 only with printable characters
+// with leading and trailing whitespace trimmed away.
+func SanitizeStringTrimSpace(s string) string {
+	return strings.TrimSpace(SanitizeString(s))
+}
