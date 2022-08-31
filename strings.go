@@ -5,14 +5,15 @@ import (
 	"unicode"
 )
 
-// SanitizeString returns valid UTF-8 without any control code characters.
+// SanitizeString returns valid UTF-8 only with printable characters.
 func SanitizeString(s string) string {
-	return strings.Map(removeControlCodes, strings.ToValidUTF8(s, ""))
-}
-
-func removeControlCodes(r rune) rune {
-	if unicode.IsControl(r) {
-		return -1
-	}
-	return r
+	return strings.Map(
+		func(r rune) rune {
+			if r == '�' || !unicode.IsPrint(r) {
+				return -1
+			}
+			return r
+		},
+		s,
+	)
 }
