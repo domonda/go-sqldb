@@ -60,7 +60,7 @@ func QueryValueOrDefault[T any](ctx context.Context, query string, args ...any) 
 }
 
 // QueryRowStruct queries a row and scans it as struct.
-func QueryRowStruct[S ~struct{}](ctx context.Context, query string, args ...any) (row *S, err error) {
+func QueryRowStruct[S any](ctx context.Context, query string, args ...any) (row *S, err error) {
 	err = Conn(ctx).QueryRow(query, args...).ScanStruct(&row)
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func QueryRowStruct[S ~struct{}](ctx context.Context, query string, args ...any)
 
 // QueryRowStructOrNil queries a row and scans it as struct
 // or returns nil in case of sql.ErrNoRows.
-func QueryRowStructOrNil[S ~struct{}](ctx context.Context, query string, args ...any) (row *S, err error) {
+func QueryRowStructOrNil[S any](ctx context.Context, query string, args ...any) (row *S, err error) {
 	err = Conn(ctx).QueryRow(query, args...).ScanStruct(&row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -85,7 +85,7 @@ func QueryRowStructOrNil[S ~struct{}](ctx context.Context, query string, args ..
 // and scan it into a struct of type S that must have tagged fields
 // with primary key flags to identify the primary key column names
 // for the passed pkValue+pkValues and a table name.
-func GetRow[S ~struct{}](ctx context.Context, pkValue any, pkValues ...any) (row *S, err error) {
+func GetRow[S any](ctx context.Context, pkValue any, pkValues ...any) (row *S, err error) {
 	// Using explicit first pkValue value
 	// to not be able to compile without any value
 	pkValues = append([]any{pkValue}, pkValues...)
@@ -119,7 +119,7 @@ func GetRow[S ~struct{}](ctx context.Context, pkValue any, pkValues ...any) (row
 // for the passed pkValue+pkValues and a table name.
 // Returns nil as row and error if no row could be found with the
 // passed pkValue+pkValues.
-func GetRowOrNil[S ~struct{}](ctx context.Context, pkValue any, pkValues ...any) (row *S, err error) {
+func GetRowOrNil[S any](ctx context.Context, pkValue any, pkValues ...any) (row *S, err error) {
 	row, err = GetRow[S](ctx, pkValue, pkValues...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
