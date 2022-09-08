@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/domonda/go-sqldb"
@@ -58,11 +59,33 @@ func QueryValueOrDefault[T any](ctx context.Context, query string, args ...any) 
 	return value, err
 }
 
-// QueryStruct uses the passed pkValue+pkValues to query a table row
+// QueryRowStruct queries a row and scans it as struct.
+func QueryRowStruct[S ~struct{}](ctx context.Context, query string, args ...any) (row *S, err error) {
+	err = Conn(ctx).QueryRow(query, args...).ScanStruct(&row)
+	if err != nil {
+		return nil, err
+	}
+	return row, nil
+}
+
+// QueryRowStructOrNil queries a row and scans it as struct
+// or returns nil in case of sql.ErrNoRows.
+func QueryRowStructOrNil[S ~struct{}](ctx context.Context, query string, args ...any) (row *S, err error) {
+	err = Conn(ctx).QueryRow(query, args...).ScanStruct(&row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return row, nil
+}
+
+// GetRow uses the passed pkValue+pkValues to query a table row
 // and scan it into a struct of type S that must have tagged fields
 // with primary key flags to identify the primary key column names
 // for the passed pkValue+pkValues and a table name.
-func QueryStruct[S any](ctx context.Context, pkValue any, pkValues ...any) (row *S, err error) {
+func GetRow[S ~struct{}](ctx context.Context, pkValue any, pkValues ...any) (row *S, err error) {
 	// Using explicit first pkValue value
 	// to not be able to compile without any value
 	pkValues = append([]any{pkValue}, pkValues...)
@@ -78,25 +101,26 @@ func QueryStruct[S any](ctx context.Context, pkValue any, pkValues ...any) (row 
 	if len(pkColumns) != len(pkValues) {
 		return nil, fmt.Errorf("got %d primary key values, but struct %s has %d primary key fields", len(pkValues), t, len(pkColumns))
 	}
-	query := fmt.Sprintf(`SELECT * FROM %s WHERE "%s" = $1`, table, pkColumns[0])
+	var query strings.Builder
+	fmt.Fprintf(&query, `SELECT * FROM %s WHERE "%s" = $1`, table, pkColumns[0]) //#nosec G104
 	for i := 1; i < len(pkColumns); i++ {
-		query += fmt.Sprintf(` AND "%s" = $%d`, pkColumns[i], i+1)
+		fmt.Fprintf(&query, ` AND "%s" = $%d`, pkColumns[i], i+1) //#nosec G104
 	}
-	err = conn.QueryRow(query, pkValues...).ScanStruct(&row)
+	err = conn.QueryRow(query.String(), pkValues...).ScanStruct(&row)
 	if err != nil {
 		return nil, err
 	}
 	return row, nil
 }
 
-// QueryStructOrNil uses the passed pkValue+pkValues to query a table row
+// GetRowOrNil uses the passed pkValue+pkValues to query a table row
 // and scan it into a struct of type S that must have tagged fields
 // with primary key flags to identify the primary key column names
 // for the passed pkValue+pkValues and a table name.
 // Returns nil as row and error if no row could be found with the
 // passed pkValue+pkValues.
-func QueryStructOrNil[S any](ctx context.Context, pkValue any, pkValues ...any) (row *S, err error) {
-	row, err = QueryStruct[S](ctx, pkValue, pkValues...)
+func GetRowOrNil[S ~struct{}](ctx context.Context, pkValue any, pkValues ...any) (row *S, err error) {
+	row, err = GetRow[S](ctx, pkValue, pkValues...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
