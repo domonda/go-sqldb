@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html"
 	"net/http"
+	"sort"
 	"strings"
 	"text/template"
 
@@ -148,7 +149,7 @@ var RenderUUIDPrimaryKeyRefsHTML = http.HandlerFunc(func(writer http.ResponseWri
 	var (
 		title       string
 		mainContent any
-		style       = []string{StyleAllMonospace, StyleDefaultTable}
+		style       = []string{StyleAllMonospace, StyleDefaultTable, `<style>h1 {color:red}</style>`}
 	)
 	pk, err := uu.IDFromString(request.URL.Query().Get("pk"))
 	if err != nil {
@@ -159,7 +160,7 @@ var RenderUUIDPrimaryKeyRefsHTML = http.HandlerFunc(func(writer http.ResponseWri
 				<input type="submit" value="Look up"/>
 			</form>`
 	} else {
-		title = fmt.Sprintf("UUID %s", pk)
+		title = pk.String()
 		ctx := request.Context()
 		cols, err := GetPrimaryKeyColumnsOfType(ctx, "uuid")
 		if err != nil {
@@ -171,6 +172,9 @@ var RenderUUIDPrimaryKeyRefsHTML = http.HandlerFunc(func(writer http.ResponseWri
 			http.Error(writer, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		sort.SliceStable(tableRows, func(i, j int) bool {
+			return !tableRows[i].ForeignKey && tableRows[j].ForeignKey
+		})
 		var b strings.Builder
 		for _, tableRow := range tableRows { //#nosec
 			fmt.Fprintf(&b, "<h3>%s</h3>", html.EscapeString(tableRow.Table))
@@ -180,7 +184,11 @@ var RenderUUIDPrimaryKeyRefsHTML = http.HandlerFunc(func(writer http.ResponseWri
 				id, err := uu.IDFromString(val)
 				if err == nil {
 					if id == pk {
-						fmt.Fprintf(&b, "<tr><td>%s</td><td><b>%s</b></td></tr>", html.EscapeString(title), id)
+						var fk string
+						if tableRow.ForeignKey {
+							fk = " (foreign key)"
+						}
+						fmt.Fprintf(&b, "<tr><td>%s</td><td><b style='color:red'>%s</b>%s</td></tr>", html.EscapeString(title), id, fk)
 					} else {
 						fmt.Fprintf(&b, "<tr><td>%[1]s</td><td><a href='.?pk=%[2]s'>%[2]s</a></td></tr>", html.EscapeString(title), id)
 					}
