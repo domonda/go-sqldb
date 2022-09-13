@@ -17,9 +17,10 @@ import (
 )
 
 type PrimaryKeyColumn struct {
-	Table  string `db:"table"`
-	Column string `db:"column"`
-	Type   string `db:"type"`
+	Table      string `db:"table"`
+	Column     string `db:"column"`
+	Type       string `db:"type"`
+	ForeignKey bool   `db:"foreign_key"`
 }
 
 func GetPrimaryKeyColumns(ctx context.Context) (cols []PrimaryKeyColumn, err error) {
@@ -29,7 +30,18 @@ func GetPrimaryKeyColumns(ctx context.Context) (cols []PrimaryKeyColumn, err err
 		select
 			tc.table_schema||'.'||tc.table_name as "table",
 			kc.column_name                      as "column",
-			col.data_type                       as "type"
+			col.data_type                       as "type",
+			(select exists(
+				select from information_schema.table_constraints as fk_tc
+				inner join information_schema.key_column_usage as fk_kc
+					on fk_kc.table_schema = fk_tc.table_schema
+					and fk_kc.table_name = fk_tc.table_name
+					and fk_kc.constraint_name = fk_tc.constraint_name
+				where fk_tc.constraint_type = 'FOREIGN KEY'
+					and fk_tc.table_schema = tc.table_schema
+					and fk_tc.table_name = tc.table_name
+					and fk_kc.column_name = kc.column_name
+			)) as "foreign_key"
 		from information_schema.table_constraints as tc
 		inner join information_schema.key_column_usage as kc
 			on kc.table_schema = tc.table_schema
@@ -43,8 +55,7 @@ func GetPrimaryKeyColumns(ctx context.Context) (cols []PrimaryKeyColumn, err err
 			and kc.ordinal_position is not null
 		order by
 			tc.table_schema,
-			tc.table_name,
-			kc.position_in_unique_constraint`,
+			tc.table_name`,
 	).ScanStructSlice(&cols)
 	if err != nil {
 		return nil, err
@@ -59,7 +70,18 @@ func GetPrimaryKeyColumnsOfType(ctx context.Context, pkType string) (cols []Prim
 		select
 			tc.table_schema||'.'||tc.table_name as "table",
 			kc.column_name                      as "column",
-			col.data_type                       as "type"
+			col.data_type                       as "type",
+			(select exists(
+				select from information_schema.table_constraints as fk_tc
+				inner join information_schema.key_column_usage as fk_kc
+					on fk_kc.table_schema = fk_tc.table_schema
+					and fk_kc.table_name = fk_tc.table_name
+					and fk_kc.constraint_name = fk_tc.constraint_name
+				where fk_tc.constraint_type = 'FOREIGN KEY'
+					and fk_tc.table_schema = tc.table_schema
+					and fk_tc.table_name = tc.table_name
+					and fk_kc.column_name = kc.column_name
+			)) as "foreign_key"
 		from information_schema.table_constraints as tc
 		inner join information_schema.key_column_usage as kc
 			on kc.table_schema = tc.table_schema
@@ -74,8 +96,7 @@ func GetPrimaryKeyColumnsOfType(ctx context.Context, pkType string) (cols []Prim
 			and col.data_type = $1
 		order by
 			tc.table_schema,
-			tc.table_name,
-			kc.position_in_unique_constraint`,
+			tc.table_name`,
 		pkType,
 	).ScanStructSlice(&cols)
 	if err != nil {
