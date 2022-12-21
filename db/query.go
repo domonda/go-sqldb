@@ -47,9 +47,8 @@ func QueryValue[T any](ctx context.Context, query string, args ...any) (value T,
 
 // QueryValueOr queries a single value of type T
 // or returns the passed defaultValue in case of sql.ErrNoRows.
-func QueryValueOr[T any](ctx context.Context, defaultValue T, query string, args ...any) (T, error) {
-	var value T
-	err := Conn(ctx).QueryRow(query, args...).Scan(&value)
+func QueryValueOr[T any](ctx context.Context, defaultValue T, query string, args ...any) (value T, err error) {
+	err = Conn(ctx).QueryRow(query, args...).Scan(&value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return defaultValue, nil
