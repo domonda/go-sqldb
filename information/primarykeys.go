@@ -176,6 +176,7 @@ var RenderUUIDPrimaryKeyRefsHTML = http.HandlerFunc(func(writer http.ResponseWri
 			return !tableRows[i].ForeignKey && tableRows[j].ForeignKey
 		})
 		var b strings.Builder
+		fmt.Fprintf(&b, "<h2><button onclick='navigator.clipboard.writeText(%q)'>Copy UUID</button></h2>", pk)
 		for _, tableRow := range tableRows { //#nosec
 			fmt.Fprintf(&b, "<h3>%s</h3>", html.EscapeString(tableRow.Table))
 			fmt.Fprintf(&b, "<table>")
