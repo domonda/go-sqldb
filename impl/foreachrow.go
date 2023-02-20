@@ -15,6 +15,7 @@ var (
 	typeOfContext    = reflect.TypeOf((*context.Context)(nil)).Elem()
 	typeOfSQLScanner = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
 	typeOfTime       = reflect.TypeOf(time.Time{})
+	typeOfByteSlice  = reflect.TypeOf((*[]byte)(nil)).Elem()
 )
 
 // ForEachRowCallFunc will call the passed callback with scanned values or a struct for every row.

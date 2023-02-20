@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/lib/pq"
 	"golang.org/x/exp/slices"
 
 	"github.com/domonda/go-sqldb"
@@ -73,12 +74,10 @@ func ReflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFiel
 }
 
 func reflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFieldMapper, columns []string, pointers []any) error {
-	var (
-		structType = structVal.Type()
-	)
+	structType := structVal.Type()
 	for i := 0; i < structType.NumField(); i++ {
-		fieldType := structType.Field(i)
-		_, column, _, use := namer.MapStructField(fieldType)
+		field := structType.Field(i)
+		_, column, _, use := namer.MapStructField(field)
 		if !use {
 			continue
 		}
@@ -99,10 +98,16 @@ func reflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFiel
 		}
 
 		if pointers[colIndex] != nil {
-			return fmt.Errorf("duplicate mapped column %s onto field %s of struct %s", column, fieldType.Name, structType)
+			return fmt.Errorf("duplicate mapped column %s onto field %s of struct %s", column, field.Name, structType)
 		}
 
-		pointers[colIndex] = fieldValue.Addr().Interface()
+		pointer := fieldValue.Addr().Interface()
+		// If field is a slice or array that does not implement sql.Scanner
+		// then wrap it with pq.Array to make it scannable
+		if k := field.Type.Kind(); (k == reflect.Slice || k == reflect.Array) && field.Type != typeOfByteSlice && !fieldValue.Addr().Type().Implements(typeOfSQLScanner) {
+			pointer = pq.Array(pointer)
+		}
+		pointers[colIndex] = pointer
 	}
 	return nil
 }
