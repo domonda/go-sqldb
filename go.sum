@@ -1,12 +1,12 @@
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/domonda/go-errs v0.0.0-20221201115330-819262069697 h1:Z7QBf0irXHMZSuuex53IyyXHlGc48s/wDAoETz4FyBU=
-github.com/domonda/go-errs v0.0.0-20221201115330-819262069697/go.mod h1:WvIoE59Dfs0hhB2GYSlwowlBr2WWGXf/F74bg6HWUpQ=
+github.com/domonda/go-errs v0.0.0-20230207132857-bf0bda36a13a h1:5AcAgYGu1ayZP1+V8W8+CFxCh8Si5u82Xp9mKArFNss=
+github.com/domonda/go-errs v0.0.0-20230207132857-bf0bda36a13a/go.mod h1:r9rjz9Xo8n4hNV3M47CY5quNOLBlNYuzBVC4Qk2JDOY=
 github.com/domonda/go-pretty v0.0.0-20220317123925-dd9e6bef129a h1:6/Is0KGl5Ot3E8ZLAgAFWYiSRdU+3t3jL38+5yIlCV4=
 github.com/domonda/go-pretty v0.0.0-20220317123925-dd9e6bef129a/go.mod h1:3QkM8UJdyJMeKZiIo7hYzSkQBpRS3k0gOHw4ysyEIB4=
-github.com/domonda/go-types v0.0.0-20230123091716-ceb113bdba48 h1:vfjPQCCnspQRMdb31fKHBG+/2Qst2vVJGjUiBufecPE=
-github.com/domonda/go-types v0.0.0-20230123091716-ceb113bdba48/go.mod h1:OCpuKQfcYEWr4D7Z+1aBLO5NvGoRRZytOcvjFs/KJOg=
+github.com/domonda/go-types v0.0.0-20230218120848-a48cfd6869c1 h1:vtdhc3dr8UHodWjGha2pkyRFzfEqvZ+7LK2A3XSWit4=
+github.com/domonda/go-types v0.0.0-20230218120848-a48cfd6869c1/go.mod h1:oZMN5kztmvCTnoaBA2BWOkcMHhp3lggOwp8Xp3V7kRs=
 github.com/go-sql-driver/mysql v1.7.0 h1:ueSltNNllEqE3qcWBTD0iQd3IpL/6U+mJxLkazJ7YPc=
 github.com/go-sql-driver/mysql v1.7.0/go.mod h1:OXbVy3sEdcQ2Doequ6Z5BW6fXNQTmx+9S1MCJN5yJMI=
 github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=
@@ -29,8 +29,8 @@ github.com/stretchr/testify v1.8.1 h1:w7B6lhMri9wdJUVmEZPGGhZzrYTPvgJArz7wNPgYKs
 github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
 github.com/ungerik/go-reflection v0.0.0-20220113085621-6c5fc1f2694a h1:9vfYtqoyrPw08TbSLxkSXEflp6iXa3RL86Qjs+DrVas=
 github.com/ungerik/go-reflection v0.0.0-20220113085621-6c5fc1f2694a/go.mod h1:6Hnd2/4g3Tpt6TjvxHx8wXOZziwApVxRdIGkr7vNpXs=
-golang.org/x/exp v0.0.0-20230118134722-a68e582fa157 h1:fiNkyhJPUvxbRPbCqY/D9qdjmPzfHcpK3P4bM4gioSY=
-golang.org/x/exp v0.0.0-20230118134722-a68e582fa157/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
+golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb h1:PaBZQdo+iSDyHT053FjUCgZQ/9uqVwPOcl7KSWhKn6w=
+golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb/go.mod h1:CxIveKay+FTh1D0yPZemJVgC/95VzuuOLq5Qi4xnoYc=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 h1:qIbj1fsPNlZgppZ+VLlY7N33q108Sa+fhmuc+sWQYwY=
 gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=

@@ -3,12 +3,12 @@ module github.com/domonda/go-sqldb
 go 1.19
 
 require (
-	github.com/domonda/go-errs v0.0.0-20221201115330-819262069697
-	github.com/domonda/go-types v0.0.0-20230123091716-ceb113bdba48
+	github.com/domonda/go-errs v0.0.0-20230207132857-bf0bda36a13a
+	github.com/domonda/go-types v0.0.0-20230218120848-a48cfd6869c1
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/lib/pq v1.10.7
 	github.com/stretchr/testify v1.8.1
-	golang.org/x/exp v0.0.0-20230118134722-a68e582fa157
+	golang.org/x/exp v0.0.0-20230213192124-5e25df0256eb
 )
 
 require (
