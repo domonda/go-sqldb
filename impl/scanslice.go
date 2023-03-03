@@ -99,7 +99,7 @@ func (a *SliceScanner) scanString(src string) error {
 		return err
 	}
 	if len(elems) == 0 {
-		a.destSlice.Set(reflect.Zero(a.destSlice.Type()))
+		a.destSlice.SetZero()
 		return nil
 	}
 	elemType := a.destSlice.Type().Elem()
@@ -128,7 +128,7 @@ func ScanValue(src any, dest reflect.Value) error {
 		if src != nil {
 			dest.Set(reflect.ValueOf(src))
 		} else {
-			dest.Set(reflect.Zero(dest.Type()))
+			dest.SetZero()
 		}
 		return nil
 	}
@@ -197,7 +197,7 @@ func ScanValue(src any, dest reflect.Value) error {
 	case nil:
 		switch dest.Kind() {
 		case reflect.Ptr, reflect.Slice, reflect.Map:
-			dest.Set(reflect.Zero(dest.Type()))
+			dest.SetZero()
 			return nil
 		}
 	}
