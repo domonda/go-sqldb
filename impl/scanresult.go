@@ -11,20 +11,23 @@ func ScanValues(src Row) ([]any, error) {
 		return nil, err
 	}
 	var (
-		anys = make([]sqldb.AnyValue, len(cols))
-		vals = make([]any, len(cols))
+		anys   = make([]sqldb.AnyValue, len(cols))
+		result = make([]any, len(cols))
 	)
-	for i := range vals {
-		vals[i] = &anys[i]
+	// result elements hold pointer to sqldb.AnyValue for scanning
+	for i := range result {
+		result[i] = &anys[i]
 	}
-	err = src.Scan(vals...)
+	err = src.Scan(result...)
 	if err != nil {
 		return nil, err
 	}
-	for i := range vals {
-		vals[i] = anys[i].Val
+	// don't return pointers to sqldb.AnyValue
+	// but what internal value has been scanned
+	for i := range result {
+		result[i] = anys[i].Val
 	}
-	return vals, nil
+	return result, nil
 }
 
 // ScanStrings scans the values of a row as strings.
@@ -37,15 +40,15 @@ func ScanStrings(src Row) ([]string, error) {
 		return nil, err
 	}
 	var (
-		strs = make([]string, len(cols))
-		args = make([]any, len(cols))
+		result     = make([]string, len(cols))
+		resultPtrs = make([]any, len(cols))
 	)
-	for i := range args {
-		args[i] = (*sqldb.StringScannable)(&strs[i])
+	for i := range resultPtrs {
+		resultPtrs[i] = (*sqldb.StringScannable)(&result[i])
 	}
-	err = src.Scan(args...)
+	err = src.Scan(resultPtrs...)
 	if err != nil {
 		return nil, err
 	}
-	return strs, nil
+	return result, nil
 }
