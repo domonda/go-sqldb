@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/lib/pq"
 	"golang.org/x/exp/slices"
 
 	"github.com/domonda/go-sqldb"
@@ -104,27 +103,13 @@ func reflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFiel
 		pointer := fieldValue.Addr().Interface()
 		// If field is a slice or array that does not implement sql.Scanner
 		// and it's not a string scannable []byte type underneath
-		// then wrap it with pq.Array to make it scannable
-		if shouldWrapArray(fieldValue) {
-			pointer = pq.Array(pointer)
+		// then wrap it with WrapForArray to make it scannable
+		if ShouldWrapForArray(fieldValue) {
+			pointer = WrapForArray(pointer)
 		}
 		pointers[colIndex] = pointer
 	}
 	return nil
-}
-
-func shouldWrapArray(v reflect.Value) bool {
-	t := v.Type()
-	switch t.Kind() {
-	case reflect.Slice:
-		if t.Elem() == typeOfByte {
-			return false // Byte slices are scanned as strings
-		}
-		return !v.Addr().Type().Implements(typeOfSQLScanner)
-	case reflect.Array:
-		return !v.Addr().Type().Implements(typeOfSQLScanner)
-	}
-	return false
 }
 
 func ignoreColumn(filters []sqldb.ColumnFilter, name string, flags sqldb.FieldFlag, fieldType reflect.StructField, fieldValue reflect.Value) bool {

@@ -9,7 +9,7 @@ import (
 	"github.com/domonda/go-types/nullable"
 )
 
-func Test_shouldWrapArray(t *testing.T) {
+func TestShouldWrapForArray(t *testing.T) {
 	tests := []struct {
 		v    reflect.Value
 		want bool
@@ -27,7 +27,7 @@ func Test_shouldWrapArray(t *testing.T) {
 		{v: reflect.ValueOf(new([]sql.NullString)).Elem(), want: true},
 	}
 	for _, tt := range tests {
-		if got := shouldWrapArray(tt.v); got != tt.want {
+		if got := ShouldWrapForArray(tt.v); got != tt.want {
 			t.Errorf("shouldWrapArray() = %v, want %v", got, tt.want)
 		}
 	}
