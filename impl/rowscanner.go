@@ -2,6 +2,7 @@ package impl
 
 import (
 	"database/sql"
+	"errors"
 
 	sqldb "github.com/domonda/go-sqldb"
 )
@@ -27,7 +28,7 @@ func NewRowScanner(rows Rows, structFieldNamer sqldb.StructFieldMapper, query, a
 
 func (s *RowScanner) Scan(dest ...any) (err error) {
 	defer func() {
-		err = combineErrors(err, s.rows.Close())
+		err = errors.Join(err, s.rows.Close())
 		err = WrapNonNilErrorWithQuery(err, s.query, s.argFmt, s.args)
 	}()
 
@@ -46,7 +47,7 @@ func (s *RowScanner) Scan(dest ...any) (err error) {
 
 func (s *RowScanner) ScanStruct(dest any) (err error) {
 	defer func() {
-		err = combineErrors(err, s.rows.Close())
+		err = errors.Join(err, s.rows.Close())
 		err = WrapNonNilErrorWithQuery(err, s.query, s.argFmt, s.args)
 	}()
 
