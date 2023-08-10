@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -163,11 +164,11 @@ func (conn *transaction) Rollback() error {
 }
 
 func (conn *transaction) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
-	return fmt.Errorf("notifications %w", sqldb.ErrNotSupported)
+	return fmt.Errorf("notifications %w", errors.ErrUnsupported)
 }
 
 func (conn *transaction) UnlistenChannel(channel string) (err error) {
-	return fmt.Errorf("notifications %w", sqldb.ErrNotSupported)
+	return fmt.Errorf("notifications %w", errors.ErrUnsupported)
 }
 
 func (conn *transaction) IsListeningOnChannel(channel string) bool {

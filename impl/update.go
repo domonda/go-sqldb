@@ -3,10 +3,10 @@ package impl
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 
 	sqldb "github.com/domonda/go-sqldb"
-	"golang.org/x/exp/slices"
 )
 
 // Update table rows(s) with values using the where statement with passed in args starting at $1.

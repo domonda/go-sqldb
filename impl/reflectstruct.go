@@ -4,9 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
-
-	"golang.org/x/exp/slices"
 
 	"github.com/domonda/go-sqldb"
 )

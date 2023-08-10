@@ -3,10 +3,10 @@ package impl
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 
-	sqldb "github.com/domonda/go-sqldb"
-	"golang.org/x/exp/slices"
+	"github.com/domonda/go-sqldb"
 )
 
 // UpsertStruct upserts a row to table using the exported fields

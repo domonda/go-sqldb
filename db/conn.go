@@ -2,8 +2,6 @@ package db
 
 import (
 	"context"
-	"fmt"
-	"time"
 
 	"github.com/domonda/go-sqldb"
 )
@@ -47,22 +45,3 @@ func ConnDefault(ctx context.Context, defaultConn sqldb.Connection) sqldb.Connec
 func ContextWithConn(ctx context.Context, conn sqldb.Connection) context.Context {
 	return context.WithValue(ctx, &globalConnCtxKey, conn)
 }
-
-// ContextWithoutCancel returns a new context that inherits
-// all values from parent, but not its cancellation state.
-func ContextWithoutCancel(parent context.Context) context.Context {
-	if _, ok := parent.(contextWithoutCancel); ok {
-		return parent
-	}
-	return contextWithoutCancel{parent}
-}
-
-type contextWithoutCancel struct {
-	parent context.Context
-}
-
-func (contextWithoutCancel) Deadline() (time.Time, bool) { return time.Time{}, false }
-func (contextWithoutCancel) Done() <-chan struct{}       { return nil }
-func (contextWithoutCancel) Err() error                  { return nil }
-func (c contextWithoutCancel) Value(key any) any         { return c.parent.Value(key) }
-func (c contextWithoutCancel) String() string            { return fmt.Sprintf("%s.WithoutCancel", c.parent) }
