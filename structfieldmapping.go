@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"unicode"
+
+	"github.com/domonda/go-types/strutil"
 )
 
 // FieldFlag is a bitmask for special properties
@@ -58,6 +59,9 @@ func NewTaggedStructFieldMapping() *TaggedStructFieldMapping {
 // using "db" as NameTag and IgnoreStructField as UntaggedNameFunc.
 // Implements StructFieldMapper.
 var DefaultStructFieldMapping = NewTaggedStructFieldMapping()
+
+// TaggedStructFieldMapping implements StructFieldMapper
+var _ StructFieldMapper = new(TaggedStructFieldMapping)
 
 // TaggedStructFieldMapping implements StructFieldMapper with a struct field NameTag
 // to be used for naming and a UntaggedNameFunc in case the NameTag is not set.
@@ -141,18 +145,6 @@ func IgnoreStructField(string) string { return "" }
 // ToSnakeCase converts s to snake case
 // by lower casing everything and inserting '_'
 // before every new upper case character in s.
-func ToSnakeCase(s string) string {
-	var b strings.Builder
-	b.Grow(len(s) + 2)
-	lastWasUpper := true
-	for _, r := range s {
-		lr := unicode.ToLower(r)
-		isUpper := lr != r
-		if isUpper && !lastWasUpper {
-			b.WriteByte('_')
-		}
-		b.WriteRune(lr)
-		lastWasUpper = isUpper
-	}
-	return b.String()
-}
+// Whitespace, symbol, and punctuation characters
+// will be replace by '_'.
+var ToSnakeCase = strutil.ToSnakeCase
