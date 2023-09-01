@@ -80,12 +80,23 @@ func IsExclusionViolation(err error) bool {
 
 // Class P0 — PL/pgSQL Error
 
-func IsPlpgsqlError(err error) bool {
+func IsPLPGSQLError(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "P0000" // plpgsql_error
+	return errors.As(err, &e) && e.Code == "P0000"
 }
 
-func IsRaiseException(err error) bool {
+func IsRaisedException(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "P0001" // raise_exception
+	return errors.As(err, &e) && e.Code == "P0001"
+}
+
+// GetRaisedException returns the message
+// of an PL/pgSQL exception or and empty string
+// if the error is nil or not an exception.
+func GetRaisedException(err error) string {
+	var e *pq.Error
+	if errors.As(err, &e) && e.Code == "P0001" {
+		return e.Message
+	}
+	return ""
 }
