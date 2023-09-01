@@ -55,6 +55,107 @@ const (
 	ErrNotWithinTransaction sentinelError = "not within a transaction"
 )
 
+type ErrIntegrityConstraintViolation struct {
+	Constraint string
+}
+
+func (e ErrIntegrityConstraintViolation) Error() string {
+	if e.Constraint == "" {
+		return "integrity constraint violation"
+	}
+	return "integrity constraint violation of constraint: " + e.Constraint
+}
+
+type ErrRestrictViolation struct {
+	Constraint string
+}
+
+func (e ErrRestrictViolation) Error() string {
+	if e.Constraint == "" {
+		return "restrict violation"
+	}
+	return "restrict violation of constraint: " + e.Constraint
+}
+
+func (e ErrRestrictViolation) Unwrap() error {
+	return ErrIntegrityConstraintViolation{Constraint: e.Constraint}
+}
+
+type ErrNotNullViolation struct {
+	Constraint string
+}
+
+func (e ErrNotNullViolation) Error() string {
+	if e.Constraint == "" {
+		return "not null violation"
+	}
+	return "not null violation of constraint: " + e.Constraint
+}
+
+func (e ErrNotNullViolation) Unwrap() error {
+	return ErrIntegrityConstraintViolation{Constraint: e.Constraint}
+}
+
+type ErrForeignKeyViolation struct {
+	Constraint string
+}
+
+func (e ErrForeignKeyViolation) Error() string {
+	if e.Constraint == "" {
+		return "foreign key violation"
+	}
+	return "foreign key violation of constraint: " + e.Constraint
+}
+
+func (e ErrForeignKeyViolation) Unwrap() error {
+	return ErrIntegrityConstraintViolation{Constraint: e.Constraint}
+}
+
+type ErrUniqueViolation struct {
+	Constraint string
+}
+
+func (e ErrUniqueViolation) Error() string {
+	if e.Constraint == "" {
+		return "unique violation"
+	}
+	return "unique violation of constraint: " + e.Constraint
+}
+
+func (e ErrUniqueViolation) Unwrap() error {
+	return ErrIntegrityConstraintViolation{Constraint: e.Constraint}
+}
+
+type ErrCheckViolation struct {
+	Constraint string
+}
+
+func (e ErrCheckViolation) Error() string {
+	if e.Constraint == "" {
+		return "check violation"
+	}
+	return "check violation of constraint: " + e.Constraint
+}
+
+func (e ErrCheckViolation) Unwrap() error {
+	return ErrIntegrityConstraintViolation{Constraint: e.Constraint}
+}
+
+type ErrExclusionViolation struct {
+	Constraint string
+}
+
+func (e ErrExclusionViolation) Error() string {
+	if e.Constraint == "" {
+		return "exclusion violation"
+	}
+	return "exclusion violation of constraint: " + e.Constraint
+}
+
+func (e ErrExclusionViolation) Unwrap() error {
+	return ErrIntegrityConstraintViolation{Constraint: e.Constraint}
+}
+
 // ConnectionWithError
 
 // ConnectionWithError returns a dummy Connection

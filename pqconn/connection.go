@@ -108,15 +108,16 @@ func (conn *connection) Now() (time.Time, error) {
 
 func (conn *connection) Exec(query string, args ...any) error {
 	_, err := conn.db.ExecContext(conn.ctx, query, args...)
-	return impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
+	return wrapError(err, query, argFmt, args)
 }
 
 func (conn *connection) Insert(table string, columValues sqldb.Values) error {
-	return impl.Insert(conn, table, argFmt, columValues)
+	return WrapKnownErrors(impl.Insert(conn, table, argFmt, columValues))
 }
 
 func (conn *connection) InsertUnique(table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
-	return impl.InsertUnique(conn, table, argFmt, values, onConflict)
+	inserted, err = impl.InsertUnique(conn, table, argFmt, values, onConflict)
+	return inserted, WrapKnownErrors(err)
 }
 
 func (conn *connection) InsertReturning(table string, values sqldb.Values, returning string) sqldb.RowScanner {
@@ -124,14 +125,15 @@ func (conn *connection) InsertReturning(table string, values sqldb.Values, retur
 }
 
 func (conn *connection) InsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns)
+	return WrapKnownErrors(impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns))
 }
 
 func (conn *connection) InsertStructs(table string, rowStructs any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.InsertStructs(conn, table, rowStructs, ignoreColumns...)
+	return WrapKnownErrors(impl.InsertStructs(conn, table, rowStructs, ignoreColumns...))
 }
 
 func (conn *connection) InsertUniqueStruct(table string, rowStruct any, onConflict string, ignoreColumns ...sqldb.ColumnFilter) (inserted bool, err error) {
+	// TODO more error wrapping
 	return impl.InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, argFmt, ignoreColumns)
 }
 
@@ -158,7 +160,7 @@ func (conn *connection) UpsertStruct(table string, rowStruct any, ignoreColumns 
 func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
 	if err != nil {
-		err = impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
+		err = wrapError(err, query, argFmt, args)
 		return sqldb.RowScannerWithError(err)
 	}
 	return impl.NewRowScanner(rows, conn.structFieldNamer, query, argFmt, args)
@@ -167,7 +169,7 @@ func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
 func (conn *connection) QueryRows(query string, args ...any) sqldb.RowsScanner {
 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
 	if err != nil {
-		err = impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
+		err = wrapError(err, query, argFmt, args)
 		return sqldb.RowsScannerWithError(err)
 	}
 	return impl.NewRowsScanner(conn.ctx, rows, conn.structFieldNamer, query, argFmt, args)

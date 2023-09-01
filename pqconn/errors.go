@@ -4,8 +4,37 @@ import (
 	"errors"
 	"slices"
 
+	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/impl"
 	"github.com/lib/pq"
 )
+
+func wrapError(err error, query, argFmt string, args []any) error {
+	return impl.WrapNonNilErrorWithQuery(WrapKnownErrors(err), query, argFmt, args)
+}
+
+func WrapKnownErrors(err error) error {
+	var e *pq.Error
+	if errors.As(err, &e) {
+		switch e.Code {
+		case "23000":
+			return errors.Join(sqldb.ErrIntegrityConstraintViolation{Constraint: e.Constraint}, err)
+		case "23001":
+			return errors.Join(sqldb.ErrRestrictViolation{Constraint: e.Constraint}, err)
+		case "23502":
+			return errors.Join(sqldb.ErrNotNullViolation{Constraint: e.Constraint}, err)
+		case "23503":
+			return errors.Join(sqldb.ErrForeignKeyViolation{Constraint: e.Constraint}, err)
+		case "23505":
+			return errors.Join(sqldb.ErrUniqueViolation{Constraint: e.Constraint}, err)
+		case "23514":
+			return errors.Join(sqldb.ErrCheckViolation{Constraint: e.Constraint}, err)
+		case "23P01":
+			return errors.Join(sqldb.ErrExclusionViolation{Constraint: e.Constraint}, err)
+		}
+	}
+	return err
+}
 
 // Class 23 — Integrity Constraint Violation
 
