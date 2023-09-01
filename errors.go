@@ -53,7 +53,17 @@ const (
 	// that are are only allowed within DB transactions
 	// when the DB connection is not a transaction.
 	ErrNotWithinTransaction sentinelError = "not within a transaction"
+
+	ErrNullValueNotAllowed sentinelError = "null value not allowed"
 )
+
+type ErrRaisedException struct {
+	Message string
+}
+
+func (e ErrRaisedException) Error() string {
+	return "raised exception: " + e.Message
+}
 
 type ErrIntegrityConstraintViolation struct {
 	Constraint string

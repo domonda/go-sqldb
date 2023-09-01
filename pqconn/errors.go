@@ -17,6 +17,8 @@ func WrapKnownErrors(err error) error {
 	var e *pq.Error
 	if errors.As(err, &e) {
 		switch e.Code {
+		case "22004":
+			return errors.Join(sqldb.ErrNullValueNotAllowed, err)
 		case "23000":
 			return errors.Join(sqldb.ErrIntegrityConstraintViolation{Constraint: e.Constraint}, err)
 		case "23001":
@@ -31,6 +33,8 @@ func WrapKnownErrors(err error) error {
 			return errors.Join(sqldb.ErrCheckViolation{Constraint: e.Constraint}, err)
 		case "23P01":
 			return errors.Join(sqldb.ErrExclusionViolation{Constraint: e.Constraint}, err)
+		case "P0001":
+			return errors.Join(sqldb.ErrRaisedException{Message: e.Message}, err)
 		}
 	}
 	return err
