@@ -1,6 +1,7 @@
 package pqconn
 
 import (
+	"context"
 	"errors"
 	"slices"
 
@@ -31,6 +32,8 @@ func WrapKnownErrors(err error) error {
 			return errors.Join(sqldb.ErrUniqueViolation{Constraint: e.Constraint}, err)
 		case "23514":
 			return errors.Join(sqldb.ErrCheckViolation{Constraint: e.Constraint}, err)
+		case "57014":
+			return errors.Join(context.Canceled, err)
 		case "23P01":
 			return errors.Join(sqldb.ErrExclusionViolation{Constraint: e.Constraint}, err)
 		case "P0001":
@@ -42,9 +45,9 @@ func WrapKnownErrors(err error) error {
 
 // Class 23 — Integrity Constraint Violation
 
-func IsIntegrityConstraintViolation(err error) bool {
+func IsIntegrityConstraintViolationClass(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "23000" // integrity_constraint_violation
+	return errors.As(err, &e) && e.Code.Class() == "23"
 }
 
 func IsRestrictViolation(err error) bool {
@@ -78,11 +81,22 @@ func IsExclusionViolation(err error) bool {
 	return errors.As(err, &e) && e.Code == "23P01" // exclusion_violation
 }
 
+// Class 57 - Operator Intervention
+
+// IsQueryCanceled indicates if the passed error
+// was caused by a user cancellation of a query.
+// The pq error might not unwrap to context.Canceled
+// even when it was caused by a context cancellation.
+func IsQueryCanceled(err error) bool {
+	var e *pq.Error
+	return errors.As(err, &e) && e.Code == "57014"
+}
+
 // Class P0 — PL/pgSQL Error
 
-func IsPLPGSQLError(err error) bool {
+func IsPLPGSQLErrorClass(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "P0000"
+	return errors.As(err, &e) && e.Code.Class() == "P0"
 }
 
 func IsRaisedException(err error) bool {
