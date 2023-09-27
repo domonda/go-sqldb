@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"slices"
 	"strconv"
 	"time"
 
@@ -94,7 +95,7 @@ func convertAssign(dest, src any) error {
 			if d == nil {
 				return errNilPtr
 			}
-			*d = append((*d)[:0], s...)
+			*d = sql.RawBytes(s)
 			return nil
 		}
 	case []byte:
@@ -109,19 +110,19 @@ func convertAssign(dest, src any) error {
 			if d == nil {
 				return errNilPtr
 			}
-			*d = cloneBytes(s)
+			*d = slices.Clone(s)
 			return nil
 		case *[]byte:
 			if d == nil {
 				return errNilPtr
 			}
-			*d = cloneBytes(s)
+			*d = slices.Clone(s)
 			return nil
 		case *sql.RawBytes:
 			if d == nil {
 				return errNilPtr
 			}
-			*d = s
+			*d = slices.Clone(s)
 			return nil
 		}
 	case time.Time:
@@ -229,7 +230,7 @@ func convertAssign(dest, src any) error {
 	if sv.IsValid() && sv.Type().AssignableTo(dv.Type()) {
 		switch b := src.(type) {
 		case []byte:
-			dv.Set(reflect.ValueOf(cloneBytes(b)))
+			dv.Set(reflect.ValueOf(slices.Clone(b)))
 		default:
 			dv.Set(sv)
 		}
@@ -312,15 +313,6 @@ func strconvErr(err error) error {
 		return ne.Err
 	}
 	return err
-}
-
-func cloneBytes(b []byte) []byte {
-	if b == nil {
-		return nil
-	}
-	c := make([]byte, len(b))
-	copy(c, b)
-	return c
 }
 
 func asString(src any) string {
