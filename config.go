@@ -48,8 +48,7 @@ type Config struct {
 	// If ConnMaxLifetime <= 0, connections are not closed due to a connection's age.
 	ConnMaxLifetime time.Duration `json:"connMaxLifetime,omitempty"`
 
-	DefaultIsolationLevel sql.IsolationLevel `json:"-"`
-	Err                   error              `json:"-"`
+	Err error `json:"-"`
 }
 
 // Validate returns Config.Err if it is not nil

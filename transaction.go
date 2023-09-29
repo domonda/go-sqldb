@@ -1,6 +1,7 @@
 package sqldb
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -9,13 +10,53 @@ import (
 
 var txCounter atomic.Uint64
 
-// NextTransactionNo returns the next globally unique number
+// NextTxNumber returns the next globally unique number
 // for a new transaction in a threadsafe way.
 //
-// Use Connection.TransactionNo() to get the number
+// Use Connection.TxNumber() to get the number
 // from a transaction connection.
-func NextTransactionNo() uint64 {
+func NextTxNumber() uint64 {
 	return txCounter.Add(1)
+}
+
+// TxConnection is a connection that supports transactions.
+//
+// This does not mean that every TxConnection represents
+// a separate connection for an active transaction,
+// only if it was returned for a new transaction by
+// the Begin method.
+type TxConnection interface {
+	Connection
+
+	// TxNumber returns the globally unique number of the transaction
+	// or zero if the connection is not a transaction.
+	// Implementations should use the package function NextTxNumber
+	// to aquire a new number in a threadsafe way.
+	TxNumber() uint64
+
+	// TxOptions returns the sql.TxOptions of the
+	// current transaction and true as second result value,
+	// or false if the connection is not a transaction.
+	TxOptions() (*sql.TxOptions, bool)
+
+	// Begin a new transaction.
+	// If the connection is already a transaction then a brand
+	// new transaction will begin on the parent's connection.
+	// The passed no will be returnd from the transaction's
+	// Connection.TxNumber method.
+	// Implementations should use the package function NextTxNumber
+	// to aquire a new number in a threadsafe way.
+	Begin(ctx context.Context, opts *sql.TxOptions, no uint64) (TxConnection, error)
+
+	// Commit the current transaction.
+	// Returns ErrNotWithinTransaction if the connection
+	// is not within a transaction.
+	Commit() error
+
+	// Rollback the current transaction.
+	// Returns ErrNotWithinTransaction if the connection
+	// is not within a transaction.
+	Rollback() error
 }
 
 // Transaction executes txFunc within a database transaction that is passed in to txFunc as tx Connection.
@@ -26,15 +67,21 @@ func NextTransactionNo() uint64 {
 // are stricter than the options of the parent transaction.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
 // Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
-func Transaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Connection) error) (err error) {
-	if parentOpts, parentIsTx := parentConn.TransactionOptions(); parentIsTx {
-		err = CheckTxOptionsCompatibility(parentOpts, opts, parentConn.Config().DefaultIsolationLevel)
+func Transaction(ctx context.Context, parentConn TxConnection, opts *sql.TxOptions, txFunc func(tx TxConnection) error) (err error) {
+	if parentOpts, parentIsTx := parentConn.TxOptions(); parentIsTx {
+		// parentConn is already a transaction connection
+		// so don't begin a new transaction,
+		// just execute txFunc within the current transaction
+		// if the TxOptions are compatible
+		err = CheckTxOptionsCompatibility(parentOpts, opts, parentConn.DBKind().DefaultIsolationLevel())
 		if err != nil {
 			return err
 		}
 		return txFunc(parentConn)
 	}
-	return IsolatedTransaction(parentConn, opts, txFunc)
+
+	// Execute txFunc within new transaction
+	return IsolatedTransaction(ctx, parentConn, opts, txFunc)
 }
 
 // IsolatedTransaction executes txFunc within a database transaction that is passed in to txFunc as tx Connection.
@@ -42,9 +89,9 @@ func Transaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Conn
 // If parentConn is already a transaction, a brand new transaction will begin on the parent's connection.
 // Errors and panics from txFunc will rollback the transaction.
 // Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
-func IsolatedTransaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Connection) error) (err error) {
-	txNo := NextTransactionNo()
-	tx, e := parentConn.Begin(opts, txNo)
+func IsolatedTransaction(ctx context.Context, parentConn TxConnection, opts *sql.TxOptions, txFunc func(tx TxConnection) error) (err error) {
+	txNo := NextTxNumber()
+	tx, e := parentConn.Begin(ctx, opts, txNo)
 	if e != nil {
 		return fmt.Errorf("Transaction %d Begin error: %w", txNo, e)
 	}
