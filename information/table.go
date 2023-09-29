@@ -22,7 +22,7 @@ type Table struct {
 }
 
 func GetTable(ctx context.Context, catalog, schema, name string) (table *Table, err error) {
-	err = db.Conn(ctx).QueryRow(
+	err = db.QueryRow(ctx,
 		`select *
 			from information_schema.tables
 			where table_catalog = $1
@@ -39,7 +39,7 @@ func GetTable(ctx context.Context, catalog, schema, name string) (table *Table, 
 }
 
 func GetAllTables(ctx context.Context) (tables []*Table, err error) {
-	err = db.Conn(ctx).QueryRows(
+	err = db.QueryRows(ctx,
 		`select * from information_schema.tables`,
 	).ScanStructSlice(&tables)
 	if err != nil {

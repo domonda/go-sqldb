@@ -27,7 +27,7 @@ type PrimaryKeyColumn struct {
 func GetPrimaryKeyColumns(ctx context.Context) (cols []PrimaryKeyColumn, err error) {
 	defer errs.WrapWithFuncParams(&err, ctx)
 
-	err = db.Conn(ctx).QueryRows(`
+	err = db.QueryRows(ctx, `
 		select
 			tc.table_schema||'.'||tc.table_name as "table",
 			kc.column_name                      as "column",
@@ -67,7 +67,7 @@ func GetPrimaryKeyColumns(ctx context.Context) (cols []PrimaryKeyColumn, err err
 func GetPrimaryKeyColumnsOfType(ctx context.Context, pkType string) (cols []PrimaryKeyColumn, err error) {
 	defer errs.WrapWithFuncParams(&err, ctx, pkType)
 
-	err = db.Conn(ctx).QueryRows(`
+	err = db.QueryRows(ctx, `
 		select
 			tc.table_schema||'.'||tc.table_name as "table",
 			kc.column_name                      as "column",

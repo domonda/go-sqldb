@@ -76,7 +76,7 @@ func ColumnExists(ctx context.Context, table, column string) (exists bool, err e
 		tableName = table
 	}
 
-	err = db.Conn(ctx).QueryRow(
+	err = db.QueryRow(ctx,
 		`select exists(
 			select from information_schema.columns
 			where table_schema = $1

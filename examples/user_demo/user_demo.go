@@ -145,7 +145,7 @@ func main() {
 
 	db.SetConn(conn)
 
-	err = db.Conn(ctx).Exec("...")
+	err = db.Exec(ctx, "...")
 	if err != nil {
 		panic(err)
 	}
@@ -158,9 +158,9 @@ func main() {
 			return err
 		}
 		if user == nil {
-			return db.Conn(ctx).Exec("...")
+			return db.Exec(ctx, "...")
 		}
-		return db.Conn(ctx).Exec("...")
+		return db.Exec(ctx, "...")
 	})
 	if err != nil {
 		panic(err)
@@ -168,7 +168,7 @@ func main() {
 }
 
 func GetUserOrNil(ctx context.Context, userID uu.ID) (user *User, err error) {
-	err = db.Conn(ctx).QueryRow(
+	err = db.QueryRow(ctx,
 		`select * from public.user where id = $1`,
 		userID,
 	).ScanStruct(&user)
