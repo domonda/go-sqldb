@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"reflect"
 	"time"
 )
 
@@ -57,6 +59,30 @@ const (
 	ErrNullValueNotAllowed sentinelError = "null value not allowed"
 )
 
+// ErrColumnsWithoutStructFields
+
+type ErrColumnsWithoutStructFields struct {
+	Columns []string
+	Struct  reflect.Value
+}
+
+func (e ErrColumnsWithoutStructFields) Error() string {
+	return fmt.Sprintf("columns %#v has no mapped struct field in %s", e.Columns, e.Struct.Type())
+}
+
+// ErrStructFieldHasNoColumn
+
+type ErrStructFieldHasNoColumn struct {
+	StructField reflect.StructField
+	Columns     []string
+}
+
+func (e ErrStructFieldHasNoColumn) Error() string {
+	return fmt.Sprintf("struct field %s has no mapped column in %#v", e.StructField.Name, e.Columns)
+}
+
+// ErrRaisedException
+
 type ErrRaisedException struct {
 	Message string
 }
@@ -64,6 +90,8 @@ type ErrRaisedException struct {
 func (e ErrRaisedException) Error() string {
 	return "raised exception: " + e.Message
 }
+
+// ErrIntegrityConstraintViolation
 
 type ErrIntegrityConstraintViolation struct {
 	Constraint string
@@ -75,6 +103,8 @@ func (e ErrIntegrityConstraintViolation) Error() string {
 	}
 	return "integrity constraint violation of constraint: " + e.Constraint
 }
+
+// ErrRestrictViolation
 
 type ErrRestrictViolation struct {
 	Constraint string
@@ -91,6 +121,8 @@ func (e ErrRestrictViolation) Unwrap() error {
 	return ErrIntegrityConstraintViolation{Constraint: e.Constraint}
 }
 
+// ErrNotNullViolation
+
 type ErrNotNullViolation struct {
 	Constraint string
 }
@@ -105,6 +137,8 @@ func (e ErrNotNullViolation) Error() string {
 func (e ErrNotNullViolation) Unwrap() error {
 	return ErrIntegrityConstraintViolation{Constraint: e.Constraint}
 }
+
+// ErrForeignKeyViolation
 
 type ErrForeignKeyViolation struct {
 	Constraint string
@@ -121,6 +155,8 @@ func (e ErrForeignKeyViolation) Unwrap() error {
 	return ErrIntegrityConstraintViolation{Constraint: e.Constraint}
 }
 
+// ErrUniqueViolation
+
 type ErrUniqueViolation struct {
 	Constraint string
 }
@@ -136,6 +172,8 @@ func (e ErrUniqueViolation) Unwrap() error {
 	return ErrIntegrityConstraintViolation{Constraint: e.Constraint}
 }
 
+// ErrCheckViolation
+
 type ErrCheckViolation struct {
 	Constraint string
 }
@@ -150,6 +188,8 @@ func (e ErrCheckViolation) Error() string {
 func (e ErrCheckViolation) Unwrap() error {
 	return ErrIntegrityConstraintViolation{Constraint: e.Constraint}
 }
+
+// ErrExclusionViolation
 
 type ErrExclusionViolation struct {
 	Constraint string
@@ -188,12 +228,16 @@ func (e connectionWithError) WithContext(ctx context.Context) Connection {
 	return connectionWithError{ctx: ctx, err: e.err}
 }
 
-func (e connectionWithError) WithStructFieldMapper(namer StructFieldMapper) Connection {
+func (e connectionWithError) WithStructFieldMapper(StructFieldMapper) Connection {
 	return e
 }
 
 func (e connectionWithError) StructFieldMapper() StructFieldMapper {
 	return DefaultStructFieldMapping
+}
+
+func (e connectionWithError) ValidateColumnName(name string) error {
+	return e.err
 }
 
 func (e connectionWithError) Ping(time.Duration) error {
@@ -208,16 +252,20 @@ func (e connectionWithError) Config() *Config {
 	return &Config{Err: e.err}
 }
 
-func (e connectionWithError) ValidateColumnName(name string) error {
-	return e.err
-}
-
 func (e connectionWithError) Now() (time.Time, error) {
 	return time.Time{}, e.err
 }
 
 func (e connectionWithError) Exec(query string, args ...any) error {
 	return e.err
+}
+
+func (e connectionWithError) QueryRow(query string, args ...any) RowScanner {
+	return RowScannerWithError(e.err)
+}
+
+func (e connectionWithError) QueryRows(query string, args ...any) RowsScanner {
+	return RowsScannerWithError(e.err)
 }
 
 func (e connectionWithError) Insert(table string, values Values) error {
@@ -262,14 +310,6 @@ func (e connectionWithError) UpdateStruct(table string, rowStruct any, ignoreCol
 
 func (e connectionWithError) UpsertStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error {
 	return e.err
-}
-
-func (e connectionWithError) QueryRow(query string, args ...any) RowScanner {
-	return RowScannerWithError(e.err)
-}
-
-func (e connectionWithError) QueryRows(query string, args ...any) RowsScanner {
-	return RowsScannerWithError(e.err)
 }
 
 func (e connectionWithError) IsTransaction() bool {

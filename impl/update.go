@@ -1,6 +1,8 @@
 package impl
 
 import (
+	"context"
+	"database/sql/driver"
 	"fmt"
 	"reflect"
 	"slices"
@@ -10,41 +12,41 @@ import (
 )
 
 // Update table rows(s) with values using the where statement with passed in args starting at $1.
-func Update(conn sqldb.Connection, table string, values sqldb.Values, where, argFmt string, args []any) error {
+func Update(ctx context.Context, conn Execer, table string, values sqldb.Values, where string, args []any, converter driver.ValueConverter, argFmt string) error {
 	if len(values) == 0 {
 		return fmt.Errorf("Update table %s: no values passed", table)
 	}
 
-	query, vals := buildUpdateQuery(table, values, where, args)
-	err := conn.Exec(query, vals...)
-	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
+	query, args := buildUpdateQuery(table, values, where, args)
+	return Exec(ctx, conn, query, args, converter, argFmt)
 }
 
 // UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
 // and returning a single row with the columns specified in returning argument.
-func UpdateReturningRow(conn sqldb.Connection, table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowScanner {
+func UpdateReturningRow(ctx context.Context, conn Queryer, table string, values sqldb.Values, returning, where string, args []any, converter driver.ValueConverter, argFmt string, mapper sqldb.StructFieldMapper) sqldb.RowScanner {
 	if len(values) == 0 {
 		return sqldb.RowScannerWithError(fmt.Errorf("UpdateReturningRow table %s: no values passed", table))
 	}
 
 	query, vals := buildUpdateQuery(table, values, where, args)
 	query += " RETURNING " + returning
-	return conn.QueryRow(query, vals...)
+	return QueryRow(ctx, conn, query, vals, converter, argFmt, mapper)
 }
 
 // UpdateReturningRows updates table rows with values using the where statement with passed in args starting at $1
 // and returning multiple rows with the columns specified in returning argument.
-func UpdateReturningRows(conn sqldb.Connection, table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowsScanner {
+func UpdateReturningRows(ctx context.Context, conn Queryer, table string, values sqldb.Values, returning, where string, args []any, converter driver.ValueConverter, argFmt string, mapper sqldb.StructFieldMapper) sqldb.RowsScanner {
 	if len(values) == 0 {
 		return sqldb.RowsScannerWithError(fmt.Errorf("UpdateReturningRows table %s: no values passed", table))
 	}
 
 	query, vals := buildUpdateQuery(table, values, where, args)
 	query += " RETURNING " + returning
-	return conn.QueryRows(query, vals...)
+	return QueryRows(ctx, conn, query, vals, converter, argFmt, mapper)
 }
 
 func buildUpdateQuery(table string, values sqldb.Values, where string, args []any) (string, []any) {
+	// args = WrapArgsForArrays(args)
 	names, vals := values.Sorted()
 
 	var query strings.Builder
@@ -65,7 +67,7 @@ func buildUpdateQuery(table string, values sqldb.Values, where string, args []an
 // Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
-func UpdateStruct(conn sqldb.Connection, table string, rowStruct any, namer sqldb.StructFieldMapper, argFmt string, ignoreColumns []sqldb.ColumnFilter) error {
+func UpdateStruct(ctx context.Context, conn Execer, table string, rowStruct any, mapper sqldb.StructFieldMapper, ignoreColumns []sqldb.ColumnFilter, converter driver.ValueConverter, argFmt string) error {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -77,13 +79,13 @@ func UpdateStruct(conn sqldb.Connection, table string, rowStruct any, namer sqld
 		return fmt.Errorf("UpdateStruct of table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, pkCols, vals := ReflectStructValues(v, namer, append(ignoreColumns, sqldb.IgnoreReadOnly))
+	columns, pkCols, vals := ReflectStructValues(v, mapper, append(ignoreColumns, sqldb.IgnoreReadOnly))
 	if len(pkCols) == 0 {
 		return fmt.Errorf("UpdateStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
 
-	var b strings.Builder
-	fmt.Fprintf(&b, `UPDATE %s SET `, table)
+	var query strings.Builder
+	fmt.Fprintf(&query, `UPDATE %s SET `, table)
 	first := true
 	for i := range columns {
 		if slices.Contains(pkCols, i) {
@@ -92,22 +94,18 @@ func UpdateStruct(conn sqldb.Connection, table string, rowStruct any, namer sqld
 		if first {
 			first = false
 		} else {
-			b.WriteByte(',')
+			query.WriteByte(',')
 		}
-		fmt.Fprintf(&b, `"%s"=$%d`, columns[i], i+1)
+		fmt.Fprintf(&query, `"%s"=$%d`, columns[i], i+1)
 	}
 
-	b.WriteString(` WHERE `)
+	query.WriteString(` WHERE `)
 	for i, pkCol := range pkCols {
 		if i > 0 {
-			b.WriteString(` AND `)
+			query.WriteString(` AND `)
 		}
-		fmt.Fprintf(&b, `"%s"=$%d`, columns[pkCol], i+1)
+		fmt.Fprintf(&query, `"%s"=$%d`, columns[pkCol], i+1)
 	}
 
-	query := b.String()
-
-	err := conn.Exec(query, vals...)
-
-	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
+	return Exec(ctx, conn, query.String(), vals, converter, argFmt)
 }

@@ -1,12 +1,13 @@
 package impl
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"slices"
 	"strings"
 
-	"github.com/domonda/go-sqldb"
+	sqldb "github.com/domonda/go-sqldb"
 )
 
 // UpsertStruct upserts a row to table using the exported fields
@@ -15,7 +16,7 @@ import (
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
 // If inserting conflicts on pkColumn, then an update of the existing row is performed.
-func UpsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqldb.StructFieldMapper, argFmt string, ignoreColumns []sqldb.ColumnFilter) error {
+func UpsertStruct(ctx context.Context, conn Execer, table string, rowStruct any, mapper sqldb.StructFieldMapper, argFmt string, ignoreColumns []sqldb.ColumnFilter) error {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -27,7 +28,7 @@ func UpsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqld
 		return fmt.Errorf("UpsertStruct to table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, pkCols, vals := ReflectStructValues(v, namer, append(ignoreColumns, sqldb.IgnoreReadOnly))
+	columns, pkCols, vals := ReflectStructValues(v, mapper, append(ignoreColumns, sqldb.IgnoreReadOnly))
 	if len(pkCols) == 0 {
 		return fmt.Errorf("UpsertStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
@@ -57,7 +58,7 @@ func UpsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqld
 	}
 	query := b.String()
 
-	err := conn.Exec(query, vals...)
+	_, err := conn.ExecContext(ctx, query, vals...)
 
 	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
 }

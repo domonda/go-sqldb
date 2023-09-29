@@ -23,7 +23,16 @@ func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 	if err != nil {
 		return nil, err
 	}
-	return impl.Connection(ctx, db, config, validateColumnName, argFmt), nil
+	return impl.NewGenericConnection(
+		ctx,
+		db,
+		config,
+		sqldb.UnsupportedListener(),
+		sqldb.DefaultStructFieldMapping,
+		validateColumnName,
+		nil, // No driver.ValueConverter necessary because MySQL doesn't suport arrays
+		argFmt,
+	), nil
 }
 
 // MustNew creates a new sqldb.Connection using the passed sqldb.Config

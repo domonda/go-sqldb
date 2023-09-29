@@ -1,0 +1,4 @@
+github.com/domonda/go-sqldb v0.0.0-20230306182246-f05b99238fd7 h1:p37LtaROmulrFh9Ofp4QNDLF6rJE5BS/EDpcBQRnJag=
+github.com/domonda/go-sqldb v0.0.0-20230306182246-f05b99238fd7/go.mod h1:2jzc1XhGjWXhB49ex/zPkRGPU/3oxIIVCD/N8DxsyCk=
+github.com/go-sql-driver/mysql v1.7.0 h1:ueSltNNllEqE3qcWBTD0iQd3IpL/6U+mJxLkazJ7YPc=
+github.com/go-sql-driver/mysql v1.7.0/go.mod h1:OXbVy3sEdcQ2Doequ6Z5BW6fXNQTmx+9S1MCJN5yJMI=

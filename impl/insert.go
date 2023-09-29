@@ -1,6 +1,8 @@
 package impl
 
 import (
+	"context"
+	"database/sql/driver"
 	"fmt"
 	"reflect"
 	"strings"
@@ -9,25 +11,22 @@ import (
 )
 
 // Insert a new row into table using the values.
-func Insert(conn sqldb.Connection, table, argFmt string, values sqldb.Values) error {
+func Insert(ctx context.Context, conn Execer, table string, values sqldb.Values, converter driver.ValueConverter, argFmt string) error {
 	if len(values) == 0 {
 		return fmt.Errorf("Insert into table %s: no values", table)
 	}
 
-	names, vals := values.Sorted()
-	b := strings.Builder{}
-	writeInsertQuery(&b, table, argFmt, names)
-	query := b.String()
+	names, args := values.Sorted()
+	query := strings.Builder{}
+	writeInsertQuery(&query, table, argFmt, names)
 
-	err := conn.Exec(query, vals...)
-
-	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
+	return Exec(ctx, conn, query.String(), args, converter, argFmt)
 }
 
 // InsertUnique inserts a new row into table using the passed values
 // or does nothing if the onConflict statement applies.
 // Returns if a row was inserted.
-func InsertUnique(conn sqldb.Connection, table, argFmt string, values sqldb.Values, onConflict string) (inserted bool, err error) {
+func InsertUnique(ctx context.Context, conn Queryer, table string, values sqldb.Values, onConflict string, converter driver.ValueConverter, argFmt string, mapper sqldb.StructFieldMapper) (inserted bool, err error) {
 	if len(values) == 0 {
 		return false, fmt.Errorf("InsertUnique into table %s: no values", table)
 	}
@@ -41,16 +40,13 @@ func InsertUnique(conn sqldb.Connection, table, argFmt string, values sqldb.Valu
 	writeInsertQuery(&query, table, argFmt, names)
 	fmt.Fprintf(&query, " ON CONFLICT (%s) DO NOTHING RETURNING TRUE", onConflict)
 
-	err = conn.QueryRow(query.String(), vals...).Scan(&inserted)
-
-	err = sqldb.ReplaceErrNoRows(err, nil)
-	err = WrapNonNilErrorWithQuery(err, query.String(), argFmt, vals)
-	return inserted, err
+	err = QueryRow(ctx, conn, query.String(), vals, converter, argFmt, mapper).Scan(&inserted)
+	return inserted, sqldb.ReplaceErrNoRows(err, nil)
 }
 
 // InsertReturning inserts a new row into table using values
 // and returns values from the inserted row listed in returning.
-func InsertReturning(conn sqldb.Connection, table, argFmt string, values sqldb.Values, returning string) sqldb.RowScanner {
+func InsertReturning(ctx context.Context, conn Queryer, table string, values sqldb.Values, returning string, converter driver.ValueConverter, argFmt string, mapper sqldb.StructFieldMapper) sqldb.RowScanner {
 	if len(values) == 0 {
 		return sqldb.RowScannerWithError(fmt.Errorf("InsertReturning into table %s: no values", table))
 	}
@@ -60,7 +56,8 @@ func InsertReturning(conn sqldb.Connection, table, argFmt string, values sqldb.V
 	writeInsertQuery(&query, table, argFmt, names)
 	query.WriteString(" RETURNING ")
 	query.WriteString(returning)
-	return conn.QueryRow(query.String(), vals...)
+
+	return QueryRow(ctx, conn, query.String(), vals, converter, argFmt, mapper)
 }
 
 func writeInsertQuery(w *strings.Builder, table, argFmt string, names []string) {
@@ -86,19 +83,16 @@ func writeInsertQuery(w *strings.Builder, table, argFmt string, names []string) 
 // InsertStruct inserts a new row into table using the connection's
 // StructFieldMapper to map struct fields to column names.
 // Optional ColumnFilter can be passed to ignore mapped columns.
-func InsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqldb.StructFieldMapper, argFmt string, ignoreColumns []sqldb.ColumnFilter) error {
-	columns, vals, err := insertStructValues(table, rowStruct, namer, ignoreColumns)
+func InsertStruct(ctx context.Context, conn Execer, table string, rowStruct any, mapper sqldb.StructFieldMapper, ignoreColumns []sqldb.ColumnFilter, converter driver.ValueConverter, argFmt string) error {
+	columns, vals, err := insertStructValues(table, rowStruct, mapper, ignoreColumns)
 	if err != nil {
 		return err
 	}
 
-	var b strings.Builder
-	writeInsertQuery(&b, table, argFmt, columns)
-	query := b.String()
+	var query strings.Builder
+	writeInsertQuery(&query, table, argFmt, columns)
 
-	err = conn.Exec(query, vals...)
-
-	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
+	return Exec(ctx, conn, query.String(), vals, converter, argFmt)
 }
 
 // InsertUniqueStruct inserts a new row into table using the connection's
@@ -106,8 +100,8 @@ func InsertStruct(conn sqldb.Connection, table string, rowStruct any, namer sqld
 // Optional ColumnFilter can be passed to ignore mapped columns.
 // Does nothing if the onConflict statement applies
 // and returns if a row was inserted.
-func InsertUniqueStruct(conn sqldb.Connection, table string, rowStruct any, onConflict string, namer sqldb.StructFieldMapper, argFmt string, ignoreColumns []sqldb.ColumnFilter) (inserted bool, err error) {
-	columns, vals, err := insertStructValues(table, rowStruct, namer, ignoreColumns)
+func InsertUniqueStruct(ctx context.Context, conn Queryer, mapper sqldb.StructFieldMapper, table string, rowStruct any, onConflict string, ignoreColumns []sqldb.ColumnFilter, converter driver.ValueConverter, argFmt string) (inserted bool, err error) {
+	columns, vals, err := insertStructValues(table, rowStruct, mapper, ignoreColumns)
 	if err != nil {
 		return false, err
 	}
@@ -116,18 +110,15 @@ func InsertUniqueStruct(conn sqldb.Connection, table string, rowStruct any, onCo
 		onConflict = onConflict[1 : len(onConflict)-1]
 	}
 
-	var b strings.Builder
-	writeInsertQuery(&b, table, argFmt, columns)
-	fmt.Fprintf(&b, " ON CONFLICT (%s) DO NOTHING RETURNING TRUE", onConflict)
-	query := b.String()
+	var query strings.Builder
+	writeInsertQuery(&query, table, argFmt, columns)
+	fmt.Fprintf(&query, " ON CONFLICT (%s) DO NOTHING RETURNING TRUE", onConflict)
 
-	err = conn.QueryRow(query, vals...).Scan(&inserted)
-	err = sqldb.ReplaceErrNoRows(err, nil)
-
-	return inserted, WrapNonNilErrorWithQuery(err, query, argFmt, vals)
+	err = QueryRow(ctx, conn, query.String(), vals, converter, argFmt, mapper).Scan(&inserted)
+	return inserted, sqldb.ReplaceErrNoRows(err, nil)
 }
 
-func insertStructValues(table string, rowStruct any, namer sqldb.StructFieldMapper, ignoreColumns []sqldb.ColumnFilter) (columns []string, vals []any, err error) {
+func insertStructValues(table string, rowStruct any, mapper sqldb.StructFieldMapper, ignoreColumns []sqldb.ColumnFilter) (columns []string, vals []any, err error) {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -139,7 +130,7 @@ func insertStructValues(table string, rowStruct any, namer sqldb.StructFieldMapp
 		return nil, nil, fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, _, vals = ReflectStructValues(v, namer, append(ignoreColumns, sqldb.IgnoreReadOnly))
+	columns, _, vals = ReflectStructValues(v, mapper, append(ignoreColumns, sqldb.IgnoreReadOnly))
 	return columns, vals, nil
 }
 
@@ -148,6 +139,7 @@ func insertStructValues(table string, rowStruct any, namer sqldb.StructFieldMapp
 // The inserts are performed within a new transaction
 // if the passed conn is not already a transaction.
 func InsertStructs(conn sqldb.Connection, table string, rowStructs any, ignoreColumns ...sqldb.ColumnFilter) error {
+	// TODO optimized version with single query if possible, split into multiple queries depending or maxArgs for query
 	v := reflect.ValueOf(rowStructs)
 	if k := v.Type().Kind(); k != reflect.Slice && k != reflect.Array {
 		return fmt.Errorf("InsertStructs expects a slice or array as rowStructs, got %T", rowStructs)

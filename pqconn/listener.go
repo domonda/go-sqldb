@@ -11,6 +11,44 @@ import (
 )
 
 var (
+	// ListenerEventLogger will log all subscribed channel listener events if not nil
+	ListenerEventLogger sqldb.Logger
+
+	// Listener for all Postgres notifications
+	Listener sqldb.Listener = listenerImpl{}
+)
+
+type listenerImpl struct{}
+
+func (listenerImpl) ListenOnChannel(conn sqldb.Connection, channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) error {
+	if conn.IsTransaction() {
+		return sqldb.ErrWithinTransaction
+	}
+	return getOrCreateListener(conn.Config().ConnectURL()).listenOnChannel(channel, onNotify, onUnlisten)
+}
+
+func (listenerImpl) UnlistenChannel(conn sqldb.Connection, channel string) error {
+	if conn.IsTransaction() {
+		return sqldb.ErrWithinTransaction
+	}
+	return getListenerOrNil(conn.Config().ConnectURL()).unlistenChannel(channel)
+}
+
+func (listenerImpl) IsListeningOnChannel(conn sqldb.Connection, channel string) bool {
+	if conn.IsTransaction() {
+		return false
+	}
+	return getListenerOrNil(conn.Config().ConnectURL()).isListeningOnChannel(channel)
+}
+
+func (listenerImpl) Close(conn sqldb.Connection) error {
+	if !conn.IsTransaction() {
+		getListenerOrNil(conn.Config().ConnectURL()).close()
+	}
+	return nil
+}
+
+var (
 	globalListeners    = make(map[string]*listener)
 	globalListenersMtx sync.RWMutex
 
@@ -29,9 +67,7 @@ type listener struct {
 	unlistenCallbacks map[string][]sqldb.OnUnlistenFunc
 }
 
-func (conn *connection) getOrCreateListener() *listener {
-	connURL := conn.config.ConnectURL()
-
+func getOrCreateListener(connURL string) *listener {
 	globalListenersMtx.Lock()
 	defer globalListenersMtx.Unlock()
 
@@ -58,9 +94,7 @@ func (conn *connection) getOrCreateListener() *listener {
 	return l
 }
 
-func (conn *connection) getListenerOrNil() *listener {
-	connURL := conn.config.ConnectURL()
-
+func getListenerOrNil(connURL string) *listener {
 	globalListenersMtx.RLock()
 	l := globalListeners[connURL]
 	globalListenersMtx.RUnlock()
@@ -99,6 +133,20 @@ func (l *listener) notify(notification *pq.Notification) {
 
 	for _, callback := range callbacks {
 		l.safeNotifyCallback(callback, notification.Channel, notification.Extra)
+	}
+}
+
+func recoverAndLogListenerPanic(operation, channel string) {
+	p := recover()
+	switch {
+	case p == nil:
+		return
+
+	case ListenerEventLogger != nil:
+		ListenerEventLogger.Printf("%s on channel %q paniced with: %+v", operation, channel, p)
+
+	case sqldb.ErrLogger != nil:
+		sqldb.ErrLogger.Printf("%s on channel %q paniced with: %+v", operation, channel, p)
 	}
 }
 

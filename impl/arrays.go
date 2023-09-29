@@ -2,21 +2,31 @@ package impl
 
 import (
 	"database/sql"
-	"database/sql/driver"
 	"reflect"
 
 	"github.com/lib/pq"
 )
 
-func WrapForArray(a interface{}) interface {
-	driver.Valuer
-	sql.Scanner
-} {
+// func WrapForArray(a any) interface {
+// 	driver.Valuer
+// 	sql.Scanner
+// } {
+// 	return pq.Array(a)
+// }
+
+func WrapForArrayScanning(a any) sql.Scanner {
 	return pq.Array(a)
 }
 
-func ShouldWrapForArray(v reflect.Value) bool {
+func ShouldWrapForArrayScanning(v reflect.Value) bool {
 	t := v.Type()
+	if t.Implements(typeOfSQLScanner) {
+		return false
+	}
+	if t.Kind() == reflect.Ptr && !v.IsNil() {
+		v = v.Elem()
+		t = v.Type()
+	}
 	switch t.Kind() {
 	case reflect.Slice:
 		if t.Elem() == typeOfByte {
@@ -28,6 +38,64 @@ func ShouldWrapForArray(v reflect.Value) bool {
 	}
 	return false
 }
+
+// IsSliceOrArray returns true if passed value is a slice or array,
+// or a pointer to a slice or array and in case of a slice
+// not of type []byte.
+func IsSliceOrArray(value any) bool {
+	if value == nil {
+		return false
+	}
+	v := reflect.ValueOf(value)
+	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return false
+		}
+		v = v.Elem()
+	}
+	t := v.Type()
+	k := t.Kind()
+	return k == reflect.Slice && t != typeOfByteSlice || k == reflect.Array
+}
+
+// IsNonDriverValuerSliceOrArrayType returns true if passed type
+// does not implement driver.Valuer and is a slice or array,
+// or a pointer to a slice or array and in case of a slice
+// not of type []byte.
+func IsNonDriverValuerSliceOrArrayType(t reflect.Type) bool {
+	if t == nil || t.Implements(typeOfDriverValuer) {
+		return false
+	}
+	k := t.Kind()
+	if k == reflect.Ptr {
+		t = t.Elem()
+		k = t.Kind()
+	}
+	return k == reflect.Slice && t != typeOfByteSlice || k == reflect.Array
+}
+
+// func FormatArrays(args []any) []any {
+// 	var wrappedArgs []any
+// 	for i, arg := range args {
+// 		if ShouldFormatArray(arg) {
+// 			if wrappedArgs == nil {
+// 				// Allocate new slice for wrapped element
+// 				wrappedArgs = make([]any, len(args))
+// 				// Copy previous elements
+// 				for h := 0; h < i; h++ {
+// 					wrappedArgs[h] = args[h]
+// 				}
+// 			}
+// 			wrappedArgs[i], _ = pq.Array(arg).Value()
+// 		} else if wrappedArgs != nil {
+// 			wrappedArgs[i] = arg
+// 		}
+// 	}
+// 	if wrappedArgs != nil {
+// 		return wrappedArgs
+// 	}
+// 	return args
+// }
 
 // type ArrayScanner struct {
 // 	Dest reflect.Value

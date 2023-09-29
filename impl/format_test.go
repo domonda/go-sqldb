@@ -90,7 +90,7 @@ WHERE
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := FormatQuery(tt.query, tt.argFmt, tt.args...); got != tt.want {
+			if got := FormatQuery(tt.query, tt.args, tt.argFmt); got != tt.want {
 				t.Errorf("FormatQuery():\n%q\nWant:\n%q", got, tt.want)
 			}
 		})

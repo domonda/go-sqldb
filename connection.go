@@ -31,6 +31,11 @@ type Connection interface {
 	// StructFieldMapper used by methods of this Connection.
 	StructFieldMapper() StructFieldMapper
 
+	// ValidateColumnName returns an error
+	// if the passed name is not valid for a
+	// column of the connection's database.
+	ValidateColumnName(name string) error
+
 	// Ping returns an error if the database
 	// does not answer on this connection
 	// with an optional timeout.
@@ -45,11 +50,6 @@ type Connection interface {
 	// to create this connection.
 	Config() *Config
 
-	// ValidateColumnName returns an error
-	// if the passed name is not valid for a
-	// column of the connection's database.
-	ValidateColumnName(name string) error
-
 	// Now returns the result of the SQL now()
 	// function for the current connection.
 	// Useful for getting the timestamp of a
@@ -58,6 +58,12 @@ type Connection interface {
 
 	// Exec executes a query with optional args.
 	Exec(query string, args ...any) error
+
+	// QueryRow queries a single row and returns a RowScanner for the results.
+	QueryRow(query string, args ...any) RowScanner
+
+	// QueryRows queries multiple rows and returns a RowsScanner for the results.
+	QueryRows(query string, args ...any) RowsScanner
 
 	// Insert a new row into table using the values.
 	Insert(table string, values Values) error
@@ -80,9 +86,6 @@ type Connection interface {
 	// as new rows into table using the connection's
 	// StructFieldMapper to map struct fields to column names.
 	// Optional ColumnFilter can be passed to ignore mapped columns.
-	//
-	// TODO optimized version with single query if possible
-	// split into multiple queries depending or maxArgs for query
 	InsertStructs(table string, rowStructs any, ignoreColumns ...ColumnFilter) error
 
 	// InsertUniqueStruct inserts a new row into table using the connection's
@@ -119,12 +122,6 @@ type Connection interface {
 	// to mark primary key column(s).
 	// If inserting conflicts on the primary key column(s), then an update is performed.
 	UpsertStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error
-
-	// QueryRow queries a single row and returns a RowScanner for the results.
-	QueryRow(query string, args ...any) RowScanner
-
-	// QueryRows queries multiple rows and returns a RowsScanner for the results.
-	QueryRows(query string, args ...any) RowsScanner
 
 	// IsTransaction returns if the connection is a transaction
 	IsTransaction() bool

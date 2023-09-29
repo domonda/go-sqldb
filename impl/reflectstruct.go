@@ -5,15 +5,14 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
-	"strings"
 
 	"github.com/domonda/go-sqldb"
 )
 
-func ReflectStructValues(structVal reflect.Value, namer sqldb.StructFieldMapper, ignoreColumns []sqldb.ColumnFilter) (columns []string, pkCols []int, values []any) {
+func ReflectStructValues(structVal reflect.Value, mapper sqldb.StructFieldMapper, ignoreColumns []sqldb.ColumnFilter) (columns []string, pkCols []int, values []any) {
 	for i := 0; i < structVal.NumField(); i++ {
 		fieldType := structVal.Type().Field(i)
-		_, column, flags, use := namer.MapStructField(fieldType)
+		_, column, flags, use := mapper.MapStructField(fieldType)
 		if !use {
 			continue
 		}
@@ -21,7 +20,7 @@ func ReflectStructValues(structVal reflect.Value, namer sqldb.StructFieldMapper,
 
 		if column == "" {
 			// Embedded struct field
-			columnsEmbed, pkColsEmbed, valuesEmbed := ReflectStructValues(fieldValue, namer, ignoreColumns)
+			columnsEmbed, pkColsEmbed, valuesEmbed := ReflectStructValues(fieldValue, mapper, ignoreColumns)
 			for _, pkCol := range pkColsEmbed {
 				pkCols = append(pkCols, pkCol+len(columns))
 			}
@@ -43,39 +42,49 @@ func ReflectStructValues(structVal reflect.Value, namer sqldb.StructFieldMapper,
 	return columns, pkCols, values
 }
 
-func ReflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFieldMapper, columns []string) (pointers []any, err error) {
+// ReflectStructColumnPointers uses the passed mapper
+// to find the passed columns as fields of the passed struct
+// and returns a pointer to a struct field for every mapped column.
+//
+// If columns and struct fields could not be mapped 1:1 then
+// an ErrColumnsWithoutStructFields or ErrStructFieldHasNoColumn
+// error is returned together with the successfully mapped pointers.
+func ReflectStructColumnPointers(structVal reflect.Value, mapper sqldb.StructFieldMapper, columns []string) (pointers []any, err error) {
+	if structVal.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("got %s instead of a struct", structVal)
+	}
+	if !structVal.CanAddr() {
+		return nil, errors.New("struct can't be addressed")
+	}
 	if len(columns) == 0 {
 		return nil, errors.New("no columns")
 	}
 	pointers = make([]any, len(columns))
-	err = reflectStructColumnPointers(structVal, namer, columns, pointers)
+	err = reflectStructColumnPointers(structVal, mapper, columns, pointers)
 	if err != nil {
 		return nil, err
 	}
-	for _, ptr := range pointers {
-		if ptr != nil {
-			continue
+	// Check if any column could not be mapped onto the struct,
+	// indicated by having a nil struct field pointer.
+	var nilCols sqldb.ErrColumnsWithoutStructFields
+	for i, ptr := range pointers {
+		if ptr == nil {
+			nilCols.Columns = append(nilCols.Columns, columns[i])
+			nilCols.Struct = structVal
 		}
-		nilCols := new(strings.Builder)
-		for i, ptr := range pointers {
-			if ptr != nil {
-				continue
-			}
-			if nilCols.Len() > 0 {
-				nilCols.WriteString(", ")
-			}
-			fmt.Fprintf(nilCols, "column=%s, index=%d", columns[i], i)
-		}
-		return nil, fmt.Errorf("columns have no mapped struct fields in %s: %s", structVal.Type(), nilCols)
+	}
+	if len(nilCols.Columns) > 0 {
+		pointers = slices.DeleteFunc(pointers, func(e any) bool { return e == nil })
+		return pointers, nilCols
 	}
 	return pointers, nil
 }
 
-func reflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFieldMapper, columns []string, pointers []any) error {
+func reflectStructColumnPointers(structVal reflect.Value, mapper sqldb.StructFieldMapper, columns []string, pointers []any) error {
 	structType := structVal.Type()
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
-		_, column, _, use := namer.MapStructField(field)
+		_, column, _, use := mapper.MapStructField(field)
 		if !use {
 			continue
 		}
@@ -83,7 +92,7 @@ func reflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFiel
 
 		if column == "" {
 			// Embedded struct field
-			err := reflectStructColumnPointers(fieldValue, namer, columns, pointers)
+			err := reflectStructColumnPointers(fieldValue, mapper, columns, pointers)
 			if err != nil {
 				return err
 			}
@@ -103,8 +112,8 @@ func reflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFiel
 		// If field is a slice or array that does not implement sql.Scanner
 		// and it's not a string scannable []byte type underneath
 		// then wrap it with WrapForArray to make it scannable
-		if ShouldWrapForArray(fieldValue) {
-			pointer = WrapForArray(pointer)
+		if ShouldWrapForArrayScanning(fieldValue) {
+			pointer = WrapForArrayScanning(pointer)
 		}
 		pointers[colIndex] = pointer
 	}

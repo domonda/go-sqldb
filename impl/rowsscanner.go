@@ -28,7 +28,7 @@ func NewRowsScanner(ctx context.Context, rows Rows, structFieldNamer sqldb.Struc
 func (s *RowsScanner) ScanSlice(dest any) error {
 	err := ScanRowsAsSlice(s.ctx, s.rows, dest, nil)
 	if err != nil {
-		return fmt.Errorf("%w from query: %s", err, FormatQuery(s.query, s.argFmt, s.args...))
+		return fmt.Errorf("%w from query: %s", err, FormatQuery(s.query, s.args, s.argFmt))
 	}
 	return nil
 }
@@ -36,7 +36,7 @@ func (s *RowsScanner) ScanSlice(dest any) error {
 func (s *RowsScanner) ScanStructSlice(dest any) error {
 	err := ScanRowsAsSlice(s.ctx, s.rows, dest, s.structFieldNamer)
 	if err != nil {
-		return fmt.Errorf("%w from query: %s", err, FormatQuery(s.query, s.argFmt, s.args...))
+		return fmt.Errorf("%w from query: %s", err, FormatQuery(s.query, s.args, s.argFmt))
 	}
 	return nil
 }

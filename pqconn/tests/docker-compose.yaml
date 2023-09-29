@@ -1,0 +1,14 @@
+services:
+
+  db:
+    image: postgres:15.2
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: go-sqldb
+      # POSTGRES_INITDB_ARGS: 
+
+  # adminer:
+  #   image: adminer
+  #   restart: always
+  #   ports:
+  #     - 8080:8080

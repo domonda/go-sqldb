@@ -1,6 +1,7 @@
 package sqldb
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -38,8 +39,8 @@ type StructFieldMapper interface {
 	// MapStructField returns the column name for a reflected struct field
 	// and flags for special column properies.
 	// If false is returned for use then the field is not mapped.
-	// An empty name and true for use indicates an embedded struct
-	// field whose fields should be recursively mapped.
+	// An empty string for column and true for use indicates an
+	// embedded struct field whose fields should be mapped recursively.
 	MapStructField(field reflect.StructField) (table, column string, flags FieldFlag, use bool)
 }
 
@@ -148,3 +149,56 @@ func IgnoreStructField(string) string { return "" }
 // Whitespace, symbol, and punctuation characters
 // will be replace by '_'.
 var ToSnakeCase = strutil.ToSnakeCase
+
+func MapStructFieldPointers(strct any, mapper StructFieldMapper) (colFieldPtrs map[string]any, table string, err error) {
+	v := reflect.ValueOf(strct)
+	for v.Kind() == reflect.Ptr && !v.IsNil() {
+		v = v.Elem()
+	}
+	if v.Kind() != reflect.Struct {
+		return nil, "", fmt.Errorf("expected struct but got %T", strct)
+	}
+	if !v.CanAddr() {
+		return nil, "", errors.New("struct can't be addressed")
+	}
+
+	colFieldPtrs = make(map[string]any)
+	err = mapStructFields(v, mapper, colFieldPtrs, &table)
+	if err != nil {
+		return nil, "", err
+	}
+	return colFieldPtrs, table, nil
+}
+
+func mapStructFields(structVal reflect.Value, mapper StructFieldMapper, colFieldPtrs map[string]any, tableName *string) error {
+	structType := structVal.Type()
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
+		table, column, _, use := mapper.MapStructField(field)
+		if !use {
+			continue
+		}
+		fieldValue := structVal.Field(i)
+
+		if table != "" {
+			*tableName = table
+		}
+
+		if column == "" {
+			// Embedded struct field
+			err := mapStructFields(fieldValue, mapper, colFieldPtrs, tableName)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		if _, exists := colFieldPtrs[column]; exists {
+			return fmt.Errorf("duplicate mapped column %s onto field %s of struct %s", column, field.Name, structType)
+		}
+
+		colFieldPtrs[column] = fieldValue.Addr().Interface()
+	}
+	return nil
+
+}
