@@ -45,3 +45,10 @@ func ConnDefault(ctx context.Context, defaultConn sqldb.Connection) sqldb.Connec
 func ContextWithConn(ctx context.Context, conn sqldb.Connection) context.Context {
 	return context.WithValue(ctx, &globalConnCtxKey, conn)
 }
+
+// IsTransaction indicates if the connection from the context,
+// or the default connection if the context has none,
+// is a transaction.
+func IsTransaction(ctx context.Context) bool {
+	return Conn(ctx).IsTransaction()
+}
