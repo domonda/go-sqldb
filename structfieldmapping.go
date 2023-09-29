@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 
 	"github.com/domonda/go-types/strutil"
 )
@@ -150,7 +151,69 @@ func IgnoreStructField(string) string { return "" }
 // will be replace by '_'.
 var ToSnakeCase = strutil.ToSnakeCase
 
-func MapStructFieldPointers(strct any, mapper StructFieldMapper) (colFieldPtrs map[string]any, table string, err error) {
+type mappedStruct struct {
+	Type               reflect.Type
+	Table              string
+	StructFields       []reflect.StructField
+	ColumnStructFields map[string]reflect.StructField
+}
+
+var (
+	mappedStructTypeCache    = make(map[StructFieldMapper]map[reflect.Type]*mappedStruct)
+	mappedStructTypeCacheMtx sync.Mutex
+)
+
+func mapStructType(mapper StructFieldMapper, structType reflect.Type, mapped *mappedStruct) error {
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
+		table, column, _, use := mapper.MapStructField(field)
+		if !use {
+			continue
+		}
+		if table != "" {
+			if mapped.Table != "" && table != mapped.Table {
+				return fmt.Errorf("conflicting tables %s and %s found in struct %s", mapped.Table, table, structType)
+			}
+			mapped.Table = table
+		}
+
+		if column == "" {
+			// Embedded struct field
+			err := mapStructType(mapper, field.Type, mapped)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		if _, exists := mapped.ColumnStructFields[column]; exists {
+			return fmt.Errorf("duplicate mapped column %s onto field %s of struct %s", column, field.Name, structType)
+		}
+		mapped.StructFields = append(mapped.StructFields, field)
+		mapped.ColumnStructFields[column] = field
+	}
+	return nil
+}
+
+func getMappedStruct(mapper StructFieldMapper, structType reflect.Type) (*mappedStruct, error) {
+	mappedStructTypeCacheMtx.Lock()
+	defer mappedStructTypeCacheMtx.Unlock()
+
+	info := mappedStructTypeCache[mapper][structType]
+	if info != nil {
+		return info, nil
+	}
+
+	info = &mappedStruct{Type: structType}
+	err := mapStructType(mapper, structType, info)
+	if err != nil {
+		return nil, err
+	}
+	mappedStructTypeCache[mapper][structType] = info
+	return info, nil
+}
+
+func MapStructFieldPointers(mapper StructFieldMapper, strct any) (colFieldPtrs map[string]any, table string, err error) {
 	v := reflect.ValueOf(strct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -162,43 +225,18 @@ func MapStructFieldPointers(strct any, mapper StructFieldMapper) (colFieldPtrs m
 		return nil, "", errors.New("struct can't be addressed")
 	}
 
-	colFieldPtrs = make(map[string]any)
-	err = mapStructFields(v, mapper, colFieldPtrs, &table)
+	info, err := getMappedStruct(mapper, v.Type())
 	if err != nil {
 		return nil, "", err
 	}
-	return colFieldPtrs, table, nil
-}
 
-func mapStructFields(structVal reflect.Value, mapper StructFieldMapper, colFieldPtrs map[string]any, tableName *string) error {
-	structType := structVal.Type()
-	for i := 0; i < structType.NumField(); i++ {
-		field := structType.Field(i)
-		table, column, _, use := mapper.MapStructField(field)
-		if !use {
-			continue
+	colFieldPtrs = make(map[string]any, len(info.ColumnStructFields))
+	for column, field := range info.ColumnStructFields {
+		field, err := v.FieldByIndexErr(field.Index)
+		if err != nil {
+			return nil, "", err
 		}
-		fieldValue := structVal.Field(i)
-
-		if table != "" {
-			*tableName = table
-		}
-
-		if column == "" {
-			// Embedded struct field
-			err := mapStructFields(fieldValue, mapper, colFieldPtrs, tableName)
-			if err != nil {
-				return err
-			}
-			continue
-		}
-
-		if _, exists := colFieldPtrs[column]; exists {
-			return fmt.Errorf("duplicate mapped column %s onto field %s of struct %s", column, field.Name, structType)
-		}
-
-		colFieldPtrs[column] = fieldValue.Addr().Interface()
+		colFieldPtrs[column] = field.Addr().Interface()
 	}
-	return nil
-
+	return colFieldPtrs, info.Table, nil
 }
