@@ -63,12 +63,8 @@ func (e connectionWithError) Exec(ctx context.Context, query string, args ...any
 	return errors.Join(e.err, ctx.Err())
 }
 
-func (e connectionWithError) QueryRow(ctx context.Context, query string, args ...any) RowScanner {
-	return RowScannerWithError(errors.Join(e.err, ctx.Err()))
-}
-
-func (e connectionWithError) QueryRows(ctx context.Context, query string, args ...any) RowsScanner {
-	return RowsScannerWithError(errors.Join(e.err, ctx.Err()))
+func (e connectionWithError) Query(ctx context.Context, query string, args ...any) (Rows, error) {
+	return nil, errors.Join(e.err, ctx.Err())
 }
 
 func (e connectionWithError) TxNumber() uint64 {

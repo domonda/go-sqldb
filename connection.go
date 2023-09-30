@@ -37,11 +37,7 @@ type Connection interface {
 	// Exec executes a query with optional args.
 	Exec(ctx context.Context, query string, args ...any) error
 
-	// QueryRow queries a single row and returns a RowScanner for the results.
-	QueryRow(ctx context.Context, query string, args ...any) RowScanner
-
-	// QueryRows queries multiple rows and returns a RowsScanner for the results.
-	QueryRows(ctx context.Context, query string, args ...any) RowsScanner
+	Query(ctx context.Context, query string, args ...any) (Rows, error)
 
 	// Close the connection.
 	// Transactions will be rolled back.

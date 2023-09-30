@@ -149,27 +149,37 @@ func IgnoreStructField(string) string { return "" }
 // before every new upper case character in s.
 // Whitespace, symbol, and punctuation characters
 // will be replace by '_'.
-var ToSnakeCase = strutil.ToSnakeCase
+func ToSnakeCase(s string) string {
+	return strutil.ToSnakeCase(s)
+}
 
-type mappedStruct struct {
-	Type               reflect.Type
-	Table              string
-	StructFields       []reflect.StructField
-	ColumnStructFields map[string]reflect.StructField
+type MappedStructField struct {
+	Field  reflect.StructField
+	Table  string
+	Column string
+	Flags  FieldFlag
+}
+
+type MappedStruct struct {
+	Type         reflect.Type
+	Table        string
+	Fields       []MappedStructField
+	ColumnFields map[string]*MappedStructField
 }
 
 var (
-	mappedStructTypeCache    = make(map[StructFieldMapper]map[reflect.Type]*mappedStruct)
+	mappedStructTypeCache    = make(map[StructFieldMapper]map[reflect.Type]*MappedStruct)
 	mappedStructTypeCacheMtx sync.Mutex
 )
 
-func mapStructType(mapper StructFieldMapper, structType reflect.Type, mapped *mappedStruct) error {
+func mapStructType(mapper StructFieldMapper, structType reflect.Type, mapped *MappedStruct) error {
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
-		table, column, _, use := mapper.MapStructField(field)
+		table, column, flags, use := mapper.MapStructField(field)
 		if !use {
 			continue
 		}
+
 		if table != "" {
 			if mapped.Table != "" && table != mapped.Table {
 				return fmt.Errorf("conflicting tables %s and %s found in struct %s", mapped.Table, table, structType)
@@ -179,64 +189,120 @@ func mapStructType(mapper StructFieldMapper, structType reflect.Type, mapped *ma
 
 		if column == "" {
 			// Embedded struct field
-			err := mapStructType(mapper, field.Type, mapped)
+			t := field.Type
+			if t.Kind() == reflect.Pointer {
+				t = t.Elem()
+			}
+			err := mapStructType(mapper, t, mapped)
 			if err != nil {
 				return err
 			}
 			continue
 		}
 
-		if _, exists := mapped.ColumnStructFields[column]; exists {
+		if _, exists := mapped.ColumnFields[column]; exists {
 			return fmt.Errorf("duplicate mapped column %s onto field %s of struct %s", column, field.Name, structType)
 		}
-		mapped.StructFields = append(mapped.StructFields, field)
-		mapped.ColumnStructFields[column] = field
+
+		mapped.Fields = append(mapped.Fields, MappedStructField{
+			Field:  field,
+			Table:  table,
+			Column: column,
+			Flags:  flags,
+		})
+		mapped.ColumnFields[column] = &mapped.Fields[len(mapped.Fields)-1]
 	}
 	return nil
 }
 
-func getMappedStruct(mapper StructFieldMapper, structType reflect.Type) (*mappedStruct, error) {
+func MapStructType(mapper StructFieldMapper, structType reflect.Type) (*MappedStruct, error) {
 	mappedStructTypeCacheMtx.Lock()
 	defer mappedStructTypeCacheMtx.Unlock()
 
-	info := mappedStructTypeCache[mapper][structType]
-	if info != nil {
-		return info, nil
+	mapped := mappedStructTypeCache[mapper][structType]
+	if mapped != nil {
+		return mapped, nil
 	}
 
-	info = &mappedStruct{Type: structType}
-	err := mapStructType(mapper, structType, info)
+	mapped = &MappedStruct{Type: structType}
+	err := mapStructType(mapper, structType, mapped)
 	if err != nil {
 		return nil, err
 	}
-	mappedStructTypeCache[mapper][structType] = info
-	return info, nil
+	if mappedStructTypeCache[mapper] == nil {
+		mappedStructTypeCache[mapper] = make(map[reflect.Type]*MappedStruct)
+	}
+	mappedStructTypeCache[mapper][structType] = mapped
+	return mapped, nil
 }
 
-func MapStructFieldPointers(mapper StructFieldMapper, strct any) (colFieldPtrs map[string]any, table string, err error) {
-	v := reflect.ValueOf(strct)
+func MapStruct(mapper StructFieldMapper, s any) (*MappedStruct, error) {
+	v := reflect.ValueOf(s)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
 	}
 	if v.Kind() != reflect.Struct {
-		return nil, "", fmt.Errorf("expected struct but got %T", strct)
+		return nil, fmt.Errorf("expected struct but got %T", s)
 	}
 	if !v.CanAddr() {
-		return nil, "", errors.New("struct can't be addressed")
+		return nil, errors.New("struct can't be addressed")
 	}
 
-	info, err := getMappedStruct(mapper, v.Type())
-	if err != nil {
-		return nil, "", err
-	}
-
-	colFieldPtrs = make(map[string]any, len(info.ColumnStructFields))
-	for column, field := range info.ColumnStructFields {
-		field, err := v.FieldByIndexErr(field.Index)
-		if err != nil {
-			return nil, "", err
-		}
-		colFieldPtrs[column] = field.Addr().Interface()
-	}
-	return colFieldPtrs, info.Table, nil
+	return MapStructType(mapper, v.Type())
 }
+
+// func MapStructFieldPointers(mapper StructFieldMapper, strct any) (colFieldPtrs map[string]any, table string, err error) {
+// 	v := reflect.ValueOf(strct)
+// 	for v.Kind() == reflect.Ptr && !v.IsNil() {
+// 		v = v.Elem()
+// 	}
+// 	if v.Kind() != reflect.Struct {
+// 		return nil, "", fmt.Errorf("expected struct but got %T", strct)
+// 	}
+// 	if !v.CanAddr() {
+// 		return nil, "", errors.New("struct can't be addressed")
+// 	}
+
+// 	mapped, err := getOrCreateMappedStruct(mapper, v.Type())
+// 	if err != nil {
+// 		return nil, "", err
+// 	}
+
+// 	colFieldPtrs = make(map[string]any, len(mapped.Fields))
+// 	for column, mapped := range mapped.ColumnFields {
+// 		field, err := v.FieldByIndexErr(mapped.Field.Index)
+// 		if err != nil {
+// 			return nil, "", err
+// 		}
+// 		colFieldPtrs[column] = field.Addr().Interface()
+// 	}
+// 	return colFieldPtrs, mapped.Table, nil
+// }
+
+// func MapStructFieldColumnPointers(mapper StructFieldMapper, structVal any, columns []string) (ptrs []any, table string, colsWithoutField, fieldsWithoutCol []string, err error) {
+// 	v := reflect.ValueOf(structVal)
+// 	for v.Kind() == reflect.Ptr && !v.IsNil() {
+// 		v = v.Elem()
+// 	}
+// 	if v.Kind() != reflect.Struct {
+// 		return nil, "", fmt.Errorf("expected struct but got %T", structVal)
+// 	}
+// 	if !v.CanAddr() {
+// 		return nil, "", errors.New("struct can't be addressed")
+// 	}
+
+// 	mapped, err := MapStructType(mapper, v.Type())
+// 	if err != nil {
+// 		return nil, "", err
+// 	}
+
+// 	colFieldPtrs = make(map[string]any, len(mapped.Fields))
+// 	for column, mapped := range mapped.ColumnFields {
+// 		field, err := v.FieldByIndexErr(mapped.Field.Index)
+// 		if err != nil {
+// 			return nil, "", err
+// 		}
+// 		colFieldPtrs[column] = field.Addr().Interface()
+// 	}
+// 	return colFieldPtrs, mapped.Table, nil
+// }
