@@ -147,40 +147,39 @@ func QueryRowsAsSlice[T any](ctx context.Context, query string, args ...any) (ro
 		return nil, err
 	}
 
-	sliceElemType := reflect.TypeOf(rows).Elem()
-	derefElemType := sliceElemType
-	if derefElemType.Kind() == reflect.Ptr {
-		derefElemType = derefElemType.Elem()
-	}
-	scanningStructs := derefElemType.Kind() == reflect.Struct && !reflect.PointerTo(derefElemType).Implements(typeOfSQLScanner)
-
+	var elem T
+	scanningStructs := isStructRowType(reflect.TypeOf(elem))
 	for srcRows.Next() {
 		if ctx.Err() != nil {
 			return rows, ctx.Err()
 		}
-
-		var elem T
 		if scanningStructs {
 			err = ScanStruct(srcRows, &elem, conn)
-			if err != nil {
-				return rows, err
-			}
 		} else {
 			err = srcRows.Scan(&elem)
-			if err != nil {
-				return rows, err
-			}
+		}
+		if err != nil {
+			return rows, err
 		}
 		rows = append(rows, elem)
 	}
-	if srcRows.Err() != nil {
-		return rows, srcRows.Err()
-	}
+	return rows, srcRows.Err()
+}
 
-	if len(rows) == 0 {
-		return nil, nil
+func isStructRowType(t reflect.Type) bool {
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
 	}
-	return rows, nil
+	if t.Kind() == reflect.Struct {
+		return false
+	}
+	if t.Implements(typeOfSQLScanner) {
+		return false
+	}
+	if reflect.PointerTo(t).Implements(typeOfSQLScanner) {
+		return false
+	}
+	return true
 }
 
 // QueryWithRowCallback will call the passed callback function with scanned values
