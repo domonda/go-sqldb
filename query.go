@@ -32,16 +32,6 @@ func Exec(ctx context.Context, query string, args ...any) error {
 	return nil
 }
 
-// Query queries multiple rows and returns a RowsScanner for the results.
-func Query(ctx context.Context, query string, args ...any) RowsScanner {
-	conn := ContextConnection(ctx)
-	rows, err := conn.Query(ctx, query, args...)
-	if err != nil {
-		rows = RowsWithError(err)
-	}
-	return NewRowsScanner(ctx, rows, query, args, conn)
-}
-
 // QueryRow queries a single row and returns a RowScanner for the results.
 func QueryRow(ctx context.Context, query string, args ...any) RowScanner {
 	conn := ContextConnection(ctx)
@@ -143,12 +133,52 @@ func GetRowStructOrNil[S any](ctx context.Context, pkValue any, pkValues ...any)
 	return row, nil
 }
 
-// QueryStructSlice returns queried rows as slice of the generic type S
-// which must be a struct or a pointer to a struct.
-func QueryStructSlice[S any](ctx context.Context, query string, args ...any) (rows []S, err error) {
-	err = Query(ctx, query, args...).ScanStructSlice(&rows)
+// QueryRowsAsSlice scans one value per row into one slice element of rowVals.
+// dest must be a pointer to a slice with a row value compatible element type. TODO
+//
+// In case of a cancelled context the rows scanned before the cancellation
+// will be returned together with the context error.
+func QueryRowsAsSlice[T any](ctx context.Context, query string, args ...any) (rows []T, err error) {
+	conn := ContextConnection(ctx)
+	defer WrapResultErrorWithQuery(&err, query, args, conn)
+
+	srcRows, err := conn.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
+	}
+
+	sliceElemType := reflect.TypeOf(rows).Elem()
+	derefElemType := sliceElemType
+	if derefElemType.Kind() == reflect.Ptr {
+		derefElemType = derefElemType.Elem()
+	}
+	scanningStructs := derefElemType.Kind() == reflect.Struct && !reflect.PointerTo(derefElemType).Implements(typeOfSQLScanner)
+
+	for srcRows.Next() {
+		if ctx.Err() != nil {
+			return rows, ctx.Err()
+		}
+
+		var elem T
+		if scanningStructs {
+			err = ScanStruct(srcRows, &elem, conn)
+			if err != nil {
+				return rows, err
+			}
+		} else {
+			err = srcRows.Scan(&elem)
+			if err != nil {
+				return rows, err
+			}
+		}
+		rows = append(rows, elem)
+	}
+	if srcRows.Err() != nil {
+		return rows, srcRows.Err()
+	}
+
+	if len(rows) == 0 {
+		return nil, nil
 	}
 	return rows, nil
 }
@@ -168,78 +198,47 @@ func QueryWithRowCallback[F any](ctx context.Context, callback F, query string, 
 	conn := ContextConnection(ctx)
 	defer WrapResultErrorWithQuery(&err, query, args, conn)
 
-	val := reflect.ValueOf(callback)
-	typ := val.Type()
-	if typ.Kind() != reflect.Func {
-		return fmt.Errorf("expected callback function, got %s", typ)
+	funcVal := reflect.ValueOf(callback)
+	funcType := funcVal.Type()
+	if funcType.Kind() != reflect.Func {
+		return fmt.Errorf("expected callback function, got %s", funcType)
 	}
-	if typ.IsVariadic() {
-		return fmt.Errorf("callback function must not be varidic: %s", typ)
+	if funcType.IsVariadic() {
+		return fmt.Errorf("callback function must not be varidic: %s", funcType)
 	}
-	if typ.NumIn() == 0 || (typ.NumIn() == 1 && typ.In(0) == typeOfContext) {
-		return fmt.Errorf("callback function has no arguments: %s", typ)
+	if funcType.NumIn() == 0 || (funcType.NumIn() == 1 && funcType.In(0) == typeOfContext) {
+		return fmt.Errorf("callback function has no arguments: %s", funcType)
 	}
-	firstArg := 0
-	if typ.In(0) == typeOfContext {
-		firstArg = 1
+	firstArgIndex := 0
+	hasCtxArg := false
+	if funcType.In(0) == typeOfContext {
+		hasCtxArg = true
+		firstArgIndex = 1
 	}
-	structArg := false
-	for i := firstArg; i < typ.NumIn(); i++ {
-		t := typ.In(i)
+	hasStructArg := false
+	for i := firstArgIndex; i < funcType.NumIn(); i++ {
+		t := funcType.In(i)
 		for t.Kind() == reflect.Ptr {
 			t = t.Elem()
 		}
-		if t == typeOfTime {
-			continue
-		}
 		switch t.Kind() {
 		case reflect.Struct:
-			if t.Implements(typeOfSQLScanner) || reflect.PtrTo(t).Implements(typeOfSQLScanner) {
+			if t.Implements(typeOfSQLScanner) || reflect.PointerTo(t).Implements(typeOfSQLScanner) {
 				continue
 			}
-			if structArg {
-				return fmt.Errorf("callback function must not have further argument after struct: %s", typ)
+			if hasStructArg {
+				return fmt.Errorf("callback function must not have further argument after struct: %s", funcType)
 			}
-			structArg = true
+			hasStructArg = true
 		case reflect.Chan, reflect.Func:
-			return fmt.Errorf("callback function has invalid argument type: %s", typ.In(i))
+			return fmt.Errorf("callback function has invalid argument type: %s", funcType.In(i))
 		}
 	}
-	if typ.NumOut() > 1 {
-		return fmt.Errorf("callback function can only have one result value: %s", typ)
+	if funcType.NumOut() == 1 && funcType.Out(0) != typeOfError {
+		return fmt.Errorf("callback function result must be of type error: %s", funcType)
 	}
-	if typ.NumOut() == 1 && typ.Out(0) != typeOfError {
-		return fmt.Errorf("callback function result must be of type error: %s", typ)
-	}
-
-	f := func(row RowScanner) (err error) {
-		// First scan row
-		scannedValPtrs := make([]any, typ.NumIn()-firstArg)
-		for i := range scannedValPtrs {
-			scannedValPtrs[i] = reflect.New(typ.In(firstArg + i)).Interface()
-		}
-		if structArg {
-			err = row.ScanStruct(scannedValPtrs[0])
-		} else {
-			err = row.Scan(scannedValPtrs...)
-		}
-		if err != nil {
-			return err
-		}
-
-		// Then do callback via reflection
-		args := make([]reflect.Value, typ.NumIn())
-		if firstArg == 1 {
-			args[0] = reflect.ValueOf(ctx)
-		}
-		for i := firstArg; i < len(args); i++ {
-			args[i] = reflect.ValueOf(scannedValPtrs[i-firstArg]).Elem()
-		}
-		res := val.Call(args)
-		if len(res) > 0 && !res[0].IsNil() {
-			return res[0].Interface().(error)
-		}
-		return nil
+	if funcType.NumOut() > 1 {
+		return fmt.Errorf("callback function can only have one result value: %s", funcType)
 	}
 
 	rows, err := conn.Query(ctx, query, args...)
@@ -252,10 +251,70 @@ func QueryWithRowCallback[F any](ctx context.Context, callback F, query string, 
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		err := f(NewCurrentRowScanner(rows, query, args, conn))
+
+		// First scan row
+		scannedValPtrs := make([]any, funcType.NumIn()-firstArgIndex)
+		for i := range scannedValPtrs {
+			scannedValPtrs[i] = reflect.New(funcType.In(firstArgIndex + i)).Interface()
+		}
+		if hasStructArg {
+			err = ScanStruct(rows, scannedValPtrs[0], conn)
+		} else {
+			err = rows.Scan(scannedValPtrs...)
+		}
 		if err != nil {
 			return err
 		}
+
+		// Then do callback via reflection
+		args := make([]reflect.Value, funcType.NumIn())
+		if hasCtxArg {
+			args[0] = reflect.ValueOf(ctx)
+		}
+		for i := firstArgIndex; i < len(args); i++ {
+			args[i] = reflect.ValueOf(scannedValPtrs[i-firstArgIndex]).Elem()
+		}
+		result := funcVal.Call(args)
+		if len(result) > 0 && !result[0].IsNil() {
+			return result[0].Interface().(error)
+		}
 	}
 	return rows.Err()
+}
+
+// QueryStrings returns the queried row values as strings.
+// Byte slices will be interpreted as strings,
+// nil (SQL NULL) will be converted to an empty string,
+// all other types are converted with fmt.Sprint.
+// The first row is a header with the column names.
+func QueryStrings(ctx context.Context, query string, args ...any) (rows [][]string, err error) {
+	conn := ContextConnection(ctx)
+	defer WrapResultErrorWithQuery(&err, query, args, conn)
+
+	srcRows, err := conn.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	cols, err := srcRows.Columns()
+	if err != nil {
+		return nil, err
+	}
+	rows = [][]string{cols}
+	stringScannablePtrs := make([]any, len(cols))
+	for srcRows.Next() {
+		if ctx.Err() != nil {
+			return rows, ctx.Err()
+		}
+		row := make([]string, len(cols))
+		for i := range stringScannablePtrs {
+			stringScannablePtrs[i] = (*StringScannable)(&row[i])
+		}
+		err := srcRows.Scan(stringScannablePtrs...)
+		if err != nil {
+			return rows, err
+		}
+		rows = append(rows, row)
+	}
+	return rows, srcRows.Err()
 }
