@@ -1,4 +1,4 @@
-package impl
+package sqldb
 
 import (
 	"database/sql"
@@ -7,10 +7,15 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/domonda/go-types/nullable"
 	"github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/domonda/go-types/nullable"
 )
+
+func defaultAsArrayScanner(a any) sql.Scanner {
+	return pq.Array(a) // TODO replace with own implementation
+}
 
 func TestShouldWrapForArrayScanning(t *testing.T) {
 	tests := []struct {
@@ -24,7 +29,7 @@ func TestShouldWrapForArrayScanning(t *testing.T) {
 		{v: reflect.ValueOf(json.RawMessage([]byte("null"))), want: false},
 		{v: reflect.ValueOf(nullable.JSON([]byte("null"))), want: false},
 		{v: reflect.ValueOf(new(sql.NullInt64)).Elem(), want: false},
-		{v: reflect.ValueOf(WrapForArrayScanning([]int{0, 1})), want: false},
+		{v: reflect.ValueOf(defaultAsArrayScanner([]int{0, 1})), want: false},
 
 		{v: reflect.ValueOf(new([3]string)).Elem(), want: true},
 		{v: reflect.ValueOf(new([]string)).Elem(), want: true},

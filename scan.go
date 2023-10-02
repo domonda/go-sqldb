@@ -9,6 +9,102 @@ import (
 	"time"
 )
 
+// ScanValues returns the values of a row exactly how they are
+// passed from the database driver to an sql.Scanner.
+// Byte slices will be copied.
+func ScanValues(src Row) ([]any, error) {
+	cols, err := src.Columns()
+	if err != nil {
+		return nil, err
+	}
+	var (
+		anys   = make([]AnyValue, len(cols))
+		result = make([]any, len(cols))
+	)
+	// result elements hold pointer to AnyValue for scanning
+	for i := range result {
+		result[i] = &anys[i]
+	}
+	err = src.Scan(result...)
+	if err != nil {
+		return nil, err
+	}
+	// don't return pointers to AnyValue
+	// but what internal value has been scanned
+	for i := range result {
+		result[i] = anys[i].Val
+	}
+	return result, nil
+}
+
+// ScanStrings scans the values of a row as strings.
+// Byte slices will be interpreted as strings,
+// nil (SQL NULL) will be converted to an empty string,
+// all other types are converted with fmt.Sprint.
+func ScanStrings(src Row) ([]string, error) {
+	cols, err := src.Columns()
+	if err != nil {
+		return nil, err
+	}
+	var (
+		result     = make([]string, len(cols))
+		resultPtrs = make([]any, len(cols))
+	)
+	for i := range resultPtrs {
+		resultPtrs[i] = (*StringScannable)(&result[i])
+	}
+	err = src.Scan(resultPtrs...)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func ScanStruct(srcRow Row, destStruct any, mapper StructFieldMapper) error {
+	v := reflect.ValueOf(destStruct)
+	for v.Kind() == reflect.Ptr && !v.IsNil() {
+		v = v.Elem()
+	}
+
+	var (
+		setDestStructPtr = false
+		destStructPtr    reflect.Value
+		newStructPtr     reflect.Value
+	)
+	if v.Kind() == reflect.Ptr && v.IsNil() && v.CanSet() {
+		// Got a nil pointer that we can set with a newly allocated struct
+		setDestStructPtr = true
+		destStructPtr = v
+		newStructPtr = reflect.New(v.Type().Elem())
+		// Continue with the newly allocated struct
+		v = newStructPtr.Elem()
+	}
+	if v.Kind() != reflect.Struct {
+		return fmt.Errorf("ScanStruct: expected struct but got %T", destStruct)
+	}
+
+	columns, err := srcRow.Columns()
+	if err != nil {
+		return err
+	}
+
+	fieldPointers, err := MapStructFieldPointersForColumns(mapper, v, columns)
+	if err != nil {
+		return fmt.Errorf("ScanStruct: %w", err)
+	}
+
+	err = srcRow.Scan(fieldPointers...)
+	if err != nil {
+		return err
+	}
+
+	if setDestStructPtr {
+		destStructPtr.Set(newStructPtr)
+	}
+
+	return nil
+}
+
 // ScanDriverValue scans a driver.Value into destPtr.
 func ScanDriverValue(destPtr any, value driver.Value) error {
 	if destPtr == nil {

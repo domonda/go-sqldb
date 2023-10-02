@@ -1,6 +1,8 @@
 package sqldb
 
 import (
+	"database/sql/driver"
+	"errors"
 	"sort"
 
 	"golang.org/x/exp/maps"
@@ -21,4 +23,20 @@ func (v Values) Sorted() (names []string, values []any) {
 	}
 
 	return names, values
+}
+
+func convertValuesInPlace(values []any, converter driver.ValueConverter) error {
+	if converter == nil {
+		return nil
+	}
+	var err error
+	for i, value := range values {
+		v, e := converter.ConvertValue(value)
+		if e != nil {
+			err = errors.Join(err, e)
+			continue
+		}
+		values[i] = v
+	}
+	return err
 }

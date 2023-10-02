@@ -1,10 +1,8 @@
-package impl
+package sqldb
 
 import (
 	"database/sql"
 	"reflect"
-
-	"github.com/lib/pq"
 )
 
 // func WrapForArray(a any) interface {
@@ -14,8 +12,34 @@ import (
 // 	return pq.Array(a)
 // }
 
-func WrapForArrayScanning(a any) sql.Scanner {
-	return pq.Array(a)
+type ArrayHandler interface {
+	AsArrayScanner(dest any) sql.Scanner
+}
+
+func MakeArrayScannable(dest []any, arrayHandler ArrayHandler) []any {
+	if arrayHandler == nil {
+		return dest
+	}
+	var wrappedDest []any
+	for i, d := range dest {
+		if ShouldWrapForArrayScanning(reflect.ValueOf(d).Elem()) {
+			if wrappedDest == nil {
+				// Allocate new slice for wrapped element
+				wrappedDest = make([]any, len(dest))
+				// Copy previous elements
+				for h := 0; h < i; h++ {
+					wrappedDest[h] = dest[h]
+				}
+			}
+			wrappedDest[i] = arrayHandler.AsArrayScanner(d)
+		} else if wrappedDest != nil {
+			wrappedDest[i] = d
+		}
+	}
+	if wrappedDest != nil {
+		return wrappedDest
+	}
+	return dest
 }
 
 func ShouldWrapForArrayScanning(v reflect.Value) bool {

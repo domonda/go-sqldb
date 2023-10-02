@@ -3,8 +3,6 @@ package impl
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"fmt"
 	"time"
 
 	"github.com/domonda/go-sqldb"
@@ -133,48 +131,4 @@ func (conn *transaction) QueryRows(query string, args ...any) sqldb.RowsScanner 
 		return sqldb.RowsScannerWithError(err)
 	}
 	return NewRowsScanner(conn.parent.ctx, rows, conn.structFieldNamer, query, conn.parent.argFmt, args)
-}
-
-func (conn *transaction) IsTransaction() bool {
-	return true
-}
-
-func (conn *transaction) TransactionNo() uint64 {
-	return conn.no
-}
-
-func (conn *transaction) TransactionOptions() (*sql.TxOptions, bool) {
-	return conn.opts, true
-}
-
-func (conn *transaction) Begin(opts *sql.TxOptions, no uint64) (sqldb.Connection, error) {
-	tx, err := conn.parent.db.BeginTx(conn.parent.ctx, opts)
-	if err != nil {
-		return nil, err
-	}
-	return newTransaction(conn.parent, tx, opts, no), nil
-}
-
-func (conn *transaction) Commit() error {
-	return conn.tx.Commit()
-}
-
-func (conn *transaction) Rollback() error {
-	return conn.tx.Rollback()
-}
-
-func (conn *transaction) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
-	return fmt.Errorf("notifications %w", errors.ErrUnsupported)
-}
-
-func (conn *transaction) UnlistenChannel(channel string) (err error) {
-	return fmt.Errorf("notifications %w", errors.ErrUnsupported)
-}
-
-func (conn *transaction) IsListeningOnChannel(channel string) bool {
-	return false
-}
-
-func (conn *transaction) Close() error {
-	return conn.Rollback()
 }

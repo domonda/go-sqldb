@@ -1,84 +1,13 @@
 package impl
 
 import (
-	"database/sql"
-	"errors"
-
 	sqldb "github.com/domonda/go-sqldb"
 )
 
 var (
-	_ sqldb.RowScanner = &RowScanner{}
 	_ sqldb.RowScanner = CurrentRowScanner{}
 	// _ sqldb.RowScanner = SingleRowScanner{}
 )
-
-// RowScanner implements sqldb.RowScanner for a sql.Row
-type RowScanner struct {
-	rows             Rows
-	structFieldNamer sqldb.StructFieldMapper
-	query            string // for error wrapping
-	argFmt           string // for error wrapping
-	args             []any  // for error wrapping
-}
-
-func NewRowScanner(rows Rows, structFieldNamer sqldb.StructFieldMapper, query, argFmt string, args []any) *RowScanner {
-	return &RowScanner{rows, structFieldNamer, query, argFmt, args}
-}
-
-func (s *RowScanner) Scan(dest ...any) error {
-	return s.ScanWithArrays(dest)
-}
-
-func (s *RowScanner) ScanWithArrays(dest []any) (err error) {
-	defer func() {
-		err = errors.Join(err, s.rows.Close())
-		err = WrapNonNilErrorWithQuery(err, s.query, s.argFmt, s.args)
-	}()
-
-	if s.rows.Err() != nil {
-		return s.rows.Err()
-	}
-	if !s.rows.Next() {
-		if s.rows.Err() != nil {
-			return s.rows.Err()
-		}
-		return sql.ErrNoRows
-	}
-
-	return ScanRowWithArrays(s.rows, dest)
-}
-
-func (s *RowScanner) ScanStruct(dest any) (err error) {
-	defer func() {
-		err = errors.Join(err, s.rows.Close())
-		err = WrapNonNilErrorWithQuery(err, s.query, s.argFmt, s.args)
-	}()
-
-	if s.rows.Err() != nil {
-		return s.rows.Err()
-	}
-	if !s.rows.Next() {
-		if s.rows.Err() != nil {
-			return s.rows.Err()
-		}
-		return sql.ErrNoRows
-	}
-
-	return ScanStruct(s.rows, dest, s.structFieldNamer)
-}
-
-func (s *RowScanner) ScanValues() ([]any, error) {
-	return ScanValues(s.rows)
-}
-
-func (s *RowScanner) ScanStrings() ([]string, error) {
-	return ScanStrings(s.rows)
-}
-
-func (s *RowScanner) Columns() ([]string, error) {
-	return s.rows.Columns()
-}
 
 // CurrentRowScanner calls Rows.Scan without Rows.Next and Rows.Close
 type CurrentRowScanner struct {

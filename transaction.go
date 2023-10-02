@@ -13,7 +13,7 @@ var txCounter atomic.Uint64
 // NextTxNumber returns the next globally unique number
 // for a new transaction in a threadsafe way.
 //
-// Use Connection.TxNumber() to get the number
+// Use TxConnection.TxNumber() to get the number
 // from a transaction connection.
 func NextTxNumber() uint64 {
 	return txCounter.Add(1)
@@ -27,6 +27,8 @@ func NextTxNumber() uint64 {
 // the Begin method.
 type TxConnection interface {
 	Connection
+
+	DefaultIsolationLevel() sql.IsolationLevel
 
 	// TxNumber returns the globally unique number of the transaction
 	// or zero if the connection is not a transaction.
@@ -73,7 +75,7 @@ func Transaction(ctx context.Context, parentConn TxConnection, opts *sql.TxOptio
 		// so don't begin a new transaction,
 		// just execute txFunc within the current transaction
 		// if the TxOptions are compatible
-		err = CheckTxOptionsCompatibility(parentOpts, opts, parentConn.DBKind().DefaultIsolationLevel())
+		err = CheckTxOptionsCompatibility(parentOpts, opts, parentConn.DefaultIsolationLevel())
 		if err != nil {
 			return err
 		}

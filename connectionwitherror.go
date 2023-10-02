@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"reflect"
 	"time"
 )
 
@@ -20,23 +21,28 @@ type connectionWithError struct {
 	err error
 }
 
-// Implements DBKind
 func (e connectionWithError) DatabaseKind() string {
 	return e.err.Error()
 }
 
-// Implements DBKind
-func (e connectionWithError) DefaultIsolationLevel() sql.IsolationLevel {
-	return sql.LevelDefault
+func (e connectionWithError) StringLiteral(s string) string {
+	return defaultQueryFormatter{}.StringLiteral(s)
 }
 
-// Implements DBKind
+func (e connectionWithError) ArrayLiteral(array any) (string, error) {
+	return "", e.err
+}
+
+func (e connectionWithError) ColumnPlaceholder(index int) string {
+	return defaultQueryFormatter{}.ColumnPlaceholder(index)
+}
+
+func (e connectionWithError) MapStructField(field reflect.StructField) (table, column string, flags FieldFlag, use bool) {
+	return "", "", 0, false
+}
+
 func (e connectionWithError) ValidateColumnName(name string) error {
 	return e.err
-}
-
-func (e connectionWithError) DBKind() DBKind {
-	return e
 }
 
 func (e connectionWithError) DBStats() sql.DBStats {
@@ -44,7 +50,7 @@ func (e connectionWithError) DBStats() sql.DBStats {
 }
 
 func (e connectionWithError) Config() *Config {
-	return &Config{Err: e.err}
+	return &Config{}
 }
 
 func (e connectionWithError) IsTransaction() bool {
@@ -65,6 +71,10 @@ func (e connectionWithError) Exec(ctx context.Context, query string, args ...any
 
 func (e connectionWithError) Query(ctx context.Context, query string, args ...any) (Rows, error) {
 	return nil, errors.Join(e.err, ctx.Err())
+}
+
+func (e connectionWithError) DefaultIsolationLevel() sql.IsolationLevel {
+	return sql.LevelDefault
 }
 
 func (e connectionWithError) TxNumber() uint64 {

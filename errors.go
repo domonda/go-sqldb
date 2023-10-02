@@ -23,6 +23,31 @@ func IsOtherThanErrNoRows(err error) bool {
 	return err != nil && !errors.Is(err, sql.ErrNoRows)
 }
 
+// WrapErrorWithQuery wraps non nil errors with a formatted query
+// if the error was not already wrapped with a query.
+//
+// If the passed error is nil, then nil will be returned.
+func WrapErrorWithQuery(err error, query string, args []any, formatter QueryFormatter) error {
+	var wrapped errWithQuery
+	if err == nil || errors.As(err, &wrapped) {
+		return err
+	}
+	return errWithQuery{err, query, args, formatter}
+}
+
+type errWithQuery struct {
+	err       error
+	query     string
+	args      []any
+	formatter QueryFormatter
+}
+
+func (e errWithQuery) Unwrap() error { return e.err }
+
+func (e errWithQuery) Error() string {
+	return fmt.Sprintf("%s from query: %s", e.err, FormatQuery(e.query, e.args, e.formatter))
+}
+
 // sentinelError implements the error interface for a string
 // and is meant to be used to declare const sentinel errors.
 //

@@ -1,4 +1,4 @@
-package impl
+package sqldb
 
 import (
 	"database/sql/driver"
@@ -9,12 +9,58 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/lib/pq"
 )
 
 const timeFormat = "'2006-01-02 15:04:05.999999Z07:00:00'"
 
+// type StringFormatter interface {
+// 	StringLiteral(string) string
+// }
+
+// type StringFormatterFunc func(string) string
+
+// func (f StringFormatterFunc) StringLiteral(s string) string {
+// 	return f(s)
+// }
+
+type QueryFormatter interface {
+	StringLiteral(string) string
+	ArrayLiteral(array any) (string, error)
+	ColumnPlaceholder(index int) string
+}
+
+type defaultQueryFormatter struct{}
+
+func (defaultQueryFormatter) StringLiteral(s string) string {
+	return defaultStringLiteral(s)
+}
+
+func (defaultQueryFormatter) ArrayLiteral(array any) (string, error) {
+	value, err := pq.Array(array).Value()
+	if err != nil {
+		return "", fmt.Errorf("can't format %T as SQL array because: %w", array, err)
+	}
+	return fmt.Sprintf("'%s'", value), nil
+}
+
+func (defaultQueryFormatter) ColumnPlaceholder(index int) string {
+	return fmt.Sprintf("$%d", index+1)
+}
+
+// AlwaysFormatValue formats a value for debugging or logging SQL statements.
+// In case of any problems fmt.Sprint(val) is returned.
+func AlwaysFormatValue(val any, formatter QueryFormatter) string {
+	str, err := FormatValue(val, formatter)
+	if err != nil {
+		return fmt.Sprint(val)
+	}
+	return str
+}
+
 // FormatValue formats a value for debugging or logging SQL statements.
-func FormatValue(val any) (string, error) {
+func FormatValue(val any, formatter QueryFormatter) (string, error) {
 	if val == nil {
 		return "NULL", nil
 	}
@@ -34,7 +80,7 @@ func FormatValue(val any) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return FormatValue(value)
+		return FormatValue(value, formatter)
 
 	case time.Time:
 		return x.Format(timeFormat), nil
@@ -45,7 +91,7 @@ func FormatValue(val any) (string, error) {
 		if v.IsNil() {
 			return "NULL", nil
 		}
-		return FormatValue(v.Elem().Interface())
+		return FormatValue(v.Elem().Interface(), formatter)
 
 	case reflect.Bool:
 		if v.Bool() {
@@ -57,9 +103,10 @@ func FormatValue(val any) (string, error) {
 	case reflect.String:
 		s := v.String()
 		if l := len(s); l >= 2 && (s[0] == '{' && s[l-1] == '}' || s[0] == '[' && s[l-1] == ']') {
+			// String is already an array literal, just quote it
 			return `'` + s + `'`, nil
 		}
-		return QuoteLiteral(s), nil
+		return formatter.StringLiteral(s), nil
 
 	case reflect.Slice:
 		if v.Type().Elem().Kind() == reflect.Uint8 {
@@ -70,22 +117,26 @@ func FormatValue(val any) (string, error) {
 			if l := len(b); l >= 2 && (b[0] == '{' && b[l-1] == '}' || b[0] == '[' && b[l-1] == ']') {
 				return `'` + string(b) + `'`, nil
 			}
-			return QuoteLiteral(string(b)), nil
+			return formatter.StringLiteral(string(b)), nil
 		}
+		return formatter.ArrayLiteral(v.Interface())
+
+	case reflect.Array:
+		return formatter.ArrayLiteral(v.Interface())
 	}
 
 	return fmt.Sprint(val), nil
 }
 
-func FormatQuery(query string, args []any, argFmt string) string {
+func FormatQuery(query string, args []any, naming QueryFormatter) string {
+	// Replace placeholders with formatted args
 	for i := len(args) - 1; i >= 0; i-- {
-		placeholder := fmt.Sprintf(argFmt, i+1)
-		value, err := FormatValue(args[i])
-		if err != nil {
-			value = "FORMATERROR:" + err.Error()
-		}
-		query = strings.ReplaceAll(query, placeholder, value)
+		placeholder := naming.ColumnPlaceholder(i)
+		formattedArg := AlwaysFormatValue(args[i], naming)
+		query = strings.ReplaceAll(query, placeholder, formattedArg)
 	}
+
+	// Line endings and indentation:
 
 	lines := strings.Split(query, "\n")
 	if len(lines) == 1 {
@@ -124,17 +175,7 @@ func FormatQuery(query string, args []any, argFmt string) string {
 	return strings.Join(lines, "\n")
 }
 
-// QuoteLiteral quotes a 'literal' (e.g. a parameter, often used to pass literal
-// to DDL and other statements that do not accept parameters) to be used as part
-// of an SQL statement.  For example:
-//
-//	exp_date := pq.QuoteLiteral("2023-01-05 15:00:00Z")
-//	err := db.Exec(fmt.Sprintf("CREATE ROLE my_user VALID UNTIL %s", exp_date))
-//
-// Any single quotes in name will be escaped. Any backslashes (i.e. "\") will be
-// replaced by two backslashes (i.e. "\\") and the C-style escape identifier
-// that PostgreSQL provides ('E') will be prepended to the string.
-func QuoteLiteral(literal string) string {
+func defaultStringLiteral(literal string) string {
 	// This follows the PostgreSQL internal algorithm for handling quoted literals
 	// from libpq, which can be found in the "PQEscapeStringInternal" function,
 	// which is found in the libpq/fe-exec.c source file:

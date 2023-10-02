@@ -7,16 +7,26 @@ import (
 	"golang.org/x/net/context"
 )
 
+type FullyFeaturedConnection interface {
+	Connection
+	TxConnection
+	ListenerConnection
+}
+
 // Connection represents a database connection or transaction
 type Connection interface {
-	DBKind() DBKind
+	StructFieldMapper
 
-	// DBStats returns the sql.DBStats of this connection.
-	DBStats() sql.DBStats
+	QueryFormatter
+
+	DatabaseKind() string
 
 	// Config returns the configuration used
 	// to create this connection.
 	Config() *Config
+
+	// DBStats returns the sql.DBStats of this connection.
+	DBStats() sql.DBStats
 
 	// IsTransaction returns if the connection is a transaction
 	IsTransaction() bool
@@ -28,12 +38,6 @@ type Connection interface {
 	// to be considered.
 	Ping(ctx context.Context, timeout time.Duration) error
 
-	// Now returns the result of the SQL now()
-	// function for the current connection.
-	// Useful for getting the timestamp of a
-	// SQL transaction for use in Go code.
-	Now(ctx context.Context) (time.Time, error)
-
 	// Exec executes a query with optional args.
 	Exec(ctx context.Context, query string, args ...any) error
 
@@ -42,21 +46,4 @@ type Connection interface {
 	// Close the connection.
 	// Transactions will be rolled back.
 	Close() error
-}
-
-type FullyFeaturedConnection interface {
-	Connection
-	TxConnection
-	ListenerConnection
-}
-
-type DBKind interface {
-	DatabaseKind() string
-
-	DefaultIsolationLevel() sql.IsolationLevel
-
-	// ValidateColumnName returns an error
-	// if the passed name is not valid for a
-	// column of the connection's database.
-	ValidateColumnName(name string) error
 }
