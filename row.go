@@ -2,7 +2,6 @@ package sqldb
 
 import (
 	"database/sql"
-	"errors"
 )
 
 // Row is an interface with the methods of sql.Rows
@@ -41,7 +40,7 @@ type RowScanner interface {
 	ScanStrings() ([]string, error)
 }
 
-// rowScanner implements RowScanner for a sql.Row
+// rowScanner implements RowScanner for Rows
 type rowScanner struct {
 	row   Rows
 	query string     // for error wrapping
@@ -53,15 +52,15 @@ func NewRowScanner(row Rows, query string, args []any, conn Connection) RowScann
 	return &rowScanner{row: row, query: query, args: args, conn: conn}
 }
 
-func (s *rowScanner) Columns() ([]string, error) {
+func (s *rowScanner) Columns() (columns []string, err error) {
+	defer WrapResultErrorWithQuery(&err, s.query, s.args, s.conn)
+
 	return s.row.Columns()
 }
 
 func (s *rowScanner) Scan(dest ...any) (err error) {
-	defer func() {
-		err = errors.Join(err, s.row.Close())
-		err = WrapErrorWithQuery(err, s.query, s.args, s.conn)
-	}()
+	defer WrapResultErrorWithQuery(&err, s.query, s.args, s.conn)
+
 	if s.row.Err() != nil {
 		return s.row.Err()
 	}
@@ -76,10 +75,8 @@ func (s *rowScanner) Scan(dest ...any) (err error) {
 }
 
 func (s *rowScanner) ScanStruct(dest any) (err error) {
-	defer func() {
-		err = errors.Join(err, s.row.Close())
-		err = WrapErrorWithQuery(err, s.query, s.args, s.conn)
-	}()
+	defer WrapResultErrorWithQuery(&err, s.query, s.args, s.conn)
+
 	if s.row.Err() != nil {
 		return s.row.Err()
 	}
@@ -94,10 +91,8 @@ func (s *rowScanner) ScanStruct(dest any) (err error) {
 }
 
 func (s *rowScanner) ScanValues() (vals []any, err error) {
-	defer func() {
-		err = errors.Join(err, s.row.Close())
-		err = WrapErrorWithQuery(err, s.query, s.args, s.conn)
-	}()
+	defer WrapResultErrorWithQuery(&err, s.query, s.args, s.conn)
+
 	if s.row.Err() != nil {
 		return nil, s.row.Err()
 	}
@@ -112,10 +107,8 @@ func (s *rowScanner) ScanValues() (vals []any, err error) {
 }
 
 func (s *rowScanner) ScanStrings() (strs []string, err error) {
-	defer func() {
-		err = errors.Join(err, s.row.Close())
-		err = WrapErrorWithQuery(err, s.query, s.args, s.conn)
-	}()
+	defer WrapResultErrorWithQuery(&err, s.query, s.args, s.conn)
+
 	if s.row.Err() != nil {
 		return nil, s.row.Err()
 	}
@@ -125,6 +118,48 @@ func (s *rowScanner) ScanStrings() (strs []string, err error) {
 		}
 		return nil, sql.ErrNoRows
 	}
+
+	return ScanStrings(s.row)
+}
+
+// currentRowScanner implements RowScanner for Row
+type currentRowScanner struct {
+	row   Row
+	query string     // for error wrapping
+	args  []any      // for error wrapping
+	conn  Connection // for error wrapping
+}
+
+func NewCurrentRowScanner(row Row, query string, args []any, conn Connection) RowScanner {
+	return &currentRowScanner{row: row, query: query, args: args, conn: conn}
+}
+
+func (s *currentRowScanner) Columns() (columns []string, err error) {
+	defer WrapResultErrorWithQuery(&err, s.query, s.args, s.conn)
+
+	return s.row.Columns()
+}
+
+func (s *currentRowScanner) Scan(dest ...any) (err error) {
+	defer WrapResultErrorWithQuery(&err, s.query, s.args, s.conn)
+
+	return s.row.Scan(dest...)
+}
+
+func (s *currentRowScanner) ScanStruct(dest any) (err error) {
+	defer WrapResultErrorWithQuery(&err, s.query, s.args, s.conn)
+
+	return ScanStruct(s.row, dest, s.conn)
+}
+
+func (s *currentRowScanner) ScanValues() (vals []any, err error) {
+	defer WrapResultErrorWithQuery(&err, s.query, s.args, s.conn)
+
+	return ScanValues(s.row)
+}
+
+func (s *currentRowScanner) ScanStrings() (strs []string, err error) {
+	defer WrapResultErrorWithQuery(&err, s.query, s.args, s.conn)
 
 	return ScanStrings(s.row)
 }

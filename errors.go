@@ -35,6 +35,16 @@ func WrapErrorWithQuery(err error, query string, args []any, formatter QueryForm
 	return errWithQuery{err, query, args, formatter}
 }
 
+// WrapResultErrorWithQuery wraps non nil errors referenced by errPtr
+// with a formatted query if the error was not already wrapped with a query.
+//
+// If the passed error is nil, then nil will be returned.
+func WrapResultErrorWithQuery(errPtr *error, query string, args []any, formatter QueryFormatter) {
+	if *errPtr != nil {
+		*errPtr = WrapErrorWithQuery(*errPtr, query, args, formatter)
+	}
+}
+
 type errWithQuery struct {
 	err       error
 	query     string

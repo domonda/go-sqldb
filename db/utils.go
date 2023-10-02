@@ -30,7 +30,7 @@ func IsOtherThanErrNoRows(err error) bool {
 // and the current time of the database using `select now()`
 // or an error if the time could not be queried.
 func DebugPrintConn(ctx context.Context, args ...any) {
-	opts, isTx := Conn(ctx).TransactionOptions()
+	opts, isTx := Conn(ctx).TxOptions()
 	if isTx {
 		args = append(args, "SQL-Transaction")
 		if optsStr := TxOptionsString(opts); optsStr != "" {
