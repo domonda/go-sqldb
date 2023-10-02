@@ -19,6 +19,8 @@ type Connection interface {
 
 	QueryFormatter
 
+	ValidateColumnName(name string) error
+
 	DatabaseKind() string
 
 	// Config returns the configuration used

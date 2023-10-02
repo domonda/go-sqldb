@@ -301,6 +301,42 @@ func MapStructFieldPointersForColumns(mapper StructFieldMapper, s any, columns [
 	return pointers, nil
 }
 
+func pkColumnsOfStruct(mapper StructFieldMapper, t reflect.Type) (table string, columns []string, err error) {
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		fieldTable, column, flags, ok := mapper.MapStructField(field)
+		if !ok {
+			continue
+		}
+		if fieldTable != "" && fieldTable != table {
+			if table != "" {
+				return "", nil, fmt.Errorf("table name not unique (%s vs %s) in struct %s", table, fieldTable, t)
+			}
+			table = fieldTable
+		}
+
+		if column == "" {
+			fieldTable, columnsEmbed, err := pkColumnsOfStruct(mapper, field.Type)
+			if err != nil {
+				return "", nil, err
+			}
+			if fieldTable != "" && fieldTable != table {
+				if table != "" {
+					return "", nil, fmt.Errorf("table name not unique (%s vs %s) in struct %s", table, fieldTable, t)
+				}
+				table = fieldTable
+			}
+			columns = append(columns, columnsEmbed...)
+		} else if flags.PrimaryKey() {
+			// if err = conn.ValidateColumnName(column); err != nil {
+			// 	return "", nil, fmt.Errorf("%w in struct field %s.%s", err, t, field.Name)
+			// }
+			columns = append(columns, column)
+		}
+	}
+	return table, columns, nil
+}
+
 // func MapStructFieldPointers(mapper StructFieldMapper, strct any) (colFieldPtrs map[string]any, table string, err error) {
 // 	v := reflect.ValueOf(strct)
 // 	for v.Kind() == reflect.Ptr && !v.IsNil() {

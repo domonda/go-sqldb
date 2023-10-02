@@ -44,12 +44,15 @@ func (conn *ConnectionImpl) Config() *Config {
 	return conn.Conf
 }
 
-func (conn *ConnectionImpl) IsTransaction() bool {
-	return false
+func (conn *ConnectionImpl) ValidateColumnName(name string) error {
+	if conn.ValidateColumnNameFunc == nil {
+		return nil
+	}
+	return conn.ValidateColumnNameFunc(name)
 }
 
-func (conn *ConnectionImpl) ValidateColumnName(name string) error {
-	return conn.ValidateColumnNameFunc(name)
+func (conn *ConnectionImpl) IsTransaction() bool {
+	return false
 }
 
 func (conn *ConnectionImpl) Exec(ctx context.Context, query string, args ...any) (err error) {
