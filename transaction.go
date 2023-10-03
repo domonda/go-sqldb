@@ -27,7 +27,7 @@ func AsTxConnection(conn Connection) TxConnection {
 	if tx, ok := conn.(TxConnection); ok {
 		return tx
 	}
-	return ErrorConnection{Err: fmt.Errorf("%w: %s does not implement TxConnection", errors.ErrUnsupported, conn)}
+	return ErrorConnection(fmt.Errorf("%w: %s does not implement TxConnection", errors.ErrUnsupported, conn))
 }
 
 // TxConnection is a connection that supports transactions.

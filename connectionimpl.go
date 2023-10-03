@@ -32,6 +32,14 @@ func (conn *ConnectionImpl) DatabaseKind() string {
 	return conn.Kind
 }
 
+func (conn *ConnectionImpl) Config() *Config {
+	return conn.Conf
+}
+
+func (conn *ConnectionImpl) Err() error {
+	return nil
+}
+
 func (conn *ConnectionImpl) Ping(ctx context.Context, timeout time.Duration) error {
 	if timeout > 0 {
 		var cancel func()
@@ -43,10 +51,6 @@ func (conn *ConnectionImpl) Ping(ctx context.Context, timeout time.Duration) err
 
 func (conn *ConnectionImpl) DBStats() sql.DBStats {
 	return conn.DB.Stats()
-}
-
-func (conn *ConnectionImpl) Config() *Config {
-	return conn.Conf
 }
 
 func (conn *ConnectionImpl) ValidateColumnName(name string) error {

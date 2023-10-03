@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	globalConnection Connection = ErrorConnection{errors.New("sqldb not initialized, use sqldb.SetGlobalConnection!")}
+	globalConnection Connection = ErrorConnection(errors.New("sqldb not initialized, use sqldb.SetGlobalConnection!"))
 
 	connectionCtxKey int
 )
@@ -87,6 +87,10 @@ type Connection interface {
 
 	String() string
 	DatabaseKind() string
+
+	// Err returns an error if the connection
+	// is in some non-working state.
+	Err() error
 
 	// Config returns the configuration used
 	// to create this connection.

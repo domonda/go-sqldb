@@ -24,7 +24,7 @@ var (
 // if the database connection from the context is not a transaction.
 func ValidateWithinTransaction(ctx context.Context) error {
 	conn := Conn(ctx)
-	if err := conn.Config().Err; err != nil {
+	if err := conn.Err(); err != nil {
 		return err
 	}
 	if !conn.IsTransaction() {
@@ -37,7 +37,7 @@ func ValidateWithinTransaction(ctx context.Context) error {
 // if the database connection from the context is a transaction.
 func ValidateNotWithinTransaction(ctx context.Context) error {
 	conn := Conn(ctx)
-	if err := conn.Config().Err; err != nil {
+	if err := conn.Err(); err != nil {
 		return err
 	}
 	if conn.IsTransaction() {
