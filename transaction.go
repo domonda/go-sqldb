@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 )
 
-var txCounter atomic.Uint64
+var txCount atomic.Uint64
 
 // NextTxNumber returns the next globally unique number
 // for a new transaction in a threadsafe way.
@@ -16,18 +16,26 @@ var txCounter atomic.Uint64
 // Use TxConnection.TxNumber() to get the number
 // from a transaction connection.
 func NextTxNumber() uint64 {
-	return txCounter.Add(1)
+	return txCount.Add(1)
 }
 
-// AsTxConnection returns the passed Connection
+// ToTxConnection returns the passed Connection
 // as TxConnection if implemented
 // or else an ErrorConnection with an error
 // that wraps errors.ErrUnsupported.
-func AsTxConnection(conn Connection) TxConnection {
-	if tx, ok := conn.(TxConnection); ok {
-		return tx
+func ToTxConnection(conn Connection) TxConnection {
+	tx, err := AsTxConnection(conn)
+	if err != nil {
+		return ErrorConnection(err)
 	}
-	return ErrorConnection(fmt.Errorf("%w: %s does not implement TxConnection", errors.ErrUnsupported, conn))
+	return tx
+}
+
+func AsTxConnection(conn Connection) (TxConnection, error) {
+	if tx, ok := conn.(TxConnection); ok {
+		return tx, nil
+	}
+	return nil, fmt.Errorf("%w: %s does not implement TxConnection", errors.ErrUnsupported, conn)
 }
 
 // TxConnection is a connection that supports transactions.
@@ -72,41 +80,38 @@ type TxConnection interface {
 	Rollback() error
 }
 
-// Transaction executes txFunc within a database transaction that is passed in to txFunc as tx Connection.
-// Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
+// TransactionOpts executes txFunc within a database transaction with sql.TxOptions that is passed in to txFunc via the context.
+// Use db.ContextConnection(ctx) to get the transaction connection within txFunc.
+// TransactionOpts returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx Connection
-// and no parentConn.Begin, Commit, or Rollback calls will occour within this Transaction call.
-// An error is returned, if the requested transaction options passed via opts
-// are stricter than the options of the parent transaction.
+// and no parentConn.Begin, Commit, or Rollback calls will occour within this TransactionOpts call.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
 // Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
-func Transaction(ctx context.Context, parentConn TxConnection, opts *sql.TxOptions, txFunc func(tx TxConnection) error) (err error) {
-	if parentOpts, parentIsTx := parentConn.TxOptions(); parentIsTx {
-		// parentConn is already a transaction connection
+func TransactionOpts(ctx context.Context, opts *sql.TxOptions, txFunc func(context.Context) error) (err error) {
+	// Don't shadow err result var!
+	txConnection, e := AsTxConnection(ContextConnection(ctx))
+	if e != nil {
+		return e
+	}
+
+	if parentOpts, isTransation := txConnection.TxOptions(); isTransation {
+		// txConn is already a transaction connection
 		// so don't begin a new transaction,
 		// just execute txFunc within the current transaction
 		// if the TxOptions are compatible
-		err = CheckTxOptionsCompatibility(parentOpts, opts, parentConn.DefaultIsolationLevel())
+		err = CheckTxOptionsCompatibility(parentOpts, opts, txConnection.DefaultIsolationLevel())
 		if err != nil {
 			return err
 		}
-		return txFunc(parentConn)
+		return txFunc(ContextWithConnection(ctx, txConnection))
 	}
 
 	// Execute txFunc within new transaction
-	return IsolatedTransaction(ctx, parentConn, opts, txFunc)
-}
-
-// IsolatedTransaction executes txFunc within a database transaction that is passed in to txFunc as tx Connection.
-// IsolatedTransaction returns all errors from txFunc or transaction commit errors happening after txFunc.
-// If parentConn is already a transaction, a brand new transaction will begin on the parent's connection.
-// Errors and panics from txFunc will rollback the transaction.
-// Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
-func IsolatedTransaction(ctx context.Context, parentConn TxConnection, opts *sql.TxOptions, txFunc func(tx TxConnection) error) (err error) {
-	txNo := NextTxNumber()
-	tx, e := parentConn.Begin(ctx, opts, txNo)
+	txNumber := NextTxNumber()
+	// Don't shadow err result var!
+	tx, e := txConnection.Begin(ctx, opts, txNumber)
 	if e != nil {
-		return fmt.Errorf("Transaction %d Begin error: %w", txNo, e)
+		return fmt.Errorf("Transaction %d Begin error: %w", txNumber, e)
 	}
 
 	defer func() {
@@ -115,7 +120,7 @@ func IsolatedTransaction(ctx context.Context, parentConn TxConnection, opts *sql
 			e := tx.Rollback()
 			if e != nil && !errors.Is(e, sql.ErrTxDone) {
 				// Double error situation, log e so it doesn't get lost
-				ErrLogger.Printf("Transaction %d error (%s) from rollback after panic: %+v", txNo, e, r)
+				ErrLogger.Printf("Transaction %d error (%s) from rollback after panic: %+v", txNumber, e, r)
 			}
 			panic(r) // re-throw panic after Rollback
 		}
@@ -125,7 +130,7 @@ func IsolatedTransaction(ctx context.Context, parentConn TxConnection, opts *sql
 			e := tx.Rollback()
 			if e != nil && !errors.Is(e, sql.ErrTxDone) {
 				// Double error situation, wrap err with e so it doesn't get lost
-				err = fmt.Errorf("Transaction %d error (%s) from rollback after error: %w", txNo, e, err)
+				err = fmt.Errorf("Transaction %d error (%s) from rollback after error: %w", txNumber, e, err)
 			}
 			return
 		}
@@ -133,11 +138,71 @@ func IsolatedTransaction(ctx context.Context, parentConn TxConnection, opts *sql
 		e := tx.Commit()
 		if e != nil {
 			// Set Commit error as function return value
-			err = fmt.Errorf("Transaction %d Commit error: %w", txNo, e)
+			err = fmt.Errorf("Transaction %d Commit error: %w", txNumber, e)
 		}
 	}()
 
-	return txFunc(tx)
+	return txFunc(ContextWithConnection(ctx, tx))
+}
+
+func Transaction(ctx context.Context, txFunc func(context.Context) error) (err error) {
+	return TransactionOpts(ctx, nil, txFunc)
+}
+
+// TransactionReadOnly executes txFunc within a read-only database transaction that is passed in to txFunc via the context.
+// Use db.ContextConnection(ctx) to get the transaction connection within txFunc.
+// TransactionReadOnly returns all errors from txFunc or transaction commit errors happening after txFunc.
+// If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx Connection
+// and no parentConn.Begin, Commit, or Rollback calls will occour within this TransactionReadOnly call.
+// Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
+// Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
+func TransactionReadOnly(ctx context.Context, txFunc func(context.Context) error) error {
+	return TransactionOpts(ctx, &sql.TxOptions{ReadOnly: true}, txFunc)
+}
+
+// DebugNoTransaction executes nonTxFunc without a database transaction.
+// Useful to temporarely replace Transaction to debug the same code without using a transaction.
+func DebugNoTransaction(ctx context.Context, nonTxFunc func(context.Context) error) error {
+	return nonTxFunc(ctx)
+}
+
+// DebugNoTransactionOpts executes nonTxFunc without a database transaction.
+// Useful to temporarely replace TransactionOpts to debug the same code without using a transaction.
+func DebugNoTransactionOpts(ctx context.Context, opts *sql.TxOptions, nonTxFunc func(context.Context) error) error {
+	return nonTxFunc(ctx)
+}
+
+// IsTransaction indicates if the connection from the context
+// (or the global connection if the context has none)
+// is a transaction.
+func IsTransaction(ctx context.Context) bool {
+	return ContextConnection(ctx).IsTransaction()
+}
+
+// ValidateWithinTransaction returns ErrNotWithinTransaction
+// if the database connection from the context is not a transaction.
+func ValidateWithinTransaction(ctx context.Context) error {
+	conn := ContextConnection(ctx)
+	if err := conn.Err(); err != nil {
+		return err
+	}
+	if !conn.IsTransaction() {
+		return ErrNotWithinTransaction
+	}
+	return nil
+}
+
+// ValidateNotWithinTransaction returns ErrWithinTransaction
+// if the database connection from the context is a transaction.
+func ValidateNotWithinTransaction(ctx context.Context) error {
+	conn := ContextConnection(ctx)
+	if err := conn.Err(); err != nil {
+		return err
+	}
+	if conn.IsTransaction() {
+		return ErrWithinTransaction
+	}
+	return nil
 }
 
 // CheckTxOptionsCompatibility returns an error

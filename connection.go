@@ -64,13 +64,6 @@ func ContextWithConnection(ctx context.Context, conn Connection) context.Context
 	return context.WithValue(ctx, &connectionCtxKey, conn)
 }
 
-// IsTransaction indicates if the connection from the context
-// (or the global connection if the context has none)
-// is a transaction.
-func IsTransaction(ctx context.Context) bool {
-	return ContextConnection(ctx).IsTransaction()
-}
-
 type FullyFeaturedConnection interface {
 	Connection
 	TxConnection
