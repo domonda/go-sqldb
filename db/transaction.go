@@ -12,6 +12,14 @@ import (
 	"github.com/domonda/go-sqldb"
 )
 
+var (
+	// Number of retries used for a SerializedTransaction
+	// before it fails
+	SerializedTransactionRetries = 10
+
+	serializedTransactionCtxKey int
+)
+
 // ValidateWithinTransaction returns sqldb.ErrNotWithinTransaction
 // if the database connection from the context is not a transaction.
 func ValidateWithinTransaction(ctx context.Context) error {

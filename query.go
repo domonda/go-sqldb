@@ -10,10 +10,6 @@ import (
 	"time"
 )
 
-func ContextConnection(ctx context.Context) Connection {
-	panic("TODO")
-}
-
 // Now returns the result of the SQL NOW()
 // function for the current connection.
 // Useful for getting the timestamp of a

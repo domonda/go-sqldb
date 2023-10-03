@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"fmt"
 	"time"
 )
 
@@ -21,6 +22,10 @@ type ConnectionImpl struct {
 	Conf                   *Config
 	ValidateColumnNameFunc func(string) error
 	ValueConverter         driver.ValueConverter
+}
+
+func (conn *ConnectionImpl) String() string {
+	return fmt.Sprintf("%s connection: %s", conn.DatabaseKind(), conn.Config().ConnectURL())
 }
 
 func (conn *ConnectionImpl) DatabaseKind() string {

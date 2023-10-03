@@ -19,6 +19,17 @@ func NextTxNumber() uint64 {
 	return txCounter.Add(1)
 }
 
+// AsTxConnection returns the passed Connection
+// as TxConnection if implemented
+// or else an ErrorConnection with an error
+// that wraps errors.ErrUnsupported.
+func AsTxConnection(conn Connection) TxConnection {
+	if tx, ok := conn.(TxConnection); ok {
+		return tx
+	}
+	return ErrorConnection{Err: fmt.Errorf("%w: %s does not implement TxConnection", errors.ErrUnsupported, conn)}
+}
+
 // TxConnection is a connection that supports transactions.
 //
 // This does not mean that every TxConnection represents
