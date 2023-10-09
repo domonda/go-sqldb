@@ -37,6 +37,8 @@ func TestTaggedStructFieldMapping_StructFieldName(t *testing.T) {
 	}
 	type AnonymousEmbedded struct{}
 	var s struct {
+		TableName `db:"public.my_table"` // Field(0)
+
 		Index             int    `db:"index,pk=public.my_table"` // Field(0)
 		IndexB            int    `db:"index_b,pk"`               // Field(1)
 		Str               string `db:"named_str"`                // Field(2)
@@ -56,33 +58,34 @@ func TestTaggedStructFieldMapping_StructFieldName(t *testing.T) {
 		wantTable   string
 		wantColumn  string
 		wantFlags   FieldFlag
-		wantOk      bool
+		wantUse     bool
 	}{
-		{name: "index", structField: st.Field(0), wantTable: "public.my_table", wantColumn: "index", wantFlags: FieldFlagPrimaryKey, wantOk: true},
-		{name: "index_b", structField: st.Field(1), wantTable: "", wantColumn: "index_b", wantFlags: FieldFlagPrimaryKey, wantOk: true},
-		{name: "named_str", structField: st.Field(2), wantColumn: "named_str", wantFlags: 0, wantOk: true},
-		{name: "read_only", structField: st.Field(3), wantColumn: "read_only", wantFlags: FieldFlagReadOnly, wantOk: true},
-		{name: "untagged_field", structField: st.Field(4), wantColumn: "untagged_field", wantFlags: 0, wantOk: true},
-		{name: "ignore", structField: st.Field(5), wantColumn: "", wantFlags: 0, wantOk: false},
-		{name: "pk_read_only", structField: st.Field(6), wantColumn: "pk_read_only", wantFlags: FieldFlagPrimaryKey | FieldFlagReadOnly, wantOk: true},
-		{name: "no_flag", structField: st.Field(7), wantColumn: "no_flag", wantFlags: 0, wantOk: true},
-		{name: "malformed_flags", structField: st.Field(8), wantColumn: "malformed_flags", wantFlags: FieldFlagReadOnly, wantOk: true},
-		{name: "Embedded", structField: st.Field(9), wantColumn: "", wantFlags: 0, wantOk: true},
+		{name: "TableName", structField: st.Field(0), wantTable: "public.my_table", wantColumn: "", wantFlags: 0, wantUse: false},
+		{name: "index", structField: st.Field(1), wantTable: "public.my_table", wantColumn: "index", wantFlags: FieldFlagPrimaryKey, wantUse: true},
+		{name: "index_b", structField: st.Field(2), wantTable: "", wantColumn: "index_b", wantFlags: FieldFlagPrimaryKey, wantUse: true},
+		{name: "named_str", structField: st.Field(3), wantColumn: "named_str", wantFlags: 0, wantUse: true},
+		{name: "read_only", structField: st.Field(4), wantColumn: "read_only", wantFlags: FieldFlagReadOnly, wantUse: true},
+		{name: "untagged_field", structField: st.Field(5), wantColumn: "untagged_field", wantFlags: 0, wantUse: true},
+		{name: "ignore", structField: st.Field(6), wantColumn: "", wantFlags: 0, wantUse: false},
+		{name: "pk_read_only", structField: st.Field(7), wantColumn: "pk_read_only", wantFlags: FieldFlagPrimaryKey | FieldFlagReadOnly, wantUse: true},
+		{name: "no_flag", structField: st.Field(8), wantColumn: "no_flag", wantFlags: 0, wantUse: true},
+		{name: "malformed_flags", structField: st.Field(9), wantColumn: "malformed_flags", wantFlags: FieldFlagReadOnly, wantUse: true},
+		{name: "AnonymousEmbedded", structField: st.Field(10), wantColumn: "", wantFlags: 0, wantUse: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotTable, gotColumn, gotFlags, gotOk := naming.MapStructField(tt.structField)
+			gotTable, gotColumn, gotFlags, gotUse := naming.MapStructField(tt.structField)
 			if gotTable != tt.wantTable {
-				t.Errorf("TaggedStructFieldMapping.MapStructField(%q) gotTable = %q, want %q", tt.structField.Name, gotTable, tt.wantTable)
+				t.Errorf("TaggedStructFieldMapping.MapStructField(%#v) gotTable = %#v, want %#v", tt.structField.Name, gotTable, tt.wantTable)
 			}
 			if gotColumn != tt.wantColumn {
-				t.Errorf("TaggedStructFieldMapping.MapStructField(%q) gotColumn = %q, want %q", tt.structField.Name, gotColumn, tt.wantColumn)
+				t.Errorf("TaggedStructFieldMapping.MapStructField(%#v) gotColumn = %#v, want %#v", tt.structField.Name, gotColumn, tt.wantColumn)
 			}
 			if gotFlags != tt.wantFlags {
-				t.Errorf("TaggedStructFieldMapping.MapStructField(%q) gotFlags = %v, want %v", tt.structField.Name, gotFlags, tt.wantFlags)
+				t.Errorf("TaggedStructFieldMapping.MapStructField(%#v) gotFlags =%#v, want %#v", tt.structField.Name, gotFlags, tt.wantFlags)
 			}
-			if gotOk != tt.wantOk {
-				t.Errorf("TaggedStructFieldMapping.MapStructField(%q) gotOk = %v, want %v", tt.structField.Name, gotOk, tt.wantOk)
+			if gotUse != tt.wantUse {
+				t.Errorf("TaggedStructFieldMapping.MapStructField(%#v) gotOk = %#v, want %#v", tt.structField.Name, gotUse, tt.wantUse)
 			}
 		})
 	}

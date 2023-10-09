@@ -60,26 +60,6 @@ func InsertReturning(ctx context.Context, conn Queryer, table string, values sql
 	return QueryRow(ctx, conn, query.String(), vals, converter, argFmt, mapper)
 }
 
-func writeInsertQuery(w *strings.Builder, table, argFmt string, names []string) {
-	fmt.Fprintf(w, `INSERT INTO %s(`, table)
-	for i, name := range names {
-		if i > 0 {
-			w.WriteByte(',')
-		}
-		w.WriteByte('"')
-		w.WriteString(name)
-		w.WriteByte('"')
-	}
-	w.WriteString(`) VALUES(`)
-	for i := range names {
-		if i > 0 {
-			w.WriteByte(',')
-		}
-		fmt.Fprintf(w, argFmt, i+1)
-	}
-	w.WriteByte(')')
-}
-
 // InsertStruct inserts a new row into table using the connection's
 // StructFieldMapper to map struct fields to column names.
 // Optional ColumnFilter can be passed to ignore mapped columns.

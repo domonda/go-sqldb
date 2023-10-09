@@ -87,14 +87,16 @@ type TaggedStructFieldMapping struct {
 
 func (m *TaggedStructFieldMapping) MapStructField(field reflect.StructField) (table, column string, flags FieldFlag, use bool) {
 	if field.Anonymous {
+		if field.Type == typeOfTableName {
+			table, _ = field.Tag.Lookup(m.NameTag)
+			return table, "", 0, false
+		}
 		column, hasTag := field.Tag.Lookup(m.NameTag)
 		if !hasTag {
 			// Embedded struct fields are ok if not tagged with IgnoreName
 			return "", "", 0, true
 		}
-		if i := strings.IndexByte(column, ','); i != -1 {
-			column = column[:i]
-		}
+		column, _, _ = strings.Cut(column, ",")
 		// Embedded struct fields are ok if not tagged with IgnoreName
 		return "", "", 0, column != m.Ignore
 	}
@@ -177,15 +179,16 @@ func mapStructType(mapper StructFieldMapper, structType reflect.Type, mapped *Ma
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
 		table, column, flags, use := mapper.MapStructField(field)
-		if !use {
-			continue
-		}
 
 		if table != "" {
 			if mapped.Table != "" && table != mapped.Table {
 				return fmt.Errorf("conflicting tables %s and %s found in struct %s", mapped.Table, table, structType)
 			}
 			mapped.Table = table
+		}
+
+		if !use {
+			continue
 		}
 
 		if column == "" {
