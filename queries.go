@@ -341,7 +341,7 @@ func writeInsertQuery(w *strings.Builder, table string, names []string, formatte
 		if i > 0 {
 			w.WriteByte(',')
 		}
-		w.WriteString(formatter.ColumnPlaceholder(i))
+		w.WriteString(formatter.ParameterPlaceholder(i))
 	}
 	w.WriteByte(')')
 }

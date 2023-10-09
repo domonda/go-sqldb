@@ -3,6 +3,7 @@ package sqldb
 import (
 	"database/sql/driver"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -26,15 +27,17 @@ const timeFormat = "'2006-01-02 15:04:05.999999Z07:00:00'"
 // }
 
 type QueryFormatter interface {
-	StringLiteral(string) string
+	StringLiteral(str string) string
 	ArrayLiteral(array any) (string, error)
-	ColumnPlaceholder(index int) string
+	ValidateColumnName(name string) error
+	ParameterPlaceholder(index int) string
+	MaxParameters() int
 }
 
 type defaultQueryFormatter struct{}
 
-func (defaultQueryFormatter) StringLiteral(s string) string {
-	return defaultStringLiteral(s)
+func (defaultQueryFormatter) StringLiteral(str string) string {
+	return defaultStringLiteral(str)
 }
 
 func (defaultQueryFormatter) ArrayLiteral(array any) (string, error) {
@@ -45,9 +48,24 @@ func (defaultQueryFormatter) ArrayLiteral(array any) (string, error) {
 	return fmt.Sprintf("'%s'", value), nil
 }
 
-func (defaultQueryFormatter) ColumnPlaceholder(index int) string {
+func (defaultQueryFormatter) ValidateColumnName(name string) error {
+	if name == `` || name == `""` {
+		return errors.New("empty column name")
+	}
+	if strings.ContainsFunc(name, unicode.IsSpace) {
+		return fmt.Errorf("column name %q contains whitespace", name)
+	}
+	if strings.ContainsFunc(name, unicode.IsControl) {
+		return fmt.Errorf("column name %q contains control characters", name)
+	}
+	return nil
+}
+
+func (defaultQueryFormatter) ParameterPlaceholder(index int) string {
 	return fmt.Sprintf("$%d", index+1)
 }
+
+func (defaultQueryFormatter) MaxParameters() int { return 1024 }
 
 // AlwaysFormatValue formats a value for debugging or logging SQL statements.
 // In case of any problems fmt.Sprint(val) is returned.
@@ -131,7 +149,7 @@ func FormatValue(val any, formatter QueryFormatter) (string, error) {
 func FormatQuery(query string, args []any, naming QueryFormatter) string {
 	// Replace placeholders with formatted args
 	for i := len(args) - 1; i >= 0; i-- {
-		placeholder := naming.ColumnPlaceholder(i)
+		placeholder := naming.ParameterPlaceholder(i)
 		formattedArg := AlwaysFormatValue(args[i], naming)
 		query = strings.ReplaceAll(query, placeholder, formattedArg)
 	}

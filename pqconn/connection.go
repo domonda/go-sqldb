@@ -18,6 +18,8 @@ const argFmt = "$%d"
 
 var columnNameRegex = regexp.MustCompile(`^[a-zA-Z_][0-9a-zA-Z_]{0,58}$`)
 
+const maxParameters = 65534
+
 func validateColumnName(name string) error {
 	if !columnNameRegex.MatchString(name) {
 		return fmt.Errorf("invalid Postgres column name: %q", name)

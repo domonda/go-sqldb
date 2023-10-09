@@ -17,11 +17,10 @@ type ConnectionImpl struct {
 	StructFieldMapper
 	QueryFormatter
 	ArrayHandler
-	Kind                   string
-	DB                     *sql.DB
-	Conf                   *Config
-	ValidateColumnNameFunc func(string) error
-	ValueConverter         driver.ValueConverter
+	Kind           string
+	DB             *sql.DB
+	Conf           *Config
+	ValueConverter driver.ValueConverter
 }
 
 func (conn *ConnectionImpl) String() string {
@@ -51,13 +50,6 @@ func (conn *ConnectionImpl) Ping(ctx context.Context, timeout time.Duration) err
 
 func (conn *ConnectionImpl) DBStats() sql.DBStats {
 	return conn.DB.Stats()
-}
-
-func (conn *ConnectionImpl) ValidateColumnName(name string) error {
-	if conn.ValidateColumnNameFunc == nil {
-		return nil
-	}
-	return conn.ValidateColumnNameFunc(name)
 }
 
 func (conn *ConnectionImpl) IsTransaction() bool {

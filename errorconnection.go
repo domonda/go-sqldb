@@ -42,8 +42,8 @@ func (e errorConnection) ArrayLiteral(array any) (string, error) {
 	return "", e.err
 }
 
-func (e errorConnection) ColumnPlaceholder(index int) string {
-	return defaultQueryFormatter{}.ColumnPlaceholder(index)
+func (e errorConnection) ParameterPlaceholder(index int) string {
+	return defaultQueryFormatter{}.ParameterPlaceholder(index)
 }
 
 func (e errorConnection) MapStructField(field reflect.StructField) (table, column string, flags FieldFlag, use bool) {
@@ -53,6 +53,8 @@ func (e errorConnection) MapStructField(field reflect.StructField) (table, colum
 func (e errorConnection) ValidateColumnName(name string) error {
 	return e.err
 }
+
+func (e errorConnection) MaxParameters() int { return 0 }
 
 func (e errorConnection) DBStats() sql.DBStats {
 	return sql.DBStats{}

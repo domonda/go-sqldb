@@ -72,13 +72,13 @@ type FullyFeaturedConnection interface {
 
 // Connection represents a database connection or transaction
 type Connection interface {
+	QueryFormatter
 	StructFieldMapper
 
-	QueryFormatter
-
-	ValidateColumnName(name string) error
-
+	// String returns information about the connection
 	String() string
+
+	// DatabaseKind returns the vendor name of the database kind
 	DatabaseKind() string
 
 	// Err returns an error if the connection
