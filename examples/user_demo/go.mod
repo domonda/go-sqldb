@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/domonda/go-sqldb v0.0.0-20230223092012-ed67c9f07bb0
-	github.com/domonda/go-types v0.0.0-20230810134814-bd15ee23faf5
+	github.com/domonda/go-types v0.0.0-20230829145420-30f9974e0bc7
 )
 
 require (
@@ -23,9 +23,9 @@ require (
 	github.com/ssor/bom v0.0.0-20170718123548-6386211fdfcf // indirect
 	github.com/teamwork/tnef v0.0.0-20200108124832-7deabccfdb32 // indirect
 	github.com/ungerik/go-fs v0.0.0-20230810132455-f7ff27f6fa2b // indirect
-	golang.org/x/net v0.14.0 // indirect
-	golang.org/x/sys v0.11.0 // indirect
-	golang.org/x/text v0.12.0 // indirect
+	golang.org/x/net v0.17.0 // indirect
+	golang.org/x/sys v0.13.0 // indirect
+	golang.org/x/text v0.13.0 // indirect
 	mvdan.cc/xurls/v2 v2.5.0 // indirect
 )
 
