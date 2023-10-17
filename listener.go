@@ -29,4 +29,8 @@ type ListenerConnection interface {
 
 	// IsListeningOnChannel returns if a channel is listened to.
 	IsListeningOnChannel(ctx context.Context, channel string) bool
+
+	// NotifyChannel notifies a channel with the optional payload.
+	// If the payload is an empty string, then it won't be added to the notification.
+	NotifyChannel(ctx context.Context, channel, payload string) error
 }

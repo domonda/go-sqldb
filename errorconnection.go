@@ -116,6 +116,10 @@ func (e errorConnection) IsListeningOnChannel(ctx context.Context, channel strin
 	return false
 }
 
+func (e errorConnection) NotifyChannel(ctx context.Context, channel, payload string) error {
+	return errors.Join(e.err, ctx.Err())
+}
+
 func (e errorConnection) Close() error {
 	return e.err
 }

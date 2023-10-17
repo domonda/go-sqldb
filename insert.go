@@ -133,7 +133,7 @@ func createInsertQuery(table string, columns []string, numRows int, formatter Qu
 	b.WriteString(")\nVALUES")
 	for r := 0; r < numRows; r++ {
 		if r > 0 {
-			b.WriteString("\n,")
+			b.WriteString("\n    , ")
 		}
 		b.WriteByte('(')
 		for c := range columns {

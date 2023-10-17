@@ -149,6 +149,10 @@ func (c *nullConnection) IsListeningOnChannel(ctx context.Context, channel strin
 	return false
 }
 
+func (c *nullConnection) NotifyChannel(ctx context.Context, channel, payload string) error {
+	return ctx.Err()
+}
+
 func (c *nullConnection) Close() error {
 	return nil
 }
