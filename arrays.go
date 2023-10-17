@@ -47,7 +47,7 @@ func ShouldWrapForArrayScanning(v reflect.Value) bool {
 	if t.Implements(typeOfSQLScanner) {
 		return false
 	}
-	if t.Kind() == reflect.Ptr && !v.IsNil() {
+	if t.Kind() == reflect.Pointer && !v.IsNil() {
 		v = v.Elem()
 		t = v.Type()
 	}
@@ -71,7 +71,7 @@ func IsSliceOrArray(value any) bool {
 		return false
 	}
 	v := reflect.ValueOf(value)
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
 			return false
 		}
@@ -91,7 +91,7 @@ func IsNonDriverValuerSliceOrArrayType(t reflect.Type) bool {
 		return false
 	}
 	k := t.Kind()
-	if k == reflect.Ptr {
+	if k == reflect.Pointer {
 		t = t.Elem()
 		k = t.Kind()
 	}
@@ -173,7 +173,7 @@ func IsNonDriverValuerSliceOrArrayType(t reflect.Type) bool {
 // 	} else {
 // 		newDest = reflect.New(a.Dest.Type()).Elem()
 // 	}
-// 	if reflect.PtrTo(elemType).Implements(typeOfSQLScanner) {
+// 	if reflect.PointerTo(elemType).Implements(typeOfSQLScanner) {
 // 		for i, elemStr := range elems {
 // 			err = newDest.Index(i).Addr().Interface().(sql.Scanner).Scan(elemStr)
 // 			if err != nil {

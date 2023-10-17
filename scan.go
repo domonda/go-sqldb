@@ -62,7 +62,7 @@ func ScanStrings(src Row) ([]string, error) {
 
 func ScanStruct(srcRow Row, destStruct any, mapper StructFieldMapper) error {
 	v := reflect.ValueOf(destStruct)
-	for v.Kind() == reflect.Ptr && !v.IsNil() {
+	for v.Kind() == reflect.Pointer && !v.IsNil() {
 		v = v.Elem()
 	}
 
@@ -71,7 +71,7 @@ func ScanStruct(srcRow Row, destStruct any, mapper StructFieldMapper) error {
 		destStructPtr    reflect.Value
 		newStructPtr     reflect.Value
 	)
-	if v.Kind() == reflect.Ptr && v.IsNil() && v.CanSet() {
+	if v.Kind() == reflect.Pointer && v.IsNil() && v.CanSet() {
 		// Got a nil pointer that we can set with a newly allocated struct
 		setDestStructPtr = true
 		destStructPtr = v
@@ -116,7 +116,7 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 	}
 
 	dest := reflect.ValueOf(destPtr)
-	if dest.Kind() != reflect.Ptr {
+	if dest.Kind() != reflect.Pointer {
 		return fmt.Errorf("can't scan non-pointer %s", dest.Type())
 	}
 	dest = dest.Elem()
@@ -196,7 +196,7 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 			return nil
 		}
 		switch dest.Kind() {
-		case reflect.Ptr, reflect.Slice, reflect.Map:
+		case reflect.Pointer, reflect.Slice, reflect.Map:
 			dest.SetZero()
 			return nil
 		}

@@ -170,6 +170,31 @@ type MappedStruct struct {
 	ColumnFields map[string]*MappedStructField
 }
 
+func (m *MappedStruct) StructFieldValues(structVal reflect.Value) (values []any, err error) {
+	if structVal.Type() != m.Type {
+		return nil, fmt.Errorf("can't return StructFieldValues of type %s for MappedStruct type %s", structVal.Type(), m.Type)
+	}
+	values = make([]any, len(m.Fields))
+	for i, m := range m.Fields {
+		values[i] = structVal.FieldByIndex(m.Field.Index).Interface()
+	}
+	return values, nil
+}
+
+func (m *MappedStruct) StructFieldPointers(structVal reflect.Value) (values []any, err error) {
+	if !structVal.CanAddr() {
+		return nil, errors.New("struct can't be addressed")
+	}
+	if structVal.Type() != m.Type {
+		return nil, fmt.Errorf("can't return StructFieldPointers of type %s for MappedStruct type %s", structVal.Type(), m.Type)
+	}
+	values = make([]any, len(m.Fields))
+	for i, m := range m.Fields {
+		values[i] = structVal.FieldByIndex(m.Field.Index).Addr().Interface()
+	}
+	return values, nil
+}
+
 var (
 	mappedStructTypeCache    = make(map[StructFieldMapper]map[reflect.Type]*MappedStruct)
 	mappedStructTypeCacheMtx sync.Mutex
@@ -221,6 +246,13 @@ func mapStructType(mapper StructFieldMapper, structType reflect.Type, mapped *Ma
 }
 
 func MapStructType(mapper StructFieldMapper, structType reflect.Type) (*MappedStruct, error) {
+	if structType.Kind() == reflect.Pointer {
+		structType = structType.Elem()
+	}
+	if structType.Kind() != reflect.Struct {
+		return nil, fmt.Errorf("MapStructType called with non struct type %s", structType)
+	}
+
 	mappedStructTypeCacheMtx.Lock()
 	defer mappedStructTypeCacheMtx.Unlock()
 
@@ -243,7 +275,7 @@ func MapStructType(mapper StructFieldMapper, structType reflect.Type) (*MappedSt
 
 func MapStruct(mapper StructFieldMapper, s any) (mapped *MappedStruct, structVal reflect.Value, err error) {
 	structVal = reflect.ValueOf(s)
-	for structVal.Kind() == reflect.Ptr && !structVal.IsNil() {
+	for structVal.Kind() == reflect.Pointer && !structVal.IsNil() {
 		structVal = structVal.Elem()
 	}
 	if structVal.Kind() != reflect.Struct {
@@ -258,9 +290,9 @@ func MapStructFieldValues(mapper StructFieldMapper, s any) (columns []string, va
 	if err != nil {
 		return nil, nil, "", err
 	}
-	values = make([]any, len(mapped.Columns))
-	for i, m := range mapped.Fields {
-		values[i] = structVal.FieldByIndex(m.Field.Index).Interface()
+	values, err = mapped.StructFieldValues(structVal)
+	if err != nil {
+		return nil, nil, "", err
 	}
 	return mapped.Columns, values, mapped.Table, nil
 }
@@ -270,12 +302,9 @@ func MapStructFieldPointers(mapper StructFieldMapper, s any) (columns []string, 
 	if err != nil {
 		return nil, nil, "", err
 	}
-	if !structVal.CanAddr() {
-		return nil, nil, "", errors.New("struct can't be addressed")
-	}
-	pointers = make([]any, len(mapped.Columns))
-	for i, m := range mapped.Fields {
-		pointers[i] = structVal.FieldByIndex(m.Field.Index).Addr().Interface()
+	pointers, err = mapped.StructFieldPointers(structVal)
+	if err != nil {
+		return nil, nil, "", err
 	}
 	return mapped.Columns, pointers, mapped.Table, nil
 }
@@ -342,7 +371,7 @@ func pkColumnsOfStruct(mapper StructFieldMapper, t reflect.Type) (table string, 
 
 // func MapStructFieldPointers(mapper StructFieldMapper, strct any) (colFieldPtrs map[string]any, table string, err error) {
 // 	v := reflect.ValueOf(strct)
-// 	for v.Kind() == reflect.Ptr && !v.IsNil() {
+// 	for v.Kind() == reflect.Pointer && !v.IsNil() {
 // 		v = v.Elem()
 // 	}
 // 	if v.Kind() != reflect.Struct {
@@ -370,7 +399,7 @@ func pkColumnsOfStruct(mapper StructFieldMapper, t reflect.Type) (table string, 
 
 // func MapStructFieldColumnPointers(mapper StructFieldMapper, structVal any, columns []string) (ptrs []any, table string, colsWithoutField, fieldsWithoutCol []string, err error) {
 // 	v := reflect.ValueOf(structVal)
-// 	for v.Kind() == reflect.Ptr && !v.IsNil() {
+// 	for v.Kind() == reflect.Pointer && !v.IsNil() {
 // 		v = v.Elem()
 // 	}
 // 	if v.Kind() != reflect.Struct {

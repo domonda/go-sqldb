@@ -18,11 +18,11 @@ import (
 // If inserting conflicts on pkColumn, then an update of the existing row is performed.
 func UpsertStruct(ctx context.Context, conn Execer, table string, rowStruct any, mapper sqldb.StructFieldMapper, argFmt string, ignoreColumns []sqldb.ColumnFilter) error {
 	v := reflect.ValueOf(rowStruct)
-	for v.Kind() == reflect.Ptr && !v.IsNil() {
+	for v.Kind() == reflect.Pointer && !v.IsNil() {
 		v = v.Elem()
 	}
 	switch {
-	case v.Kind() == reflect.Ptr && v.IsNil():
+	case v.Kind() == reflect.Pointer && v.IsNil():
 		return fmt.Errorf("UpsertStruct to table %s: can't insert nil", table)
 	case v.Kind() != reflect.Struct:
 		return fmt.Errorf("UpsertStruct to table %s: expected struct but got %T", table, rowStruct)

@@ -69,11 +69,11 @@ func buildUpdateQuery(table string, values sqldb.Values, where string, args []an
 // matching any of the passed column names will be used.
 func UpdateStruct(ctx context.Context, conn Execer, table string, rowStruct any, mapper sqldb.StructFieldMapper, ignoreColumns []sqldb.ColumnFilter, converter driver.ValueConverter, argFmt string) error {
 	v := reflect.ValueOf(rowStruct)
-	for v.Kind() == reflect.Ptr && !v.IsNil() {
+	for v.Kind() == reflect.Pointer && !v.IsNil() {
 		v = v.Elem()
 	}
 	switch {
-	case v.Kind() == reflect.Ptr && v.IsNil():
+	case v.Kind() == reflect.Pointer && v.IsNil():
 		return fmt.Errorf("UpdateStruct of table %s: can't insert nil", table)
 	case v.Kind() != reflect.Struct:
 		return fmt.Errorf("UpdateStruct of table %s: expected struct but got %T", table, rowStruct)

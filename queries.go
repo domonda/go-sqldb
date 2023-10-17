@@ -163,7 +163,7 @@ func QueryRowsAsSlice[T any](ctx context.Context, query string, args ...any) (ro
 }
 
 func isStructRowType(t reflect.Type) bool {
-	if t.Kind() == reflect.Ptr {
+	if t.Kind() == reflect.Pointer {
 		t = t.Elem()
 	}
 	if t.Kind() == reflect.Struct {
@@ -213,7 +213,7 @@ func QueryWithRowCallback[F any](ctx context.Context, callback F, query string, 
 	hasStructArg := false
 	for i := firstArgIndex; i < funcType.NumIn(); i++ {
 		t := funcType.In(i)
-		for t.Kind() == reflect.Ptr {
+		for t.Kind() == reflect.Pointer {
 			t = t.Elem()
 		}
 		switch t.Kind() {
@@ -312,36 +312,4 @@ func QueryStrings(ctx context.Context, query string, args ...any) (rows [][]stri
 		rows = append(rows, row)
 	}
 	return rows, srcRows.Err()
-}
-
-func Insert(ctx context.Context, table string, rows any) error {
-	panic("TODO")
-}
-
-func InsertRow(ctx context.Context, row RowWithTableName) error {
-	panic("TODO")
-}
-
-func InsertRows[R RowWithTableName](ctx context.Context, rows []RowWithTableName) error {
-	panic("TODO")
-}
-
-func writeInsertQuery(w *strings.Builder, table string, names []string, formatter QueryFormatter) {
-	fmt.Fprintf(w, `INSERT INTO %s(`, table)
-	for i, name := range names {
-		if i > 0 {
-			w.WriteByte(',')
-		}
-		w.WriteByte('"')
-		w.WriteString(name)
-		w.WriteByte('"')
-	}
-	w.WriteString(`) VALUES(`)
-	for i := range names {
-		if i > 0 {
-			w.WriteByte(',')
-		}
-		w.WriteString(formatter.ParameterPlaceholder(i))
-	}
-	w.WriteByte(')')
 }

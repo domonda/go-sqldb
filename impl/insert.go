@@ -100,11 +100,11 @@ func InsertUniqueStruct(ctx context.Context, conn Queryer, mapper sqldb.StructFi
 
 func insertStructValues(table string, rowStruct any, mapper sqldb.StructFieldMapper, ignoreColumns []sqldb.ColumnFilter) (columns []string, vals []any, err error) {
 	v := reflect.ValueOf(rowStruct)
-	for v.Kind() == reflect.Ptr && !v.IsNil() {
+	for v.Kind() == reflect.Pointer && !v.IsNil() {
 		v = v.Elem()
 	}
 	switch {
-	case v.Kind() == reflect.Ptr && v.IsNil():
+	case v.Kind() == reflect.Pointer && v.IsNil():
 		return nil, nil, fmt.Errorf("InsertStruct into table %s: can't insert nil", table)
 	case v.Kind() != reflect.Struct:
 		return nil, nil, fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
