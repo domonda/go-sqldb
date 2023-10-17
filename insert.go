@@ -72,42 +72,54 @@ func InsertRows[R RowWithTableName](ctx context.Context, rows []R) error {
 
 func insertRows(ctx context.Context, conn Connection, mapped *MappedStruct, table string, rows reflect.Value) error {
 	numRows := rows.Len()
-	maxParams := conn.MaxParameters()
-	maxRowsPerInsert := maxParams / len(mapped.Fields)
+	numCols := len(mapped.Fields)
+	maxRowsPerInsert := conn.MaxParameters() / numCols
 	if maxRowsPerInsert == 0 {
 		return fmt.Errorf("%s has %d mapped struct fields which is greater than Connection.MaxParameters of %d", mapped.Type, len(mapped.Fields), maxParams)
 	}
+	numMaxedRowsInserts := numRows / maxRowsPerInsert
+	numRowsPerMaxedInsert := numRows / numMaxedRowsInserts
+	numRowsRemainingInsert := numRows % numMaxedRowsInserts
 
-	query := createInsertQuery(mapped.Table, mapped.Columns, maxRowsPerInsert, conn)
+	insertValues := make([]any, 0, numCols*max(numRowsPerMaxedInsert, numRowsRemainingInsert))
+	numRowsInserted := 0
 
-	insertValues := make([]any, 0, len(mapped.Fields)*maxRowsPerInsert)
-	for i := maxRowsPerInsert; i < numRows; i += maxRowsPerInsert {
-		for j := 0; j < maxRowsPerInsert; j++ {
-			rowValues, err := mapped.StructFieldValues(rows.Index(i + j))
+	for i := 0; i < numMaxedRowsInserts; i++ {
+		for r := 0; r < numRowsRemainingInsert; r++ {
+			rowValues, err := mapped.StructFieldValues(rows.Index(numRowsInserted + r))
 			if err != nil {
 				return err
 			}
 			insertValues = append(insertValues, rowValues...)
 		}
-
+		query := createInsertQuery(table, mapped.Columns, numRowsPerMaxedInsert, conn)
 		err := conn.Exec(ctx, query, insertValues...)
 		if err != nil {
 			return err
 		}
 
 		insertValues = insertValues[:0]
+		numRowsInserted += numRowsPerMaxedInsert
 	}
 
-	query = createInsertQuery(mapped.Table, mapped.Columns, maxRowsPerInsert, conn)
+	if numRowsRemainingInsert == 0 {
+		return nil
+	}
 
-	// todo last insert
-
-	return nil
+	for r := 0; r < numRowsRemainingInsert; r++ {
+		rowValues, err := mapped.StructFieldValues(rows.Index(numRowsInserted + r))
+		if err != nil {
+			return err
+		}
+		insertValues = append(insertValues, rowValues...)
+	}
+	query := createInsertQuery(table, mapped.Columns, numRowsRemainingInsert, conn)
+	return conn.Exec(ctx, query, insertValues...)
 }
 
 func createInsertQuery(table string, columns []string, numRows int, formatter QueryFormatter) string {
 	var b strings.Builder
-	b.WriteString(`INSERT INTO `)
+	b.WriteString("INSERT INTO ")
 	b.WriteString(table)
 	b.WriteByte('(')
 	for i, column := range columns {
@@ -118,10 +130,10 @@ func createInsertQuery(table string, columns []string, numRows int, formatter Qu
 		b.WriteString(column)
 		b.WriteByte('"')
 	}
-	b.WriteString(`) VALUES`)
+	b.WriteString(")\nVALUES")
 	for r := 0; r < numRows; r++ {
 		if r > 0 {
-			b.WriteByte(',')
+			b.WriteString("\n,")
 		}
 		b.WriteByte('(')
 		for c := range columns {
