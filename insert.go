@@ -75,7 +75,7 @@ func insertRows(ctx context.Context, conn Connection, mapped *MappedStruct, tabl
 	numCols := len(mapped.Fields)
 	maxRowsPerInsert := conn.MaxParameters() / numCols
 	if maxRowsPerInsert == 0 {
-		return fmt.Errorf("%s has %d mapped struct fields which is greater than Connection.MaxParameters of %d", mapped.Type, len(mapped.Fields), maxParams)
+		return fmt.Errorf("%s has %d mapped struct fields which is greater than Connection.MaxParameters of %d", mapped.Type, numCols, conn.MaxParameters())
 	}
 	numMaxedRowsInserts := numRows / maxRowsPerInsert
 	numRowsPerMaxedInsert := numRows / numMaxedRowsInserts
