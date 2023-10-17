@@ -46,12 +46,12 @@ func (e errorConnection) ParameterPlaceholder(index int) string {
 	return defaultQueryFormatter{}.ParameterPlaceholder(index)
 }
 
-func (e errorConnection) MapStructField(field reflect.StructField) (table, column string, flags FieldFlag, use bool) {
-	return "", "", 0, false
-}
-
 func (e errorConnection) ValidateColumnName(name string) error {
 	return e.err
+}
+
+func (e errorConnection) MapStructField(field reflect.StructField) (table, column string, flags FieldFlag, use bool) {
+	return "", "", 0, false
 }
 
 func (e errorConnection) MaxParameters() int { return 0 }
@@ -61,7 +61,7 @@ func (e errorConnection) DBStats() sql.DBStats {
 }
 
 func (e errorConnection) Config() *Config {
-	return &Config{}
+	return &Config{Driver: "ErrorConnection"}
 }
 
 func (e errorConnection) IsTransaction() bool {
