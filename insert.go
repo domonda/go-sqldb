@@ -72,48 +72,52 @@ func InsertRows[R RowWithTableName](ctx context.Context, rows []R) error {
 
 func insertRows(ctx context.Context, conn Connection, mapped *MappedStruct, table string, rows reflect.Value) error {
 	numRows := rows.Len()
+	numRowsRemaining := numRows
 	numCols := len(mapped.Fields)
-	maxRowsPerInsert := conn.MaxParameters() / numCols
-	if maxRowsPerInsert == 0 {
-		return fmt.Errorf("%s has %d mapped struct fields which is greater than Connection.MaxParameters of %d", mapped.Type, numCols, conn.MaxParameters())
-	}
-	numMaxedRowsInserts := numRows / maxRowsPerInsert
-	numRowsPerMaxedInsert := numRows / numMaxedRowsInserts
-	numRowsRemainingInsert := numRows % numMaxedRowsInserts
+	maxParams := conn.MaxParameters()
 
-	insertValues := make([]any, 0, numCols*max(numRowsPerMaxedInsert, numRowsRemainingInsert))
-	numRowsInserted := 0
+	if maxParams > 0 && maxParams < numRows*numCols {
+		maxRowsPerInsert := maxParams / numCols
+		if maxRowsPerInsert == 0 {
+			return fmt.Errorf("%s has %d mapped struct fields which is greater than Connection.MaxParameters of %d", mapped.Type, numCols, conn.MaxParameters())
+		}
+		numRowsPerInsert := numRows / maxRowsPerInsert
+		insertValues := make([]any, 0, numRowsPerInsert*numCols)
 
-	for i := 0; i < numMaxedRowsInserts; i++ {
-		for r := 0; r < numRowsRemainingInsert; r++ {
-			rowValues, err := mapped.StructFieldValues(rows.Index(numRowsInserted + r))
+		for i := 0; i < numRows; i += numRowsPerInsert {
+			for r := 0; r < numRowsPerInsert; r++ {
+				rowValues, err := mapped.StructFieldValues(rows.Index(i + r))
+				if err != nil {
+					return err
+				}
+				insertValues = append(insertValues, rowValues...)
+			}
+			query := createInsertQuery(table, mapped.Columns, numRowsPerInsert, conn)
+			err := conn.Exec(ctx, query, insertValues...)
 			if err != nil {
 				return err
 			}
-			insertValues = append(insertValues, rowValues...)
-		}
-		query := createInsertQuery(table, mapped.Columns, numRowsPerMaxedInsert, conn)
-		err := conn.Exec(ctx, query, insertValues...)
-		if err != nil {
-			return err
-		}
 
-		insertValues = insertValues[:0]
-		numRowsInserted += numRowsPerMaxedInsert
+			insertValues = insertValues[:0]
+			numRowsRemaining -= numRowsPerInsert
+			if numRowsRemaining < 0 {
+				panic("can't happen")
+			}
+		}
 	}
-
-	if numRowsRemainingInsert == 0 {
+	if numRowsRemaining == 0 {
 		return nil
 	}
 
-	for r := 0; r < numRowsRemainingInsert; r++ {
-		rowValues, err := mapped.StructFieldValues(rows.Index(numRowsInserted + r))
+	insertValues := make([]any, 0, numCols*numRowsRemaining)
+	for r := numRows - numRowsRemaining; r < numRows; r++ {
+		rowValues, err := mapped.StructFieldValues(rows.Index(r))
 		if err != nil {
 			return err
 		}
 		insertValues = append(insertValues, rowValues...)
 	}
-	query := createInsertQuery(table, mapped.Columns, numRowsRemainingInsert, conn)
+	query := createInsertQuery(table, mapped.Columns, numRowsRemaining, conn)
 	return conn.Exec(ctx, query, insertValues...)
 }
 

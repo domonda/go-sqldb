@@ -18,8 +18,9 @@ type nullConnection struct {
 	queryFormatter    QueryFormatter
 	structFieldMapper StructFieldMapper
 
-	txNo   uint64
-	txOpts *sql.TxOptions
+	maxParameters int
+	txNo          uint64
+	txOpts        *sql.TxOptions
 }
 
 func (c *nullConnection) Err() error {
@@ -69,7 +70,9 @@ func (c *nullConnection) MapStructField(field reflect.StructField) (table, colum
 	return c.structFieldMapper.MapStructField(field)
 }
 
-func (c *nullConnection) MaxParameters() int { return 1000 }
+func (c *nullConnection) MaxParameters() int {
+	return c.maxParameters
+}
 
 func (c *nullConnection) DBStats() sql.DBStats {
 	return sql.DBStats{}
