@@ -184,17 +184,17 @@ func (c *logConnection) Rollback() error {
 	return target.Commit()
 }
 
-func (c *logConnection) ListenOnChannel(ctx context.Context, channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error {
-	target, ok := c.target.(ListenerConnection)
+func (c *logConnection) ListenChannel(ctx context.Context, channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error {
+	target, ok := c.target.(NotificationConnection)
 	if !ok {
 		return errors.ErrUnsupported
 	}
 	c.queryLogger.LogQuery("LISTEN "+channel, nil)
-	return target.ListenOnChannel(ctx, channel, onNotify, onUnlisten)
+	return target.ListenChannel(ctx, channel, onNotify, onUnlisten)
 }
 
 func (c *logConnection) UnlistenChannel(ctx context.Context, channel string) error {
-	target, ok := c.target.(ListenerConnection)
+	target, ok := c.target.(NotificationConnection)
 	if !ok {
 		return errors.ErrUnsupported
 	}
@@ -202,16 +202,24 @@ func (c *logConnection) UnlistenChannel(ctx context.Context, channel string) err
 	return target.UnlistenChannel(ctx, channel)
 }
 
-func (c *logConnection) IsListeningOnChannel(ctx context.Context, channel string) bool {
-	target, ok := c.target.(ListenerConnection)
+func (c *logConnection) IsListeningChannel(ctx context.Context, channel string) bool {
+	target, ok := c.target.(NotificationConnection)
 	if !ok {
 		return false
 	}
-	return target.IsListeningOnChannel(ctx, channel)
+	return target.IsListeningChannel(ctx, channel)
+}
+
+func (c *logConnection) ListeningChannels(ctx context.Context) ([]string, error) {
+	target, ok := c.target.(NotificationConnection)
+	if !ok {
+		return nil, nil
+	}
+	return target.ListeningChannels(ctx)
 }
 
 func (c *logConnection) NotifyChannel(ctx context.Context, channel, payload string) error {
-	target, ok := c.target.(ListenerConnection)
+	target, ok := c.target.(NotificationConnection)
 	if !ok {
 		return errors.ErrUnsupported
 	}

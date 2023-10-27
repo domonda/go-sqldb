@@ -206,8 +206,8 @@ func (conn *genericConn) Rollback() error {
 	return conn.tx.Rollback()
 }
 
-func (conn *genericConn) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
-	return conn.listener.ListenOnChannel(conn, channel, onNotify, onUnlisten)
+func (conn *genericConn) ListenChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
+	return conn.listener.ListenChannel(conn, channel, onNotify, onUnlisten)
 }
 
 func (conn *genericConn) UnlistenChannel(channel string) (err error) {

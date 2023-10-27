@@ -104,7 +104,7 @@ func (e errorConnection) Rollback() error {
 	return e.err
 }
 
-func (e errorConnection) ListenOnChannel(ctx context.Context, channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error {
+func (e errorConnection) ListenChannel(ctx context.Context, channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error {
 	return errors.Join(e.err, ctx.Err())
 }
 
@@ -112,8 +112,12 @@ func (e errorConnection) UnlistenChannel(ctx context.Context, channel string) er
 	return errors.Join(e.err, ctx.Err())
 }
 
-func (e errorConnection) IsListeningOnChannel(ctx context.Context, channel string) bool {
+func (e errorConnection) IsListeningChannel(ctx context.Context, channel string) bool {
 	return false
+}
+
+func (e errorConnection) ListeningChannels(ctx context.Context) ([]string, error) {
+	return nil, errors.Join(e.err, ctx.Err())
 }
 
 func (e errorConnection) NotifyChannel(ctx context.Context, channel, payload string) error {

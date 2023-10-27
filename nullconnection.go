@@ -140,7 +140,7 @@ func (c *nullConnection) Rollback() error {
 	return nil
 }
 
-func (c *nullConnection) ListenOnChannel(ctx context.Context, channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error {
+func (c *nullConnection) ListenChannel(ctx context.Context, channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error {
 	return ctx.Err()
 }
 
@@ -148,8 +148,12 @@ func (c *nullConnection) UnlistenChannel(ctx context.Context, channel string) er
 	return ctx.Err()
 }
 
-func (c *nullConnection) IsListeningOnChannel(ctx context.Context, channel string) bool {
+func (c *nullConnection) IsListeningChannel(ctx context.Context, channel string) bool {
 	return false
+}
+
+func (c *nullConnection) ListeningChannels(ctx context.Context) ([]string, error) {
+	return nil, nil
 }
 
 func (c *nullConnection) NotifyChannel(ctx context.Context, channel, payload string) error {

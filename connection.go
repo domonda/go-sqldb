@@ -67,7 +67,7 @@ func ContextWithConnection(ctx context.Context, conn Connection) context.Context
 type FullyFeaturedConnection interface {
 	Connection
 	TxConnection
-	ListenerConnection
+	NotificationConnection
 }
 
 // Connection represents a database connection or transaction

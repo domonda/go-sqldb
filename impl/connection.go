@@ -37,7 +37,7 @@ func (conn *connection) Rollback() error {
 	return sqldb.ErrNotWithinTransaction
 }
 
-func (conn *connection) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
+func (conn *connection) ListenChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
 	return fmt.Errorf("notifications %w", errors.ErrUnsupported)
 }
 

@@ -42,7 +42,7 @@ var (
 
 type listenerImpl struct{}
 
-func (listenerImpl) ListenOnChannel(conn sqldb.Connection, channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) error {
+func (listenerImpl) ListenChannel(conn sqldb.Connection, channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) error {
 	if conn.IsTransaction() {
 		return sqldb.ErrWithinTransaction
 	}
@@ -56,7 +56,7 @@ func (listenerImpl) UnlistenChannel(conn sqldb.Connection, channel string) error
 	return getListenerOrNil(conn.Config().ConnectURL()).unlistenChannel(channel)
 }
 
-func (listenerImpl) IsListeningOnChannel(conn sqldb.Connection, channel string) bool {
+func (listenerImpl) IsListeningChannel(conn sqldb.Connection, channel string) bool {
 	if conn.IsTransaction() {
 		return false
 	}
