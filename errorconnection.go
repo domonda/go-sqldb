@@ -104,8 +104,8 @@ func (e errorConnection) Rollback() error {
 	return e.err
 }
 
-func (e errorConnection) ListenChannel(ctx context.Context, channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error {
-	return errors.Join(e.err, ctx.Err())
+func (e errorConnection) ListenChannel(ctx context.Context, channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) (cancel func() error, err error) {
+	return func() error { return e.err }, errors.Join(e.err, ctx.Err())
 }
 
 func (e errorConnection) UnlistenChannel(ctx context.Context, channel string, onNotify OnNotifyFunc) error {

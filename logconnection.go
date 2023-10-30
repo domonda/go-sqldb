@@ -184,10 +184,10 @@ func (c *logConnection) Rollback() error {
 	return target.Commit()
 }
 
-func (c *logConnection) ListenChannel(ctx context.Context, channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error {
+func (c *logConnection) ListenChannel(ctx context.Context, channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) (cancel func() error, err error) {
 	target, ok := c.target.(NotificationConnection)
 	if !ok {
-		return errors.ErrUnsupported
+		return nil, errors.ErrUnsupported
 	}
 	c.queryLogger.LogQuery("LISTEN "+channel, nil)
 	return target.ListenChannel(ctx, channel, onNotify, onUnlisten)

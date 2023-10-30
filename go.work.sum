@@ -1,8 +1,6 @@
 github.com/cention-sany/utf7 v0.0.0-20170124080048-26cad61bd60a h1:MISbI8sU/PSK/ztvmWKFcI7UGb5/HQT7B+i3a2myKgI=
 github.com/cention-sany/utf7 v0.0.0-20170124080048-26cad61bd60a/go.mod h1:2GxOXOlEPAMFPfp014mK1SWq8G8BN8o7/dfYqJrVGn8=
 github.com/creack/pty v1.1.18/go.mod h1:MOBLtS5ELjhRRrroQr9kyvTxUAFNvYEK993ew/Vr4O4=
-github.com/domonda/go-errs v0.0.0-20230920094343-6b122da4d22f/go.mod h1:DYkFE3rxUGhTCMmR5MpQ2NTtoCPiORdjBATGkIEeGKM=
-github.com/domonda/go-types v0.0.0-20230926122236-a75565adcd2b/go.mod h1:2mMAkLzvuxdGvjJQ8o8I0QTJGRiCaBV/ZleKeoRbgJ0=
 github.com/fsnotify/fsnotify v1.6.0 h1:n+5WquG0fcWoWp6xPWfHdbskMCQaFnG6PfBrh1Ky4HY=
 github.com/fsnotify/fsnotify v1.6.0/go.mod h1:sl3t1tCWJFWoRz9R8WJCbQihKKwmorjAbSClcnxKAGw=
 github.com/gogs/chardet v0.0.0-20211120154057-b7413eaefb8f h1:3BSP1Tbs2djlpprl7wCLuiqMaUh5SJkkzI2gDs+FgLs=
@@ -29,11 +27,11 @@ github.com/teamwork/utils v0.0.0-20220314153103-637fa45fa6cc/go.mod h1:3Fn0qxFeR
 github.com/ungerik/go-fs v0.0.0-20230206141012-abb864f815e3 h1:IEm9Je1L3HAIEwiXOuGgJuUPjXXHzf/1e704VyIbcGc=
 github.com/ungerik/go-fs v0.0.0-20230810132455-f7ff27f6fa2b h1:hZ/Tp1sn1oRwYqIZfjpfUp8N+5e3LGk32O8OAMh9VOk=
 github.com/ungerik/go-fs v0.0.0-20230810132455-f7ff27f6fa2b/go.mod h1:P8k1DG+Ox0KP4MFNTSPd8ojoDUwXjrWdGjsssF6vT/g=
+github.com/ungerik/go-fs v0.0.0-20230828210517-6ca798932ba7 h1:tEV8EZoXxANOeDk1jVZfT8NUNnX5TtxcHSIo5nBlo4c=
 github.com/ungerik/go-fs v0.0.0-20230828210517-6ca798932ba7/go.mod h1:P8k1DG+Ox0KP4MFNTSPd8ojoDUwXjrWdGjsssF6vT/g=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 golang.org/x/crypto v0.12.0/go.mod h1:NF0Gs7EO5K4qLn+Ylc+fih8BSTeIjAP05siRnAh98yw=
 golang.org/x/crypto v0.13.0/go.mod h1:y6Z2r+Rw4iayiXXAIxJIDAJ1zMW4yaTpebo8fPOliYc=
-golang.org/x/net v0.15.0/go.mod h1:idbUs1IY1+zTqbi8yxTbhexhEEk5ur9LInksu6HrEpk=
 golang.org/x/sync v0.1.0/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 golang.org/x/sys v0.11.0 h1:eG7RXZHdqOJ1i+0lgLgCpSXAp6M3LYlAo6osgSi0xOM=
 golang.org/x/sys v0.11.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=

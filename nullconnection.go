@@ -140,8 +140,8 @@ func (c *nullConnection) Rollback() error {
 	return nil
 }
 
-func (c *nullConnection) ListenChannel(ctx context.Context, channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error {
-	return ctx.Err()
+func (c *nullConnection) ListenChannel(ctx context.Context, channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) (cancel func() error, err error) {
+	return func() error { return nil }, ctx.Err()
 }
 
 func (c *nullConnection) UnlistenChannel(ctx context.Context, channel string, onNotify OnNotifyFunc) error {

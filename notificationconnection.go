@@ -26,7 +26,10 @@ type NotificationConnection interface {
 	// so callbacks should offload long running or potentially blocking code to other go routines.
 	//
 	// Panics from callbacks will be recovered and logged.
-	ListenChannel(ctx context.Context, channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error
+	//
+	// TODO calling the returned cancel function
+	// will cancel a particular watch.
+	ListenChannel(ctx context.Context, channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) (cancel func() error, err error)
 
 	// UnlistenChannel will stop listening on the channel.
 	//
