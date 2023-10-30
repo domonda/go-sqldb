@@ -60,7 +60,7 @@ func (conn transaction) Rollback() error {
 	return nil
 }
 
-func (conn transaction) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
+func (conn transaction) ListenChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
 	return sqldb.ErrWithinTransaction
 }
 

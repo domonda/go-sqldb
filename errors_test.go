@@ -1,4 +1,4 @@
-package impl
+package sqldb
 
 import (
 	"database/sql"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestWrapNonNilErrorWithQuery(t *testing.T) {
+func TestWrapErrorWithQuery(t *testing.T) {
 	type args struct {
 		err    error
 		query  string
@@ -33,7 +33,7 @@ func TestWrapNonNilErrorWithQuery(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := WrapNonNilErrorWithQuery(tt.args.err, tt.args.query, tt.args.argFmt, tt.args.args)
+			err := WrapErrorWithQuery(tt.args.err, tt.args.query, tt.args.args, defaultQueryFormatter{})
 			if tt.wantError == "" && err != nil || tt.wantError != "" && (err == nil || err.Error() != tt.wantError) {
 				t.Errorf("WrapNonNilErrorWithQuery() error = %v, wantErr %v", err, tt.wantError)
 			}

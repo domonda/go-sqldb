@@ -2,21 +2,10 @@ package impl
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"reflect"
-	"time"
 
-	sqldb "github.com/domonda/go-sqldb"
-)
-
-var (
-	typeOfError      = reflect.TypeOf((*error)(nil)).Elem()
-	typeOfContext    = reflect.TypeOf((*context.Context)(nil)).Elem()
-	typeOfSQLScanner = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
-	typeOfTime       = reflect.TypeOf(time.Time{})
-	typeOfByte       = reflect.TypeOf(byte(0))
-	typeOfByteSlice  = reflect.TypeOf((*[]byte)(nil)).Elem()
+	"github.com/domonda/go-sqldb"
 )
 
 // ForEachRowCallFunc will call the passed callback with scanned values or a struct for every row.
@@ -48,7 +37,7 @@ func ForEachRowCallFunc(ctx context.Context, callback any) (f func(sqldb.RowScan
 	structArg := false
 	for i := firstArg; i < typ.NumIn(); i++ {
 		t := typ.In(i)
-		for t.Kind() == reflect.Ptr {
+		for t.Kind() == reflect.Pointer {
 			t = t.Elem()
 		}
 		if t == typeOfTime {
@@ -56,7 +45,7 @@ func ForEachRowCallFunc(ctx context.Context, callback any) (f func(sqldb.RowScan
 		}
 		switch t.Kind() {
 		case reflect.Struct:
-			if t.Implements(typeOfSQLScanner) || reflect.PtrTo(t).Implements(typeOfSQLScanner) {
+			if t.Implements(typeOfSQLScanner) || reflect.PointerTo(t).Implements(typeOfSQLScanner) {
 				continue
 			}
 			if structArg {

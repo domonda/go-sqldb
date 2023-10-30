@@ -1,4 +1,4 @@
-package impl
+package sqldb
 
 import (
 	"database/sql/driver"
@@ -36,7 +36,7 @@ func TestFormatValue(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := FormatValue(tt.val)
+			got, err := FormatValue(tt.val, defaultQueryFormatter{})
 			if (err != nil) != tt.wantErr {
 				t.Errorf("FormatValue() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -49,6 +49,8 @@ func TestFormatValue(t *testing.T) {
 }
 
 func TestFormatQuery(t *testing.T) {
+	formatter := defaultQueryFormatter{}
+
 	query1 := `
 
 	  SELECT *
@@ -90,7 +92,7 @@ WHERE
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := FormatQuery(tt.query, tt.argFmt, tt.args...); got != tt.want {
+			if got := FormatQuery(tt.query, tt.args, formatter); got != tt.want {
 				t.Errorf("FormatQuery():\n%q\nWant:\n%q", got, tt.want)
 			}
 		})

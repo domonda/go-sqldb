@@ -3,11 +3,11 @@ module github.com/domonda/go-sqldb
 go 1.21
 
 require (
-	github.com/domonda/go-errs v0.0.0-20230810132956-1b6272f9fc8f
-	github.com/domonda/go-types v0.0.0-20230829145420-30f9974e0bc7
-	github.com/go-sql-driver/mysql v1.7.1
+	github.com/domonda/go-errs v0.0.0-20230920094343-6b122da4d22f
+	github.com/domonda/go-types v0.0.0-20230926122236-a75565adcd2b
 	github.com/lib/pq v1.10.9
 	github.com/stretchr/testify v1.8.4
+	golang.org/x/net v0.15.0
 )
 
 require (
