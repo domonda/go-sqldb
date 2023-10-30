@@ -108,7 +108,7 @@ func (e errorConnection) ListenChannel(ctx context.Context, channel string, onNo
 	return errors.Join(e.err, ctx.Err())
 }
 
-func (e errorConnection) UnlistenChannel(ctx context.Context, channel string) error {
+func (e errorConnection) UnlistenChannel(ctx context.Context, channel string, onNotify OnNotifyFunc) error {
 	return errors.Join(e.err, ctx.Err())
 }
 

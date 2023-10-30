@@ -29,9 +29,17 @@ type NotificationConnection interface {
 	ListenChannel(ctx context.Context, channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error
 
 	// UnlistenChannel will stop listening on the channel.
+	//
+	// If the passed onNotify callback function is not nil,
+	// then only this callback will be unsubscribed but other
+	// callback might still be active.
+	// If nil is passed for onNotify, then all callbacks
+	// will be unsubscribed.
+	//
 	// An error is returned, when the channel was not listened to
-	// or the listener connection is closed.
-	UnlistenChannel(ctx context.Context, channel string) error
+	// or the listener connection is closed
+	// or the passed onNotify callback was not subscribed with ListenChannel.
+	UnlistenChannel(ctx context.Context, channel string, onNotify OnNotifyFunc) error
 
 	// IsListeningChannel returns if a channel is listened to.
 	IsListeningChannel(ctx context.Context, channel string) bool

@@ -144,7 +144,7 @@ func (c *nullConnection) ListenChannel(ctx context.Context, channel string, onNo
 	return ctx.Err()
 }
 
-func (c *nullConnection) UnlistenChannel(ctx context.Context, channel string) error {
+func (c *nullConnection) UnlistenChannel(ctx context.Context, channel string, onNotify OnNotifyFunc) error {
 	return ctx.Err()
 }
 

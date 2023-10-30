@@ -193,13 +193,13 @@ func (c *logConnection) ListenChannel(ctx context.Context, channel string, onNot
 	return target.ListenChannel(ctx, channel, onNotify, onUnlisten)
 }
 
-func (c *logConnection) UnlistenChannel(ctx context.Context, channel string) error {
+func (c *logConnection) UnlistenChannel(ctx context.Context, channel string, onNotify OnNotifyFunc) error {
 	target, ok := c.target.(NotificationConnection)
 	if !ok {
 		return errors.ErrUnsupported
 	}
 	c.queryLogger.LogQuery("UNLISTEN "+channel, nil)
-	return target.UnlistenChannel(ctx, channel)
+	return target.UnlistenChannel(ctx, channel, onNotify)
 }
 
 func (c *logConnection) IsListeningChannel(ctx context.Context, channel string) bool {
