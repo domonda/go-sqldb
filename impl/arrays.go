@@ -8,7 +8,7 @@ import (
 	"github.com/lib/pq"
 )
 
-func WrapForArray(a interface{}) interface {
+func WrapForArray(a any) interface {
 	driver.Valuer
 	sql.Scanner
 } {
