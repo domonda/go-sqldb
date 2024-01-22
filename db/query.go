@@ -39,8 +39,7 @@ func QueryRows(ctx context.Context, query string, args ...any) sqldb.RowsScanner
 func QueryValue[T any](ctx context.Context, query string, args ...any) (value T, err error) {
 	err = Conn(ctx).QueryRow(query, args...).Scan(&value)
 	if err != nil {
-		var zero T
-		return zero, err
+		return *new(T), err
 	}
 	return value, nil
 }
@@ -53,8 +52,7 @@ func QueryValueOr[T any](ctx context.Context, defaultValue T, query string, args
 		if errors.Is(err, sql.ErrNoRows) {
 			return defaultValue, nil
 		}
-		var zero T
-		return zero, err
+		return *new(T), err
 	}
 	return value, err
 }
