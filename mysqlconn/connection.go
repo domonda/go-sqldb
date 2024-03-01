@@ -14,8 +14,8 @@ import (
 // The connection is pinged with the passed context,
 // and only returned when there was no error from the ping.
 func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
-	if config.Driver != "mysql" {
-		return nil, fmt.Errorf(`invalid driver %q, mysqlconn expects "mysql"`, config.Driver)
+	if config.Driver != Driver {
+		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
 	config.DefaultIsolationLevel = sql.LevelRepeatableRead // mysql default
 

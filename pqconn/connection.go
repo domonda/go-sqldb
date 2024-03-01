@@ -10,15 +10,19 @@ import (
 	"github.com/domonda/go-sqldb/impl"
 )
 
-const argFmt = "$%d"
+const (
+	Driver = "postgres"
+
+	argFmt = "$%d"
+)
 
 // New creates a new sqldb.Connection using the passed sqldb.Config
 // and github.com/lib/pq as driver implementation.
 // The connection is pinged with the passed context
 // and only returned when there was no error from the ping.
 func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
-	if config.Driver != "postgres" {
-		return nil, fmt.Errorf(`invalid driver %q, pqconn expects "postgres"`, config.Driver)
+	if config.Driver != Driver {
+		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
 	config.DefaultIsolationLevel = sql.LevelReadCommitted // postgres default
 

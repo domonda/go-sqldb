@@ -2,7 +2,11 @@ package mysqlconn
 
 import "github.com/go-sql-driver/mysql"
 
-const argFmt = "?"
+const (
+	Driver = "mysql"
+
+	argFmt = "?"
+)
 
 type Config = mysql.Config
 

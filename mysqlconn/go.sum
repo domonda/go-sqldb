@@ -1,11 +1,11 @@
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/domonda/go-errs v0.0.0-20240301142737-8fde935c9bd4 h1:qidwzgjM8qrKy326iXVNHNN/qB89o1lfiAi7pMuNbQU=
-github.com/domonda/go-errs v0.0.0-20240301142737-8fde935c9bd4/go.mod h1:NnvsIo+bzAany1nQLMViGDgJ8kx3k5N/D1+UJz3hEXc=
 github.com/domonda/go-pretty v0.0.0-20240110134850-17385799142f h1:5eA74m451PqlqCXyJzWXp95Quj4PZ6Lm/ndKBuiNhe4=
 github.com/domonda/go-pretty v0.0.0-20240110134850-17385799142f/go.mod h1:3QkM8UJdyJMeKZiIo7hYzSkQBpRS3k0gOHw4ysyEIB4=
 github.com/domonda/go-types v0.0.0-20240301143218-7f4371e713b4 h1:+viX08/UY6+e3JPPZHeMKRlvP0GrInqgqjlizRKdFLI=
 github.com/domonda/go-types v0.0.0-20240301143218-7f4371e713b4/go.mod h1:iLpZ3myjpxZgM1Q8Z+Jg8WDCzHjuVj5U3WZyh+2QBac=
+github.com/go-sql-driver/mysql v1.7.1 h1:lUIinVbN1DY0xBg0eMOzmmtGoHwWBbvnWubQUrtU8EI=
+github.com/go-sql-driver/mysql v1.7.1/go.mod h1:OXbVy3sEdcQ2Doequ6Z5BW6fXNQTmx+9S1MCJN5yJMI=
 github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=
 github.com/jinzhu/now v1.1.5/go.mod h1:d3SSVoowX0Lcu0IBviAWJpolVfI5UJVZZ7cO71lE/z8=
 github.com/lib/pq v1.10.9 h1:YXG7RB+JIjhP29X+OtkiDnYaXQwpS4JEWq7dtCCRUEw=

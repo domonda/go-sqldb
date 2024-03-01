@@ -1,16 +1,16 @@
 module github.com/domonda/go-sqldb/cmd/sqldb-dump
 
-go 1.21
-
-require (
-	github.com/domonda/go-pretty v0.0.0-20230810130018-8920f571470a
-	github.com/domonda/go-sqldb v0.0.0-20220406183832-9d70b61cac63
-)
-
-require (
-	github.com/domonda/go-errs v0.0.0-20230810132956-1b6272f9fc8f // indirect
-	github.com/domonda/go-types v0.0.0-20230810134814-bd15ee23faf5 // indirect
-	github.com/lib/pq v1.10.9 // indirect
-)
+go 1.22
 
 replace github.com/domonda/go-sqldb => ../..
+
+require (
+	github.com/domonda/go-pretty v0.0.0-20240110134850-17385799142f
+	github.com/domonda/go-sqldb v0.0.0-20240122205319-56db59ae89d2
+)
+
+require (
+	github.com/domonda/go-errs v0.0.0-20240301142737-8fde935c9bd4 // indirect
+	github.com/domonda/go-types v0.0.0-20240301143218-7f4371e713b4 // indirect
+	github.com/lib/pq v1.10.9 // indirect
+)
