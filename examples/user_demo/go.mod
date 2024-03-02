@@ -2,10 +2,11 @@ module github.com/domonda/go-sqldb/examples/user_demo
 
 go 1.22
 
-require (
-	github.com/domonda/go-sqldb v0.0.0-20240122205319-56db59ae89d2
-	github.com/domonda/go-types v0.0.0-20240301143218-7f4371e713b4
-)
+replace github.com/domonda/go-sqldb => ../..
+
+require github.com/domonda/go-sqldb v0.0.0-00010101000000-000000000000 // replaced
+
+require github.com/domonda/go-types v0.0.0-20240301143218-7f4371e713b4
 
 require (
 	github.com/cention-sany/utf7 v0.0.0-20170124080048-26cad61bd60a // indirect
@@ -28,5 +29,3 @@ require (
 	golang.org/x/text v0.14.0 // indirect
 	mvdan.cc/xurls/v2 v2.5.0 // indirect
 )
-
-replace github.com/domonda/go-sqldb => ../..
