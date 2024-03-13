@@ -44,6 +44,20 @@ func QueryValue[T any](ctx context.Context, query string, args ...any) (value T,
 	return value, nil
 }
 
+// QueryValueReplaceErrNoRows queries a single value of type T.
+// In case of an sql.ErrNoRows error, errNoRows will be called
+// and its result returned together with the default value for T.
+func QueryValueReplaceErrNoRows[T any](ctx context.Context, errNoRows func() error, query string, args ...any) (value T, err error) {
+	err = Conn(ctx).QueryRow(query, args...).Scan(&value)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) && errNoRows != nil {
+			return *new(T), errNoRows()
+		}
+		return *new(T), err
+	}
+	return value, nil
+}
+
 // QueryValueOr queries a single value of type T
 // or returns the passed defaultValue in case of sql.ErrNoRows.
 func QueryValueOr[T any](ctx context.Context, defaultValue T, query string, args ...any) (value T, err error) {
@@ -61,6 +75,20 @@ func QueryValueOr[T any](ctx context.Context, defaultValue T, query string, args
 func QueryRowStruct[S any](ctx context.Context, query string, args ...any) (row *S, err error) {
 	err = Conn(ctx).QueryRow(query, args...).ScanStruct(&row)
 	if err != nil {
+		return nil, err
+	}
+	return row, nil
+}
+
+// QueryRowStructReplaceErrNoRows queries a row and scans it as struct.
+// In case of an sql.ErrNoRows error, errNoRows will be called
+// and its result returned as error together with nil as row.
+func QueryRowStructReplaceErrNoRows[S any](ctx context.Context, errNoRows func() error, query string, args ...any) (row *S, err error) {
+	err = Conn(ctx).QueryRow(query, args...).ScanStruct(&row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) && errNoRows != nil {
+			return nil, errNoRows()
+		}
 		return nil, err
 	}
 	return row, nil
