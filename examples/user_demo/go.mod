@@ -6,7 +6,7 @@ replace github.com/domonda/go-sqldb => ../..
 
 require github.com/domonda/go-sqldb v0.0.0-00010101000000-000000000000 // replaced
 
-require github.com/domonda/go-types v0.0.0-20240301143218-7f4371e713b4
+require github.com/domonda/go-types v0.0.0-20240309180027-0196423b3d5b
 
 require (
 	github.com/cention-sany/utf7 v0.0.0-20170124080048-26cad61bd60a // indirect
@@ -24,8 +24,8 @@ require (
 	github.com/ssor/bom v0.0.0-20170718123548-6386211fdfcf // indirect
 	github.com/teamwork/tnef v0.0.0-20200108124832-7deabccfdb32 // indirect
 	github.com/ungerik/go-fs v0.0.0-20240118121925-91844f9bdba8 // indirect
-	golang.org/x/net v0.21.0 // indirect
-	golang.org/x/sys v0.17.0 // indirect
+	golang.org/x/net v0.23.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	mvdan.cc/xurls/v2 v2.5.0 // indirect
 )
