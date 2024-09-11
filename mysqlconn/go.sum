@@ -2,8 +2,7 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/domonda/go-pretty v0.0.0-20240110134850-17385799142f h1:5eA74m451PqlqCXyJzWXp95Quj4PZ6Lm/ndKBuiNhe4=
 github.com/domonda/go-pretty v0.0.0-20240110134850-17385799142f/go.mod h1:3QkM8UJdyJMeKZiIo7hYzSkQBpRS3k0gOHw4ysyEIB4=
-github.com/domonda/go-types v0.0.0-20240301143218-7f4371e713b4 h1:+viX08/UY6+e3JPPZHeMKRlvP0GrInqgqjlizRKdFLI=
-github.com/domonda/go-types v0.0.0-20240301143218-7f4371e713b4/go.mod h1:iLpZ3myjpxZgM1Q8Z+Jg8WDCzHjuVj5U3WZyh+2QBac=
+github.com/domonda/go-types v0.0.0-20240822142828-3b45a403e1e2 h1:HsNNMCF7BKLy6Y7ECvg6pA2PwBwNhh8z5IykgWoqlcI=
 github.com/go-sql-driver/mysql v1.7.1 h1:lUIinVbN1DY0xBg0eMOzmmtGoHwWBbvnWubQUrtU8EI=
 github.com/go-sql-driver/mysql v1.7.1/go.mod h1:OXbVy3sEdcQ2Doequ6Z5BW6fXNQTmx+9S1MCJN5yJMI=
 github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=
@@ -14,7 +13,6 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
 github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
-github.com/ungerik/go-reflection v0.0.0-20240110134735-61cada706fec h1:QiS/w0cXNtHs0xhs+Pa2Pp71CTeM9z7zVgbxV+CvezM=
-github.com/ungerik/go-reflection v0.0.0-20240110134735-61cada706fec/go.mod h1:6mOx6LfN4Xbb4fyHO6syugCjbx88cgpbxekcx4W1mpM=
+github.com/ungerik/go-reflection v0.0.0-20240905081803-708928fe0862 h1:rxp/NtuHYkx0HRYL/Y7xh/07ZwI/Pbk3VPkVoq3IUgQ=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
