@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/domonda/go-errs v0.0.0-20240702051036-0e696c849b5f
-	github.com/domonda/go-types v0.0.0-20240822142828-3b45a403e1e2
+	github.com/domonda/go-types v0.0.0-20240924082825-270782de7296
 	github.com/lib/pq v1.10.9
 	github.com/stretchr/testify v1.9.0
 )

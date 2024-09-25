@@ -5,8 +5,8 @@ github.com/domonda/go-errs v0.0.0-20240702051036-0e696c849b5f h1:9CZgqCVP/7eixUj
 github.com/domonda/go-errs v0.0.0-20240702051036-0e696c849b5f/go.mod h1:qLWt1z3aIg12+Dbxu9bMydFOHEi92vWE7vAHcHLd8n8=
 github.com/domonda/go-pretty v0.0.0-20240110134850-17385799142f h1:5eA74m451PqlqCXyJzWXp95Quj4PZ6Lm/ndKBuiNhe4=
 github.com/domonda/go-pretty v0.0.0-20240110134850-17385799142f/go.mod h1:3QkM8UJdyJMeKZiIo7hYzSkQBpRS3k0gOHw4ysyEIB4=
-github.com/domonda/go-types v0.0.0-20240822142828-3b45a403e1e2 h1:HsNNMCF7BKLy6Y7ECvg6pA2PwBwNhh8z5IykgWoqlcI=
-github.com/domonda/go-types v0.0.0-20240822142828-3b45a403e1e2/go.mod h1:Voo8dh8EeexiIXpvvmFM3WPyXtiukUjtwLpgOr9rKNM=
+github.com/domonda/go-types v0.0.0-20240924082825-270782de7296 h1:9NOpTrmdnxFMdZft6idPmaqcIyxbKZYl7Ija7bFaric=
+github.com/domonda/go-types v0.0.0-20240924082825-270782de7296/go.mod h1:QfZG5NrNWDrwcqOp3ZlNh2XaLjZI1ncNpGPAa9MIUUE=
 github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=
 github.com/jinzhu/now v1.1.5/go.mod h1:d3SSVoowX0Lcu0IBviAWJpolVfI5UJVZZ7cO71lE/z8=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
