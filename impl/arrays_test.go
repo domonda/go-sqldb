@@ -9,7 +9,7 @@ import (
 	"github.com/domonda/go-types/nullable"
 )
 
-func TestShouldWrapForArray(t *testing.T) {
+func TestNeedsArrayWrappingForScanning(t *testing.T) {
 	tests := []struct {
 		v    reflect.Value
 		want bool
@@ -27,8 +27,8 @@ func TestShouldWrapForArray(t *testing.T) {
 		{v: reflect.ValueOf(new([]sql.NullString)).Elem(), want: true},
 	}
 	for _, tt := range tests {
-		if got := ShouldWrapForArray(tt.v); got != tt.want {
-			t.Errorf("shouldWrapArray() = %v, want %v", got, tt.want)
+		if got := NeedsArrayWrappingForScanning(tt.v); got != tt.want {
+			t.Errorf("NeedsArrayWrappingForScanning() = %v, want %v", got, tt.want)
 		}
 	}
 }

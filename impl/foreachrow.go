@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"reflect"
 	"time"
@@ -11,12 +12,13 @@ import (
 )
 
 var (
-	typeOfError      = reflect.TypeOf((*error)(nil)).Elem()
-	typeOfContext    = reflect.TypeOf((*context.Context)(nil)).Elem()
-	typeOfSQLScanner = reflect.TypeOf((*sql.Scanner)(nil)).Elem()
-	typeOfTime       = reflect.TypeOf(time.Time{})
-	typeOfByte       = reflect.TypeOf(byte(0))
-	typeOfByteSlice  = reflect.TypeOf((*[]byte)(nil)).Elem()
+	typeOfError        = reflect.TypeFor[error]()
+	typeOfContext      = reflect.TypeFor[context.Context]()
+	typeOfSQLScanner   = reflect.TypeFor[sql.Scanner]()
+	typeOfDriverValuer = reflect.TypeFor[driver.Valuer]()
+	typeOfTime         = reflect.TypeFor[time.Time]()
+	typeOfByte         = reflect.TypeFor[byte]()
+	typeOfByteSlice    = reflect.TypeFor[[]byte]()
 )
 
 // ForEachRowCallFunc will call the passed callback with scanned values or a struct for every row.

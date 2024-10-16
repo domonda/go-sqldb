@@ -8,25 +8,46 @@ import (
 	"github.com/lib/pq"
 )
 
-func WrapForArray(a any) interface {
+type ValuerScanner interface {
 	driver.Valuer
 	sql.Scanner
-} {
+}
+
+func WrapArray(a any) ValuerScanner {
+	// TODO replace with own implementation
 	return pq.Array(a)
 }
 
-func ShouldWrapForArray(v reflect.Value) bool {
+func NeedsArrayWrappingForScanning(v reflect.Value) bool {
 	t := v.Type()
 	switch t.Kind() {
 	case reflect.Slice:
-		if t.Elem() == typeOfByte {
-			return false // Byte slices are scanned as strings
-		}
-		return !v.Addr().Type().Implements(typeOfSQLScanner)
+		// Byte slices are scanned as strings
+		return t.Elem() != typeOfByte && !v.Addr().Type().Implements(typeOfSQLScanner)
 	case reflect.Array:
 		return !v.Addr().Type().Implements(typeOfSQLScanner)
 	}
 	return false
+}
+
+func NeedsArrayWrappingForArg(arg any) bool {
+	t := reflect.TypeOf(arg)
+	switch t.Kind() {
+	case reflect.Slice:
+		// Byte slices are interpreted as strings
+		return t.Elem() != typeOfByte && !t.Implements(typeOfDriverValuer)
+	case reflect.Array:
+		return !t.Implements(typeOfDriverValuer)
+	}
+	return false
+}
+
+func WrapArrayArgs(args []any) {
+	for i, arg := range args {
+		if NeedsArrayWrappingForArg(arg) {
+			args[i] = WrapArray(arg)
+		}
+	}
 }
 
 // type ArrayScanner struct {

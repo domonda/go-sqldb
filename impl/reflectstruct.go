@@ -103,8 +103,8 @@ func reflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFiel
 		// If field is a slice or array that does not implement sql.Scanner
 		// and it's not a string scannable []byte type underneath
 		// then wrap it with WrapForArray to make it scannable
-		if ShouldWrapForArray(fieldValue) {
-			pointer = WrapForArray(pointer)
+		if NeedsArrayWrappingForScanning(fieldValue) {
+			pointer = WrapArray(pointer)
 		}
 		pointers[colIndex] = pointer
 	}

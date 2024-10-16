@@ -68,6 +68,7 @@ func (conn *transaction) Now() (time.Time, error) {
 }
 
 func (conn *transaction) Exec(query string, args ...any) error {
+	impl.WrapArrayArgs(args)
 	_, err := conn.tx.Exec(query, args...)
 	return impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
 }
@@ -117,6 +118,7 @@ func (conn *transaction) InsertStructs(table string, rowStructs any, ignoreColum
 }
 
 func (conn *transaction) QueryRow(query string, args ...any) sqldb.RowScanner {
+	impl.WrapArrayArgs(args)
 	rows, err := conn.tx.QueryContext(conn.parent.ctx, query, args...)
 	if err != nil {
 		err = impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
@@ -126,6 +128,7 @@ func (conn *transaction) QueryRow(query string, args ...any) sqldb.RowScanner {
 }
 
 func (conn *transaction) QueryRows(query string, args ...any) sqldb.RowsScanner {
+	impl.WrapArrayArgs(args)
 	rows, err := conn.tx.QueryContext(conn.parent.ctx, query, args...)
 	if err != nil {
 		err = impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)

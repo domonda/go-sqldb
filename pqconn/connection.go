@@ -111,6 +111,7 @@ func (conn *connection) Now() (time.Time, error) {
 }
 
 func (conn *connection) Exec(query string, args ...any) error {
+	impl.WrapArrayArgs(args)
 	_, err := conn.db.ExecContext(conn.ctx, query, args...)
 	return wrapError(err, query, argFmt, args)
 }
@@ -162,6 +163,7 @@ func (conn *connection) UpsertStruct(table string, rowStruct any, ignoreColumns 
 }
 
 func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
+	impl.WrapArrayArgs(args)
 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
 	if err != nil {
 		err = wrapError(err, query, argFmt, args)
@@ -171,6 +173,7 @@ func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
 }
 
 func (conn *connection) QueryRows(query string, args ...any) sqldb.RowsScanner {
+	impl.WrapArrayArgs(args)
 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
 	if err != nil {
 		err = wrapError(err, query, argFmt, args)
