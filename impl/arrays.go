@@ -31,6 +31,9 @@ func NeedsArrayWrappingForScanning(v reflect.Value) bool {
 }
 
 func NeedsArrayWrappingForArg(arg any) bool {
+	if arg == nil {
+		return false
+	}
 	t := reflect.TypeOf(arg)
 	switch t.Kind() {
 	case reflect.Slice:
