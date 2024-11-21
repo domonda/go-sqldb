@@ -16,8 +16,13 @@ import (
 // function for the current connection.
 // Useful for getting the timestamp of a
 // SQL transaction for use in Go code.
-func Now(ctx context.Context) (time.Time, error) {
-	return Conn(ctx).Now()
+// Returns time.Now() in case of an error.
+func Now(ctx context.Context) time.Time {
+	now, err := Conn(ctx).Now()
+	if err != nil {
+		return time.Now()
+	}
+	return now
 }
 
 // Exec executes a query with optional args.
