@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 	"unicode/utf8"
 
 	"github.com/domonda/go-sqldb"
@@ -37,9 +38,10 @@ func DebugPrintConn(ctx context.Context, args ...any) {
 			args = append(args, "Isolation", optsStr)
 		}
 	}
-	now, err := Conn(ctx).Now()
+	var t time.Time
+	err := Conn(ctx).QueryRow("SELECT CURRENT_TIMESTAMP").Scan(&t)
 	if err == nil {
-		args = append(args, "NOW():", now)
+		args = append(args, "CURRENT_TIMESTAMP:", t)
 	} else {
 		args = append(args, "ERROR:", err)
 	}

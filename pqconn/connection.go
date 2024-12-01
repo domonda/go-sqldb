@@ -106,10 +106,6 @@ func (conn *connection) ValidateColumnName(name string) error {
 	return validateColumnName(name)
 }
 
-func (conn *connection) Now() (time.Time, error) {
-	return impl.Now(conn)
-}
-
 func (conn *connection) Exec(query string, args ...any) error {
 	impl.WrapArrayArgs(args)
 	_, err := conn.db.ExecContext(conn.ctx, query, args...)

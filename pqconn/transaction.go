@@ -63,10 +63,6 @@ func (conn *transaction) ValidateColumnName(name string) error {
 	return validateColumnName(name)
 }
 
-func (conn *transaction) Now() (time.Time, error) {
-	return impl.Now(conn)
-}
-
 func (conn *transaction) Exec(query string, args ...any) error {
 	impl.WrapArrayArgs(args)
 	_, err := conn.tx.Exec(query, args...)

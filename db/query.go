@@ -12,17 +12,20 @@ import (
 	"github.com/domonda/go-sqldb"
 )
 
-// Now returns the result of the SQL now()
-// function for the current connection.
+// CurrentTimestamp returns the SQL CURRENT_TIMESTAMP
+// for the connection added to the context
+// or else the default connection.
+//
+// Returns time.Now() in case of any error.
+//
 // Useful for getting the timestamp of a
 // SQL transaction for use in Go code.
-// Returns time.Now() in case of an error.
-func Now(ctx context.Context) time.Time {
-	now, err := Conn(ctx).Now()
+func CurrentTimestamp(ctx context.Context) time.Time {
+	t, err := QueryValue[time.Time](ctx, "SELECT CURRENT_TIMESTAMP")
 	if err != nil {
 		return time.Now()
 	}
-	return now
+	return t
 }
 
 // Exec executes a query with optional args.

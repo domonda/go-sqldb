@@ -64,10 +64,6 @@ func (conn *transaction) ValidateColumnName(name string) error {
 	return conn.parent.validateColumnName(name)
 }
 
-func (conn *transaction) Now() (time.Time, error) {
-	return Now(conn)
-}
-
 func (conn *transaction) Exec(query string, args ...any) error {
 	_, err := conn.tx.Exec(query, args...)
 	return WrapNonNilErrorWithQuery(err, query, conn.parent.argFmt, args)

@@ -50,12 +50,6 @@ type Connection interface {
 	// column of the connection's database.
 	ValidateColumnName(name string) error
 
-	// Now returns the result of the SQL now()
-	// function for the current connection.
-	// Useful for getting the timestamp of a
-	// SQL transaction for use in Go code.
-	Now() (time.Time, error)
-
 	// Exec executes a query with optional args.
 	Exec(query string, args ...any) error
 

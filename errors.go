@@ -212,10 +212,6 @@ func (e connectionWithError) ValidateColumnName(name string) error {
 	return e.err
 }
 
-func (e connectionWithError) Now() (time.Time, error) {
-	return time.Time{}, e.err
-}
-
 func (e connectionWithError) Exec(query string, args ...any) error {
 	return e.err
 }

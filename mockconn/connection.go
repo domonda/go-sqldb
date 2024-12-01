@@ -80,10 +80,6 @@ func (conn *connection) Ping(time.Duration) error {
 	return nil
 }
 
-func (conn *connection) Now() (time.Time, error) {
-	return time.Now(), nil
-}
-
 func (conn *connection) Exec(query string, args ...any) error {
 	if conn.queryWriter != nil {
 		fmt.Fprint(conn.queryWriter, query)
