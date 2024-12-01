@@ -91,26 +91,6 @@ func (conn *connection) Exec(query string, args ...any) error {
 	return WrapNonNilErrorWithQuery(err, query, conn.argFmt, args)
 }
 
-func (conn *connection) Update(table string, values sqldb.Values, where string, args ...any) error {
-	return Update(conn, table, values, where, conn.argFmt, args)
-}
-
-func (conn *connection) UpdateReturningRow(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowScanner {
-	return UpdateReturningRow(conn, table, values, returning, where, args)
-}
-
-func (conn *connection) UpdateReturningRows(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowsScanner {
-	return UpdateReturningRows(conn, table, values, returning, where, args)
-}
-
-func (conn *connection) UpdateStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt, ignoreColumns)
-}
-
-func (conn *connection) UpsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt, ignoreColumns)
-}
-
 func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
 	if err != nil {

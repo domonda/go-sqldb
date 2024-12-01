@@ -120,3 +120,10 @@ func TestCheckTxOptionsCompatibility(t *testing.T) {
 		})
 	}
 }
+
+func TestNextTransactionNo(t *testing.T) {
+	// Always returns >= 1
+	if NextTransactionNo() < 1 {
+		t.Fatal("NextTransactionNo() < 1")
+	}
+}

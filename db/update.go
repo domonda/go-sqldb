@@ -1,6 +1,7 @@
-package impl
+package db
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"slices"
@@ -10,22 +11,24 @@ import (
 )
 
 // Update table rows(s) with values using the where statement with passed in args starting at $1.
-func Update(conn sqldb.Connection, table string, values sqldb.Values, where, argFmt string, args []any) error {
+func Update(ctx context.Context, table string, values sqldb.Values, where string, args ...any) error {
 	if len(values) == 0 {
 		return fmt.Errorf("Update table %s: no values passed", table)
 	}
+	conn := Conn(ctx)
 
 	query, vals := buildUpdateQuery(table, values, where, args)
 	err := conn.Exec(query, vals...)
-	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
+	return WrapNonNilErrorWithQuery(err, query, vals)
 }
 
 // UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
 // and returning a single row with the columns specified in returning argument.
-func UpdateReturningRow(conn sqldb.Connection, table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowScanner {
+func UpdateReturningRow(ctx context.Context, table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowScanner {
 	if len(values) == 0 {
 		return sqldb.RowScannerWithError(fmt.Errorf("UpdateReturningRow table %s: no values passed", table))
 	}
+	conn := Conn(ctx)
 
 	query, vals := buildUpdateQuery(table, values, where, args)
 	query += " RETURNING " + returning
@@ -34,17 +37,18 @@ func UpdateReturningRow(conn sqldb.Connection, table string, values sqldb.Values
 
 // UpdateReturningRows updates table rows with values using the where statement with passed in args starting at $1
 // and returning multiple rows with the columns specified in returning argument.
-func UpdateReturningRows(conn sqldb.Connection, table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowsScanner {
+func UpdateReturningRows(ctx context.Context, table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowsScanner {
 	if len(values) == 0 {
 		return sqldb.RowsScannerWithError(fmt.Errorf("UpdateReturningRows table %s: no values passed", table))
 	}
+	conn := Conn(ctx)
 
 	query, vals := buildUpdateQuery(table, values, where, args)
 	query += " RETURNING " + returning
 	return conn.QueryRows(query, vals...)
 }
 
-func buildUpdateQuery(table string, values sqldb.Values, where string, args []any) (string, []any) {
+func buildUpdateQuery(table string, values sqldb.Values, where string, args ...any) (string, []any) {
 	names, vals := values.Sorted()
 
 	var query strings.Builder
@@ -60,12 +64,13 @@ func buildUpdateQuery(table string, values sqldb.Values, where string, args []an
 	return query.String(), append(args, vals...)
 }
 
-// UpdateStruct updates a row of table using the exported fields
+// UpdateStruct updates a row in a table using the exported fields
 // of rowStruct which have a `db` tag that is not "-".
-// Struct fields with a `db` tag matching any of the passed ignoreColumns will not be used.
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
-func UpdateStruct(conn sqldb.Connection, table string, rowStruct any, namer sqldb.StructFieldMapper, argFmt string, ignoreColumns []sqldb.ColumnFilter) error {
+// The struct must have at least one field with a `db` tag value having a ",pk" suffix
+// to mark primary key column(s).
+func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -107,7 +112,9 @@ func UpdateStruct(conn sqldb.Connection, table string, rowStruct any, namer sqld
 
 	query := b.String()
 
+	conn := Conn(ctx)
+
 	err := conn.Exec(query, vals...)
 
-	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
+	return WrapNonNilErrorWithQuery(err, query, vals)
 }

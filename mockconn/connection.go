@@ -8,10 +8,9 @@ import (
 	"time"
 
 	"github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/impl"
 )
 
-var DefaultArgFmt = "$%d"
+var DefaultArgFmt = "?%d"
 
 func New(ctx context.Context, queryWriter io.Writer, rowsProvider RowsProvider) sqldb.Connection {
 	return &connection{
@@ -89,26 +88,6 @@ func (conn *connection) Exec(query string, args ...any) error {
 		fmt.Fprint(conn.queryWriter, query)
 	}
 	return nil
-}
-
-func (conn *connection) Update(table string, values sqldb.Values, where string, args ...any) error {
-	return impl.Update(conn, table, values, where, conn.argFmt, args)
-}
-
-func (conn *connection) UpdateReturningRow(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowScanner {
-	return impl.UpdateReturningRow(conn, table, values, returning, where, args)
-}
-
-func (conn *connection) UpdateReturningRows(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowsScanner {
-	return impl.UpdateReturningRows(conn, table, values, returning, where, args)
-}
-
-func (conn *connection) UpdateStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt, ignoreColumns)
-}
-
-func (conn *connection) UpsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.argFmt, ignoreColumns)
 }
 
 func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {

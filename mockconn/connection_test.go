@@ -139,6 +139,7 @@ func TestUpdateQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
 	naming := &sqldb.TaggedStructFieldMapping{NameTag: "db", Ignore: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
 	conn := New(context.Background(), queryOutput, nil).WithStructFieldMapper(naming)
+	ctx := db.ContextWithConn(context.Background(), conn)
 
 	str := "Hello World!"
 	values := sqldb.Values{
@@ -153,13 +154,13 @@ func TestUpdateQuery(t *testing.T) {
 	}
 
 	expected := `UPDATE public.table SET "bool"=$2,"bools"=$3,"created_at"=$4,"int"=$5,"nil_ptr"=$6,"str"=$7,"str_ptr"=$8,"untagged_field"=$9 WHERE id = $1`
-	err := conn.Update("public.table", values, "id = $1", 1)
+	err := db.Update(ctx, "public.table", values, "id = $1", 1)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 
 	queryOutput.Reset()
 	expected = `UPDATE public.table SET "bool"=$3,"bools"=$4,"created_at"=$5,"int"=$6,"nil_ptr"=$7,"str"=$8,"str_ptr"=$9,"untagged_field"=$10 WHERE a = $1 AND b = $2`
-	err = conn.Update("public.table", values, "a = $1 AND b = $2", 1, 2)
+	err = db.Update(ctx, "public.table", values, "a = $1 AND b = $2", 1, 2)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 }
@@ -168,6 +169,7 @@ func TestUpdateReturningQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
 	naming := &sqldb.TaggedStructFieldMapping{NameTag: "db", Ignore: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
 	conn := New(context.Background(), queryOutput, nil).WithStructFieldMapper(naming)
+	ctx := db.ContextWithConn(context.Background(), conn)
 
 	str := "Hello World!"
 	values := sqldb.Values{
@@ -182,13 +184,13 @@ func TestUpdateReturningQuery(t *testing.T) {
 	}
 
 	expected := `UPDATE public.table SET "bool"=$2,"bools"=$3,"created_at"=$4,"int"=$5,"nil_ptr"=$6,"str"=$7,"str_ptr"=$8,"untagged_field"=$9 WHERE id = $1 RETURNING *`
-	err := conn.UpdateReturningRow("public.table", values, "*", "id = $1", 1).Scan()
+	err := db.UpdateReturningRow(ctx, "public.table", values, "*", "id = $1", 1).Scan()
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 
 	queryOutput.Reset()
 	expected = `UPDATE public.table SET "bool"=$2,"bools"=$3,"created_at"=$4,"int"=$5,"nil_ptr"=$6,"str"=$7,"str_ptr"=$8,"untagged_field"=$9 WHERE id = $1 RETURNING created_at,untagged_field`
-	err = conn.UpdateReturningRows("public.table", values, "created_at,untagged_field", "id = $1", 1, 2).ScanSlice(nil)
+	err = db.UpdateReturningRows(ctx, "public.table", values, "created_at,untagged_field", "id = $1", 1, 2).ScanSlice(nil)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 }
@@ -204,23 +206,24 @@ func TestUpdateStructQuery(t *testing.T) {
 		UntaggedNameFunc: sqldb.ToSnakeCase,
 	}
 	conn := New(context.Background(), queryOutput, nil).WithStructFieldMapper(naming)
+	ctx := db.ContextWithConn(context.Background(), conn)
 
 	row := new(testRow)
 
 	expected := `UPDATE public.table SET "int"=$2,"bool"=$3,"str"=$4,"str_ptr"=$5,"nil_ptr"=$6,"untagged_field"=$7,"created_at"=$8,"bools"=$9 WHERE "id"=$1`
-	err := conn.UpdateStruct("public.table", row)
+	err := db.UpdateStruct(ctx, "public.table", row)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 
 	queryOutput.Reset()
 	expected = `UPDATE public.table SET "bool"=$2,"str"=$3,"created_at"=$4 WHERE "id"=$1`
-	err = conn.UpdateStruct("public.table", row, sqldb.OnlyColumns("id", "bool", "str", "created_at"))
+	err = db.UpdateStruct(ctx, "public.table", row, sqldb.OnlyColumns("id", "bool", "str", "created_at"))
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 
 	queryOutput.Reset()
 	expected = `UPDATE public.table SET "int"=$2,"bool"=$3,"str_ptr"=$4,"nil_ptr"=$5,"created_at"=$6 WHERE "id"=$1`
-	err = conn.UpdateStruct("public.table", row, sqldb.IgnoreColumns("untagged_field", "str", "bools"))
+	err = db.UpdateStruct(ctx, "public.table", row, sqldb.IgnoreColumns("untagged_field", "str", "bools"))
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 }
@@ -236,12 +239,13 @@ func TestUpsertStructQuery(t *testing.T) {
 		UntaggedNameFunc: sqldb.ToSnakeCase,
 	}
 	conn := New(context.Background(), queryOutput, nil).WithStructFieldMapper(naming)
+	ctx := db.ContextWithConn(context.Background(), conn)
 
 	row := new(testRow)
 	expected := `INSERT INTO public.table("id","int","bool","str","str_ptr","nil_ptr","untagged_field","created_at","bools") VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)` +
 		` ON CONFLICT("id") DO UPDATE SET "int"=$2,"bool"=$3,"str"=$4,"str_ptr"=$5,"nil_ptr"=$6,"untagged_field"=$7,"created_at"=$8,"bools"=$9`
 
-	err := conn.UpsertStruct("public.table", row)
+	err := db.UpsertStruct(ctx, "public.table", row)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 }
@@ -265,11 +269,12 @@ func TestUpsertStructMultiPKQuery(t *testing.T) {
 		UntaggedNameFunc: sqldb.ToSnakeCase,
 	}
 	conn := New(context.Background(), queryOutput, nil).WithStructFieldMapper(naming)
+	ctx := db.ContextWithConn(context.Background(), conn)
 
 	row := new(multiPrimaryKeyRow)
 	expected := `INSERT INTO public.multi_pk("first_id","second_id","third_id","created_at") VALUES($1,$2,$3,$4) ON CONFLICT("first_id","second_id","third_id") DO UPDATE SET "created_at"=$4`
 
-	err := conn.UpsertStruct("public.multi_pk", row)
+	err := db.UpsertStruct(ctx, "public.multi_pk", row)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 }
@@ -285,11 +290,12 @@ func TestUpdateStructMultiPKQuery(t *testing.T) {
 		UntaggedNameFunc: sqldb.ToSnakeCase,
 	}
 	conn := New(context.Background(), queryOutput, nil).WithStructFieldMapper(naming)
+	ctx := db.ContextWithConn(context.Background(), conn)
 
 	row := new(multiPrimaryKeyRow)
 	expected := `UPDATE public.multi_pk SET "created_at"=$4 WHERE "first_id"=$1 AND "second_id"=$2 AND "third_id"=$3`
 
-	err := conn.UpdateStruct("public.multi_pk", row)
+	err := db.UpdateStruct(ctx, "public.multi_pk", row)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 }

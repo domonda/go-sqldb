@@ -72,26 +72,6 @@ func (conn *transaction) Exec(query string, args ...any) error {
 	return WrapNonNilErrorWithQuery(err, query, conn.parent.argFmt, args)
 }
 
-func (conn *transaction) Update(table string, values sqldb.Values, where string, args ...any) error {
-	return Update(conn, table, values, where, conn.parent.argFmt, args)
-}
-
-func (conn *transaction) UpdateReturningRow(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowScanner {
-	return UpdateReturningRow(conn, table, values, returning, where, args)
-}
-
-func (conn *transaction) UpdateReturningRows(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowsScanner {
-	return UpdateReturningRows(conn, table, values, returning, where, args)
-}
-
-func (conn *transaction) UpdateStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, conn.parent.argFmt, ignoreColumns)
-}
-
-func (conn *transaction) UpsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, conn.parent.argFmt, ignoreColumns)
-}
-
 func (conn *transaction) QueryRow(query string, args ...any) sqldb.RowScanner {
 	rows, err := conn.tx.QueryContext(conn.parent.ctx, query, args...)
 	if err != nil {

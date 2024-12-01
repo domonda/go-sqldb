@@ -72,26 +72,6 @@ func (conn *transaction) Exec(query string, args ...any) error {
 	return impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
 }
 
-func (conn *transaction) Update(table string, values sqldb.Values, where string, args ...any) error {
-	return impl.Update(conn, table, values, where, argFmt, args)
-}
-
-func (conn *transaction) UpdateReturningRow(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowScanner {
-	return impl.UpdateReturningRow(conn, table, values, returning, where, args)
-}
-
-func (conn *transaction) UpdateReturningRows(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowsScanner {
-	return impl.UpdateReturningRows(conn, table, values, returning, where, args)
-}
-
-func (conn *transaction) UpdateStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns)
-}
-
-func (conn *transaction) UpsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns)
-}
-
 func (conn *transaction) QueryRow(query string, args ...any) sqldb.RowScanner {
 	impl.WrapArrayArgs(args)
 	rows, err := conn.tx.QueryContext(conn.parent.ctx, query, args...)
