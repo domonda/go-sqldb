@@ -102,6 +102,10 @@ func (conn *connection) Config() *sqldb.Config {
 	return conn.config
 }
 
+func (conn *connection) Placeholder(paramIndex int) string {
+	return fmt.Sprintf(argFmt, paramIndex+1)
+}
+
 func (conn *connection) ValidateColumnName(name string) error {
 	return validateColumnName(name)
 }
@@ -109,33 +113,10 @@ func (conn *connection) ValidateColumnName(name string) error {
 func (conn *connection) Exec(query string, args ...any) error {
 	impl.WrapArrayArgs(args)
 	_, err := conn.db.ExecContext(conn.ctx, query, args...)
-	return wrapError(err, query, argFmt, args)
-}
-
-func (conn *connection) Insert(table string, columValues sqldb.Values) error {
-	return WrapKnownErrors(impl.Insert(conn, table, argFmt, columValues))
-}
-
-func (conn *connection) InsertUnique(table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
-	inserted, err = impl.InsertUnique(conn, table, argFmt, values, onConflict)
-	return inserted, WrapKnownErrors(err)
-}
-
-func (conn *connection) InsertReturning(table string, values sqldb.Values, returning string) sqldb.RowScanner {
-	return impl.InsertReturning(conn, table, argFmt, values, returning)
-}
-
-func (conn *connection) InsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return WrapKnownErrors(impl.InsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns))
-}
-
-func (conn *connection) InsertStructs(table string, rowStructs any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return WrapKnownErrors(impl.InsertStructs(conn, table, rowStructs, ignoreColumns...))
-}
-
-func (conn *connection) InsertUniqueStruct(table string, rowStruct any, onConflict string, ignoreColumns ...sqldb.ColumnFilter) (inserted bool, err error) {
-	// TODO more error wrapping
-	return impl.InsertUniqueStruct(conn, table, rowStruct, onConflict, conn.structFieldNamer, argFmt, ignoreColumns)
+	if err != nil {
+		return wrapKnownErrors(err)
+	}
+	return nil
 }
 
 func (conn *connection) Update(table string, values sqldb.Values, where string, args ...any) error {
@@ -162,7 +143,7 @@ func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
 	impl.WrapArrayArgs(args)
 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
 	if err != nil {
-		err = wrapError(err, query, argFmt, args)
+		err = wrapKnownErrors(err)
 		return sqldb.RowScannerWithError(err)
 	}
 	return impl.NewRowScanner(rows, conn.structFieldNamer, query, argFmt, args)
@@ -172,7 +153,7 @@ func (conn *connection) QueryRows(query string, args ...any) sqldb.RowsScanner {
 	impl.WrapArrayArgs(args)
 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
 	if err != nil {
-		err = wrapError(err, query, argFmt, args)
+		err = wrapKnownErrors(err)
 		return sqldb.RowsScannerWithError(err)
 	}
 	return impl.NewRowsScanner(conn.ctx, rows, conn.structFieldNamer, query, argFmt, args)

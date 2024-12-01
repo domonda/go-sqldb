@@ -142,24 +142,3 @@ func insertStructValues(table string, rowStruct any, namer sqldb.StructFieldMapp
 	columns, _, vals = ReflectStructValues(v, namer, append(ignoreColumns, sqldb.IgnoreReadOnly))
 	return columns, vals, nil
 }
-
-// InsertStructs is a helper that calls InsertStruct for every
-// struct in the rowStructs slice or array.
-// The inserts are performed within a new transaction
-// if the passed conn is not already a transaction.
-func InsertStructs(conn sqldb.Connection, table string, rowStructs any, ignoreColumns ...sqldb.ColumnFilter) error {
-	v := reflect.ValueOf(rowStructs)
-	if k := v.Type().Kind(); k != reflect.Slice && k != reflect.Array {
-		return fmt.Errorf("InsertStructs expects a slice or array as rowStructs, got %T", rowStructs)
-	}
-	numRows := v.Len()
-	return sqldb.Transaction(conn, nil, func(tx sqldb.Connection) error {
-		for i := 0; i < numRows; i++ {
-			err := tx.InsertStruct(table, v.Index(i).Interface(), ignoreColumns...)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-}

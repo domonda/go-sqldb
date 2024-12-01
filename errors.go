@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -208,36 +209,16 @@ func (e connectionWithError) Config() *Config {
 	return &Config{Err: e.err}
 }
 
+func (e connectionWithError) Placeholder(paramIndex int) string {
+	return fmt.Sprintf("$%d", paramIndex+1)
+}
+
 func (e connectionWithError) ValidateColumnName(name string) error {
 	return e.err
 }
 
 func (e connectionWithError) Exec(query string, args ...any) error {
 	return e.err
-}
-
-func (e connectionWithError) Insert(table string, values Values) error {
-	return e.err
-}
-
-func (e connectionWithError) InsertUnique(table string, values Values, onConflict string) (inserted bool, err error) {
-	return false, e.err
-}
-
-func (e connectionWithError) InsertReturning(table string, values Values, returning string) RowScanner {
-	return RowScannerWithError(e.err)
-}
-
-func (e connectionWithError) InsertStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error {
-	return e.err
-}
-
-func (e connectionWithError) InsertStructs(table string, rowStructs any, ignoreColumns ...ColumnFilter) error {
-	return e.err
-}
-
-func (e connectionWithError) InsertUniqueStruct(table string, rowStruct any, onConflict string, ignoreColumns ...ColumnFilter) (inserted bool, err error) {
-	return false, e.err
 }
 
 func (e connectionWithError) Update(table string, values Values, where string, args ...any) error {

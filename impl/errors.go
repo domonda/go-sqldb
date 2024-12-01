@@ -9,9 +9,12 @@ import (
 // if the error was not already wrapped with a query.
 // If the passed error is nil, then nil will be returned.
 func WrapNonNilErrorWithQuery(err error, query, argFmt string, args []any) error {
+	if err == nil {
+		return nil
+	}
 	var wrapped errWithQuery
-	if err == nil || errors.As(err, &wrapped) {
-		return err
+	if errors.As(err, &wrapped) {
+		return err // already wrapped
 	}
 	return errWithQuery{err, query, argFmt, args}
 }

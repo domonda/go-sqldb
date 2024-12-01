@@ -14,8 +14,18 @@ type (
 	OnUnlistenFunc func(channel string)
 )
 
+// PlaceholderFormatter is an interface for formatting query parameter placeholders
+// implemented by database connections.
+type PlaceholderFormatter interface {
+	// Placeholder formats a query parameter placeholder
+	// for the paramIndex starting at zero.
+	Placeholder(paramIndex int) string
+}
+
 // Connection represents a database connection or transaction
 type Connection interface {
+	PlaceholderFormatter
+
 	// Context that all connection operations use.
 	// See also WithContext.
 	Context() context.Context
@@ -52,39 +62,6 @@ type Connection interface {
 
 	// Exec executes a query with optional args.
 	Exec(query string, args ...any) error
-
-	// Insert a new row into table using the values.
-	Insert(table string, values Values) error
-
-	// InsertUnique inserts a new row into table using the passed values
-	// or does nothing if the onConflict statement applies.
-	// Returns if a row was inserted.
-	InsertUnique(table string, values Values, onConflict string) (inserted bool, err error)
-
-	// InsertReturning inserts a new row into table using values
-	// and returns values from the inserted row listed in returning.
-	InsertReturning(table string, values Values, returning string) RowScanner
-
-	// InsertStruct inserts a new row into table using the connection's
-	// StructFieldMapper to map struct fields to column names.
-	// Optional ColumnFilter can be passed to ignore mapped columns.
-	InsertStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error
-
-	// InsertStructs inserts a slice or array of structs
-	// as new rows into table using the connection's
-	// StructFieldMapper to map struct fields to column names.
-	// Optional ColumnFilter can be passed to ignore mapped columns.
-	//
-	// TODO optimized version with single query if possible
-	// split into multiple queries depending or maxArgs for query
-	InsertStructs(table string, rowStructs any, ignoreColumns ...ColumnFilter) error
-
-	// InsertUniqueStruct inserts a new row into table using the connection's
-	// StructFieldMapper to map struct fields to column names.
-	// Optional ColumnFilter can be passed to ignore mapped columns.
-	// Does nothing if the onConflict statement applies
-	// and returns if a row was inserted.
-	InsertUniqueStruct(table string, rowStruct any, onConflict string, ignoreColumns ...ColumnFilter) (inserted bool, err error)
 
 	// Update table rows(s) with values using the where statement with passed in args starting at $1.
 	Update(table string, values Values, where string, args ...any) error

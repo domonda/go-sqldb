@@ -6,15 +6,13 @@ import (
 	"slices"
 
 	"github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/impl"
 	"github.com/lib/pq"
 )
 
-func wrapError(err error, query, argFmt string, args []any) error {
-	return impl.WrapNonNilErrorWithQuery(WrapKnownErrors(err), query, argFmt, args)
-}
-
-func WrapKnownErrors(err error) error {
+func wrapKnownErrors(err error) error {
+	if err == nil {
+		return nil
+	}
 	var e *pq.Error
 	if errors.As(err, &e) {
 		switch e.Code {
