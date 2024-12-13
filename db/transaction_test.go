@@ -13,7 +13,7 @@ func TestSerializedTransaction(t *testing.T) {
 	globalConn = mockconn.New(context.Background(), os.Stdout, nil)
 
 	expectSerialized := func(ctx context.Context) error {
-		if !Conn(ctx).IsTransaction() {
+		if !IsTransaction(ctx) {
 			panic("not in transaction")
 		}
 		if ctx.Value(&serializedTransactionCtxKey) == nil {
@@ -23,7 +23,7 @@ func TestSerializedTransaction(t *testing.T) {
 	}
 
 	expectSerializedWithError := func(ctx context.Context) error {
-		if !Conn(ctx).IsTransaction() {
+		if !IsTransaction(ctx) {
 			panic("not in transaction")
 		}
 		if ctx.Value(&serializedTransactionCtxKey) == nil {
@@ -67,7 +67,7 @@ func TestTransaction(t *testing.T) {
 	globalConn = mockconn.New(context.Background(), os.Stdout, nil)
 
 	expectNonSerialized := func(ctx context.Context) error {
-		if !Conn(ctx).IsTransaction() {
+		if !IsTransaction(ctx) {
 			panic("not in transaction")
 		}
 		if ctx.Value(&serializedTransactionCtxKey) != nil {
@@ -77,7 +77,7 @@ func TestTransaction(t *testing.T) {
 	}
 
 	expectNonSerializedWithError := func(ctx context.Context) error {
-		if !Conn(ctx).IsTransaction() {
+		if !IsTransaction(ctx) {
 			panic("not in transaction")
 		}
 		if ctx.Value(&serializedTransactionCtxKey) != nil {

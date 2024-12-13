@@ -19,7 +19,7 @@ func ValidateWithinTransaction(ctx context.Context) error {
 	if err := conn.Config().Err; err != nil {
 		return err
 	}
-	if !conn.IsTransaction() {
+	if conn.TransactionNo() == 0 {
 		return sqldb.ErrNotWithinTransaction
 	}
 	return nil
@@ -32,7 +32,7 @@ func ValidateNotWithinTransaction(ctx context.Context) error {
 	if err := conn.Config().Err; err != nil {
 		return err
 	}
-	if conn.IsTransaction() {
+	if conn.TransactionNo() != 0 {
 		return sqldb.ErrWithinTransaction
 	}
 	return nil
@@ -105,7 +105,7 @@ func Transaction(ctx context.Context, txFunc func(context.Context) error) error 
 // Because of the retryable nature, please be careful with the size of the transaction and the retry cost.
 func SerializedTransaction(ctx context.Context, txFunc func(context.Context) error) error {
 	// Pass nested serialized transactions through
-	if Conn(ctx).IsTransaction() {
+	if IsTransaction(ctx) {
 		if ctx.Value(&serializedTransactionCtxKey) == nil {
 			return errors.New("SerializedTransaction called from within a non-serialized transaction")
 		}
@@ -166,7 +166,7 @@ func TransactionReadOnly(ctx context.Context, txFunc func(context.Context) error
 // they should behandled by the parent Transaction function.
 func TransactionSavepoint(ctx context.Context, txFunc func(context.Context) error) error {
 	conn := Conn(ctx)
-	if !conn.IsTransaction() {
+	if conn.TransactionNo() == 0 {
 		// If not already in a transaction, then execute txFunc
 		// within a as transaction instead of using savepoints:
 		return Transaction(ctx, txFunc)

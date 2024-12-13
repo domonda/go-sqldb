@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/impl"
 )
 
 // Update table rows(s) with values using the where statement with passed in args starting at $1.
@@ -19,7 +20,10 @@ func Update(ctx context.Context, table string, values sqldb.Values, where string
 
 	query, vals := buildUpdateQuery(table, values, where, args)
 	err := conn.Exec(query, vals...)
-	return WrapNonNilErrorWithQuery(err, query, vals)
+	if err != nil {
+		return wrapErrorWithQuery(err, query, vals, conn)
+	}
+	return nil
 }
 
 // UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
@@ -82,7 +86,9 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		return fmt.Errorf("UpdateStruct of table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, pkCols, vals := ReflectStructValues(v, namer, append(ignoreColumns, sqldb.IgnoreReadOnly))
+	conn := Conn(ctx)
+
+	columns, pkCols, vals := impl.ReflectStructValues(v, conn.StructFieldMapper(), append(ignoreColumns, sqldb.IgnoreReadOnly))
 	if len(pkCols) == 0 {
 		return fmt.Errorf("UpdateStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
@@ -112,9 +118,9 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 
 	query := b.String()
 
-	conn := Conn(ctx)
-
 	err := conn.Exec(query, vals...)
-
-	return WrapNonNilErrorWithQuery(err, query, vals)
+	if err != nil {
+		return wrapErrorWithQuery(err, query, vals, conn)
+	}
+	return nil
 }

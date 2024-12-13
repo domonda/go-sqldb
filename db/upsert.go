@@ -30,13 +30,15 @@ func UpsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		return fmt.Errorf("UpsertStruct to table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, pkCols, vals := impl.ReflectStructValues(v, namer, append(ignoreColumns, sqldb.IgnoreReadOnly))
+	conn := Conn(ctx)
+
+	columns, pkCols, vals := impl.ReflectStructValues(v, conn.StructFieldMapper(), append(ignoreColumns, sqldb.IgnoreReadOnly))
 	if len(pkCols) == 0 {
 		return fmt.Errorf("UpsertStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
 
 	var b strings.Builder
-	writeInsertQuery(&b, table, argFmt, columns)
+	writeInsertQuery(&b, table, columns, conn)
 	b.WriteString(` ON CONFLICT(`)
 	for i, pkCol := range pkCols {
 		if i > 0 {
@@ -60,9 +62,9 @@ func UpsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 	}
 	query := b.String()
 
-	conn := Conn(ctx)
-
 	err := conn.Exec(query, vals...)
-
-	return WrapNonNilErrorWithQuery(err, query, argFmt, vals)
+	if err != nil {
+		return wrapErrorWithQuery(err, query, vals, conn)
+	}
+	return nil
 }

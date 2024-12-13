@@ -27,10 +27,6 @@ func (conn transaction) WithContext(ctx context.Context) sqldb.Connection {
 	}
 }
 
-func (conn transaction) IsTransaction() bool {
-	return true
-}
-
 func (conn transaction) TransactionNo() uint64 {
 	return conn.no
 }

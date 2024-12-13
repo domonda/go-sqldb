@@ -69,9 +69,6 @@ type Connection interface {
 	// QueryRows queries multiple rows and returns a RowsScanner for the results.
 	QueryRows(query string, args ...any) RowsScanner
 
-	// IsTransaction returns if the connection is a transaction
-	IsTransaction() bool
-
 	// TransactionNo returns the globally unique number of the transaction
 	// or zero if the connection is not a transaction.
 	// Implementations should use the package function NextTransactionNo

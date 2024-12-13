@@ -92,10 +92,6 @@ func (conn *transaction) QueryRows(query string, args ...any) sqldb.RowsScanner 
 	return impl.NewRowsScanner(conn.parent.ctx, rows, conn.structFieldNamer, query, argFmt, args)
 }
 
-func (conn *transaction) IsTransaction() bool {
-	return true
-}
-
 func (conn *transaction) TransactionNo() uint64 {
 	return conn.no
 }

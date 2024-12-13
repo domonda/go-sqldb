@@ -67,10 +67,6 @@ func (e connectionWithError) QueryRows(query string, args ...any) RowsScanner {
 	return RowsScannerWithError(e.err)
 }
 
-func (e connectionWithError) IsTransaction() bool {
-	return false
-}
-
 func (e connectionWithError) TransactionNo() uint64 {
 	return 0
 }
