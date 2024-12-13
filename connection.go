@@ -99,6 +99,14 @@ type Connection interface {
 	// is not within a transaction.
 	Rollback() error
 
+	// Close the connection.
+	// Transactions will be rolled back.
+	Close() error
+}
+
+type ListenerConnection interface {
+	Connection
+
 	// ListenOnChannel will call onNotify for every channel notification
 	// and onUnlisten if the channel gets unlistened
 	// or the listener connection gets closed for some reason.
@@ -115,8 +123,4 @@ type Connection interface {
 
 	// IsListeningOnChannel returns if a channel is listened to.
 	IsListeningOnChannel(channel string) bool
-
-	// Close the connection.
-	// Transactions will be rolled back.
-	Close() error
 }

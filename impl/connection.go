@@ -3,7 +3,6 @@ package impl
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"time"
 
@@ -131,18 +130,6 @@ func (conn *connection) Commit() error {
 
 func (conn *connection) Rollback() error {
 	return sqldb.ErrNotWithinTransaction
-}
-
-func (conn *connection) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
-	return fmt.Errorf("notifications %w", errors.ErrUnsupported)
-}
-
-func (conn *connection) UnlistenChannel(channel string) (err error) {
-	return fmt.Errorf("notifications %w", errors.ErrUnsupported)
-}
-
-func (conn *connection) IsListeningOnChannel(channel string) bool {
-	return false
 }
 
 func (conn *connection) Close() error {

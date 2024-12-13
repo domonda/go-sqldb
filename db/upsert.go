@@ -47,7 +47,7 @@ func UpsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		fmt.Fprintf(&b, `"%s"`, columns[pkCol])
 	}
 
-	b.WriteString(`) DO UPDATE SET `)
+	b.WriteString(`) DO UPDATE SET`)
 	first := true
 	for i := range columns {
 		if slices.Contains(pkCols, i) {
@@ -58,7 +58,7 @@ func UpsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		} else {
 			b.WriteByte(',')
 		}
-		fmt.Fprintf(&b, `"%s"=$%d`, columns[i], i+1)
+		fmt.Fprintf(&b, ` "%s"=%s`, columns[i], conn.Placeholder(i))
 	}
 	query := b.String()
 

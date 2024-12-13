@@ -3,8 +3,6 @@ package impl
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"fmt"
 	"time"
 
 	"github.com/domonda/go-sqldb"
@@ -112,18 +110,6 @@ func (conn *transaction) Commit() error {
 
 func (conn *transaction) Rollback() error {
 	return conn.tx.Rollback()
-}
-
-func (conn *transaction) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
-	return fmt.Errorf("notifications %w", errors.ErrUnsupported)
-}
-
-func (conn *transaction) UnlistenChannel(channel string) (err error) {
-	return fmt.Errorf("notifications %w", errors.ErrUnsupported)
-}
-
-func (conn *transaction) IsListeningOnChannel(channel string) bool {
-	return false
 }
 
 func (conn *transaction) Close() error {
