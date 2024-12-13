@@ -27,7 +27,7 @@ func NextTransactionNo() uint64 {
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
 // Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
 func Transaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Connection) error) (err error) {
-	if parentOpts, parentIsTx := parentConn.TransactionOptions(); parentIsTx {
+	if parentTxNo, parentOpts := parentConn.TransactionInfo(); parentTxNo != 0 {
 		err = CheckTxOptionsCompatibility(parentOpts, opts, parentConn.Config().DefaultIsolationLevel)
 		if err != nil {
 			return err
@@ -44,7 +44,7 @@ func Transaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Conn
 // Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
 func IsolatedTransaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Connection) error) (err error) {
 	txNo := NextTransactionNo()
-	tx, e := parentConn.Begin(opts, txNo)
+	tx, e := parentConn.Begin(txNo, opts)
 	if e != nil {
 		return fmt.Errorf("Transaction %d Begin error: %w", txNo, e)
 	}

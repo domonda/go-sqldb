@@ -69,16 +69,11 @@ type Connection interface {
 	// QueryRows queries multiple rows and returns a RowsScanner for the results.
 	QueryRows(query string, args ...any) RowsScanner
 
-	// TransactionNo returns the globally unique number of the transaction
-	// or zero if the connection is not a transaction.
-	// Implementations should use the package function NextTransactionNo
-	// to aquire a new number in a threadsafe way.
-	TransactionNo() uint64
-
-	// TransactionOptions returns the sql.TxOptions of the
-	// current transaction and true as second result value,
-	// or false if the connection is not a transaction.
-	TransactionOptions() (*sql.TxOptions, bool)
+	// TransactionInfo returns the number and sql.TxOptions
+	// of the connection's transaction,
+	// or zero and nil if the connection is not
+	// in a transaction.
+	TransactionInfo() (no uint64, opts *sql.TxOptions)
 
 	// Begin a new transaction.
 	// If the connection is already a transaction then a brand
@@ -87,7 +82,7 @@ type Connection interface {
 	// Connection.TransactionNo method.
 	// Implementations should use the package function NextTransactionNo
 	// to aquire a new number in a threadsafe way.
-	Begin(opts *sql.TxOptions, no uint64) (Connection, error)
+	Begin(no uint64, opts *sql.TxOptions) (Connection, error)
 
 	// Commit the current transaction.
 	// Returns ErrNotWithinTransaction if the connection

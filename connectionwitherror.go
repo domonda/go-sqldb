@@ -67,15 +67,11 @@ func (e connectionWithError) QueryRows(query string, args ...any) RowsScanner {
 	return RowsScannerWithError(e.err)
 }
 
-func (e connectionWithError) TransactionNo() uint64 {
-	return 0
+func (ce connectionWithError) TransactionInfo() (no uint64, opts *sql.TxOptions) {
+	return 0, nil
 }
 
-func (ce connectionWithError) TransactionOptions() (*sql.TxOptions, bool) {
-	return nil, false
-}
-
-func (e connectionWithError) Begin(opts *sql.TxOptions, no uint64) (Connection, error) {
+func (e connectionWithError) Begin(no uint64, opts *sql.TxOptions) (Connection, error) {
 	return nil, e.err
 }
 

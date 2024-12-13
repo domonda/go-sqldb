@@ -116,15 +116,11 @@ func (conn *connection) QueryRows(query string, args ...any) sqldb.RowsScanner {
 	return conn.rowsProvider.QueryRows(conn.structFieldNamer, query, args...)
 }
 
-func (conn *connection) TransactionNo() uint64 {
-	return 0
+func (conn *connection) TransactionInfo() (no uint64, opts *sql.TxOptions) {
+	return 0, nil
 }
 
-func (conn *connection) TransactionOptions() (*sql.TxOptions, bool) {
-	return nil, false
-}
-
-func (conn *connection) Begin(opts *sql.TxOptions, no uint64) (sqldb.Connection, error) {
+func (conn *connection) Begin(no uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
 	if conn.queryWriter != nil {
 		fmt.Fprint(conn.queryWriter, "BEGIN")
 	}

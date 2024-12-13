@@ -50,5 +50,6 @@ func ContextWithConn(ctx context.Context, conn sqldb.Connection) context.Context
 // or the default connection if the context has none,
 // is a transaction.
 func IsTransaction(ctx context.Context) bool {
-	return Conn(ctx).TransactionNo() != 0
+	tx, _ := Conn(ctx).TransactionInfo()
+	return tx != 0
 }
