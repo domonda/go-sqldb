@@ -59,6 +59,10 @@ func (e connectionWithError) Exec(query string, args ...any) error {
 	return e.err
 }
 
+func (e connectionWithError) Query(query string, args ...any) (Rows, error) {
+	return nil, e.err
+}
+
 func (e connectionWithError) QueryRow(query string, args ...any) RowScanner {
 	return RowScannerWithError(e.err)
 }

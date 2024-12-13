@@ -63,6 +63,9 @@ type Connection interface {
 	// Exec executes a query with optional args.
 	Exec(query string, args ...any) error
 
+	// Query queries rows with optional args.
+	Query(query string, args ...any) (Rows, error)
+
 	// QueryRow queries a single row and returns a RowScanner for the results.
 	QueryRow(query string, args ...any) RowScanner
 

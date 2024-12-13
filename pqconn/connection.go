@@ -120,6 +120,15 @@ func (conn *connection) Exec(query string, args ...any) error {
 	return nil
 }
 
+func (conn *connection) Query(query string, args ...any) (sqldb.Rows, error) {
+	impl.WrapArrayArgs(args)
+	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
+	if err != nil {
+		return nil, wrapKnownErrors(err)
+	}
+	return rows, nil
+}
+
 func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
 	impl.WrapArrayArgs(args)
 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)

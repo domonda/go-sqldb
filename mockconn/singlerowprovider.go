@@ -20,6 +20,10 @@ type singleRowProvider struct {
 	argFmt string
 }
 
+func (p *singleRowProvider) Query(structFieldNamer sqldb.StructFieldMapper, query string, args ...any) (sqldb.Rows, error) {
+	panic("TODO")
+}
+
 func (p *singleRowProvider) QueryRow(structFieldNamer sqldb.StructFieldMapper, query string, args ...any) sqldb.RowScanner {
 	return impl.NewRowScanner(impl.RowAsRows(p.row), structFieldNamer, query, p.argFmt, args)
 }

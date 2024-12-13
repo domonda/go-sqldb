@@ -91,6 +91,13 @@ func (conn *connection) Exec(query string, args ...any) error {
 	return nil
 }
 
+func (conn *connection) Query(query string, args ...any) (sqldb.Rows, error) {
+	if err := conn.ctx.Err(); err != nil {
+		return nil, err
+	}
+	return conn.rowsProvider.Query(conn.structFieldNamer, query, args...)
+}
+
 func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
 	if conn.ctx.Err() != nil {
 		return sqldb.RowScannerWithError(conn.ctx.Err())

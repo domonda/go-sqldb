@@ -73,6 +73,15 @@ func (conn *transaction) Exec(query string, args ...any) error {
 	return impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
 }
 
+func (conn *transaction) Query(query string, args ...any) (sqldb.Rows, error) {
+	impl.WrapArrayArgs(args)
+	rows, err := conn.tx.QueryContext(conn.parent.ctx, query, args...)
+	if err != nil {
+		return nil, wrapKnownErrors(err)
+	}
+	return rows, nil
+}
+
 func (conn *transaction) QueryRow(query string, args ...any) sqldb.RowScanner {
 	impl.WrapArrayArgs(args)
 	rows, err := conn.tx.QueryContext(conn.parent.ctx, query, args...)

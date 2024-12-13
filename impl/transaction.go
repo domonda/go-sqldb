@@ -71,6 +71,10 @@ func (conn *transaction) Exec(query string, args ...any) error {
 	return WrapNonNilErrorWithQuery(err, query, conn.parent.argFmt, args)
 }
 
+func (conn *transaction) Query(query string, args ...any) (sqldb.Rows, error) {
+	return conn.tx.QueryContext(conn.parent.ctx, query, args...)
+}
+
 func (conn *transaction) QueryRow(query string, args ...any) sqldb.RowScanner {
 	rows, err := conn.tx.QueryContext(conn.parent.ctx, query, args...)
 	if err != nil {

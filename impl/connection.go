@@ -88,7 +88,11 @@ func (conn *connection) ValidateColumnName(name string) error {
 
 func (conn *connection) Exec(query string, args ...any) error {
 	_, err := conn.db.ExecContext(conn.ctx, query, args...)
-	return WrapNonNilErrorWithQuery(err, query, conn.argFmt, args)
+	return err
+}
+
+func (conn *connection) Query(query string, args ...any) (sqldb.Rows, error) {
+	return conn.db.QueryContext(conn.ctx, query, args...)
 }
 
 func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
