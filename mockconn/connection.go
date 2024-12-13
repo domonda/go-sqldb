@@ -3,6 +3,7 @@ package mockconn
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -121,6 +122,9 @@ func (conn *connection) TransactionInfo() (no uint64, opts *sql.TxOptions) {
 }
 
 func (conn *connection) Begin(no uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
+	if no == 0 {
+		return nil, errors.New("transaction number must not be zero")
+	}
 	if conn.queryWriter != nil {
 		fmt.Fprint(conn.queryWriter, "BEGIN")
 	}

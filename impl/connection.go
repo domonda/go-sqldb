@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -113,6 +114,9 @@ func (conn *connection) TransactionInfo() (no uint64, opts *sql.TxOptions) {
 }
 
 func (conn *connection) Begin(no uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
+	if no == 0 {
+		return nil, errors.New("transaction number must not be zero")
+	}
 	tx, err := conn.db.BeginTx(conn.ctx, opts)
 	if err != nil {
 		return nil, err

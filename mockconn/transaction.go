@@ -3,6 +3,7 @@ package mockconn
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/domonda/go-sqldb"
@@ -32,6 +33,9 @@ func (conn transaction) TransactionInfo() (no uint64, opts *sql.TxOptions) {
 }
 
 func (conn transaction) Begin(no uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
+	if no == 0 {
+		return nil, errors.New("transaction number must not be zero")
+	}
 	if conn.queryWriter != nil {
 		fmt.Fprint(conn.queryWriter, "BEGIN")
 	}
