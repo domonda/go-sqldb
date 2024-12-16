@@ -10,42 +10,6 @@ import (
 	"github.com/domonda/go-sqldb/impl"
 )
 
-func writeInsertQuery(w *strings.Builder, table string, names []string, format sqldb.PlaceholderFormatter) {
-	fmt.Fprintf(w, `INSERT INTO %s(`, table)
-	for i, name := range names {
-		if i > 0 {
-			w.WriteByte(',')
-		}
-		w.WriteByte('"')
-		w.WriteString(name)
-		w.WriteByte('"')
-	}
-	w.WriteString(`) VALUES(`)
-	for i := range names {
-		if i > 0 {
-			w.WriteByte(',')
-		}
-		w.WriteString(format.Placeholder(i))
-	}
-	w.WriteByte(')')
-}
-
-func insertStructValues(table string, rowStruct any, namer sqldb.StructFieldMapper, ignoreColumns []sqldb.ColumnFilter) (columns []string, vals []any, err error) {
-	v := reflect.ValueOf(rowStruct)
-	for v.Kind() == reflect.Ptr && !v.IsNil() {
-		v = v.Elem()
-	}
-	switch {
-	case v.Kind() == reflect.Ptr && v.IsNil():
-		return nil, nil, fmt.Errorf("InsertStruct into table %s: can't insert nil", table)
-	case v.Kind() != reflect.Struct:
-		return nil, nil, fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
-	}
-
-	columns, _, vals = impl.ReflectStructValues(v, namer, append(ignoreColumns, sqldb.IgnoreReadOnly))
-	return columns, vals, nil
-}
-
 // Insert a new row into table using the values.
 func Insert(ctx context.Context, table string, values sqldb.Values) error {
 	if len(values) == 0 {
@@ -126,6 +90,17 @@ func InsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 	return nil
 }
 
+// InsertStructWithTableName inserts a new row into table using the connection's
+// StructFieldMapper to map struct fields to column names.
+// Optional ColumnFilter can be passed to ignore mapped columns.
+func InsertStructWithTableName(ctx context.Context, row sqldb.StructWithTableName, ignoreColumns ...sqldb.ColumnFilter) error {
+	table, err := Conn(ctx).StructFieldMapper().TableNameForStruct(reflect.TypeOf(row))
+	if err != nil {
+		return err
+	}
+	return InsertStruct(ctx, table, row, ignoreColumns...)
+}
+
 // InsertUniqueStruct inserts a new row into table using the connection's
 // StructFieldMapper to map struct fields to column names.
 // Optional ColumnFilter can be passed to ignore mapped columns.
@@ -176,4 +151,40 @@ func InsertStructs(ctx context.Context, table string, rowStructs any, ignoreColu
 		}
 		return nil
 	})
+}
+
+func writeInsertQuery(w *strings.Builder, table string, names []string, format sqldb.PlaceholderFormatter) {
+	fmt.Fprintf(w, `INSERT INTO %s(`, table)
+	for i, name := range names {
+		if i > 0 {
+			w.WriteByte(',')
+		}
+		w.WriteByte('"')
+		w.WriteString(name)
+		w.WriteByte('"')
+	}
+	w.WriteString(`) VALUES(`)
+	for i := range names {
+		if i > 0 {
+			w.WriteByte(',')
+		}
+		w.WriteString(format.Placeholder(i))
+	}
+	w.WriteByte(')')
+}
+
+func insertStructValues(table string, rowStruct any, namer sqldb.StructFieldMapper, ignoreColumns []sqldb.ColumnFilter) (columns []string, vals []any, err error) {
+	v := reflect.ValueOf(rowStruct)
+	for v.Kind() == reflect.Ptr && !v.IsNil() {
+		v = v.Elem()
+	}
+	switch {
+	case v.Kind() == reflect.Ptr && v.IsNil():
+		return nil, nil, fmt.Errorf("InsertStruct into table %s: can't insert nil", table)
+	case v.Kind() != reflect.Struct:
+		return nil, nil, fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
+	}
+
+	columns, _, vals = impl.ReflectStructValues(v, namer, append(ignoreColumns, sqldb.IgnoreReadOnly))
+	return columns, vals, nil
 }

@@ -35,6 +35,9 @@ const (
 // StructFieldMapper is used to map struct type fields to column names
 // and indicate special column properies via flags.
 type StructFieldMapper interface {
+	// TableNameForStruct returns the table name for a struct type
+	TableNameForStruct(t reflect.Type) (table string, err error)
+
 	// MapStructField returns the column name for a reflected struct field
 	// and flags for special column properies.
 	// If false is returned for use then the field is not mapped.
@@ -81,6 +84,10 @@ type TaggedStructFieldMapping struct {
 	// UntaggedNameFunc will be called with the struct field name to
 	// return a column name in case the struct field has no tag named NameTag.
 	UntaggedNameFunc func(fieldName string) string
+}
+
+func (m *TaggedStructFieldMapping) TableNameForStruct(t reflect.Type) (table string, err error) {
+	return TableNameForStruct(t, m.NameTag)
 }
 
 func (m *TaggedStructFieldMapping) MapStructField(field reflect.StructField) (table, column string, flags FieldFlag, use bool) {

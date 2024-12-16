@@ -1,11 +1,11 @@
-package db
+package sqldb
 
 import (
 	"reflect"
 	"testing"
 )
 
-func TestTableForStruct(t *testing.T) {
+func TestTableNameForStruct(t *testing.T) {
 	tests := []struct {
 		name      string
 		t         reflect.Type
@@ -16,7 +16,7 @@ func TestTableForStruct(t *testing.T) {
 		{
 			name: "OK",
 			t: reflect.TypeFor[struct {
-				Table `db:"table_name"`
+				TableName `db:"table_name"`
 			}](),
 			tagKey:    "db",
 			wantTable: "table_name",
@@ -24,9 +24,9 @@ func TestTableForStruct(t *testing.T) {
 		{
 			name: "more struct fields",
 			t: reflect.TypeFor[struct {
-				ID    int `db:"id"`
-				Table `db:"table_name"`
-				Value string `db:"value"`
+				ID        int `db:"id"`
+				TableName `db:"table_name"`
+				Value     string `db:"value"`
 			}](),
 			tagKey:    "db",
 			wantTable: "table_name",
@@ -41,7 +41,7 @@ func TestTableForStruct(t *testing.T) {
 		{
 			name: "no tagKey",
 			t: reflect.TypeFor[struct {
-				Table
+				TableName
 			}](),
 			tagKey:  "db",
 			wantErr: true,
@@ -49,7 +49,7 @@ func TestTableForStruct(t *testing.T) {
 		{
 			name: "wrong tagKey",
 			t: reflect.TypeFor[struct {
-				Table `json:"table_name"`
+				TableName `json:"table_name"`
 			}](),
 			tagKey:  "db",
 			wantErr: true,
@@ -57,7 +57,7 @@ func TestTableForStruct(t *testing.T) {
 		{
 			name: "named field",
 			t: reflect.TypeFor[struct {
-				Table Table `db:"table_name"`
+				Table TableName `db:"table_name"`
 			}](),
 			tagKey:  "db",
 			wantErr: true,
@@ -65,7 +65,7 @@ func TestTableForStruct(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotTable, err := TableForStruct(tt.t, tt.tagKey)
+			gotTable, err := TableNameForStruct(tt.t, tt.tagKey)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("TableForStruct(%s, %#v) error = %v, wantErr %v", tt.t, tt.tagKey, err, tt.wantErr)
 				return
