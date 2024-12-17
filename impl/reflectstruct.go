@@ -13,7 +13,7 @@ import (
 func ReflectStructValues(structVal reflect.Value, namer sqldb.StructFieldMapper, ignoreColumns []sqldb.ColumnFilter) (columns []string, pkCols []int, values []any) {
 	for i := 0; i < structVal.NumField(); i++ {
 		fieldType := structVal.Type().Field(i)
-		_, column, flags, use := namer.MapStructField(fieldType)
+		column, flags, use := namer.MapStructField(fieldType)
 		if !use {
 			continue
 		}
@@ -75,7 +75,7 @@ func reflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFiel
 	structType := structVal.Type()
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
-		_, column, _, use := namer.MapStructField(field)
+		column, _, use := namer.MapStructField(field)
 		if !use {
 			continue
 		}

@@ -37,10 +37,10 @@ func TestTaggedStructFieldMapping_StructFieldName(t *testing.T) {
 	}
 	type AnonymousEmbedded struct{}
 	var s struct {
-		Index             int    `db:"index,pk=public.my_table"` // Field(0)
-		IndexB            int    `db:"index_b,pk"`               // Field(1)
-		Str               string `db:"named_str"`                // Field(2)
-		ReadOnly          bool   `db:"read_only,readonly"`       // Field(3)
+		Index             int    `db:"index,pk"`           // Field(0)
+		IndexB            int    `db:"index_b,pk"`         // Field(1)
+		Str               string `db:"named_str"`          // Field(2)
+		ReadOnly          bool   `db:"read_only,readonly"` // Field(3)
 		UntaggedField     bool   // Field(4)
 		Ignore            bool   `db:"-"`                                   // Field(5)
 		PKReadOnly        int    `db:"pk_read_only,pk,readonly"`            // Field(6)
@@ -53,13 +53,12 @@ func TestTaggedStructFieldMapping_StructFieldName(t *testing.T) {
 	tests := []struct {
 		name        string
 		structField reflect.StructField
-		wantTable   string
 		wantColumn  string
 		wantFlags   FieldFlag
 		wantOk      bool
 	}{
-		{name: "index", structField: st.Field(0), wantTable: "public.my_table", wantColumn: "index", wantFlags: FieldFlagPrimaryKey, wantOk: true},
-		{name: "index_b", structField: st.Field(1), wantTable: "", wantColumn: "index_b", wantFlags: FieldFlagPrimaryKey, wantOk: true},
+		{name: "index", structField: st.Field(0), wantColumn: "index", wantFlags: FieldFlagPrimaryKey, wantOk: true},
+		{name: "index_b", structField: st.Field(1), wantColumn: "index_b", wantFlags: FieldFlagPrimaryKey, wantOk: true},
 		{name: "named_str", structField: st.Field(2), wantColumn: "named_str", wantFlags: 0, wantOk: true},
 		{name: "read_only", structField: st.Field(3), wantColumn: "read_only", wantFlags: FieldFlagReadOnly, wantOk: true},
 		{name: "untagged_field", structField: st.Field(4), wantColumn: "untagged_field", wantFlags: 0, wantOk: true},
@@ -71,10 +70,7 @@ func TestTaggedStructFieldMapping_StructFieldName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotTable, gotColumn, gotFlags, gotOk := naming.MapStructField(tt.structField)
-			if gotTable != tt.wantTable {
-				t.Errorf("TaggedStructFieldMapping.MapStructField(%q) gotTable = %q, want %q", tt.structField.Name, gotTable, tt.wantTable)
-			}
+			gotColumn, gotFlags, gotOk := naming.MapStructField(tt.structField)
 			if gotColumn != tt.wantColumn {
 				t.Errorf("TaggedStructFieldMapping.MapStructField(%q) gotColumn = %q, want %q", tt.structField.Name, gotColumn, tt.wantColumn)
 			}

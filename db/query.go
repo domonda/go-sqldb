@@ -119,7 +119,7 @@ func QueryRowStructOrNil[S any](ctx context.Context, query string, args ...any) 
 // and scan it into a struct of type S that must have tagged fields
 // with primary key flags to identify the primary key column names
 // for the passed pkValue+pkValues and a table name.
-func GetRow[S any](ctx context.Context, pkValue any, pkValues ...any) (row *S, err error) {
+func GetRow[S sqldb.StructWithTableName](ctx context.Context, pkValue any, pkValues ...any) (row *S, err error) {
 	// Using explicit first pkValue value
 	// to not be able to compile without any value
 	pkValues = append([]any{pkValue}, pkValues...)
@@ -128,7 +128,11 @@ func GetRow[S any](ctx context.Context, pkValue any, pkValues ...any) (row *S, e
 		return nil, fmt.Errorf("expected struct template type instead of %s", t)
 	}
 	conn := Conn(ctx)
-	table, pkColumns, err := pkColumnsOfStruct(conn, t)
+	table, err := conn.StructFieldMapper().TableNameForStruct(t)
+	if err != nil {
+		return nil, err
+	}
+	pkColumns, err := pkColumnsOfStruct(conn, t)
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +157,7 @@ func GetRow[S any](ctx context.Context, pkValue any, pkValues ...any) (row *S, e
 // for the passed pkValue+pkValues and a table name.
 // Returns nil as row and error if no row could be found with the
 // passed pkValue+pkValues.
-func GetRowOrNil[S any](ctx context.Context, pkValue any, pkValues ...any) (row *S, err error) {
+func GetRowOrNil[S sqldb.StructWithTableName](ctx context.Context, pkValue any, pkValues ...any) (row *S, err error) {
 	row, err = GetRow[S](ctx, pkValue, pkValues...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -164,41 +168,29 @@ func GetRowOrNil[S any](ctx context.Context, pkValue any, pkValues ...any) (row 
 	return row, nil
 }
 
-func pkColumnsOfStruct(conn sqldb.Connection, t reflect.Type) (table string, columns []string, err error) {
+func pkColumnsOfStruct(conn sqldb.Connection, t reflect.Type) (columns []string, err error) {
 	mapper := conn.StructFieldMapper()
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
-		fieldTable, column, flags, ok := mapper.MapStructField(field)
+		column, flags, ok := mapper.MapStructField(field)
 		if !ok {
 			continue
 		}
-		if fieldTable != "" && fieldTable != table {
-			if table != "" {
-				return "", nil, fmt.Errorf("table name not unique (%s vs %s) in struct %s", table, fieldTable, t)
-			}
-			table = fieldTable
-		}
 
 		if column == "" {
-			fieldTable, columnsEmbed, err := pkColumnsOfStruct(conn, field.Type)
+			columnsEmbed, err := pkColumnsOfStruct(conn, field.Type)
 			if err != nil {
-				return "", nil, err
-			}
-			if fieldTable != "" && fieldTable != table {
-				if table != "" {
-					return "", nil, fmt.Errorf("table name not unique (%s vs %s) in struct %s", table, fieldTable, t)
-				}
-				table = fieldTable
+				return nil, err
 			}
 			columns = append(columns, columnsEmbed...)
 		} else if flags.PrimaryKey() {
 			if err = conn.ValidateColumnName(column); err != nil {
-				return "", nil, fmt.Errorf("%w in struct field %s.%s", err, t, field.Name)
+				return nil, fmt.Errorf("%w in struct field %s.%s", err, t, field.Name)
 			}
 			columns = append(columns, column)
 		}
 	}
-	return table, columns, nil
+	return columns, nil
 }
 
 // QueryStructSlice returns queried rows as slice of the generic type S

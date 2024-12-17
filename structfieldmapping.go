@@ -43,7 +43,7 @@ type StructFieldMapper interface {
 	// If false is returned for use then the field is not mapped.
 	// An empty name and true for use indicates an embedded struct
 	// field whose fields should be recursively mapped.
-	MapStructField(field reflect.StructField) (table, column string, flags FieldFlag, use bool)
+	MapStructField(field reflect.StructField) (column string, flags FieldFlag, use bool)
 }
 
 // NewTaggedStructFieldMapping returns a default mapping.
@@ -90,23 +90,23 @@ func (m *TaggedStructFieldMapping) TableNameForStruct(t reflect.Type) (table str
 	return TableNameForStruct(t, m.NameTag)
 }
 
-func (m *TaggedStructFieldMapping) MapStructField(field reflect.StructField) (table, column string, flags FieldFlag, use bool) {
+func (m *TaggedStructFieldMapping) MapStructField(field reflect.StructField) (column string, flags FieldFlag, use bool) {
 	if field.Anonymous {
 		column, hasTag := field.Tag.Lookup(m.NameTag)
 		if !hasTag {
 			// Embedded struct fields are ok if not tagged with IgnoreName
-			return "", "", 0, true
+			return "", 0, true
 		}
 		if i := strings.IndexByte(column, ','); i != -1 {
 			column = column[:i]
 		}
 		// Embedded struct fields are ok if not tagged with IgnoreName
-		return "", "", 0, column != m.Ignore
+		return "", 0, column != m.Ignore
 	}
 	if !field.IsExported() {
 		// Not exported struct fields that are not
 		// anonymously embedded structs are not ok
-		return "", "", 0, false
+		return "", 0, false
 	}
 
 	tag, hasTag := field.Tag.Lookup(m.NameTag)
@@ -118,13 +118,11 @@ func (m *TaggedStructFieldMapping) MapStructField(field reflect.StructField) (ta
 				continue
 			}
 			// Follow on parts are flags
-			flag, value, _ := strings.Cut(part, "=")
-			switch flag {
+			switch part {
 			case "":
 				// Ignore empty flags
 			case m.PrimaryKey:
 				flags |= FieldFlagPrimaryKey
-				table = value
 			case m.ReadOnly:
 				flags |= FieldFlagReadOnly
 			case m.Default:
@@ -136,9 +134,9 @@ func (m *TaggedStructFieldMapping) MapStructField(field reflect.StructField) (ta
 	}
 
 	if column == "" || column == m.Ignore {
-		return "", "", 0, false
+		return "", 0, false
 	}
-	return table, column, flags, true
+	return column, flags, true
 }
 
 func (n TaggedStructFieldMapping) String() string {
