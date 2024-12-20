@@ -45,7 +45,7 @@ func main() {
 		panic(err)
 	}
 
-	conn = conn.WithStructFieldMapper(&sqldb.TaggedStructFieldMapping{
+	conn = conn.WithStructFieldMapper(&sqldb.TaggedStructReflector{
 		NameTag:          "col",
 		Ignore:           "ignore",
 		UntaggedNameFunc: sqldb.ToSnakeCase,

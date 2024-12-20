@@ -26,7 +26,7 @@ func TestRows(t *testing.T) {
 		input = append(input, &Struct{"myID", i, -1, &str, nil, pq.BoolArray{true, false, i%2 == 0}})
 	}
 
-	naming := &sqldb.TaggedStructFieldMapping{NameTag: "db", Ignore: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
+	naming := &sqldb.TaggedStructReflector{NameTag: "db", Ignore: "-", UntaggedNameFunc: sqldb.ToSnakeCase}
 	rows := NewRowsFromStructs(input, naming)
 
 	cols, err := rows.Columns()

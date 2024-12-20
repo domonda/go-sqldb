@@ -115,18 +115,17 @@ type TableRowWithPrimaryKey struct {
 func GetTableRowsWithPrimaryKey(ctx context.Context, pkCols []PrimaryKeyColumn, pk any) (tableRows []TableRowWithPrimaryKey, err error) {
 	defer errs.WrapWithFuncParams(&err, ctx, pkCols, pk)
 
-	conn := db.Conn(ctx)
 	for _, col := range pkCols {
-		query := fmt.Sprintf(`select * from %s where "%s" = $1`, col.Table, col.Column)
-		row := conn.QueryRows(query, pk)
-		cols, err := row.Columns()
+		query := fmt.Sprintf(`SELECT * FROM %s WHERE "%s" = $1`, col.Table, col.Column)
+		rows := db.QueryRows(ctx, query, pk)
+		cols, err := rows.Columns()
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				continue
 			}
 			return nil, err
 		}
-		vals, err := row.ScanAllRowsAsStrings(false)
+		vals, err := rows.ScanAllRowsAsStrings(false)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				continue
@@ -154,7 +153,7 @@ var RenderUUIDPrimaryKeyRefsHTML = http.HandlerFunc(func(writer http.ResponseWri
 	pk, err := uu.IDFromString(request.URL.Query().Get("pk"))
 	if err != nil {
 		title = "Primary Key UUID"
-		mainContent = `
+		mainContent = /*html*/ `
 			<form onsubmit="event.preventDefault();location='.?pk='+encodeURIComponent(document.getElementById('uuid').value.trim())">
 				<input type="text" size="40" id="uuid"/>
 				<input type="submit" value="Look up"/>
@@ -222,7 +221,7 @@ var RenderUUIDPrimaryKeyRefsHTML = http.HandlerFunc(func(writer http.ResponseWri
 	writer.Write(buf.Bytes()) //#nosec G104
 })
 
-var htmlTemplate = `<!DOCTYPE html>
+var htmlTemplate = /*html*/ `<!DOCTYPE html>
 <html lang="en">
 <head>
 	<meta charset="utf-8">
@@ -254,9 +253,9 @@ var htmlTemplate = `<!DOCTYPE html>
 </body>
 </html>`
 
-const StyleAllMonospace = `<style>* { font-family: "Lucida Console", Monaco, monospace; }</style>`
+const StyleAllMonospace = /*html*/ `<style>* { font-family: "Lucida Console", Monaco, monospace; }</style>`
 
-const StyleDefaultTable = `<style>
+const StyleDefaultTable = /*html*/ `<style>
 	table {
 		margin-top: 1em;
 		margin-bottom: 1em;

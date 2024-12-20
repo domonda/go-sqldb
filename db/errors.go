@@ -1,27 +1,24 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/impl"
 )
 
-// // WrapNonNilErrorWithQuery wraps non nil errors with a formatted query
-// // if the error was not already wrapped with a query.
-// // If the passed error is nil, then nil will be returned.
-// func WrapNonNilErrorWithQuery(err error, query string, args []any, argFmt sqldb.PlaceholderFormatter) error {
-// 	if err == nil {
-// 		return nil
-// 	}
-// 	var wrapped errWithQuery
-// 	if errors.As(err, &wrapped) {
-// 		return err // already wrapped
-// 	}
-// 	return errWithQuery{err, query, args, argFmt}
-// }
-
+// wrapErrorWithQuery wraps an errors with a formatted query
+// if the error was not already wrapped with a query.
+// If the passed error is nil, then nil will be returned.
 func wrapErrorWithQuery(err error, query string, args []any, argFmt sqldb.PlaceholderFormatter) error {
+	if err == nil {
+		return nil
+	}
+	var wrapped errWithQuery
+	if errors.As(err, &wrapped) {
+		return err // already wrapped
+	}
 	return errWithQuery{err, query, args, argFmt}
 }
 

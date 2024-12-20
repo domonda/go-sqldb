@@ -1,4 +1,4 @@
-package impl
+package db
 
 import (
 	"errors"
@@ -8,9 +8,10 @@ import (
 	"strings"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/impl"
 )
 
-func ReflectStructValues(structVal reflect.Value, namer sqldb.StructFieldMapper, ignoreColumns []sqldb.ColumnFilter) (columns []string, pkCols []int, values []any) {
+func ReflectStructValues(structVal reflect.Value, namer sqldb.StructReflector, ignoreColumns []sqldb.ColumnFilter) (columns []string, pkCols []int, values []any) {
 	for i := 0; i < structVal.NumField(); i++ {
 		fieldType := structVal.Type().Field(i)
 		column, flags, use := namer.MapStructField(fieldType)
@@ -43,7 +44,7 @@ func ReflectStructValues(structVal reflect.Value, namer sqldb.StructFieldMapper,
 	return columns, pkCols, values
 }
 
-func ReflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFieldMapper, columns []string) (pointers []any, err error) {
+func ReflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructReflector, columns []string) (pointers []any, err error) {
 	if len(columns) == 0 {
 		return nil, errors.New("no columns")
 	}
@@ -71,7 +72,7 @@ func ReflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFiel
 	return pointers, nil
 }
 
-func reflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFieldMapper, columns []string, pointers []any) error {
+func reflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructReflector, columns []string, pointers []any) error {
 	structType := structVal.Type()
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
@@ -103,8 +104,8 @@ func reflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructFiel
 		// If field is a slice or array that does not implement sql.Scanner
 		// and it's not a string scannable []byte type underneath
 		// then wrap it with WrapForArray to make it scannable
-		if NeedsArrayWrappingForScanning(fieldValue) {
-			pointer = WrapArray(pointer)
+		if impl.NeedsArrayWrappingForScanning(fieldValue) {
+			pointer = impl.WrapArray(pointer)
 		}
 		pointers[colIndex] = pointer
 	}

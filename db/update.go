@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	sqldb "github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/impl"
 )
 
 // Update table rows(s) with values using the where statement with passed in args starting at $1.
@@ -26,31 +25,31 @@ func Update(ctx context.Context, table string, values sqldb.Values, where string
 	return nil
 }
 
-// UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
-// and returning a single row with the columns specified in returning argument.
-func UpdateReturningRow(ctx context.Context, table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowScanner {
-	if len(values) == 0 {
-		return sqldb.RowScannerWithError(fmt.Errorf("UpdateReturningRow table %s: no values passed", table))
-	}
-	conn := Conn(ctx)
+// // UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
+// // and returning a single row with the columns specified in returning argument.
+// func UpdateReturningRow(ctx context.Context, table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowScanner {
+// 	if len(values) == 0 {
+// 		return sqldb.RowScannerWithError(fmt.Errorf("UpdateReturningRow table %s: no values passed", table))
+// 	}
+// 	conn := Conn(ctx)
 
-	query, vals := buildUpdateQuery(table, values, where, args, conn)
-	query += " RETURNING " + returning
-	return conn.QueryRow(query, vals...)
-}
+// 	query, vals := buildUpdateQuery(table, values, where, args, conn)
+// 	query += " RETURNING " + returning
+// 	return conn.QueryRow(query, vals...)
+// }
 
-// UpdateReturningRows updates table rows with values using the where statement with passed in args starting at $1
-// and returning multiple rows with the columns specified in returning argument.
-func UpdateReturningRows(ctx context.Context, table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowsScanner {
-	if len(values) == 0 {
-		return sqldb.RowsScannerWithError(fmt.Errorf("UpdateReturningRows table %s: no values passed", table))
-	}
-	conn := Conn(ctx)
+// // UpdateReturningRows updates table rows with values using the where statement with passed in args starting at $1
+// // and returning multiple rows with the columns specified in returning argument.
+// func UpdateReturningRows(ctx context.Context, table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowsScanner {
+// 	if len(values) == 0 {
+// 		return sqldb.RowsScannerWithError(fmt.Errorf("UpdateReturningRows table %s: no values passed", table))
+// 	}
+// 	conn := Conn(ctx)
 
-	query, vals := buildUpdateQuery(table, values, where, args, conn)
-	query += " RETURNING " + returning
-	return conn.QueryRows(query, vals...)
-}
+// 	query, vals := buildUpdateQuery(table, values, where, args, conn)
+// 	query += " RETURNING " + returning
+// 	return conn.QueryRows(query, vals...)
+// }
 
 func buildUpdateQuery(table string, values sqldb.Values, where string, args []any, argFmt sqldb.PlaceholderFormatter) (string, []any) {
 	names, vals := values.Sorted()
@@ -88,7 +87,7 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 
 	conn := Conn(ctx)
 
-	columns, pkCols, vals := impl.ReflectStructValues(v, conn.StructFieldMapper(), append(ignoreColumns, sqldb.IgnoreReadOnly))
+	columns, pkCols, vals := ReflectStructValues(v, conn.StructReflector(), append(ignoreColumns, sqldb.IgnoreReadOnly))
 	if len(pkCols) == 0 {
 		return fmt.Errorf("UpdateStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}

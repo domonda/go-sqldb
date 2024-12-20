@@ -26,20 +26,17 @@ type PlaceholderFormatter interface {
 type Connection interface {
 	PlaceholderFormatter
 
-	// Context that all connection operations use.
-	// See also WithContext.
+	// TODO remove
 	Context() context.Context
 
-	// WithContext returns a connection that uses the passed
-	// context for its operations.
+	// TODO remove
 	WithContext(ctx context.Context) Connection
 
-	// WithStructFieldMapper returns a copy of the connection
-	// that will use the passed StructFieldMapper.
-	WithStructFieldMapper(StructFieldMapper) Connection
+	// TODO remove
+	WithStructFieldMapper(StructReflector) Connection
 
-	// StructFieldMapper used by methods of this Connection.
-	StructFieldMapper() StructFieldMapper
+	// TODO remove
+	StructReflector() StructReflector
 
 	// Ping returns an error if the database
 	// does not answer on this connection
@@ -64,13 +61,8 @@ type Connection interface {
 	Exec(query string, args ...any) error
 
 	// Query queries rows with optional args.
-	Query(query string, args ...any) (Rows, error)
-
-	// QueryRow queries a single row and returns a RowScanner for the results.
-	QueryRow(query string, args ...any) RowScanner
-
-	// QueryRows queries multiple rows and returns a RowsScanner for the results.
-	QueryRows(query string, args ...any) RowsScanner
+	// Any error will be returned by the Rows.Err method.
+	Query(query string, args ...any) Rows
 
 	// TransactionInfo returns the number and sql.TxOptions
 	// of the connection's transaction,

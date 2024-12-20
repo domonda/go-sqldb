@@ -1,5 +1,6 @@
 package mockconn
 
+/*
 import (
 	"context"
 	"database/sql"
@@ -60,7 +61,7 @@ func (conn *connection) WithStructFieldMapper(namer sqldb.StructFieldMapper) sql
 	}
 }
 
-func (conn *connection) StructFieldMapper() sqldb.StructFieldMapper {
+func (conn *connection) StructReflector() sqldb.StructFieldMapper {
 	return conn.structFieldNamer
 }
 
@@ -91,38 +92,38 @@ func (conn *connection) Exec(query string, args ...any) error {
 	return nil
 }
 
-func (conn *connection) Query(query string, args ...any) (sqldb.Rows, error) {
+func (conn *connection) Query(query string, args ...any) sqldb.Rows {
 	if err := conn.ctx.Err(); err != nil {
-		return nil, err
+		return sqldb.RowsErr(err)
 	}
 	return conn.rowsProvider.Query(conn.structFieldNamer, query, args...)
 }
 
-func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
-	if conn.ctx.Err() != nil {
-		return sqldb.RowScannerWithError(conn.ctx.Err())
-	}
-	if conn.queryWriter != nil {
-		fmt.Fprint(conn.queryWriter, query)
-	}
-	if conn.rowsProvider == nil {
-		return sqldb.RowScannerWithError(nil)
-	}
-	return conn.rowsProvider.QueryRow(conn.structFieldNamer, query, args...)
-}
+// func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
+// 	if conn.ctx.Err() != nil {
+// 		return sqldb.RowScannerWithError(conn.ctx.Err())
+// 	}
+// 	if conn.queryWriter != nil {
+// 		fmt.Fprint(conn.queryWriter, query)
+// 	}
+// 	if conn.rowsProvider == nil {
+// 		return sqldb.RowScannerWithError(nil)
+// 	}
+// 	return conn.rowsProvider.QueryRow(conn.structFieldNamer, query, args...)
+// }
 
-func (conn *connection) QueryRows(query string, args ...any) sqldb.RowsScanner {
-	if conn.ctx.Err() != nil {
-		return sqldb.RowsScannerWithError(conn.ctx.Err())
-	}
-	if conn.queryWriter != nil {
-		fmt.Fprint(conn.queryWriter, query)
-	}
-	if conn.rowsProvider == nil {
-		return sqldb.RowsScannerWithError(nil)
-	}
-	return conn.rowsProvider.QueryRows(conn.structFieldNamer, query, args...)
-}
+// func (conn *connection) QueryRows(query string, args ...any) sqldb.RowsScanner {
+// 	if conn.ctx.Err() != nil {
+// 		return sqldb.RowsScannerWithError(conn.ctx.Err())
+// 	}
+// 	if conn.queryWriter != nil {
+// 		fmt.Fprint(conn.queryWriter, query)
+// 	}
+// 	if conn.rowsProvider == nil {
+// 		return sqldb.RowsScannerWithError(nil)
+// 	}
+// 	return conn.rowsProvider.QueryRows(conn.structFieldNamer, query, args...)
+// }
 
 func (conn *connection) TransactionInfo() (no uint64, opts *sql.TxOptions) {
 	return 0, nil
@@ -169,3 +170,4 @@ func (conn *connection) IsListeningOnChannel(channel string) bool {
 func (conn *connection) Close() error {
 	return nil
 }
+*/

@@ -23,11 +23,13 @@ type Table struct {
 
 func GetTable(ctx context.Context, catalog, schema, name string) (table *Table, err error) {
 	err = db.QueryRow(ctx,
-		`select *
-			from information_schema.tables
-			where table_catalog = $1
-				and table_schema = $2
-				and table_name = $3`,
+		/*sql*/ `
+			SELECT *
+			FROM information_schema.tables
+			WHERE table_catalog = $1
+				AND table_schema = $2
+				AND table_name = $3
+		`,
 		catalog,
 		schema,
 		name,
@@ -39,11 +41,7 @@ func GetTable(ctx context.Context, catalog, schema, name string) (table *Table, 
 }
 
 func GetAllTables(ctx context.Context) (tables []*Table, err error) {
-	err = db.QueryRows(ctx,
-		`select * from information_schema.tables`,
-	).ScanStructSlice(&tables)
-	if err != nil {
-		return nil, err
-	}
-	return tables, nil
+	return db.QueryStructSlice[*Table](ctx,
+		/*sql*/ `SELECT * FROM information_schema.tables`,
+	)
 }

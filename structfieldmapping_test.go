@@ -26,8 +26,8 @@ func TestToSnakeCase(t *testing.T) {
 	}
 }
 
-func TestTaggedStructFieldMapping_StructFieldName(t *testing.T) {
-	naming := &TaggedStructFieldMapping{
+func TestTaggedStructReflector_StructFieldName(t *testing.T) {
+	naming := &TaggedStructReflector{
 		NameTag:          "db",
 		Ignore:           "-",
 		PrimaryKey:       "pk",
@@ -72,13 +72,13 @@ func TestTaggedStructFieldMapping_StructFieldName(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			gotColumn, gotFlags, gotOk := naming.MapStructField(tt.structField)
 			if gotColumn != tt.wantColumn {
-				t.Errorf("TaggedStructFieldMapping.MapStructField(%q) gotColumn = %q, want %q", tt.structField.Name, gotColumn, tt.wantColumn)
+				t.Errorf("TaggedStructReflector.MapStructField(%q) gotColumn = %q, want %q", tt.structField.Name, gotColumn, tt.wantColumn)
 			}
 			if gotFlags != tt.wantFlags {
-				t.Errorf("TaggedStructFieldMapping.MapStructField(%q) gotFlags = %v, want %v", tt.structField.Name, gotFlags, tt.wantFlags)
+				t.Errorf("TaggedStructReflector.MapStructField(%q) gotFlags = %v, want %v", tt.structField.Name, gotFlags, tt.wantFlags)
 			}
 			if gotOk != tt.wantOk {
-				t.Errorf("TaggedStructFieldMapping.MapStructField(%q) gotOk = %v, want %v", tt.structField.Name, gotOk, tt.wantOk)
+				t.Errorf("TaggedStructReflector.MapStructField(%q) gotOk = %v, want %v", tt.structField.Name, gotOk, tt.wantOk)
 			}
 		})
 	}

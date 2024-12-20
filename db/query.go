@@ -21,7 +21,7 @@ import (
 // Useful for getting the timestamp of a
 // SQL transaction for use in Go code.
 func CurrentTimestamp(ctx context.Context) time.Time {
-	t, err := QueryValue[time.Time](ctx, "SELECT CURRENT_TIMESTAMP")
+	t, err := QueryValue[time.Time](ctx, `SELECT CURRENT_TIMESTAMP`)
 	if err != nil {
 		return time.Now()
 	}
@@ -30,22 +30,31 @@ func CurrentTimestamp(ctx context.Context) time.Time {
 
 // Exec executes a query with optional args.
 func Exec(ctx context.Context, query string, args ...any) error {
-	return Conn(ctx).Exec(query, args...)
+	conn := Conn(ctx)
+	err := conn.Exec(query, args...)
+	if err != nil {
+		return wrapErrorWithQuery(err, query, args, conn)
+	}
+	return nil
 }
 
 // QueryRow queries a single row and returns a RowScanner for the results.
-func QueryRow(ctx context.Context, query string, args ...any) sqldb.RowScanner {
-	return Conn(ctx).QueryRow(query, args...)
+func QueryRow(ctx context.Context, query string, args ...any) *RowScanner {
+	conn := Conn(ctx)
+	rows := conn.Query(query, args...)
+	return NewRowScanner(rows, conn.StructReflector(), conn, query, args)
 }
 
-// QueryRows queries multiple rows and returns a RowsScanner for the results.
-func QueryRows(ctx context.Context, query string, args ...any) sqldb.RowsScanner {
-	return Conn(ctx).QueryRows(query, args...)
-}
+// // QueryRows queries multiple rows and returns a RowsScanner for the results.
+// func QueryRows(ctx context.Context, query string, args ...any) *MultiRowScanner {
+// 	conn := Conn(ctx)
+// 	rows := conn.Query(query, args...)
+// 	return NewMultiRowScanner(ctx, rows, conn.StructReflector(), conn, query, args)
+// }
 
 // QueryValue queries a single value of type T.
 func QueryValue[T any](ctx context.Context, query string, args ...any) (value T, err error) {
-	err = Conn(ctx).QueryRow(query, args...).Scan(&value)
+	err = QueryRow(ctx, query, args...).Scan(&value)
 	if err != nil {
 		return *new(T), err
 	}
@@ -56,7 +65,7 @@ func QueryValue[T any](ctx context.Context, query string, args ...any) (value T,
 // In case of an sql.ErrNoRows error, errNoRows will be called
 // and its result returned together with the default value for T.
 func QueryValueReplaceErrNoRows[T any](ctx context.Context, errNoRows func() error, query string, args ...any) (value T, err error) {
-	err = Conn(ctx).QueryRow(query, args...).Scan(&value)
+	err = QueryRow(ctx, query, args...).Scan(&value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) && errNoRows != nil {
 			return *new(T), errNoRows()
@@ -69,7 +78,7 @@ func QueryValueReplaceErrNoRows[T any](ctx context.Context, errNoRows func() err
 // QueryValueOr queries a single value of type T
 // or returns the passed defaultValue in case of sql.ErrNoRows.
 func QueryValueOr[T any](ctx context.Context, defaultValue T, query string, args ...any) (value T, err error) {
-	err = Conn(ctx).QueryRow(query, args...).Scan(&value)
+	err = QueryRow(ctx, query, args...).Scan(&value)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return defaultValue, nil
@@ -81,9 +90,12 @@ func QueryValueOr[T any](ctx context.Context, defaultValue T, query string, args
 
 // QueryRowStruct queries a row and scans it as struct.
 func QueryRowStruct[S any](ctx context.Context, query string, args ...any) (row *S, err error) {
-	err = Conn(ctx).QueryRow(query, args...).ScanStruct(&row)
+	conn := Conn(ctx)
+	rows := conn.Query(query, args...)
+	defer rows.Close()
+	err = scanStruct(rows, conn.StructReflector(), &row)
 	if err != nil {
-		return nil, err
+		return nil, wrapErrorWithQuery(err, query, args, conn)
 	}
 	return row, nil
 }
@@ -92,7 +104,7 @@ func QueryRowStruct[S any](ctx context.Context, query string, args ...any) (row 
 // In case of an sql.ErrNoRows error, errNoRows will be called
 // and its result returned as error together with nil as row.
 func QueryRowStructReplaceErrNoRows[S any](ctx context.Context, errNoRows func() error, query string, args ...any) (row *S, err error) {
-	err = Conn(ctx).QueryRow(query, args...).ScanStruct(&row)
+	row, err = QueryRowStruct[S](ctx, query, args...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) && errNoRows != nil {
 			return nil, errNoRows()
@@ -105,7 +117,7 @@ func QueryRowStructReplaceErrNoRows[S any](ctx context.Context, errNoRows func()
 // QueryRowStructOrNil queries a row and scans it as struct
 // or returns nil in case of sql.ErrNoRows.
 func QueryRowStructOrNil[S any](ctx context.Context, query string, args ...any) (row *S, err error) {
-	err = Conn(ctx).QueryRow(query, args...).ScanStruct(&row)
+	row, err = QueryRowStruct[S](ctx, query, args...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -128,7 +140,7 @@ func GetRow[S sqldb.StructWithTableName](ctx context.Context, pkValue any, pkVal
 		return nil, fmt.Errorf("expected struct template type instead of %s", t)
 	}
 	conn := Conn(ctx)
-	table, err := conn.StructFieldMapper().TableNameForStruct(t)
+	table, err := conn.StructReflector().TableNameForStruct(t)
 	if err != nil {
 		return nil, err
 	}
@@ -144,11 +156,7 @@ func GetRow[S sqldb.StructWithTableName](ctx context.Context, pkValue any, pkVal
 	for i := 1; i < len(pkColumns); i++ {
 		fmt.Fprintf(&query, ` AND "%s" = $%d`, pkColumns[i], i+1) //#nosec G104
 	}
-	err = conn.QueryRow(query.String(), pkValues...).ScanStruct(&row)
-	if err != nil {
-		return nil, err
-	}
-	return row, nil
+	return QueryRowStruct[S](ctx, query.String(), pkValues...)
 }
 
 // GetRowOrNil uses the passed pkValue+pkValues to query a table row
@@ -169,7 +177,7 @@ func GetRowOrNil[S sqldb.StructWithTableName](ctx context.Context, pkValue any, 
 }
 
 func pkColumnsOfStruct(conn sqldb.Connection, t reflect.Type) (columns []string, err error) {
-	mapper := conn.StructFieldMapper()
+	mapper := conn.StructReflector()
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		column, flags, ok := mapper.MapStructField(field)
@@ -196,7 +204,9 @@ func pkColumnsOfStruct(conn sqldb.Connection, t reflect.Type) (columns []string,
 // QueryStructSlice returns queried rows as slice of the generic type S
 // which must be a struct or a pointer to a struct.
 func QueryStructSlice[S any](ctx context.Context, query string, args ...any) (rows []S, err error) {
-	err = Conn(ctx).QueryRows(query, args...).ScanStructSlice(&rows)
+	conn := Conn(ctx)
+	sqlRows := conn.Query(query, args...)
+	err = ScanRowsAsSlice(ctx, sqlRows, conn.StructReflector(), &rows)
 	if err != nil {
 		return nil, err
 	}

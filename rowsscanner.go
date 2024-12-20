@@ -1,5 +1,6 @@
 package sqldb
 
+/*
 // RowsScanner scans the values from multiple rows.
 type RowsScanner interface {
 	// ScanSlice scans one value per row into one slice element of dest.
@@ -43,3 +44,4 @@ type RowsScanner interface {
 	// In case of zero rows, no error will be returned.
 	ForEachRowCall(callback any) error
 }
+*/

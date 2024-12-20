@@ -1,8 +1,7 @@
-package impl
+package sqldb
 
-// Row is an interface with the methods of sql.Rows
+// Row is an interface with methods from sql.Rows
 // that are needed for ScanStruct.
-// Allows mocking for tests without an SQL driver.
 type Row interface {
 	// Columns returns the column names.
 	Columns() ([]string, error)

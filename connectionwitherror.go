@@ -27,11 +27,11 @@ func (e connectionWithError) WithContext(ctx context.Context) Connection {
 	return connectionWithError{ctx: ctx, err: e.err}
 }
 
-func (e connectionWithError) WithStructFieldMapper(namer StructFieldMapper) Connection {
+func (e connectionWithError) WithStructFieldMapper(namer StructReflector) Connection {
 	return e
 }
 
-func (e connectionWithError) StructFieldMapper() StructFieldMapper {
+func (e connectionWithError) StructReflector() StructReflector {
 	return DefaultStructFieldMapping
 }
 
@@ -59,16 +59,8 @@ func (e connectionWithError) Exec(query string, args ...any) error {
 	return e.err
 }
 
-func (e connectionWithError) Query(query string, args ...any) (Rows, error) {
-	return nil, e.err
-}
-
-func (e connectionWithError) QueryRow(query string, args ...any) RowScanner {
-	return RowScannerWithError(e.err)
-}
-
-func (e connectionWithError) QueryRows(query string, args ...any) RowsScanner {
-	return RowsScannerWithError(e.err)
+func (e connectionWithError) Query(query string, args ...any) Rows {
+	return RowsErr(e.err)
 }
 
 func (ce connectionWithError) TransactionInfo() (no uint64, opts *sql.TxOptions) {

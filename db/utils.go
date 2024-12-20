@@ -38,8 +38,7 @@ func DebugPrintConn(ctx context.Context, args ...any) {
 			args = append(args, "Isolation", optsStr)
 		}
 	}
-	var t time.Time
-	err := conn.QueryRow("SELECT CURRENT_TIMESTAMP").Scan(&t)
+	t, err := QueryValue[time.Time](ctx, "SELECT CURRENT_TIMESTAMP")
 	if err == nil {
 		args = append(args, "CURRENT_TIMESTAMP:", t)
 	} else {

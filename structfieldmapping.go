@@ -32,9 +32,9 @@ const (
 	FieldFlagDefault
 )
 
-// StructFieldMapper is used to map struct type fields to column names
+// StructReflector is used to map struct type fields to column names
 // and indicate special column properies via flags.
-type StructFieldMapper interface {
+type StructReflector interface {
 	// TableNameForStruct returns the table name for a struct type
 	TableNameForStruct(t reflect.Type) (table string, err error)
 
@@ -46,9 +46,9 @@ type StructFieldMapper interface {
 	MapStructField(field reflect.StructField) (column string, flags FieldFlag, use bool)
 }
 
-// NewTaggedStructFieldMapping returns a default mapping.
-func NewTaggedStructFieldMapping() *TaggedStructFieldMapping {
-	return &TaggedStructFieldMapping{
+// NewTaggedStructReflector returns a default mapping.
+func NewTaggedStructReflector() *TaggedStructReflector {
+	return &TaggedStructReflector{
 		NameTag:          "db",
 		Ignore:           "-",
 		PrimaryKey:       "pk",
@@ -60,15 +60,15 @@ func NewTaggedStructFieldMapping() *TaggedStructFieldMapping {
 
 // DefaultStructFieldMapping provides the default StructFieldTagNaming
 // using "db" as NameTag and IgnoreStructField as UntaggedNameFunc.
-// Implements StructFieldMapper.
-var DefaultStructFieldMapping = NewTaggedStructFieldMapping()
+// Implements StructReflector.
+var DefaultStructFieldMapping = NewTaggedStructReflector()
 
-// TaggedStructFieldMapping implements StructFieldMapper
-var _ StructFieldMapper = new(TaggedStructFieldMapping)
+// TaggedStructReflector implements StructReflector
+var _ StructReflector = new(TaggedStructReflector)
 
-// TaggedStructFieldMapping implements StructFieldMapper with a struct field NameTag
+// TaggedStructReflector implements StructReflector with a struct field NameTag
 // to be used for naming and a UntaggedNameFunc in case the NameTag is not set.
-type TaggedStructFieldMapping struct {
+type TaggedStructReflector struct {
 	_Named_Fields_Required struct{}
 
 	// NameTag is the struct field tag to be used as column name
@@ -86,11 +86,11 @@ type TaggedStructFieldMapping struct {
 	UntaggedNameFunc func(fieldName string) string
 }
 
-func (m *TaggedStructFieldMapping) TableNameForStruct(t reflect.Type) (table string, err error) {
+func (m *TaggedStructReflector) TableNameForStruct(t reflect.Type) (table string, err error) {
 	return TableNameForStruct(t, m.NameTag)
 }
 
-func (m *TaggedStructFieldMapping) MapStructField(field reflect.StructField) (column string, flags FieldFlag, use bool) {
+func (m *TaggedStructReflector) MapStructField(field reflect.StructField) (column string, flags FieldFlag, use bool) {
 	if field.Anonymous {
 		column, hasTag := field.Tag.Lookup(m.NameTag)
 		if !hasTag {
@@ -139,12 +139,12 @@ func (m *TaggedStructFieldMapping) MapStructField(field reflect.StructField) (co
 	return column, flags, true
 }
 
-func (n TaggedStructFieldMapping) String() string {
+func (n TaggedStructReflector) String() string {
 	return fmt.Sprintf("NameTag: %q", n.NameTag)
 }
 
-// IgnoreStructField can be used as TaggedStructFieldMapping.UntaggedNameFunc
-// to ignore fields that don't have TaggedStructFieldMapping.NameTag.
+// IgnoreStructField can be used as TaggedStructReflector.UntaggedNameFunc
+// to ignore fields that don't have TaggedStructReflector.NameTag.
 func IgnoreStructField(string) string { return "" }
 
 // ToSnakeCase converts s to snake case

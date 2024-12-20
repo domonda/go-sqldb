@@ -29,7 +29,7 @@ type connection struct {
 	ctx                context.Context
 	db                 *sql.DB
 	config             *sqldb.Config
-	structFieldNamer   sqldb.StructFieldMapper
+	structFieldNamer   sqldb.StructReflector
 	argFmt             string
 	validateColumnName func(string) error
 }
@@ -50,13 +50,13 @@ func (conn *connection) WithContext(ctx context.Context) sqldb.Connection {
 	return c
 }
 
-func (conn *connection) WithStructFieldMapper(namer sqldb.StructFieldMapper) sqldb.Connection {
+func (conn *connection) WithStructFieldMapper(namer sqldb.StructReflector) sqldb.Connection {
 	c := conn.clone()
 	c.structFieldNamer = namer
 	return c
 }
 
-func (conn *connection) StructFieldMapper() sqldb.StructFieldMapper {
+func (conn *connection) StructReflector() sqldb.StructReflector {
 	return conn.structFieldNamer
 }
 
@@ -91,27 +91,31 @@ func (conn *connection) Exec(query string, args ...any) error {
 	return err
 }
 
-func (conn *connection) Query(query string, args ...any) (sqldb.Rows, error) {
-	return conn.db.QueryContext(conn.ctx, query, args...)
-}
-
-func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
+func (conn *connection) Query(query string, args ...any) sqldb.Rows {
 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
 	if err != nil {
-		err = WrapNonNilErrorWithQuery(err, query, conn.argFmt, args)
-		return sqldb.RowScannerWithError(err)
+		return sqldb.RowsErr(err)
 	}
-	return NewRowScanner(rows, conn.structFieldNamer, query, conn.argFmt, args)
+	return rows
 }
 
-func (conn *connection) QueryRows(query string, args ...any) sqldb.RowsScanner {
-	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
-	if err != nil {
-		err = WrapNonNilErrorWithQuery(err, query, conn.argFmt, args)
-		return sqldb.RowsScannerWithError(err)
-	}
-	return NewRowsScanner(conn.ctx, rows, conn.structFieldNamer, query, conn.argFmt, args)
-}
+// func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
+// 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
+// 	if err != nil {
+// 		err = WrapNonNilErrorWithQuery(err, query, conn.argFmt, args)
+// 		return sqldb.RowScannerWithError(err)
+// 	}
+// 	return NewRowScanner(rows, conn.structFieldNamer, query, conn.argFmt, args)
+// }
+
+// func (conn *connection) QueryRows(query string, args ...any) sqldb.RowsScanner {
+// 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
+// 	if err != nil {
+// 		err = WrapNonNilErrorWithQuery(err, query, conn.argFmt, args)
+// 		return sqldb.RowsScannerWithError(err)
+// 	}
+// 	return NewRowsScanner(conn.ctx, rows, conn.structFieldNamer, query, conn.argFmt, args)
+// }
 
 func (conn *connection) TransactionInfo() (no uint64, opts *sql.TxOptions) {
 	return 0, nil

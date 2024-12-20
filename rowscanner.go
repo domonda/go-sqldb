@@ -1,5 +1,6 @@
 package sqldb
 
+/*
 // RowScanner scans the values from a single row.
 type RowScanner interface {
 	// Scan values of a row into dest variables, which must be passed as pointers.
@@ -22,3 +23,4 @@ type RowScanner interface {
 	// Columns returns the column names.
 	Columns() ([]string, error)
 }
+*/

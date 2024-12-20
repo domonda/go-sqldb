@@ -29,3 +29,17 @@ type Rows interface {
 	// Err may be called after an explicit or implicit Close.
 	Err() error
 }
+
+func RowsErr(err error) Rows {
+	return errRows{err}
+}
+
+type errRows struct {
+	err error
+}
+
+func (r errRows) Columns() ([]string, error) { return nil, r.err }
+func (r errRows) Scan(dest ...any) error     { return r.err }
+func (r errRows) Close() error               { return nil }
+func (r errRows) Next() bool                 { return false }
+func (r errRows) Err() error                 { return r.err }

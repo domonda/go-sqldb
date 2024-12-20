@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/impl"
 )
 
 // UpsertStruct upserts a row to table using the exported fields
@@ -32,7 +31,7 @@ func UpsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 
 	conn := Conn(ctx)
 
-	columns, pkCols, vals := impl.ReflectStructValues(v, conn.StructFieldMapper(), append(ignoreColumns, sqldb.IgnoreReadOnly))
+	columns, pkCols, vals := ReflectStructValues(v, conn.StructReflector(), append(ignoreColumns, sqldb.IgnoreReadOnly))
 	if len(pkCols) == 0 {
 		return fmt.Errorf("UpsertStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}

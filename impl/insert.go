@@ -1,5 +1,6 @@
 package impl
 
+/*
 import (
 	"fmt"
 	"reflect"
@@ -142,3 +143,4 @@ func insertStructValues(table string, rowStruct any, namer sqldb.StructFieldMapp
 	columns, _, vals = ReflectStructValues(v, namer, append(ignoreColumns, sqldb.IgnoreReadOnly))
 	return columns, vals, nil
 }
+*/

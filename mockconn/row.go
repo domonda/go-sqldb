@@ -16,10 +16,10 @@ import (
 // Row implements impl.Row with the fields of a struct as column values.
 type Row struct {
 	rowStructVal reflect.Value
-	columnNamer  sqldb.StructFieldMapper
+	columnNamer  sqldb.StructReflector
 }
 
-func NewRow(rowStruct any, columnNamer sqldb.StructFieldMapper) *Row {
+func NewRow(rowStruct any, columnNamer sqldb.StructReflector) *Row {
 	val := reflect.ValueOf(rowStruct)
 	for val.Kind() == reflect.Ptr {
 		val = val.Elem()
@@ -30,7 +30,7 @@ func NewRow(rowStruct any, columnNamer sqldb.StructFieldMapper) *Row {
 	}
 }
 
-func (r *Row) StructFieldMapper() sqldb.StructFieldMapper {
+func (r *Row) StructReflector() sqldb.StructReflector {
 	return r.columnNamer
 }
 

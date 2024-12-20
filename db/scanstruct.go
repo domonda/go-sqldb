@@ -1,4 +1,4 @@
-package impl
+package db
 
 import (
 	"fmt"
@@ -7,7 +7,8 @@ import (
 	sqldb "github.com/domonda/go-sqldb"
 )
 
-func ScanStruct(srcRow Row, destStruct any, namer sqldb.StructFieldMapper) error {
+// scanStruct scans the srcRow into the destStruct using the reflector.
+func scanStruct(srcRow sqldb.Row, reflector sqldb.StructReflector, destStruct any) error {
 	v := reflect.ValueOf(destStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -35,7 +36,7 @@ func ScanStruct(srcRow Row, destStruct any, namer sqldb.StructFieldMapper) error
 		return err
 	}
 
-	fieldPointers, err := ReflectStructColumnPointers(v, namer, columns)
+	fieldPointers, err := ReflectStructColumnPointers(v, reflector, columns)
 	if err != nil {
 		return fmt.Errorf("ScanStruct: %w", err)
 	}
