@@ -3,7 +3,6 @@ package sqldb
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
 )
 
@@ -21,6 +20,8 @@ func NewErrConn(err error) ErrConn {
 // ErrConn is a dummy ListenerConnection
 // where all methods except Close return Err.
 type ErrConn struct {
+	StdQueryFormatter
+
 	Err error
 }
 
@@ -34,14 +35,6 @@ func (e ErrConn) Stats() sql.DBStats {
 
 func (e ErrConn) Config() *Config {
 	return &Config{Err: e.Err}
-}
-
-func (e ErrConn) Placeholder(paramIndex int) string {
-	return fmt.Sprintf("?%d", paramIndex+1)
-}
-
-func (e ErrConn) ValidateColumnName(name string) error {
-	return e.Err
 }
 
 func (e ErrConn) Exec(ctx context.Context, query string, args ...any) error {

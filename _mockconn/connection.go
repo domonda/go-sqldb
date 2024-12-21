@@ -44,14 +44,6 @@ func (conn *connection) Config() *sqldb.Config {
 	return &sqldb.Config{Driver: "mockconn", Host: "localhost", Database: "mock"}
 }
 
-func (conn *connection) Placeholder(paramIndex int) string {
-	return fmt.Sprintf(DefaultArgFmt, paramIndex+1)
-}
-
-func (conn *connection) ValidateColumnName(name string) error {
-	return validateColumnName(name)
-}
-
 func (conn *connection) Ping(time.Duration) error {
 	return nil
 }

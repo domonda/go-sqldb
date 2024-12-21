@@ -80,13 +80,13 @@ WHERE
 
 	tests := []struct {
 		name   string
-		argFmt PlaceholderFormatter
+		argFmt QueryFormatter
 		query  string
 		args   []any
 		want   string
 	}{
-		{name: "query1", query: query1, argFmt: PprintfPlaceholderFormatter("$%d"), args: []any{createdAt, true, `Erik's Test`}, want: query1formatted},
-		{name: "query2", query: query2, argFmt: PprintfPlaceholderFormatter("$%d"), args: []any{"", 2, "3"}, want: query2formatted},
+		{name: "query1", query: query1, argFmt: StdQueryFormatter{}, args: []any{createdAt, true, `Erik's Test`}, want: query1formatted},
+		{name: "query2", query: query2, argFmt: StdQueryFormatter{}, args: []any{"", 2, "3"}, want: query2formatted},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

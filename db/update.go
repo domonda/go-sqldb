@@ -51,7 +51,7 @@ func Update(ctx context.Context, table string, values sqldb.Values, where string
 // 	return conn.QueryRows(query, vals...)
 // }
 
-func buildUpdateQuery(table string, values sqldb.Values, where string, args []any, argFmt sqldb.PlaceholderFormatter) (string, []any) {
+func buildUpdateQuery(table string, values sqldb.Values, where string, args []any, argFmt sqldb.QueryFormatter) (string, []any) {
 	names, vals := values.Sorted()
 
 	var query strings.Builder
@@ -60,7 +60,7 @@ func buildUpdateQuery(table string, values sqldb.Values, where string, args []an
 		if i > 0 {
 			query.WriteByte(',')
 		}
-		fmt.Fprintf(&query, ` "%s"=%s`, names[i], argFmt.Placeholder(len(args)+i))
+		fmt.Fprintf(&query, ` "%s"=%s`, names[i], argFmt.FormatPlaceholder(len(args)+i))
 	}
 	fmt.Fprintf(&query, ` WHERE %s`, where)
 
@@ -104,7 +104,7 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		} else {
 			b.WriteByte(',')
 		}
-		fmt.Fprintf(&b, ` "%s"=%s`, columns[i], conn.Placeholder(i))
+		fmt.Fprintf(&b, ` "%s"=%s`, columns[i], conn.FormatPlaceholder(i))
 	}
 
 	b.WriteString(` WHERE `)
@@ -112,7 +112,7 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		if i > 0 {
 			b.WriteString(` AND `)
 		}
-		fmt.Fprintf(&b, `"%s"=%s`, columns[pkCol], conn.Placeholder(i))
+		fmt.Fprintf(&b, `"%s"=%s`, columns[pkCol], conn.FormatPlaceholder(i))
 	}
 
 	query := b.String()

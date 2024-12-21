@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"time"
 )
 
@@ -12,20 +11,19 @@ import (
 // for an existing sql.DB connection.
 // argFmt is the format string for argument placeholders like "?" or "$%d"
 // that will be replaced error messages to format a complete query.
-func NewGenericConn(db *sql.DB, config *Config, validateColumnName func(string) error, argFmt string) Connection {
+
+func NewGenericConn(db *sql.DB, config *Config, queryFormatter QueryFormatter) Connection {
 	return &genericConn{
-		db:                 db,
-		config:             config,
-		argFmt:             argFmt,
-		validateColumnName: validateColumnName,
+		QueryFormatter: queryFormatter,
+		db:             db,
+		config:         config,
 	}
 }
 
 type genericConn struct {
-	db                 *sql.DB
-	config             *Config
-	argFmt             string
-	validateColumnName func(string) error
+	QueryFormatter
+	db     *sql.DB
+	config *Config
 }
 
 func (conn *genericConn) Ping(ctx context.Context, timeout time.Duration) error {
@@ -43,14 +41,6 @@ func (conn *genericConn) Stats() sql.DBStats {
 
 func (conn *genericConn) Config() *Config {
 	return conn.config
-}
-
-func (conn *genericConn) Placeholder(paramIndex int) string {
-	return fmt.Sprintf(conn.argFmt, paramIndex+1)
-}
-
-func (conn *genericConn) ValidateColumnName(name string) error {
-	return conn.validateColumnName(name)
 }
 
 func (conn *genericConn) Exec(ctx context.Context, query string, args ...any) error {

@@ -3,7 +3,6 @@ package sqldb
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
 )
 
@@ -15,23 +14,10 @@ type (
 	OnUnlistenFunc func(channel string)
 )
 
-// PlaceholderFormatter is an interface for formatting query parameter placeholders
-// implemented by database connections.
-type PlaceholderFormatter interface {
-	// Placeholder formats a query parameter placeholder
-	// for the paramIndex starting at zero.
-	Placeholder(paramIndex int) string
-}
-
-type PprintfPlaceholderFormatter string
-
-func (f PprintfPlaceholderFormatter) Placeholder(paramIndex int) string {
-	return fmt.Sprintf(string(f), paramIndex+1)
-}
-
 // Connection represents a database connection or transaction
 type Connection interface {
-	PlaceholderFormatter
+	// A Connection is also a QueryFormatter
+	QueryFormatter
 
 	// Ping returns an error if the database
 	// does not answer on this connection
@@ -46,11 +32,6 @@ type Connection interface {
 	// Config returns the configuration used
 	// to create this connection.
 	Config() *Config
-
-	// ValidateColumnName returns an error
-	// if the passed name is not valid for a
-	// column of the connection's database.
-	ValidateColumnName(name string) error
 
 	// Exec executes a query with optional args.
 	Exec(ctx context.Context, query string, args ...any) error

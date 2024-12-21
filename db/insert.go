@@ -152,7 +152,7 @@ func InsertStructs(ctx context.Context, table string, rowStructs any, ignoreColu
 	})
 }
 
-func writeInsertQuery(w *strings.Builder, table string, names []string, format sqldb.PlaceholderFormatter) {
+func writeInsertQuery(w *strings.Builder, table string, names []string, format sqldb.QueryFormatter) {
 	fmt.Fprintf(w, `INSERT INTO %s(`, table)
 	for i, name := range names {
 		if i > 0 {
@@ -167,7 +167,7 @@ func writeInsertQuery(w *strings.Builder, table string, names []string, format s
 		if i > 0 {
 			w.WriteByte(',')
 		}
-		w.WriteString(format.Placeholder(i))
+		w.WriteString(format.FormatPlaceholder(i))
 	}
 	w.WriteByte(')')
 }

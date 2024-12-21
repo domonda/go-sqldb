@@ -8,6 +8,7 @@ import (
 )
 
 type genericTxConn struct {
+	QueryFormatter
 	// The parent non-transaction connection is needed
 	// for its ctx, Ping(), Stats(), and Config()
 	parent *genericConn
@@ -18,10 +19,11 @@ type genericTxConn struct {
 
 func newGenericTxConn(parent *genericConn, tx *sql.Tx, opts *sql.TxOptions, no uint64) *genericTxConn {
 	return &genericTxConn{
-		parent: parent,
-		tx:     tx,
-		opts:   opts,
-		no:     no,
+		QueryFormatter: parent.QueryFormatter,
+		parent:         parent,
+		tx:             tx,
+		opts:           opts,
+		no:             no,
 	}
 }
 
@@ -30,13 +32,6 @@ func (conn *genericTxConn) Ping(ctx context.Context, timeout time.Duration) erro
 }
 func (conn *genericTxConn) Stats() sql.DBStats { return conn.parent.Stats() }
 func (conn *genericTxConn) Config() *Config    { return conn.parent.Config() }
-func (conn *genericTxConn) Placeholder(paramIndex int) string {
-	return conn.parent.Placeholder(paramIndex)
-}
-
-func (conn *genericTxConn) ValidateColumnName(name string) error {
-	return conn.parent.validateColumnName(name)
-}
 
 func (conn *genericTxConn) Exec(ctx context.Context, query string, args ...any) error {
 	_, err := conn.tx.ExecContext(ctx, query, args...)

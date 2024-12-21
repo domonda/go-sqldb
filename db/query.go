@@ -192,9 +192,9 @@ func pkColumnsOfStruct(conn sqldb.Connection, t reflect.Type) (columns []string,
 			}
 			columns = append(columns, columnsEmbed...)
 		} else if flags.PrimaryKey() {
-			if err = conn.ValidateColumnName(column); err != nil {
-				return nil, fmt.Errorf("%w in struct field %s.%s", err, t, field.Name)
-			}
+			// if err = conn.ValidateColumnName(column); err != nil {
+			// 	return nil, fmt.Errorf("%w in struct field %s.%s", err, t, field.Name)
+			// }
 			columns = append(columns, column)
 		}
 	}

@@ -3,8 +3,6 @@ package sqldb
 import (
 	"context"
 	"database/sql"
-	"errors"
-	"strconv"
 	"time"
 )
 
@@ -19,11 +17,12 @@ var _ ListenerConnection = new(MockConn)
 // exept for methods with a context argument
 // where the context error is returned.
 type MockConn struct {
+	QueryFormatter
+	TxNo uint64
+
 	MockPing                 func(context.Context, time.Duration) error
 	MockStats                func() sql.DBStats
 	MockConfig               func() *Config
-	MockPlaceholder          func(paramIndex int) string
-	MockValidateColumnName   func(name string) error
 	MockExec                 func(ctx context.Context, query string, args ...any) error
 	MockQuery                func(ctx context.Context, query string, args ...any) Rows
 	MockTransactionInfo      func() (no uint64, opts *sql.TxOptions)
@@ -35,8 +34,6 @@ type MockConn struct {
 	MockUnlistenChannel      func(channel string) error
 	MockIsListeningOnChannel func(channel string) bool
 	MockClose                func() error
-
-	TxNo uint64
 }
 
 func (e *MockConn) Ping(ctx context.Context, timeout time.Duration) error {
@@ -58,23 +55,6 @@ func (e *MockConn) Config() *Config {
 		return &Config{Driver: "MockConn"}
 	}
 	return e.MockConfig()
-}
-
-func (e *MockConn) Placeholder(paramIndex int) string {
-	if e.MockPlaceholder == nil {
-		return "?" + strconv.Itoa(paramIndex+1)
-	}
-	return e.MockPlaceholder(paramIndex)
-}
-
-func (e *MockConn) ValidateColumnName(name string) error {
-	if e.MockValidateColumnName == nil {
-		if name == "" {
-			return errors.New("empty column name")
-		}
-		return nil
-	}
-	return e.MockValidateColumnName(name)
 }
 
 func (e *MockConn) Exec(ctx context.Context, query string, args ...any) error {

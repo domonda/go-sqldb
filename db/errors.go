@@ -10,7 +10,7 @@ import (
 // wrapErrorWithQuery wraps an errors with a formatted query
 // if the error was not already wrapped with a query.
 // If the passed error is nil, then nil will be returned.
-func wrapErrorWithQuery(err error, query string, args []any, argFmt sqldb.PlaceholderFormatter) error {
+func wrapErrorWithQuery(err error, query string, args []any, argFmt sqldb.QueryFormatter) error {
 	if err == nil {
 		return nil
 	}
@@ -25,7 +25,7 @@ type errWithQuery struct {
 	err    error
 	query  string
 	args   []any
-	argFmt sqldb.PlaceholderFormatter
+	argFmt sqldb.QueryFormatter
 }
 
 func (e errWithQuery) Unwrap() error { return e.err }

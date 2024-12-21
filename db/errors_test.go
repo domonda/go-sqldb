@@ -14,7 +14,7 @@ func Test_wrapErrorWithQuery(t *testing.T) {
 		err    error
 		query  string
 		args   []any
-		argFmt sqldb.PlaceholderFormatter
+		argFmt sqldb.QueryFormatter
 	}
 	tests := []struct {
 		name      string
@@ -27,7 +27,7 @@ func Test_wrapErrorWithQuery(t *testing.T) {
 			args: args{
 				err:    sql.ErrNoRows,
 				query:  `SELECT * FROM table WHERE b = $2 and a = $1`,
-				argFmt: sqldb.PprintfPlaceholderFormatter("$%d"),
+				argFmt: sqldb.StdQueryFormatter{PlaceholderFmt: "$%d"},
 				args:   []any{1, "2"},
 			},
 			wantError: fmt.Sprintf("%s from query: %s", sql.ErrNoRows, `SELECT * FROM table WHERE b = '2' and a = 1`),
@@ -41,7 +41,7 @@ func Test_wrapErrorWithQuery(t *testing.T) {
 					FROM table
 					WHERE b = $2
 						and a = $1`,
-				argFmt: sqldb.PprintfPlaceholderFormatter("$%d"),
+				argFmt: sqldb.StdQueryFormatter{PlaceholderFmt: "$%d"},
 				args:   []any{1, "2"},
 			},
 			wantError: fmt.Sprintf(

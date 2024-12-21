@@ -10,6 +10,8 @@ import (
 )
 
 type transaction struct {
+	sqldb.StdQueryFormatter
+
 	// The parent non-transaction connection is needed
 	// for its ctx, Ping(), Stats(), and Config()
 	parent *connection
@@ -37,12 +39,8 @@ func (conn *transaction) Ping(ctx context.Context, timeout time.Duration) error 
 }
 func (conn *transaction) Stats() sql.DBStats    { return conn.parent.Stats() }
 func (conn *transaction) Config() *sqldb.Config { return conn.parent.Config() }
-func (conn *transaction) Placeholder(paramIndex int) string {
-	return conn.parent.Placeholder(paramIndex)
-}
-
-func (conn *transaction) ValidateColumnName(name string) error {
-	return validateColumnName(name)
+func (conn *transaction) FormatPlaceholder(paramIndex int) string {
+	return conn.parent.FormatPlaceholder(paramIndex)
 }
 
 func (conn *transaction) Exec(ctx context.Context, query string, args ...any) error {

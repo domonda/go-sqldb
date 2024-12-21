@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/domonda/go-sqldb"
@@ -30,8 +29,9 @@ func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 		return nil, err
 	}
 	return &connection{
-		db:     db,
-		config: config,
+		StdQueryFormatter: sqldb.StdQueryFormatter{PlaceholderFmt: "$%d"},
+		db:                db,
+		config:            config,
 	}, nil
 }
 
@@ -49,13 +49,10 @@ func MustNew(ctx context.Context, config *sqldb.Config) sqldb.Connection {
 }
 
 type connection struct {
+	sqldb.StdQueryFormatter
+
 	db     *sql.DB
 	config *sqldb.Config
-}
-
-func (conn *connection) clone() *connection {
-	c := *conn
-	return &c
 }
 
 func (conn *connection) Ping(ctx context.Context, timeout time.Duration) error {
@@ -73,14 +70,6 @@ func (conn *connection) Stats() sql.DBStats {
 
 func (conn *connection) Config() *sqldb.Config {
 	return conn.config
-}
-
-func (conn *connection) Placeholder(paramIndex int) string {
-	return "$" + strconv.Itoa(paramIndex+1)
-}
-
-func (conn *connection) ValidateColumnName(name string) error {
-	return validateColumnName(name)
 }
 
 func (conn *connection) Exec(ctx context.Context, query string, args ...any) error {

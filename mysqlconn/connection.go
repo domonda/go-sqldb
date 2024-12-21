@@ -22,7 +22,7 @@ func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 	if err != nil {
 		return nil, err
 	}
-	return sqldb.NewGenericConn(db, config, validateColumnName, argFmt), nil
+	return sqldb.NewGenericConn(db, config, sqldb.StdQueryFormatter{}), nil
 }
 
 // MustNew creates a new sqldb.Connection using the passed sqldb.Config

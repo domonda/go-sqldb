@@ -57,7 +57,7 @@ func UpsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		} else {
 			b.WriteByte(',')
 		}
-		fmt.Fprintf(&b, ` "%s"=%s`, columns[i], conn.Placeholder(i))
+		fmt.Fprintf(&b, ` "%s"=%s`, columns[i], conn.FormatPlaceholder(i))
 	}
 	query := b.String()
 
