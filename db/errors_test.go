@@ -26,11 +26,11 @@ func Test_wrapErrorWithQuery(t *testing.T) {
 			name: "select no rows",
 			args: args{
 				err:    sql.ErrNoRows,
-				query:  `SELECT * FROM table WHERE b = $2 and a = $1`,
+				query:  `SELECT * FROM table WHERE b = $2 AND a = $1`,
 				argFmt: sqldb.StdQueryFormatter{PlaceholderFmt: "$%d"},
 				args:   []any{1, "2"},
 			},
-			wantError: fmt.Sprintf("%s from query: %s", sql.ErrNoRows, `SELECT * FROM table WHERE b = '2' and a = 1`),
+			wantError: fmt.Sprintf("%s from query: %s", sql.ErrNoRows, `SELECT * FROM table WHERE b = '2' AND a = 1`),
 		},
 		{
 			name: "multi line",
@@ -40,7 +40,7 @@ func Test_wrapErrorWithQuery(t *testing.T) {
 					SELECT *
 					FROM table
 					WHERE b = $2
-						and a = $1`,
+						AND a = $1`,
 				argFmt: sqldb.StdQueryFormatter{PlaceholderFmt: "$%d"},
 				args:   []any{1, "2"},
 			},
@@ -50,7 +50,7 @@ func Test_wrapErrorWithQuery(t *testing.T) {
 				`SELECT *
 FROM table
 WHERE b = '2'
-	and a = 1`,
+	AND a = 1`,
 			),
 		},
 	}
