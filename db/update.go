@@ -17,8 +17,11 @@ func Update(ctx context.Context, table string, values sqldb.Values, where string
 	}
 	conn := Conn(ctx)
 
-	query, vals := buildUpdateQuery(table, values, where, args, conn)
-	err := conn.Exec(ctx, query, vals...)
+	query, vals, err := buildUpdateQuery(table, values, where, args, conn)
+	if err != nil {
+		return fmt.Errorf("can't create UPDATE query because: %w", err)
+	}
+	err = conn.Exec(ctx, query, vals...)
 	if err != nil {
 		return wrapErrorWithQuery(err, query, vals, conn)
 	}
@@ -51,20 +54,29 @@ func Update(ctx context.Context, table string, values sqldb.Values, where string
 // 	return conn.QueryRows(query, vals...)
 // }
 
-func buildUpdateQuery(table string, values sqldb.Values, where string, args []any, argFmt sqldb.QueryFormatter) (string, []any) {
-	names, vals := values.Sorted()
+func buildUpdateQuery(table string, values sqldb.Values, where string, args []any, f sqldb.QueryFormatter) (string, []any, error) {
+	table, err := f.FormatTableName(table)
+	if err != nil {
+		return "", nil, err
+	}
+
+	columns, vals := values.Sorted()
 
 	var query strings.Builder
 	fmt.Fprintf(&query, `UPDATE %s SET`, table)
-	for i := range names {
+	for i, column := range columns {
+		column, err = f.FormatColumnName(column)
+		if err != nil {
+			return "", nil, err
+		}
 		if i > 0 {
 			query.WriteByte(',')
 		}
-		fmt.Fprintf(&query, ` "%s"=%s`, names[i], argFmt.FormatPlaceholder(len(args)+i))
+		fmt.Fprintf(&query, ` "%s"=%s`, column, f.FormatPlaceholder(len(args)+i))
 	}
 	fmt.Fprintf(&query, ` WHERE %s`, where)
 
-	return query.String(), append(args, vals...)
+	return query.String(), append(args, vals...), nil
 }
 
 // UpdateStruct updates a row in a table using the exported fields

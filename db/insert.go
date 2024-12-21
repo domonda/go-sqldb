@@ -18,9 +18,11 @@ func Insert(ctx context.Context, table string, values sqldb.Values) error {
 
 	var query strings.Builder
 	names, vals := values.Sorted()
-	writeInsertQuery(&query, table, names, conn)
-
-	err := conn.Exec(ctx, query.String(), vals...)
+	err := writeInsertQuery(&query, table, names, conn)
+	if err != nil {
+		return fmt.Errorf("can't create INSERT query because: %w", err)
+	}
+	err = conn.Exec(ctx, query.String(), vals...)
 	if err != nil {
 		return wrapErrorWithQuery(err, query.String(), vals, conn)
 	}
@@ -42,7 +44,10 @@ func InsertUnique(ctx context.Context, table string, values sqldb.Values, onConf
 
 	var query strings.Builder
 	names, vals := values.Sorted()
-	writeInsertQuery(&query, table, names, conn)
+	err = writeInsertQuery(&query, table, names, conn)
+	if err != nil {
+		return false, fmt.Errorf("can't create INSERT query because: %w", err)
+	}
 	fmt.Fprintf(&query, " ON CONFLICT (%s) DO NOTHING RETURNING TRUE", onConflict)
 
 	inserted, err = QueryValue[bool](ctx, query.String(), vals...)
@@ -63,7 +68,7 @@ func InsertUnique(ctx context.Context, table string, values sqldb.Values, onConf
 
 // 	var query strings.Builder
 // 	names, vals := values.Sorted()
-// 	writeInsertQuery(&query, table, names, conn)
+// 	err = writeInsertQuery(&query, table, names, conn)
 // 	query.WriteString(" RETURNING ")
 // 	query.WriteString(returning)
 // 	return conn.QueryRow(query.String(), vals...) // TODO wrap error with query
@@ -80,7 +85,10 @@ func InsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 	}
 
 	var query strings.Builder
-	writeInsertQuery(&query, table, columns, conn)
+	err = writeInsertQuery(&query, table, columns, conn)
+	if err != nil {
+		return fmt.Errorf("can't create INSERT query because: %w", err)
+	}
 
 	err = conn.Exec(ctx, query.String(), vals...)
 	if err != nil {
@@ -117,7 +125,10 @@ func InsertUniqueStruct(ctx context.Context, table string, rowStruct any, onConf
 	}
 
 	var query strings.Builder
-	writeInsertQuery(&query, table, columns, conn)
+	err = writeInsertQuery(&query, table, columns, conn)
+	if err != nil {
+		return false, fmt.Errorf("can't create INSERT query because: %w", err)
+	}
 	fmt.Fprintf(&query, " ON CONFLICT (%s) DO NOTHING RETURNING TRUE", onConflict)
 
 	inserted, err = QueryValue[bool](ctx, query.String(), vals...)
@@ -152,24 +163,31 @@ func InsertStructs(ctx context.Context, table string, rowStructs any, ignoreColu
 	})
 }
 
-func writeInsertQuery(w *strings.Builder, table string, names []string, format sqldb.QueryFormatter) {
+func writeInsertQuery(w *strings.Builder, table string, columns []string, f sqldb.QueryFormatter) (err error) {
+	table, err = f.FormatTableName(table)
+	if err != nil {
+		return err
+	}
 	fmt.Fprintf(w, `INSERT INTO %s(`, table)
-	for i, name := range names {
+	for i, column := range columns {
+		column, err = f.FormatColumnName(column)
+		if err != nil {
+			return err
+		}
 		if i > 0 {
 			w.WriteByte(',')
 		}
-		w.WriteByte('"')
-		w.WriteString(name)
-		w.WriteByte('"')
+		w.WriteString(column)
 	}
 	w.WriteString(`) VALUES(`)
-	for i := range names {
+	for i := range columns {
 		if i > 0 {
 			w.WriteByte(',')
 		}
-		w.WriteString(format.FormatPlaceholder(i))
+		w.WriteString(f.FormatPlaceholder(i))
 	}
 	w.WriteByte(')')
+	return nil
 }
 
 func insertStructValues(table string, rowStruct any, namer sqldb.StructReflector, ignoreColumns []sqldb.ColumnFilter) (columns []string, vals []any, err error) {

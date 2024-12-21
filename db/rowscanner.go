@@ -11,19 +11,19 @@ import (
 type RowScanner struct {
 	rows      sqldb.Rows
 	reflector sqldb.StructReflector // for ScanStruct
-	argFmt    sqldb.QueryFormatter  // for error wrapping
+	queryFmt  sqldb.QueryFormatter  // for error wrapping
 	query     string                // for error wrapping
 	args      []any                 // for error wrapping
 }
 
-func NewRowScanner(rows sqldb.Rows, reflector sqldb.StructReflector, argFmt sqldb.QueryFormatter, query string, args []any) *RowScanner {
-	return &RowScanner{rows, reflector, argFmt, query, args}
+func NewRowScanner(rows sqldb.Rows, reflector sqldb.StructReflector, queryFmt sqldb.QueryFormatter, query string, args []any) *RowScanner {
+	return &RowScanner{rows, reflector, queryFmt, query, args}
 }
 
 func (s *RowScanner) Columns() ([]string, error) {
 	cols, err := s.rows.Columns()
 	if err != nil {
-		return nil, wrapErrorWithQuery(err, s.query, s.args, s.argFmt)
+		return nil, wrapErrorWithQuery(err, s.query, s.args, s.queryFmt)
 	}
 	return cols, nil
 }
@@ -32,7 +32,7 @@ func (s *RowScanner) Scan(dest ...any) (err error) {
 	defer func() {
 		err = errors.Join(err, s.rows.Close())
 		if err != nil {
-			err = wrapErrorWithQuery(err, s.query, s.args, s.argFmt)
+			err = wrapErrorWithQuery(err, s.query, s.args, s.queryFmt)
 		}
 	}()
 
@@ -59,7 +59,7 @@ func (s *RowScanner) ScanStruct(dest any) (err error) {
 	defer func() {
 		err = errors.Join(err, s.rows.Close())
 		if err != nil {
-			err = wrapErrorWithQuery(err, s.query, s.args, s.argFmt)
+			err = wrapErrorWithQuery(err, s.query, s.args, s.queryFmt)
 		}
 	}()
 

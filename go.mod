@@ -3,12 +3,12 @@ module github.com/domonda/go-sqldb
 go 1.23
 
 require (
+	github.com/DataDog/go-sqllexer v0.0.18
 	github.com/domonda/go-types v0.0.0-20241220151539-e2cc4555efcb
 	github.com/stretchr/testify v1.10.0
 )
 
 require (
-	github.com/DataDog/go-sqllexer v0.0.18 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/domonda/go-pretty v0.0.0-20240110134850-17385799142f // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
