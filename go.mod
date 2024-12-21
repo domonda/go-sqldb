@@ -3,8 +3,7 @@ module github.com/domonda/go-sqldb
 go 1.23
 
 require (
-	github.com/domonda/go-types v0.0.0-20241104173616-e85c6dede426
-	github.com/lib/pq v1.10.9
+	github.com/domonda/go-types v0.0.0-20241220151539-e2cc4555efcb
 	github.com/stretchr/testify v1.10.0
 )
 

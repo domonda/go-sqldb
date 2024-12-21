@@ -3,6 +3,7 @@ package sqldb
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strconv"
 	"time"
 )
@@ -34,6 +35,8 @@ type MockConn struct {
 	MockUnlistenChannel      func(channel string) error
 	MockIsListeningOnChannel func(channel string) bool
 	MockClose                func() error
+
+	TxNo uint64
 }
 
 func (e *MockConn) Ping(ctx context.Context, timeout time.Duration) error {
@@ -66,6 +69,9 @@ func (e *MockConn) Placeholder(paramIndex int) string {
 
 func (e *MockConn) ValidateColumnName(name string) error {
 	if e.MockValidateColumnName == nil {
+		if name == "" {
+			return errors.New("empty column name")
+		}
 		return nil
 	}
 	return e.MockValidateColumnName(name)
@@ -87,14 +93,16 @@ func (e *MockConn) Query(ctx context.Context, query string, args ...any) Rows {
 
 func (c *MockConn) TransactionInfo() (no uint64, opts *sql.TxOptions) {
 	if c.MockTransactionInfo == nil {
-		return 0, nil
+		return c.TxNo, nil
 	}
 	return c.MockTransactionInfo()
 }
 
 func (e *MockConn) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error) {
 	if e.MockBegin == nil {
-		return e, nil
+		tx := *e // copy
+		tx.TxNo = no
+		return &tx, nil
 	}
 	return e.MockBegin(ctx, no, opts)
 }
