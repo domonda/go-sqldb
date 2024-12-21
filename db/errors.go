@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/impl"
 )
 
 // wrapErrorWithQuery wraps an errors with a formatted query
@@ -32,5 +31,5 @@ type errWithQuery struct {
 func (e errWithQuery) Unwrap() error { return e.err }
 
 func (e errWithQuery) Error() string {
-	return fmt.Sprintf("%s from query: %s", e.err, impl.FormatQuery2(e.query, e.argFmt, e.args...))
+	return fmt.Sprintf("%s from query: %s", e.err, sqldb.FormatQuery(e.argFmt, e.query, e.args...))
 }

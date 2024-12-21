@@ -2,21 +2,8 @@ package db
 
 import (
 	"context"
-	"database/sql"
-	"database/sql/driver"
 	"fmt"
 	"reflect"
-	"time"
-)
-
-var (
-	typeOfError        = reflect.TypeFor[error]()
-	typeOfContext      = reflect.TypeFor[context.Context]()
-	typeOfSQLScanner   = reflect.TypeFor[sql.Scanner]()
-	typeOfDriverValuer = reflect.TypeFor[driver.Valuer]()
-	typeOfTime         = reflect.TypeFor[time.Time]()
-	typeOfByte         = reflect.TypeFor[byte]()
-	typeOfByteSlice    = reflect.TypeFor[[]byte]()
 )
 
 // ForEachRowCallFunc will call the passed callback with scanned values or a struct for every row.

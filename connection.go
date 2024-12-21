@@ -3,6 +3,7 @@ package sqldb
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 )
 
@@ -20,6 +21,12 @@ type PlaceholderFormatter interface {
 	// Placeholder formats a query parameter placeholder
 	// for the paramIndex starting at zero.
 	Placeholder(paramIndex int) string
+}
+
+type PprintfPlaceholderFormatter string
+
+func (f PprintfPlaceholderFormatter) Placeholder(paramIndex int) string {
+	return fmt.Sprintf(string(f), paramIndex+1)
 }
 
 // Connection represents a database connection or transaction

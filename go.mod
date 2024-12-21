@@ -3,7 +3,6 @@ module github.com/domonda/go-sqldb
 go 1.23
 
 require (
-	github.com/domonda/go-errs v0.0.0-20240702051036-0e696c849b5f
 	github.com/domonda/go-types v0.0.0-20241104173616-e85c6dede426
 	github.com/lib/pq v1.10.9
 	github.com/stretchr/testify v1.10.0

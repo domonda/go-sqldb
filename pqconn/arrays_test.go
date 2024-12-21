@@ -1,4 +1,4 @@
-package impl
+package pqconn
 
 import (
 	"database/sql"
@@ -9,7 +9,7 @@ import (
 	"github.com/domonda/go-types/nullable"
 )
 
-func TestNeedsArrayWrappingForScanning(t *testing.T) {
+func Test_needsArrayWrappingForScanning(t *testing.T) {
 	tests := []struct {
 		v    reflect.Value
 		want bool
@@ -27,8 +27,8 @@ func TestNeedsArrayWrappingForScanning(t *testing.T) {
 		{v: reflect.ValueOf(new([]sql.NullString)).Elem(), want: true},
 	}
 	for _, tt := range tests {
-		if got := NeedsArrayWrappingForScanning(tt.v); got != tt.want {
-			t.Errorf("NeedsArrayWrappingForScanning() = %v, want %v", got, tt.want)
+		if got := needsArrayWrappingForScanning(tt.v); got != tt.want {
+			t.Errorf("needsArrayWrappingForScanning() = %v, want %v", got, tt.want)
 		}
 	}
 }

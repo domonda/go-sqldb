@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/impl"
 )
 
 func ReflectStructValues(structVal reflect.Value, namer sqldb.StructReflector, ignoreColumns []sqldb.ColumnFilter) (columns []string, pkCols []int, values []any) {
@@ -101,12 +100,13 @@ func reflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructRefl
 		}
 
 		pointer := fieldValue.Addr().Interface()
-		// If field is a slice or array that does not implement sql.Scanner
-		// and it's not a string scannable []byte type underneath
-		// then wrap it with WrapForArray to make it scannable
-		if impl.NeedsArrayWrappingForScanning(fieldValue) {
-			pointer = impl.WrapArray(pointer)
-		}
+		// TODO this should be a Connection implementation detail
+		// // If field is a slice or array that does not implement sql.Scanner
+		// // and it's not a string scannable []byte type underneath
+		// // then wrap it with WrapForArray to make it scannable
+		// if NeedsArrayWrappingForScanning(fieldValue) {
+		// 	pointer = WrapArray(pointer)
+		// }
 		pointers[colIndex] = pointer
 	}
 	return nil

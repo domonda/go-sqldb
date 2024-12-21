@@ -1,4 +1,4 @@
-package impl
+package pqconn
 
 import (
 	"context"
@@ -20,17 +20,16 @@ var (
 	typeOfByteSlice    = reflect.TypeFor[[]byte]()
 )
 
-type ValuerScanner interface {
+type valuerScanner interface {
 	driver.Valuer
 	sql.Scanner
 }
 
-func WrapArray(a any) ValuerScanner {
-	// TODO replace with own implementation
+func wrapArray(a any) valuerScanner {
 	return pq.Array(a)
 }
 
-func NeedsArrayWrappingForScanning(v reflect.Value) bool {
+func needsArrayWrappingForScanning(v reflect.Value) bool {
 	t := v.Type()
 	switch t.Kind() {
 	case reflect.Slice:
@@ -42,7 +41,7 @@ func NeedsArrayWrappingForScanning(v reflect.Value) bool {
 	return false
 }
 
-func NeedsArrayWrappingForArg(arg any) bool {
+func needsArrayWrappingForArg(arg any) bool {
 	if arg == nil {
 		return false
 	}
@@ -57,10 +56,10 @@ func NeedsArrayWrappingForArg(arg any) bool {
 	return false
 }
 
-func WrapArrayArgs(args []any) {
+func wrapArrayArgs(args []any) {
 	for i, arg := range args {
-		if NeedsArrayWrappingForArg(arg) {
-			args[i] = WrapArray(arg)
+		if needsArrayWrappingForArg(arg) {
+			args[i] = wrapArray(arg)
 		}
 	}
 }

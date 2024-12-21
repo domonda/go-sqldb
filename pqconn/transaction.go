@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/impl"
 )
 
 type transaction struct {
@@ -47,7 +46,7 @@ func (conn *transaction) ValidateColumnName(name string) error {
 }
 
 func (conn *transaction) Exec(ctx context.Context, query string, args ...any) error {
-	impl.WrapArrayArgs(args)
+	wrapArrayArgs(args)
 	_, err := conn.tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		return wrapKnownErrors(err)
@@ -56,7 +55,7 @@ func (conn *transaction) Exec(ctx context.Context, query string, args ...any) er
 }
 
 func (conn *transaction) Query(ctx context.Context, query string, args ...any) sqldb.Rows {
-	impl.WrapArrayArgs(args)
+	wrapArrayArgs(args)
 	rows, err := conn.tx.QueryContext(ctx, query, args...)
 	if err != nil {
 		return sqldb.NewErrRows(wrapKnownErrors(err))

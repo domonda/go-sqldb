@@ -1,18 +1,20 @@
-package impl
+package db
 
 import (
 	"database/sql"
 	"errors"
 	"fmt"
 	"testing"
+
+	"github.com/domonda/go-sqldb"
 )
 
-func TestWrapNonNilErrorWithQuery(t *testing.T) {
+func Test_wrapErrorWithQuery(t *testing.T) {
 	type args struct {
 		err    error
 		query  string
-		argFmt string
 		args   []any
+		argFmt sqldb.PlaceholderFormatter
 	}
 	tests := []struct {
 		name      string
@@ -25,7 +27,7 @@ func TestWrapNonNilErrorWithQuery(t *testing.T) {
 			args: args{
 				err:    sql.ErrNoRows,
 				query:  `SELECT * FROM table WHERE b = $2 and a = $1`,
-				argFmt: "$%d",
+				argFmt: sqldb.PprintfPlaceholderFormatter("$%d"),
 				args:   []any{1, "2"},
 			},
 			wantError: fmt.Sprintf("%s from query: %s", sql.ErrNoRows, `SELECT * FROM table WHERE b = '2' and a = 1`),
@@ -39,7 +41,7 @@ func TestWrapNonNilErrorWithQuery(t *testing.T) {
 					FROM table
 					WHERE b = $2
 						and a = $1`,
-				argFmt: "$%d",
+				argFmt: sqldb.PprintfPlaceholderFormatter("$%d"),
 				args:   []any{1, "2"},
 			},
 			wantError: fmt.Sprintf(
@@ -54,12 +56,12 @@ WHERE b = '2'
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := WrapNonNilErrorWithQuery(tt.args.err, tt.args.query, tt.args.argFmt, tt.args.args)
+			err := wrapErrorWithQuery(tt.args.err, tt.args.query, tt.args.args, tt.args.argFmt)
 			if tt.wantError == "" && err != nil || tt.wantError != "" && (err == nil || err.Error() != tt.wantError) {
-				t.Errorf("WrapNonNilErrorWithQuery() error = \n%s\nwantErr\n%s", err, tt.wantError)
+				t.Errorf("wrapErrorWithQuery() error = \n%s\nwantErr\n%s", err, tt.wantError)
 			}
 			if !errors.Is(err, tt.args.err) {
-				t.Errorf("WrapNonNilErrorWithQuery() error = %v does not wrap %v", err, tt.args.err)
+				t.Errorf("wrapErrorWithQuery() error = %v does not wrap %v", err, tt.args.err)
 			}
 		})
 	}

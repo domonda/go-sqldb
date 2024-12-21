@@ -1,8 +1,6 @@
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/domonda/go-errs v0.0.0-20240702051036-0e696c849b5f h1:9CZgqCVP/7eixUjU+A+ozHo+oxRKJSkFgRtakoB5byc=
-github.com/domonda/go-errs v0.0.0-20240702051036-0e696c849b5f/go.mod h1:qLWt1z3aIg12+Dbxu9bMydFOHEi92vWE7vAHcHLd8n8=
 github.com/domonda/go-pretty v0.0.0-20240110134850-17385799142f h1:5eA74m451PqlqCXyJzWXp95Quj4PZ6Lm/ndKBuiNhe4=
 github.com/domonda/go-pretty v0.0.0-20240110134850-17385799142f/go.mod h1:3QkM8UJdyJMeKZiIo7hYzSkQBpRS3k0gOHw4ysyEIB4=
 github.com/domonda/go-types v0.0.0-20241104173616-e85c6dede426 h1:pWWcXqt8jvIGsqpo+o2RPe1Rx5lyFRj6lUKN2sTJ+rU=
