@@ -79,7 +79,7 @@ func InsertUnique(ctx context.Context, table string, values Values, onConflict s
 // Optional ColumnFilter can be passed to ignore mapped columns.
 func InsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumns ...ColumnFilter) error {
 	conn := Conn(ctx)
-	columns, vals, err := insertStructValues(table, rowStruct, DefaultStructReflectror, ignoreColumns)
+	columns, vals, err := insertStructValues(table, rowStruct, DefaultStructReflector, ignoreColumns)
 	if err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func InsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 // StructFieldMapper to map struct fields to column names.
 // Optional ColumnFilter can be passed to ignore mapped columns.
 func InsertStructWithTableName(ctx context.Context, row StructWithTableName, ignoreColumns ...ColumnFilter) error {
-	table, err := DefaultStructReflectror.TableNameForStruct(reflect.TypeOf(row))
+	table, err := DefaultStructReflector.TableNameForStruct(reflect.TypeOf(row))
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func InsertStructWithTableName(ctx context.Context, row StructWithTableName, ign
 // and returns if a row was inserted.
 func InsertUniqueStruct(ctx context.Context, table string, rowStruct any, onConflict string, ignoreColumns ...ColumnFilter) (inserted bool, err error) {
 	conn := Conn(ctx)
-	columns, vals, err := insertStructValues(table, rowStruct, DefaultStructReflectror, ignoreColumns)
+	columns, vals, err := insertStructValues(table, rowStruct, DefaultStructReflector, ignoreColumns)
 	if err != nil {
 		return false, err
 	}

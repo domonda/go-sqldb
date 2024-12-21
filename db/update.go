@@ -7,7 +7,7 @@ import (
 	"slices"
 	"strings"
 
-	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb"
 )
 
 // Update table rows(s) with values using the where statement with passed in args starting at $1.
@@ -60,10 +60,10 @@ func buildUpdateQuery(table string, values Values, where string, args []any, f s
 		return "", nil, err
 	}
 
-	columns, vals := values.Sorted()
-
 	var query strings.Builder
 	fmt.Fprintf(&query, `UPDATE %s SET`, table)
+
+	columns, vals := values.Sorted()
 	for i, column := range columns {
 		column, err = f.FormatColumnName(column)
 		if err != nil {
@@ -72,7 +72,7 @@ func buildUpdateQuery(table string, values Values, where string, args []any, f s
 		if i > 0 {
 			query.WriteByte(',')
 		}
-		fmt.Fprintf(&query, ` "%s"=%s`, column, f.FormatPlaceholder(len(args)+i))
+		fmt.Fprintf(&query, ` %s=%s`, column, f.FormatPlaceholder(len(args)+i))
 	}
 	fmt.Fprintf(&query, ` WHERE %s`, where)
 
@@ -86,6 +86,13 @@ func buildUpdateQuery(table string, values Values, where string, args []any, f s
 // The struct must have at least one field with a `db` tag value having a ",pk" suffix
 // to mark primary key column(s).
 func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumns ...ColumnFilter) error {
+	conn := Conn(ctx)
+
+	table, err := conn.FormatTableName(table)
+	if err != nil {
+		return err
+	}
+
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -97,9 +104,7 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		return fmt.Errorf("UpdateStruct of table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	conn := Conn(ctx)
-
-	columns, pkCols, vals := ReflectStructValues(v, DefaultStructReflectror, append(ignoreColumns, IgnoreReadOnly))
+	columns, pkCols, vals := ReflectStructValues(v, DefaultStructReflector, append(ignoreColumns, IgnoreReadOnly))
 	if len(pkCols) == 0 {
 		return fmt.Errorf("UpdateStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
@@ -107,7 +112,7 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 	var b strings.Builder
 	fmt.Fprintf(&b, `UPDATE %s SET`, table)
 	first := true
-	for i := range columns {
+	for i, column := range columns {
 		if slices.Contains(pkCols, i) {
 			continue
 		}
@@ -116,7 +121,11 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		} else {
 			b.WriteByte(',')
 		}
-		fmt.Fprintf(&b, ` "%s"=%s`, columns[i], conn.FormatPlaceholder(i))
+		column, err = conn.FormatColumnName(column)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(&b, ` %s=%s`, column, conn.FormatPlaceholder(i))
 	}
 
 	b.WriteString(` WHERE `)
@@ -124,12 +133,16 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		if i > 0 {
 			b.WriteString(` AND `)
 		}
-		fmt.Fprintf(&b, `"%s"=%s`, columns[pkCol], conn.FormatPlaceholder(i))
+		column, err := conn.FormatColumnName(columns[pkCol])
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(&b, `%s=%s`, column, conn.FormatPlaceholder(i))
 	}
 
 	query := b.String()
 
-	err := conn.Exec(ctx, query, vals...)
+	err = conn.Exec(ctx, query, vals...)
 	if err != nil {
 		return wrapErrorWithQuery(err, query, vals, conn)
 	}

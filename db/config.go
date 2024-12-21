@@ -15,8 +15,10 @@ var (
 	// before it fails
 	SerializedTransactionRetries = 10
 
-	// TODO set default value
-	DefaultStructReflectror StructReflector
+	// DefaultStructReflector provides the default StructFieldTagNaming
+	// using "db" as NameTag and IgnoreStructField as UntaggedNameFunc.
+	// Implements StructReflector.
+	DefaultStructReflector = NewTaggedStructReflector()
 )
 
 var (

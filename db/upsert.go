@@ -16,6 +16,13 @@ import (
 // to mark primary key column(s).
 // If inserting conflicts on the primary key column(s), then an update is performed.
 func UpsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumns ...ColumnFilter) error {
+	conn := Conn(ctx)
+
+	table, err := conn.FormatTableName(table)
+	if err != nil {
+		return err
+	}
+
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -27,15 +34,16 @@ func UpsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		return fmt.Errorf("UpsertStruct to table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	conn := Conn(ctx)
-
-	columns, pkCols, vals := ReflectStructValues(v, DefaultStructReflectror, append(ignoreColumns, IgnoreReadOnly))
+	columns, pkCols, vals := ReflectStructValues(v, DefaultStructReflector, append(ignoreColumns, IgnoreReadOnly))
 	if len(pkCols) == 0 {
 		return fmt.Errorf("UpsertStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
 
 	var b strings.Builder
-	writeInsertQuery(&b, table, columns, conn)
+	err = writeInsertQuery(&b, table, columns, conn)
+	if err != nil {
+		return err
+	}
 	b.WriteString(` ON CONFLICT(`)
 	for i, pkCol := range pkCols {
 		if i > 0 {
@@ -55,11 +63,15 @@ func UpsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		} else {
 			b.WriteByte(',')
 		}
-		fmt.Fprintf(&b, ` "%s"=%s`, columns[i], conn.FormatPlaceholder(i))
+		column, err := conn.FormatColumnName(columns[i])
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(&b, ` %s=%s`, column, conn.FormatPlaceholder(i))
 	}
 	query := b.String()
 
-	err := conn.Exec(ctx, query, vals...)
+	err = conn.Exec(ctx, query, vals...)
 	if err != nil {
 		return wrapErrorWithQuery(err, query, vals, conn)
 	}

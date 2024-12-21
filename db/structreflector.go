@@ -58,11 +58,6 @@ func NewTaggedStructReflector() *TaggedStructReflector {
 	}
 }
 
-// DefaultStructFieldMapping provides the default StructFieldTagNaming
-// using "db" as NameTag and IgnoreStructField as UntaggedNameFunc.
-// Implements StructReflector.
-var DefaultStructFieldMapping = NewTaggedStructReflector()
-
 // TaggedStructReflector implements StructReflector
 var _ StructReflector = new(TaggedStructReflector)
 

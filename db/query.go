@@ -42,14 +42,14 @@ func Exec(ctx context.Context, query string, args ...any) error {
 func QueryRow(ctx context.Context, query string, args ...any) *RowScanner {
 	conn := Conn(ctx)
 	rows := conn.Query(ctx, query, args...)
-	return NewRowScanner(rows, DefaultStructReflectror, conn, query, args)
+	return NewRowScanner(rows, DefaultStructReflector, conn, query, args)
 }
 
 // // QueryRows queries multiple rows and returns a RowsScanner for the results.
 // func QueryRows(ctx context.Context, query string, args ...any) *MultiRowScanner {
 // 	conn := Conn(ctx)
 // 	rows := conn.Query(query, args...)
-// 	return NewMultiRowScanner(ctx, rows, DefaultStructReflectror, conn, query, args)
+// 	return NewMultiRowScanner(ctx, rows, DefaultStructReflector, conn, query, args)
 // }
 
 // QueryValue queries a single value of type T.
@@ -93,7 +93,7 @@ func QueryRowStruct[S any](ctx context.Context, query string, args ...any) (row 
 	conn := Conn(ctx)
 	rows := conn.Query(ctx, query, args...)
 	defer rows.Close()
-	err = scanStruct(rows, DefaultStructReflectror, &row)
+	err = scanStruct(rows, DefaultStructReflector, &row)
 	if err != nil {
 		return nil, wrapErrorWithQuery(err, query, args, conn)
 	}
@@ -140,7 +140,11 @@ func GetRow[S StructWithTableName](ctx context.Context, pkValue any, pkValues ..
 		return nil, fmt.Errorf("expected struct template type instead of %s", t)
 	}
 	conn := Conn(ctx)
-	table, err := DefaultStructReflectror.TableNameForStruct(t)
+	table, err := DefaultStructReflector.TableNameForStruct(t)
+	if err != nil {
+		return nil, err
+	}
+	table, err = conn.FormatTableName(table)
 	if err != nil {
 		return nil, err
 	}
@@ -151,10 +155,16 @@ func GetRow[S StructWithTableName](ctx context.Context, pkValue any, pkValues ..
 	if len(pkColumns) != len(pkValues) {
 		return nil, fmt.Errorf("got %d primary key values, but struct %s has %d primary key fields", len(pkValues), t, len(pkColumns))
 	}
+	for i, column := range pkColumns {
+		pkColumns[i], err = conn.FormatColumnName(column)
+		if err != nil {
+			return nil, err
+		}
+	}
 	var query strings.Builder
-	fmt.Fprintf(&query, `SELECT * FROM %s WHERE "%s" = $1`, table, pkColumns[0]) //#nosec G104
+	fmt.Fprintf(&query, `SELECT * FROM %s WHERE %s = %s`, table, pkColumns[0], conn.FormatPlaceholder(0)) //#nosec G104
 	for i := 1; i < len(pkColumns); i++ {
-		fmt.Fprintf(&query, ` AND "%s" = $%d`, pkColumns[i], i+1) //#nosec G104
+		fmt.Fprintf(&query, ` AND %s = %s`, pkColumns[i], conn.FormatPlaceholder(i)) //#nosec G104
 	}
 	return QueryRowStruct[S](ctx, query.String(), pkValues...)
 }
@@ -177,7 +187,7 @@ func GetRowOrNil[S StructWithTableName](ctx context.Context, pkValue any, pkValu
 }
 
 func pkColumnsOfStruct(conn sqldb.Connection, t reflect.Type) (columns []string, err error) {
-	mapper := DefaultStructReflectror
+	mapper := DefaultStructReflector
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		column, flags, ok := mapper.MapStructField(field)
@@ -206,7 +216,7 @@ func pkColumnsOfStruct(conn sqldb.Connection, t reflect.Type) (columns []string,
 func QueryStructSlice[S any](ctx context.Context, query string, args ...any) (rows []S, err error) {
 	conn := Conn(ctx)
 	sqlRows := conn.Query(ctx, query, args...)
-	err = ScanRowsAsSlice(ctx, sqlRows, DefaultStructReflectror, &rows)
+	err = ScanRowsAsSlice(ctx, sqlRows, DefaultStructReflector, &rows)
 	if err != nil {
 		return nil, err
 	}
