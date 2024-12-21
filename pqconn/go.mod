@@ -11,4 +11,7 @@ require (
 	github.com/lib/pq v1.10.9
 )
 
-require github.com/domonda/go-pretty v0.0.0-20240110134850-17385799142f // indirect
+require (
+	github.com/DataDog/go-sqllexer v0.0.18 // indirect
+	github.com/domonda/go-pretty v0.0.0-20240110134850-17385799142f // indirect
+)

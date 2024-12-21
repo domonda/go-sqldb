@@ -11,7 +11,7 @@ import (
 )
 
 // Update table rows(s) with values using the where statement with passed in args starting at $1.
-func Update(ctx context.Context, table string, values sqldb.Values, where string, args ...any) error {
+func Update(ctx context.Context, table string, values Values, where string, args ...any) error {
 	if len(values) == 0 {
 		return fmt.Errorf("Update table %s: no values passed", table)
 	}
@@ -30,7 +30,7 @@ func Update(ctx context.Context, table string, values sqldb.Values, where string
 
 // // UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
 // // and returning a single row with the columns specified in returning argument.
-// func UpdateReturningRow(ctx context.Context, table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowScanner {
+// func UpdateReturningRow(ctx context.Context, table string, values Values, returning, where string, args ...any) sqldb.RowScanner {
 // 	if len(values) == 0 {
 // 		return sqldb.RowScannerWithError(fmt.Errorf("UpdateReturningRow table %s: no values passed", table))
 // 	}
@@ -43,7 +43,7 @@ func Update(ctx context.Context, table string, values sqldb.Values, where string
 
 // // UpdateReturningRows updates table rows with values using the where statement with passed in args starting at $1
 // // and returning multiple rows with the columns specified in returning argument.
-// func UpdateReturningRows(ctx context.Context, table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowsScanner {
+// func UpdateReturningRows(ctx context.Context, table string, values Values, returning, where string, args ...any) sqldb.RowsScanner {
 // 	if len(values) == 0 {
 // 		return sqldb.RowsScannerWithError(fmt.Errorf("UpdateReturningRows table %s: no values passed", table))
 // 	}
@@ -54,7 +54,7 @@ func Update(ctx context.Context, table string, values sqldb.Values, where string
 // 	return conn.QueryRows(query, vals...)
 // }
 
-func buildUpdateQuery(table string, values sqldb.Values, where string, args []any, f sqldb.QueryFormatter) (string, []any, error) {
+func buildUpdateQuery(table string, values Values, where string, args []any, f sqldb.QueryFormatter) (string, []any, error) {
 	table, err := f.FormatTableName(table)
 	if err != nil {
 		return "", nil, err

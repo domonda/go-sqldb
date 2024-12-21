@@ -10,7 +10,7 @@ import (
 )
 
 // Insert a new row into table using the values.
-func Insert(ctx context.Context, table string, values sqldb.Values) error {
+func Insert(ctx context.Context, table string, values Values) error {
 	if len(values) == 0 {
 		return fmt.Errorf("Insert into table %s: no values", table)
 	}
@@ -32,7 +32,7 @@ func Insert(ctx context.Context, table string, values sqldb.Values) error {
 // InsertUnique inserts a new row into table using the passed values
 // or does nothing if the onConflict statement applies.
 // Returns if a row was inserted.
-func InsertUnique(ctx context.Context, table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
+func InsertUnique(ctx context.Context, table string, values Values, onConflict string) (inserted bool, err error) {
 	if len(values) == 0 {
 		return false, fmt.Errorf("InsertUnique into table %s: no values", table)
 	}
@@ -60,7 +60,7 @@ func InsertUnique(ctx context.Context, table string, values sqldb.Values, onConf
 
 // // InsertReturning inserts a new row into table using values
 // // and returns values from the inserted row listed in returning.
-// func InsertReturning(ctx context.Context, table string, values sqldb.Values, returning string) sqldb.RowScanner {
+// func InsertReturning(ctx context.Context, table string, values Values, returning string) sqldb.RowScanner {
 // 	if len(values) == 0 {
 // 		return sqldb.RowScannerWithError(fmt.Errorf("InsertReturning into table %s: no values", table))
 // 	}
