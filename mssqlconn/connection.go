@@ -21,7 +21,7 @@ func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 	if err != nil {
 		return nil, err
 	}
-	return impl.Connection(ctx, db, config, validateColumnName, argFmt), nil
+	return impl.Connection(db, config, validateColumnName, argFmt), nil
 }
 
 func MustNew(ctx context.Context, config *sqldb.Config) sqldb.Connection {

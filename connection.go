@@ -26,24 +26,12 @@ type PlaceholderFormatter interface {
 type Connection interface {
 	PlaceholderFormatter
 
-	// TODO remove
-	Context() context.Context
-
-	// TODO remove
-	WithContext(ctx context.Context) Connection
-
-	// TODO remove
-	WithStructFieldMapper(StructReflector) Connection
-
-	// TODO remove
-	StructReflector() StructReflector
-
 	// Ping returns an error if the database
 	// does not answer on this connection
 	// with an optional timeout.
 	// The passed timeout has to be greater zero
 	// to be considered.
-	Ping(timeout time.Duration) error
+	Ping(ctx context.Context, timeout time.Duration) error
 
 	// Stats returns the sql.DBStats of this connection.
 	Stats() sql.DBStats
@@ -58,11 +46,11 @@ type Connection interface {
 	ValidateColumnName(name string) error
 
 	// Exec executes a query with optional args.
-	Exec(query string, args ...any) error
+	Exec(ctx context.Context, query string, args ...any) error
 
 	// Query queries rows with optional args.
 	// Any error will be returned by the Rows.Err method.
-	Query(query string, args ...any) Rows
+	Query(ctx context.Context, query string, args ...any) Rows
 
 	// TransactionInfo returns the number and sql.TxOptions
 	// of the connection's transaction,
@@ -77,7 +65,7 @@ type Connection interface {
 	// Connection.TransactionNo method.
 	// Implementations should use the package function NextTransactionNo
 	// to aquire a new number in a threadsafe way.
-	Begin(no uint64, opts *sql.TxOptions) (Connection, error)
+	Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error)
 
 	// Commit the current transaction.
 	// Returns ErrNotWithinTransaction if the connection

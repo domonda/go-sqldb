@@ -14,22 +14,18 @@ import (
 // for an existing sql.DB connection.
 // argFmt is the format string for argument placeholders like "?" or "$%d"
 // that will be replaced error messages to format a complete query.
-func Connection(ctx context.Context, db *sql.DB, config *sqldb.Config, validateColumnName func(string) error, argFmt string) sqldb.Connection {
+func Connection(db *sql.DB, config *sqldb.Config, validateColumnName func(string) error, argFmt string) sqldb.Connection {
 	return &connection{
-		ctx:                ctx,
 		db:                 db,
 		config:             config,
-		structFieldNamer:   sqldb.DefaultStructFieldMapping,
 		argFmt:             argFmt,
 		validateColumnName: validateColumnName,
 	}
 }
 
 type connection struct {
-	ctx                context.Context
 	db                 *sql.DB
 	config             *sqldb.Config
-	structFieldNamer   sqldb.StructReflector
 	argFmt             string
 	validateColumnName func(string) error
 }
@@ -39,29 +35,7 @@ func (conn *connection) clone() *connection {
 	return &c
 }
 
-func (conn *connection) Context() context.Context { return conn.ctx }
-
-func (conn *connection) WithContext(ctx context.Context) sqldb.Connection {
-	if ctx == conn.ctx {
-		return conn
-	}
-	c := conn.clone()
-	c.ctx = ctx
-	return c
-}
-
-func (conn *connection) WithStructFieldMapper(namer sqldb.StructReflector) sqldb.Connection {
-	c := conn.clone()
-	c.structFieldNamer = namer
-	return c
-}
-
-func (conn *connection) StructReflector() sqldb.StructReflector {
-	return conn.structFieldNamer
-}
-
-func (conn *connection) Ping(timeout time.Duration) error {
-	ctx := conn.ctx
+func (conn *connection) Ping(ctx context.Context, timeout time.Duration) error {
 	if timeout > 0 {
 		var cancel func()
 		ctx, cancel = context.WithTimeout(ctx, timeout)
@@ -86,15 +60,15 @@ func (conn *connection) ValidateColumnName(name string) error {
 	return conn.validateColumnName(name)
 }
 
-func (conn *connection) Exec(query string, args ...any) error {
-	_, err := conn.db.ExecContext(conn.ctx, query, args...)
+func (conn *connection) Exec(ctx context.Context, query string, args ...any) error {
+	_, err := conn.db.ExecContext(ctx, query, args...)
 	return err
 }
 
-func (conn *connection) Query(query string, args ...any) sqldb.Rows {
-	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
+func (conn *connection) Query(ctx context.Context, query string, args ...any) sqldb.Rows {
+	rows, err := conn.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return sqldb.RowsErr(err)
+		return sqldb.NewErrRows(err)
 	}
 	return rows
 }
@@ -121,11 +95,11 @@ func (conn *connection) TransactionInfo() (no uint64, opts *sql.TxOptions) {
 	return 0, nil
 }
 
-func (conn *connection) Begin(no uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
+func (conn *connection) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
 	if no == 0 {
 		return nil, errors.New("transaction number must not be zero")
 	}
-	tx, err := conn.db.BeginTx(conn.ctx, opts)
+	tx, err := conn.db.BeginTx(ctx, opts)
 	if err != nil {
 		return nil, err
 	}

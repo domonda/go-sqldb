@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/domonda/go-sqldb"
@@ -13,8 +14,6 @@ import (
 
 const (
 	Driver = "postgres"
-
-	argFmt = "$%d"
 )
 
 // New creates a new sqldb.Connection using the passed sqldb.Config
@@ -32,10 +31,8 @@ func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 		return nil, err
 	}
 	return &connection{
-		ctx:              ctx,
-		db:               db,
-		config:           config,
-		structFieldNamer: sqldb.DefaultStructFieldMapping,
+		db:     db,
+		config: config,
 	}, nil
 }
 
@@ -53,10 +50,8 @@ func MustNew(ctx context.Context, config *sqldb.Config) sqldb.Connection {
 }
 
 type connection struct {
-	ctx              context.Context
-	db               *sql.DB
-	config           *sqldb.Config
-	structFieldNamer sqldb.StructReflector
+	db     *sql.DB
+	config *sqldb.Config
 }
 
 func (conn *connection) clone() *connection {
@@ -64,29 +59,7 @@ func (conn *connection) clone() *connection {
 	return &c
 }
 
-func (conn *connection) Context() context.Context { return conn.ctx }
-
-func (conn *connection) WithContext(ctx context.Context) sqldb.Connection {
-	if ctx == conn.ctx {
-		return conn
-	}
-	c := conn.clone()
-	c.ctx = ctx
-	return c
-}
-
-func (conn *connection) WithStructFieldMapper(namer sqldb.StructReflector) sqldb.Connection {
-	c := conn.clone()
-	c.structFieldNamer = namer
-	return c
-}
-
-func (conn *connection) StructReflector() sqldb.StructReflector {
-	return conn.structFieldNamer
-}
-
-func (conn *connection) Ping(timeout time.Duration) error {
-	ctx := conn.ctx
+func (conn *connection) Ping(ctx context.Context, timeout time.Duration) error {
 	if timeout > 0 {
 		var cancel func()
 		ctx, cancel = context.WithTimeout(ctx, timeout)
@@ -104,60 +77,40 @@ func (conn *connection) Config() *sqldb.Config {
 }
 
 func (conn *connection) Placeholder(paramIndex int) string {
-	return fmt.Sprintf(argFmt, paramIndex+1)
+	return "$" + strconv.Itoa(paramIndex+1)
 }
 
 func (conn *connection) ValidateColumnName(name string) error {
 	return validateColumnName(name)
 }
 
-func (conn *connection) Exec(query string, args ...any) error {
+func (conn *connection) Exec(ctx context.Context, query string, args ...any) error {
 	impl.WrapArrayArgs(args)
-	_, err := conn.db.ExecContext(conn.ctx, query, args...)
+	_, err := conn.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return wrapKnownErrors(err)
 	}
 	return nil
 }
 
-func (conn *connection) Query(query string, args ...any) sqldb.Rows {
+func (conn *connection) Query(ctx context.Context, query string, args ...any) sqldb.Rows {
 	impl.WrapArrayArgs(args)
-	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
+	rows, err := conn.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return sqldb.RowsErr(wrapKnownErrors(err))
+		return sqldb.NewErrRows(wrapKnownErrors(err))
 	}
 	return rows
 }
-
-// func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
-// 	impl.WrapArrayArgs(args)
-// 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
-// 	if err != nil {
-// 		err = wrapKnownErrors(err)
-// 		return sqldb.RowScannerWithError(err)
-// 	}
-// 	return impl.NewRowScanner(rows, conn.structFieldNamer, query, argFmt, args)
-// }
-
-// func (conn *connection) QueryRows(query string, args ...any) sqldb.RowsScanner {
-// 	impl.WrapArrayArgs(args)
-// 	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
-// 	if err != nil {
-// 		err = wrapKnownErrors(err)
-// 		return sqldb.RowsScannerWithError(err)
-// 	}
-// 	return impl.NewRowsScanner(conn.ctx, rows, conn.structFieldNamer, query, argFmt, args)
-// }
 
 func (conn *connection) TransactionInfo() (no uint64, opts *sql.TxOptions) {
 	return 0, nil
 }
 
-func (conn *connection) Begin(no uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
+func (conn *connection) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
 	if no == 0 {
 		return nil, errors.New("transaction number must not be zero")
 	}
-	tx, err := conn.db.BeginTx(conn.ctx, opts)
+	tx, err := conn.db.BeginTx(ctx, opts)
 	if err != nil {
 		return nil, err
 	}

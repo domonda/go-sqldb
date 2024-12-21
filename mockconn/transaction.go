@@ -1,5 +1,6 @@
 package mockconn
 
+/*
 import (
 	"context"
 	"database/sql"
@@ -15,24 +16,11 @@ type transaction struct {
 	no   uint64
 }
 
-func (conn transaction) Context() context.Context { return conn.connection.ctx }
-
-func (conn transaction) WithContext(ctx context.Context) sqldb.Connection {
-	if ctx == conn.connection.ctx {
-		return conn
-	}
-	return transaction{
-		connection: conn.connection.WithContext(ctx).(*connection),
-		opts:       conn.opts,
-		no:         conn.no,
-	}
-}
-
 func (conn transaction) TransactionInfo() (no uint64, opts *sql.TxOptions) {
 	return conn.no, conn.opts
 }
 
-func (conn transaction) Begin(no uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
+func (conn transaction) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
 	if no == 0 {
 		return nil, errors.New("transaction number must not be zero")
 	}
@@ -67,3 +55,4 @@ func (conn transaction) UnlistenChannel(channel string) (err error) {
 func (conn transaction) Close() error {
 	return conn.Rollback()
 }
+*/

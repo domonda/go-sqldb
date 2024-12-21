@@ -27,83 +27,77 @@ type PrimaryKeyColumn struct {
 func GetPrimaryKeyColumns(ctx context.Context) (cols []PrimaryKeyColumn, err error) {
 	defer errs.WrapWithFuncParams(&err, ctx)
 
-	err = db.QueryRows(ctx, `
-		select
-			tc.table_schema||'.'||tc.table_name as "table",
-			kc.column_name                      as "column",
-			col.data_type                       as "type",
-			(select exists(
-				select from information_schema.table_constraints as fk_tc
-				inner join information_schema.key_column_usage as fk_kc
-					on fk_kc.table_schema = fk_tc.table_schema
-					and fk_kc.table_name = fk_tc.table_name
-					and fk_kc.constraint_name = fk_tc.constraint_name
-				where fk_tc.constraint_type = 'FOREIGN KEY'
-					and fk_tc.table_schema = tc.table_schema
-					and fk_tc.table_name = tc.table_name
-					and fk_kc.column_name = kc.column_name
-			)) as "foreign_key"
-		from information_schema.table_constraints as tc
-		inner join information_schema.key_column_usage as kc
-			on kc.table_schema = tc.table_schema
-			and kc.table_name = tc.table_name
-			and kc.constraint_name = tc.constraint_name
-		inner join information_schema.columns as col
-			on col.table_schema = tc.table_schema
-			and col.table_name = tc.table_name
-			and col.column_name = kc.column_name
-		where tc.constraint_type = 'PRIMARY KEY'
-			and kc.ordinal_position is not null
-		order by
+	return db.QueryStructSlice[PrimaryKeyColumn](ctx,
+		/*sql*/ `
+		SELECT
+			tc.table_schema||'.'||tc.table_name AS "table",
+			kc.column_name                      AS "column",
+			col.data_type                       AS "type",
+			(SELECT EXISTS(
+				SELECT FROM information_schema.table_constraints AS fk_tc
+				JOIN information_schema.key_column_usage AS fk_kc
+					ON fk_kc.table_schema = fk_tc.table_schema
+					AND fk_kc.table_name = fk_tc.table_name
+					AND fk_kc.constraint_name = fk_tc.constraint_name
+				WHERE fk_tc.constraint_type = 'FOREIGN KEY'
+					AND fk_tc.table_schema = tc.table_schema
+					AND fk_tc.table_name = tc.table_name
+					AND fk_kc.column_name = kc.column_name
+			)) AS "foreign_key"
+		FROM information_schema.table_constraints AS tc
+		JOIN information_schema.key_column_usage AS kc
+			ON kc.table_schema = tc.table_schema
+			AND kc.table_name = tc.table_name
+			AND kc.constraint_name = tc.constraint_name
+		JOIN information_schema.columns AS col
+			ON col.table_schema = tc.table_schema
+			AND col.table_name = tc.table_name
+			AND col.column_name = kc.column_name
+		WHERE tc.constraint_type = 'PRIMARY KEY'
+			AND kc.ordinal_positiON IS NOT NULL
+		ORDER BY
 			tc.table_schema,
 			tc.table_name`,
-	).ScanStructSlice(&cols)
-	if err != nil {
-		return nil, err
-	}
-	return cols, nil
+	)
 }
 
 func GetPrimaryKeyColumnsOfType(ctx context.Context, pkType string) (cols []PrimaryKeyColumn, err error) {
 	defer errs.WrapWithFuncParams(&err, ctx, pkType)
 
-	err = db.QueryRows(ctx, `
-		select
-			tc.table_schema||'.'||tc.table_name as "table",
-			kc.column_name                      as "column",
-			col.data_type                       as "type",
-			(select exists(
-				select from information_schema.table_constraints as fk_tc
-				inner join information_schema.key_column_usage as fk_kc
-					on fk_kc.table_schema = fk_tc.table_schema
-					and fk_kc.table_name = fk_tc.table_name
-					and fk_kc.constraint_name = fk_tc.constraint_name
-				where fk_tc.constraint_type = 'FOREIGN KEY'
-					and fk_tc.table_schema = tc.table_schema
-					and fk_tc.table_name = tc.table_name
-					and fk_kc.column_name = kc.column_name
-			)) as "foreign_key"
-		from information_schema.table_constraints as tc
-		inner join information_schema.key_column_usage as kc
-			on kc.table_schema = tc.table_schema
-			and kc.table_name = tc.table_name
-			and kc.constraint_name = tc.constraint_name
-		inner join information_schema.columns as col
-			on col.table_schema = tc.table_schema
-			and col.table_name = tc.table_name
-			and col.column_name = kc.column_name
-		where tc.constraint_type = 'PRIMARY KEY'
-			and kc.ordinal_position is not null
-			and col.data_type = $1
-		order by
+	return db.QueryStructSlice[PrimaryKeyColumn](ctx,
+		/*sql*/ `
+		SELECT
+			tc.table_schema||'.'||tc.table_name AS "table",
+			kc.column_name                      AS "column",
+			col.data_type                       AS "type",
+			(SELECT EXISTS(
+				SELECT FROM information_schema.table_constraints AS fk_tc
+				JOIN information_schema.key_column_usage AS fk_kc
+					ON fk_kc.table_schema = fk_tc.table_schema
+					AND fk_kc.table_name = fk_tc.table_name
+					AND fk_kc.constraint_name = fk_tc.constraint_name
+				WHERE fk_tc.constraint_type = 'FOREIGN KEY'
+					AND fk_tc.table_schema = tc.table_schema
+					AND fk_tc.table_name = tc.table_name
+					AND fk_kc.column_name = kc.column_name
+			)) AS "foreign_key"
+		FROM information_schema.table_constraints AS tc
+		JOIN information_schema.key_column_usage AS kc
+			ON kc.table_schema = tc.table_schema
+			AND kc.table_name = tc.table_name
+			AND kc.constraint_name = tc.constraint_name
+		JOIN information_schema.columns AS col
+			ON col.table_schema = tc.table_schema
+			AND col.table_name = tc.table_name
+			AND col.column_name = kc.column_name
+		WHERE tc.constraint_type = 'PRIMARY KEY'
+			AND kc.ordinal_positiON IS NOT NULL
+			AND col.data_type = $1
+		ORDER BY
 			tc.table_schema,
 			tc.table_name`,
 		pkType,
-	).ScanStructSlice(&cols)
-	if err != nil {
-		return nil, err
-	}
-	return cols, nil
+	)
 }
 
 type TableRowWithPrimaryKey struct {
@@ -148,7 +142,11 @@ var RenderUUIDPrimaryKeyRefsHTML = http.HandlerFunc(func(writer http.ResponseWri
 	var (
 		title       string
 		mainContent any
-		style       = []string{StyleAllMonospace, StyleDefaultTable, `<style>h1 {color:red}</style>`}
+		style       = []string{
+			StyleAllMonospace,
+			StyleDefaultTable,
+			`<style>h1 {color:red}</style>`,
+		}
 	)
 	pk, err := uu.IDFromString(request.URL.Query().Get("pk"))
 	if err != nil {
@@ -175,7 +173,7 @@ var RenderUUIDPrimaryKeyRefsHTML = http.HandlerFunc(func(writer http.ResponseWri
 			return !tableRows[i].ForeignKey && tableRows[j].ForeignKey
 		})
 		var b strings.Builder
-		fmt.Fprintf(&b, "<h2><button onclick='navigator.clipboard.writeText(%q)'>Copy UUID</button></h2>", pk)
+		fmt.Fprintf(&b, "<h2><buttON onclick='navigator.clipboard.writeText(%q)'>Copy UUID</button></h2>", pk)
 		for _, tableRow := range tableRows { //#nosec
 			fmt.Fprintf(&b, "<h3>%s</h3>", html.EscapeString(tableRow.Table))
 			fmt.Fprintf(&b, "<table>")
@@ -267,7 +265,7 @@ const StyleDefaultTable = /*html*/ `<style>
 		white-space: nowrap;
 		font-family: "Lucida Console", Monaco, monospace;
 	}
-	table > caption {
+	table > captiON {
 		font-size: 1.4em;
 		text-align: left;
 		margin-bottom: 8px;
@@ -299,7 +297,7 @@ const StyleDefaultTable = /*html*/ `<style>
 		margin: 0;
 		font-family: "Lucida Console", Monaco, monospace;
 	}
-	td > button {
+	td > buttON {
 		font-size: 1em;
 	}
 	td > input[type="checkbox"] {

@@ -31,7 +31,7 @@ func CurrentTimestamp(ctx context.Context) time.Time {
 // Exec executes a query with optional args.
 func Exec(ctx context.Context, query string, args ...any) error {
 	conn := Conn(ctx)
-	err := conn.Exec(query, args...)
+	err := conn.Exec(ctx, query, args...)
 	if err != nil {
 		return wrapErrorWithQuery(err, query, args, conn)
 	}
@@ -41,15 +41,15 @@ func Exec(ctx context.Context, query string, args ...any) error {
 // QueryRow queries a single row and returns a RowScanner for the results.
 func QueryRow(ctx context.Context, query string, args ...any) *RowScanner {
 	conn := Conn(ctx)
-	rows := conn.Query(query, args...)
-	return NewRowScanner(rows, conn.StructReflector(), conn, query, args)
+	rows := conn.Query(ctx, query, args...)
+	return NewRowScanner(rows, DefaultStructReflectror, conn, query, args)
 }
 
 // // QueryRows queries multiple rows and returns a RowsScanner for the results.
 // func QueryRows(ctx context.Context, query string, args ...any) *MultiRowScanner {
 // 	conn := Conn(ctx)
 // 	rows := conn.Query(query, args...)
-// 	return NewMultiRowScanner(ctx, rows, conn.StructReflector(), conn, query, args)
+// 	return NewMultiRowScanner(ctx, rows, DefaultStructReflectror, conn, query, args)
 // }
 
 // QueryValue queries a single value of type T.
@@ -91,9 +91,9 @@ func QueryValueOr[T any](ctx context.Context, defaultValue T, query string, args
 // QueryRowStruct queries a row and scans it as struct.
 func QueryRowStruct[S any](ctx context.Context, query string, args ...any) (row *S, err error) {
 	conn := Conn(ctx)
-	rows := conn.Query(query, args...)
+	rows := conn.Query(ctx, query, args...)
 	defer rows.Close()
-	err = scanStruct(rows, conn.StructReflector(), &row)
+	err = scanStruct(rows, DefaultStructReflectror, &row)
 	if err != nil {
 		return nil, wrapErrorWithQuery(err, query, args, conn)
 	}
@@ -140,7 +140,7 @@ func GetRow[S sqldb.StructWithTableName](ctx context.Context, pkValue any, pkVal
 		return nil, fmt.Errorf("expected struct template type instead of %s", t)
 	}
 	conn := Conn(ctx)
-	table, err := conn.StructReflector().TableNameForStruct(t)
+	table, err := DefaultStructReflectror.TableNameForStruct(t)
 	if err != nil {
 		return nil, err
 	}
@@ -177,7 +177,7 @@ func GetRowOrNil[S sqldb.StructWithTableName](ctx context.Context, pkValue any, 
 }
 
 func pkColumnsOfStruct(conn sqldb.Connection, t reflect.Type) (columns []string, err error) {
-	mapper := conn.StructReflector()
+	mapper := DefaultStructReflectror
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
 		column, flags, ok := mapper.MapStructField(field)
@@ -205,8 +205,8 @@ func pkColumnsOfStruct(conn sqldb.Connection, t reflect.Type) (columns []string,
 // which must be a struct or a pointer to a struct.
 func QueryStructSlice[S any](ctx context.Context, query string, args ...any) (rows []S, err error) {
 	conn := Conn(ctx)
-	sqlRows := conn.Query(query, args...)
-	err = ScanRowsAsSlice(ctx, sqlRows, conn.StructReflector(), &rows)
+	sqlRows := conn.Query(ctx, query, args...)
+	err = ScanRowsAsSlice(ctx, sqlRows, DefaultStructReflectror, &rows)
 	if err != nil {
 		return nil, err
 	}

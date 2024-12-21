@@ -12,20 +12,18 @@ import (
 type transaction struct {
 	// The parent non-transaction connection is needed
 	// for its ctx, Ping(), Stats(), and Config()
-	parent           *connection
-	tx               *sql.Tx
-	opts             *sql.TxOptions
-	no               uint64
-	structFieldNamer sqldb.StructReflector
+	parent *connection
+	tx     *sql.Tx
+	opts   *sql.TxOptions
+	no     uint64
 }
 
 func newTransaction(parent *connection, tx *sql.Tx, opts *sql.TxOptions, no uint64) *transaction {
 	return &transaction{
-		parent:           parent,
-		tx:               tx,
-		opts:             opts,
-		no:               no,
-		structFieldNamer: parent.structFieldNamer,
+		parent: parent,
+		tx:     tx,
+		opts:   opts,
+		no:     no,
 	}
 }
 
@@ -34,30 +32,11 @@ func (conn *transaction) clone() *transaction {
 	return &c
 }
 
-func (conn *transaction) Context() context.Context { return conn.parent.ctx }
-
-func (conn *transaction) WithContext(ctx context.Context) sqldb.Connection {
-	if ctx == conn.parent.ctx {
-		return conn
-	}
-	parent := conn.parent.clone()
-	parent.ctx = ctx
-	return newTransaction(parent, conn.tx, conn.opts, conn.no)
+func (conn *transaction) Ping(ctx context.Context, timeout time.Duration) error {
+	return conn.parent.Ping(ctx, timeout)
 }
-
-func (conn *transaction) WithStructFieldMapper(namer sqldb.StructReflector) sqldb.Connection {
-	c := conn.clone()
-	c.structFieldNamer = namer
-	return c
-}
-
-func (conn *transaction) StructReflector() sqldb.StructReflector {
-	return conn.structFieldNamer
-}
-
-func (conn *transaction) Ping(timeout time.Duration) error { return conn.parent.Ping(timeout) }
-func (conn *transaction) Stats() sql.DBStats               { return conn.parent.Stats() }
-func (conn *transaction) Config() *sqldb.Config            { return conn.parent.Config() }
+func (conn *transaction) Stats() sql.DBStats    { return conn.parent.Stats() }
+func (conn *transaction) Config() *sqldb.Config { return conn.parent.Config() }
 func (conn *transaction) Placeholder(paramIndex int) string {
 	return conn.parent.Placeholder(paramIndex)
 }
@@ -66,15 +45,15 @@ func (conn *transaction) ValidateColumnName(name string) error {
 	return conn.parent.validateColumnName(name)
 }
 
-func (conn *transaction) Exec(query string, args ...any) error {
-	_, err := conn.tx.Exec(query, args...)
-	return WrapNonNilErrorWithQuery(err, query, conn.parent.argFmt, args)
+func (conn *transaction) Exec(ctx context.Context, query string, args ...any) error {
+	_, err := conn.tx.ExecContext(ctx, query, args...)
+	return err
 }
 
-func (conn *transaction) Query(query string, args ...any) sqldb.Rows {
-	rows, err := conn.tx.QueryContext(conn.parent.ctx, query, args...)
+func (conn *transaction) Query(ctx context.Context, query string, args ...any) sqldb.Rows {
+	rows, err := conn.tx.QueryContext(ctx, query, args...)
 	if err != nil {
-		return sqldb.RowsErr(err)
+		return sqldb.NewErrRows(err)
 	}
 	return rows
 }
@@ -101,11 +80,11 @@ func (conn *transaction) TransactionInfo() (no uint64, opts *sql.TxOptions) {
 	return conn.no, conn.opts
 }
 
-func (conn *transaction) Begin(no uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
+func (conn *transaction) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
 	if no == 0 {
 		return nil, errors.New("transaction number must not be zero")
 	}
-	tx, err := conn.parent.db.BeginTx(conn.parent.ctx, opts)
+	tx, err := conn.parent.db.BeginTx(ctx, opts)
 	if err != nil {
 		return nil, err
 	}

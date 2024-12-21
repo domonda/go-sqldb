@@ -30,7 +30,7 @@ type Rows interface {
 	Err() error
 }
 
-func RowsErr(err error) Rows {
+func NewErrRows(err error) Rows {
 	return errRows{err}
 }
 

@@ -20,7 +20,7 @@ func Insert(ctx context.Context, table string, values sqldb.Values) error {
 	names, vals := values.Sorted()
 	writeInsertQuery(&query, table, names, conn)
 
-	err := conn.Exec(query.String(), vals...)
+	err := conn.Exec(ctx, query.String(), vals...)
 	if err != nil {
 		return wrapErrorWithQuery(err, query.String(), vals, conn)
 	}
@@ -74,7 +74,7 @@ func InsertUnique(ctx context.Context, table string, values sqldb.Values, onConf
 // Optional ColumnFilter can be passed to ignore mapped columns.
 func InsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
 	conn := Conn(ctx)
-	columns, vals, err := insertStructValues(table, rowStruct, conn.StructReflector(), ignoreColumns)
+	columns, vals, err := insertStructValues(table, rowStruct, DefaultStructReflectror, ignoreColumns)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func InsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 	var query strings.Builder
 	writeInsertQuery(&query, table, columns, conn)
 
-	err = conn.Exec(query.String(), vals...)
+	err = conn.Exec(ctx, query.String(), vals...)
 	if err != nil {
 		return wrapErrorWithQuery(err, query.String(), vals, conn)
 	}
@@ -93,7 +93,7 @@ func InsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 // StructFieldMapper to map struct fields to column names.
 // Optional ColumnFilter can be passed to ignore mapped columns.
 func InsertStructWithTableName(ctx context.Context, row sqldb.StructWithTableName, ignoreColumns ...sqldb.ColumnFilter) error {
-	table, err := Conn(ctx).StructReflector().TableNameForStruct(reflect.TypeOf(row))
+	table, err := DefaultStructReflectror.TableNameForStruct(reflect.TypeOf(row))
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func InsertStructWithTableName(ctx context.Context, row sqldb.StructWithTableNam
 // and returns if a row was inserted.
 func InsertUniqueStruct(ctx context.Context, table string, rowStruct any, onConflict string, ignoreColumns ...sqldb.ColumnFilter) (inserted bool, err error) {
 	conn := Conn(ctx)
-	columns, vals, err := insertStructValues(table, rowStruct, conn.StructReflector(), ignoreColumns)
+	columns, vals, err := insertStructValues(table, rowStruct, DefaultStructReflectror, ignoreColumns)
 	if err != nil {
 		return false, err
 	}

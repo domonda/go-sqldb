@@ -34,36 +34,7 @@ type connection struct {
 	argFmt           string
 }
 
-func (conn *connection) Context() context.Context { return conn.ctx }
 
-func (conn *connection) WithContext(ctx context.Context) sqldb.Connection {
-	if ctx == conn.ctx {
-		return conn
-	}
-	return &connection{
-		ctx:              ctx,
-		queryWriter:      conn.queryWriter,
-		listening:        conn.listening,
-		rowsProvider:     conn.rowsProvider,
-		structFieldNamer: conn.structFieldNamer,
-		argFmt:           conn.argFmt,
-	}
-}
-
-func (conn *connection) WithStructFieldMapper(namer sqldb.StructFieldMapper) sqldb.Connection {
-	return &connection{
-		ctx:              conn.ctx,
-		queryWriter:      conn.queryWriter,
-		listening:        conn.listening,
-		rowsProvider:     conn.rowsProvider,
-		structFieldNamer: namer,
-		argFmt:           conn.argFmt,
-	}
-}
-
-func (conn *connection) StructReflector() sqldb.StructFieldMapper {
-	return conn.structFieldNamer
-}
 
 func (conn *connection) Stats() sql.DBStats {
 	return sql.DBStats{}

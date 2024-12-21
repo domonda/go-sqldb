@@ -36,6 +36,8 @@ func (s sentinelError) Error() string {
 // Transaction errors
 
 const (
+	ErrNoDatabaseConnection sentinelError = "no database connection"
+
 	// ErrWithinTransaction is returned by methods
 	// that are not allowed within DB transactions
 	// when the DB connection is a transaction.

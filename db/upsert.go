@@ -31,7 +31,7 @@ func UpsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 
 	conn := Conn(ctx)
 
-	columns, pkCols, vals := ReflectStructValues(v, conn.StructReflector(), append(ignoreColumns, sqldb.IgnoreReadOnly))
+	columns, pkCols, vals := ReflectStructValues(v, DefaultStructReflectror, append(ignoreColumns, sqldb.IgnoreReadOnly))
 	if len(pkCols) == 0 {
 		return fmt.Errorf("UpsertStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
@@ -61,7 +61,7 @@ func UpsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 	}
 	query := b.String()
 
-	err := conn.Exec(query, vals...)
+	err := conn.Exec(ctx, query, vals...)
 	if err != nil {
 		return wrapErrorWithQuery(err, query, vals, conn)
 	}
