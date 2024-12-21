@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// ErrConn implements Connection
+// ErrConn implements ListenerConnection
 var _ Connection = ErrConn{}
 
 // NewErrConn returns an ErrConn with the passed error.
@@ -18,7 +18,7 @@ func NewErrConn(err error) ErrConn {
 	return ErrConn{Err: err}
 }
 
-// ErrConn is a dummy Connection
+// ErrConn is a dummy ListenerConnection
 // where all methods except Close return Err.
 type ErrConn struct {
 	Err error
@@ -65,10 +65,6 @@ func (e ErrConn) Commit() error {
 }
 
 func (e ErrConn) Rollback() error {
-	return e.Err
-}
-
-func (e ErrConn) Transaction(opts *sql.TxOptions, txFunc func(tx Connection) error) error {
 	return e.Err
 }
 
