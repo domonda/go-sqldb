@@ -77,7 +77,7 @@ func InsertUnique(ctx context.Context, table string, values sqldb.Values, onConf
 // InsertStruct inserts a new row into table using the connection's
 // StructFieldMapper to map struct fields to column names.
 // Optional ColumnFilter can be passed to ignore mapped columns.
-func InsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
+func InsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumns ...ColumnFilter) error {
 	conn := Conn(ctx)
 	columns, vals, err := insertStructValues(table, rowStruct, DefaultStructReflectror, ignoreColumns)
 	if err != nil {
@@ -100,7 +100,7 @@ func InsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 // InsertStructWithTableName inserts a new row into table using the connection's
 // StructFieldMapper to map struct fields to column names.
 // Optional ColumnFilter can be passed to ignore mapped columns.
-func InsertStructWithTableName(ctx context.Context, row sqldb.StructWithTableName, ignoreColumns ...sqldb.ColumnFilter) error {
+func InsertStructWithTableName(ctx context.Context, row StructWithTableName, ignoreColumns ...ColumnFilter) error {
 	table, err := DefaultStructReflectror.TableNameForStruct(reflect.TypeOf(row))
 	if err != nil {
 		return err
@@ -113,7 +113,7 @@ func InsertStructWithTableName(ctx context.Context, row sqldb.StructWithTableNam
 // Optional ColumnFilter can be passed to ignore mapped columns.
 // Does nothing if the onConflict statement applies
 // and returns if a row was inserted.
-func InsertUniqueStruct(ctx context.Context, table string, rowStruct any, onConflict string, ignoreColumns ...sqldb.ColumnFilter) (inserted bool, err error) {
+func InsertUniqueStruct(ctx context.Context, table string, rowStruct any, onConflict string, ignoreColumns ...ColumnFilter) (inserted bool, err error) {
 	conn := Conn(ctx)
 	columns, vals, err := insertStructValues(table, rowStruct, DefaultStructReflectror, ignoreColumns)
 	if err != nil {
@@ -146,7 +146,7 @@ func InsertUniqueStruct(ctx context.Context, table string, rowStruct any, onConf
 //
 // TODO optimized version with single query if possible
 // split into multiple queries depending or maxArgs for query
-func InsertStructs(ctx context.Context, table string, rowStructs any, ignoreColumns ...sqldb.ColumnFilter) error {
+func InsertStructs(ctx context.Context, table string, rowStructs any, ignoreColumns ...ColumnFilter) error {
 	v := reflect.ValueOf(rowStructs)
 	if k := v.Type().Kind(); k != reflect.Slice && k != reflect.Array {
 		return fmt.Errorf("InsertStructs expects a slice or array as rowStructs, got %T", rowStructs)
@@ -190,7 +190,7 @@ func writeInsertQuery(w *strings.Builder, table string, columns []string, f sqld
 	return nil
 }
 
-func insertStructValues(table string, rowStruct any, namer sqldb.StructReflector, ignoreColumns []sqldb.ColumnFilter) (columns []string, vals []any, err error) {
+func insertStructValues(table string, rowStruct any, namer StructReflector, ignoreColumns []ColumnFilter) (columns []string, vals []any, err error) {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -202,6 +202,6 @@ func insertStructValues(table string, rowStruct any, namer sqldb.StructReflector
 		return nil, nil, fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, _, vals = ReflectStructValues(v, namer, append(ignoreColumns, sqldb.IgnoreReadOnly))
+	columns, _, vals = ReflectStructValues(v, namer, append(ignoreColumns, IgnoreReadOnly))
 	return columns, vals, nil
 }

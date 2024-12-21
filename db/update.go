@@ -85,7 +85,7 @@ func buildUpdateQuery(table string, values sqldb.Values, where string, args []an
 // matching any of the passed column names will be used.
 // The struct must have at least one field with a `db` tag value having a ",pk" suffix
 // to mark primary key column(s).
-func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
+func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumns ...ColumnFilter) error {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -99,7 +99,7 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 
 	conn := Conn(ctx)
 
-	columns, pkCols, vals := ReflectStructValues(v, DefaultStructReflectror, append(ignoreColumns, sqldb.IgnoreReadOnly))
+	columns, pkCols, vals := ReflectStructValues(v, DefaultStructReflectror, append(ignoreColumns, IgnoreReadOnly))
 	if len(pkCols) == 0 {
 		return fmt.Errorf("UpdateStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}

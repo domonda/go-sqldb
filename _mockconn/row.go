@@ -9,17 +9,15 @@ import (
 	"slices"
 	"strconv"
 	"time"
-
-	sqldb "github.com/domonda/go-sqldb"
 )
 
 // Row implements impl.Row with the fields of a struct as column values.
 type Row struct {
 	rowStructVal reflect.Value
-	columnNamer  sqldb.StructReflector
+	columnNamer  StructReflector
 }
 
-func NewRow(rowStruct any, columnNamer sqldb.StructReflector) *Row {
+func NewRow(rowStruct any, columnNamer StructReflector) *Row {
 	val := reflect.ValueOf(rowStruct)
 	for val.Kind() == reflect.Ptr {
 		val = val.Elem()
@@ -30,7 +28,7 @@ func NewRow(rowStruct any, columnNamer sqldb.StructReflector) *Row {
 	}
 }
 
-func (r *Row) StructReflector() sqldb.StructReflector {
+func (r *Row) StructReflector() StructReflector {
 	return r.columnNamer
 }
 

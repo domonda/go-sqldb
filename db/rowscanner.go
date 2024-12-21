@@ -10,13 +10,13 @@ import (
 // RowScanner implements sqldb.RowScanner for a sql.Row
 type RowScanner struct {
 	rows      sqldb.Rows
-	reflector sqldb.StructReflector // for ScanStruct
-	queryFmt  sqldb.QueryFormatter  // for error wrapping
-	query     string                // for error wrapping
-	args      []any                 // for error wrapping
+	reflector StructReflector      // for ScanStruct
+	queryFmt  sqldb.QueryFormatter // for error wrapping
+	query     string               // for error wrapping
+	args      []any                // for error wrapping
 }
 
-func NewRowScanner(rows sqldb.Rows, reflector sqldb.StructReflector, queryFmt sqldb.QueryFormatter, query string, args []any) *RowScanner {
+func NewRowScanner(rows sqldb.Rows, reflector StructReflector, queryFmt sqldb.QueryFormatter, query string, args []any) *RowScanner {
 	return &RowScanner{rows, reflector, queryFmt, query, args}
 }
 

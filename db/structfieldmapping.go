@@ -1,4 +1,4 @@
-package sqldb
+package db
 
 import (
 	"fmt"

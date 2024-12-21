@@ -3,8 +3,6 @@ package mockconn
 import (
 	"errors"
 	"reflect"
-
-	sqldb "github.com/domonda/go-sqldb"
 )
 
 type Rows struct {
@@ -14,7 +12,7 @@ type Rows struct {
 	err    error
 }
 
-func NewRowsFromStructs(rowStructs any, columnNamer sqldb.StructReflector) *Rows {
+func NewRowsFromStructs(rowStructs any, columnNamer StructReflector) *Rows {
 	v := reflect.ValueOf(rowStructs)
 	t := v.Type()
 	if t.Kind() != reflect.Array && t.Kind() != reflect.Slice {

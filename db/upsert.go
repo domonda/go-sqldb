@@ -6,8 +6,6 @@ import (
 	"reflect"
 	"slices"
 	"strings"
-
-	"github.com/domonda/go-sqldb"
 )
 
 // UpsertStruct upserts a row to table using the exported fields
@@ -17,7 +15,7 @@ import (
 // The struct must have at least one field with a `db` tag value having a ",pk" suffix
 // to mark primary key column(s).
 // If inserting conflicts on the primary key column(s), then an update is performed.
-func UpsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
+func UpsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumns ...ColumnFilter) error {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -31,7 +29,7 @@ func UpsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 
 	conn := Conn(ctx)
 
-	columns, pkCols, vals := ReflectStructValues(v, DefaultStructReflectror, append(ignoreColumns, sqldb.IgnoreReadOnly))
+	columns, pkCols, vals := ReflectStructValues(v, DefaultStructReflectror, append(ignoreColumns, IgnoreReadOnly))
 	if len(pkCols) == 0 {
 		return fmt.Errorf("UpsertStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}

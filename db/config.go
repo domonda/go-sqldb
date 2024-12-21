@@ -16,7 +16,7 @@ var (
 	SerializedTransactionRetries = 10
 
 	// TODO set default value
-	DefaultStructReflectror sqldb.StructReflector
+	DefaultStructReflectror StructReflector
 )
 
 var (

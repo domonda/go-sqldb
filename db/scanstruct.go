@@ -8,7 +8,7 @@ import (
 )
 
 // scanStruct scans the srcRow into the destStruct using the reflector.
-func scanStruct(srcRow sqldb.Row, reflector sqldb.StructReflector, destStruct any) error {
+func scanStruct(srcRow sqldb.Row, reflector StructReflector, destStruct any) error {
 	v := reflect.ValueOf(destStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()

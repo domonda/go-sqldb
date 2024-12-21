@@ -6,11 +6,9 @@ import (
 	"reflect"
 	"slices"
 	"strings"
-
-	"github.com/domonda/go-sqldb"
 )
 
-func ReflectStructValues(structVal reflect.Value, namer sqldb.StructReflector, ignoreColumns []sqldb.ColumnFilter) (columns []string, pkCols []int, values []any) {
+func ReflectStructValues(structVal reflect.Value, namer StructReflector, ignoreColumns []ColumnFilter) (columns []string, pkCols []int, values []any) {
 	for i := 0; i < structVal.NumField(); i++ {
 		fieldType := structVal.Type().Field(i)
 		column, flags, use := namer.MapStructField(fieldType)
@@ -43,7 +41,7 @@ func ReflectStructValues(structVal reflect.Value, namer sqldb.StructReflector, i
 	return columns, pkCols, values
 }
 
-func ReflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructReflector, columns []string) (pointers []any, err error) {
+func ReflectStructColumnPointers(structVal reflect.Value, namer StructReflector, columns []string) (pointers []any, err error) {
 	if len(columns) == 0 {
 		return nil, errors.New("no columns")
 	}
@@ -71,7 +69,7 @@ func ReflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructRefl
 	return pointers, nil
 }
 
-func reflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructReflector, columns []string, pointers []any) error {
+func reflectStructColumnPointers(structVal reflect.Value, namer StructReflector, columns []string, pointers []any) error {
 	structType := structVal.Type()
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
@@ -112,7 +110,7 @@ func reflectStructColumnPointers(structVal reflect.Value, namer sqldb.StructRefl
 	return nil
 }
 
-func ignoreColumn(filters []sqldb.ColumnFilter, name string, flags sqldb.FieldFlag, fieldType reflect.StructField, fieldValue reflect.Value) bool {
+func ignoreColumn(filters []ColumnFilter, name string, flags FieldFlag, fieldType reflect.StructField, fieldValue reflect.Value) bool {
 	for _, filter := range filters {
 		if filter.IgnoreColumn(name, flags, fieldType, fieldValue) {
 			return true

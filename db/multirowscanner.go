@@ -20,7 +20,7 @@ import (
 // The function closes the sqlRows.
 //
 // TODO two different functions for single column and multi column rows?
-func ScanRowsAsSlice(ctx context.Context, sqlRows sqldb.Rows, reflector sqldb.StructReflector, dest any) error {
+func ScanRowsAsSlice(ctx context.Context, sqlRows sqldb.Rows, reflector StructReflector, dest any) error {
 	defer sqlRows.Close()
 
 	destVal := reflect.ValueOf(dest)
@@ -76,13 +76,13 @@ func ScanRowsAsSlice(ctx context.Context, sqlRows sqldb.Rows, reflector sqldb.St
 type MultiRowScanner struct {
 	ctx       context.Context // ctx is checked for every row and passed through to callbacks
 	rows      sqldb.Rows
-	reflector sqldb.StructReflector
+	reflector StructReflector
 	argFmt    sqldb.PlaceholderFormatter // for error wrapping
 	query     string                     // for error wrapping
 	args      []any                      // for error wrapping
 }
 
-func NewMultiRowScanner(ctx context.Context, rows sqldb.Rows, reflector sqldb.StructReflector, argFmt sqldb.PlaceholderFormatter, query string, args []any) *MultiRowScanner {
+func NewMultiRowScanner(ctx context.Context, rows sqldb.Rows, reflector StructReflector, argFmt sqldb.PlaceholderFormatter, query string, args []any) *MultiRowScanner {
 	return &MultiRowScanner{ctx, rows, reflector, argFmt, query, args}
 }
 
