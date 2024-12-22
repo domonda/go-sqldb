@@ -3,6 +3,7 @@ package sqldb
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 )
 
 // QueryFormatter has methods for formatting parts
@@ -24,11 +25,10 @@ type QueryFormatter interface {
 var stdNameRegexp = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 
 type StdQueryFormatter struct {
-	// PlaceholderFmt is a format string for positional
-	// parameter placeholders in queries.
-	// The format string must contain a single `%d`
-	// for the parameter index starting at one.
-	// If empty, the default placeholder `?` is used.
+	// PlaceholderPosPrefix is prefixed before
+	// the one based placeholder position number in queries.
+	// If empty, the default placeholder `?` is used
+	// witout a position number is used.
 	//
 	// Positional placeholder formats for different databases:
 	//   MySQL: ?
@@ -36,7 +36,7 @@ type StdQueryFormatter struct {
 	//   PostgreSQL: $1, $2, ...
 	//   SQL Server: @p1, @p2, ...
 	//   Oracle: :1, :2, ...
-	PlaceholderFmt string
+	PlaceholderPosPrefix string
 }
 
 func (StdQueryFormatter) FormatTableName(name string) (string, error) {
@@ -57,8 +57,8 @@ func (f StdQueryFormatter) FormatPlaceholder(paramIndex int) string {
 	if paramIndex < 0 {
 		panic("paramIndex must be greater or equal zero")
 	}
-	if f.PlaceholderFmt != "" {
-		return fmt.Sprintf(f.PlaceholderFmt, paramIndex+1)
+	if f.PlaceholderPosPrefix == "" {
+		return "?"
 	}
-	return "?"
+	return f.PlaceholderPosPrefix + strconv.Itoa(paramIndex+1)
 }

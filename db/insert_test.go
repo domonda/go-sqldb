@@ -31,7 +31,7 @@ func TestInsertStructWithTableName(t *testing.T) {
 				ID:   1,
 				Name: "test",
 			},
-			conn: sqldb.NewRecordingMockConn("$%d", false),
+			conn: sqldb.NewRecordingMockConn("$", false),
 			want: sqldb.MockConnRecording{
 				Execs: []sqldb.QueryData{
 					{Query: "INSERT INTO my_table(id,name) VALUES($1,$2)", Args: []any{1, "test"}},
@@ -46,7 +46,7 @@ func TestInsertStructWithTableName(t *testing.T) {
 				ID   int    `db:"id,pk"`
 				Name string `db:"name"`
 			}{},
-			conn:    sqldb.NewRecordingMockConn("$%d", false),
+			conn:    sqldb.NewRecordingMockConn("$", false),
 			wantErr: true,
 		},
 	}

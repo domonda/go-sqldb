@@ -29,9 +29,8 @@ func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 		return nil, err
 	}
 	return &connection{
-		StdQueryFormatter: sqldb.StdQueryFormatter{PlaceholderFmt: "$%d"},
-		db:                db,
-		config:            config,
+		db:     db,
+		config: config,
 	}, nil
 }
 
@@ -49,7 +48,7 @@ func MustNew(ctx context.Context, config *sqldb.Config) sqldb.Connection {
 }
 
 type connection struct {
-	sqldb.StdQueryFormatter
+	QueryFormatter
 
 	db     *sql.DB
 	config *sqldb.Config

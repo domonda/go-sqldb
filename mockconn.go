@@ -168,10 +168,10 @@ type RecordingMockConn struct {
 	Normalize bool
 }
 
-func NewRecordingMockConn(placeholderFmt string, normalize bool) *RecordingMockConn {
+func NewRecordingMockConn(placeholderPosPrefix string, normalize bool) *RecordingMockConn {
 	return &RecordingMockConn{
 		MockConn: MockConn{
-			QueryFormatter: StdQueryFormatter{PlaceholderFmt: placeholderFmt},
+			QueryFormatter: StdQueryFormatter{PlaceholderPosPrefix: placeholderPosPrefix},
 		},
 		Normalize: normalize,
 	}

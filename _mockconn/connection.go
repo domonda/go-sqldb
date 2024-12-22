@@ -12,7 +12,7 @@ import (
 	"github.com/domonda/go-sqldb"
 )
 
-var DefaultArgFmt = "?%d"
+var DefaultArgFmt = "?"
 
 func New(ctx context.Context, queryWriter io.Writer, rowsProvider RowsProvider) sqldb.Connection {
 	return &connection{

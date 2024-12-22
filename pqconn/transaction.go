@@ -10,7 +10,7 @@ import (
 )
 
 type transaction struct {
-	sqldb.StdQueryFormatter
+	QueryFormatter
 
 	// The parent non-transaction connection is needed
 	// for its ctx, Ping(), Stats(), and Config()

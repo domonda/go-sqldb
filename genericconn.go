@@ -9,9 +9,6 @@ import (
 
 // NewGenericConn returns a generic Connection implementation
 // for an existing sql.DB connection.
-// argFmt is the format string for argument placeholders like "?" or "$%d"
-// that will be replaced error messages to format a complete query.
-
 func NewGenericConn(db *sql.DB, config *Config, queryFormatter QueryFormatter) Connection {
 	return &genericConn{
 		QueryFormatter: queryFormatter,

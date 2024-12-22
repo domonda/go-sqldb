@@ -3,6 +3,7 @@ package mssqlconn
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 )
 
 const (
@@ -35,5 +36,5 @@ func (f QueryFormatter) FormatPlaceholder(paramIndex int) string {
 	if paramIndex < 0 {
 		panic("paramIndex must be greater or equal zero")
 	}
-	return fmt.Sprintf("?%d", paramIndex+1)
+	return "@p" + strconv.Itoa(paramIndex+1)
 }

@@ -27,7 +27,7 @@ func Test_wrapErrorWithQuery(t *testing.T) {
 			args: args{
 				err:      sql.ErrNoRows,
 				query:    `SELECT * FROM table WHERE b = $2 AND a = $1`,
-				queryFmt: sqldb.StdQueryFormatter{PlaceholderFmt: "$%d"},
+				queryFmt: sqldb.StdQueryFormatter{},
 				args:     []any{1, "2"},
 			},
 			wantError: fmt.Sprintf("%s from query: %s", sql.ErrNoRows, `SELECT * FROM table WHERE b = '2' AND a = 1`),
@@ -41,7 +41,7 @@ func Test_wrapErrorWithQuery(t *testing.T) {
 					FROM table
 					WHERE b = $2
 						AND a = $1`,
-				queryFmt: sqldb.StdQueryFormatter{PlaceholderFmt: "$%d"},
+				queryFmt: sqldb.StdQueryFormatter{PlaceholderPosPrefix: "$"},
 				args:     []any{1, "2"},
 			},
 			wantError: fmt.Sprintf(
