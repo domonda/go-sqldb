@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 
 	"github.com/domonda/go-sqldb"
@@ -202,6 +203,69 @@ func insertStructValues(table string, rowStruct any, namer StructReflector, igno
 		return nil, nil, fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, _, vals = ReflectStructValues(v, namer, append(ignoreColumns, IgnoreReadOnly))
+	columns, _, vals = ReflectStructValues(v, namer, append(ignoreColumns, IgnoreReadOnly)...)
 	return columns, vals, nil
+}
+
+func CreateTableForStruct(ctx context.Context, typeMap map[reflect.Type]string, rowStruct StructWithTableName) error {
+	conn := Conn(ctx)
+	v := reflect.ValueOf(rowStruct)
+	tableName, err := DefaultStructReflector.TableNameForStruct(v.Type())
+	if err != nil {
+		return err
+	}
+	tableName, err = conn.FormatTableName(tableName)
+	if err != nil {
+		return err
+	}
+	columns, pkCols, fields := ReflectStructFieldTypes(v, DefaultStructReflector)
+	if len(columns) == 0 {
+		return fmt.Errorf("CreateTableForStruct %s: no columns at struct %T", tableName, rowStruct)
+	}
+
+	var query strings.Builder
+	fmt.Fprintf(&query, "CREATE TABLE %s (\n  ", tableName)
+	for i, column := range columns {
+		fieldType := fields[i]
+		column, err = conn.FormatColumnName(column)
+		if err != nil {
+			return err
+		}
+		columnType := typeMap[fieldType]
+		if columnType == "" {
+			return fmt.Errorf("CreateTableForStruct %s: no column type for field %s of type %s", tableName, column, fieldType)
+		}
+		if i > 0 {
+			query.WriteString(",\n  ")
+		}
+		fmt.Fprint(&query, column, " ", columnType)
+		if pk := slices.Contains(pkCols, i); pk {
+			query.WriteString(" PRIMARY KEY")
+		} else if !sqldb.IsNullable(fieldType) {
+			query.WriteString(" NOT NULL")
+		}
+		// TODO default
+	}
+	query.WriteString("\n)")
+
+	return Exec(ctx, query.String())
+}
+
+func CreateTablesAndInsertStructs(ctx context.Context, typeMap map[reflect.Type]string, tables ...[]StructWithTableName) error {
+	for _, rows := range tables {
+		if len(rows) == 0 {
+			continue
+		}
+		err := CreateTableForStruct(ctx, typeMap, rows[0])
+		if err != nil {
+			return err
+		}
+		for _, row := range rows {
+			err := InsertStructWithTableName(ctx, row)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

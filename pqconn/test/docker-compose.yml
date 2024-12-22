@@ -10,3 +10,4 @@ services:
       # Use 5433 as the host port to avoid conflicts with
       # a local PostgreSQL using the default port 5432
       - "5433:5432"
+    # fsync=off, full_page_writes=off, work_mem, shared_buffers=512MB ?

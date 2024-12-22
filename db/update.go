@@ -104,7 +104,7 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		return fmt.Errorf("UpdateStruct of table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, pkCols, vals := ReflectStructValues(v, DefaultStructReflector, append(ignoreColumns, IgnoreReadOnly))
+	columns, pkCols, vals := ReflectStructValues(v, DefaultStructReflector, append(ignoreColumns, IgnoreReadOnly)...)
 	if len(pkCols) == 0 {
 		return fmt.Errorf("UpdateStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
