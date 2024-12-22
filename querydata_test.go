@@ -21,7 +21,7 @@ func TestNormalizedQueryData(t *testing.T) {
 			`,
 			args: []any{"Alice", 30},
 			want: QueryData{
-				Query: `SELECT * FROM public.user WHERE "name" = $1 AND age = $2`,
+				Query: `SELECT * FROM public.user WHERE "name" = $1 and age = $2`,
 				Args:  []any{"Alice", 30},
 			},
 		},

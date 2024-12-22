@@ -74,8 +74,8 @@ func InsertUnique(ctx context.Context, table string, values Values, onConflict s
 // 	return conn.QueryRow(query.String(), vals...) // TODO wrap error with query
 // }
 
-// InsertStruct inserts a new row into table using the connection's
-// StructFieldMapper to map struct fields to column names.
+// InsertStruct inserts a new row into table using the
+// DefaultStructReflector to map struct fields to column names.
 // Optional ColumnFilter can be passed to ignore mapped columns.
 func InsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumns ...ColumnFilter) error {
 	conn := Conn(ctx)
@@ -97,22 +97,22 @@ func InsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 	return nil
 }
 
-// InsertStructWithTableName inserts a new row into table using the connection's
-// StructFieldMapper to map struct fields to column names.
+// InsertStructWithTableName inserts a new row into table using the
+// DefaultStructReflector to map struct fields to column names.
 // Optional ColumnFilter can be passed to ignore mapped columns.
-func InsertStructWithTableName(ctx context.Context, row StructWithTableName, ignoreColumns ...ColumnFilter) error {
-	table, err := DefaultStructReflector.TableNameForStruct(reflect.TypeOf(row))
+func InsertStructWithTableName(ctx context.Context, rowStruct StructWithTableName, ignoreColumns ...ColumnFilter) error {
+	table, err := DefaultStructReflector.TableNameForStruct(reflect.TypeOf(rowStruct))
 	if err != nil {
 		return err
 	}
-	return InsertStruct(ctx, table, row, ignoreColumns...)
+	return InsertStruct(ctx, table, rowStruct, ignoreColumns...)
 }
 
-// InsertUniqueStruct inserts a new row into table using the connection's
-// StructFieldMapper to map struct fields to column names.
+// InsertUniqueStruct inserts a new row into table using the
+// DefaultStructReflector to map struct fields to column names.
 // Optional ColumnFilter can be passed to ignore mapped columns.
 // Does nothing if the onConflict statement applies
-// and returns if a row was inserted.
+// and returns true if a row was inserted.
 func InsertUniqueStruct(ctx context.Context, table string, rowStruct any, onConflict string, ignoreColumns ...ColumnFilter) (inserted bool, err error) {
 	conn := Conn(ctx)
 	columns, vals, err := insertStructValues(table, rowStruct, DefaultStructReflector, ignoreColumns)

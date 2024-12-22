@@ -15,10 +15,17 @@ type QueryData struct {
 var queryNormalizer = sqllexer.NewNormalizer(
 	sqllexer.WithCollectCommands(true),
 	sqllexer.WithCollectTables(true),
-	sqllexer.WithUppercaseKeywords(true),
 	sqllexer.WithKeepSQLAlias(true),
+	sqllexer.WithRemoveSpaceBetweenParentheses(true),
 	sqllexer.WithKeepIdentifierQuotation(true),
 )
+
+func NewQueryData(query string, args []any, normalize bool) (QueryData, error) {
+	if normalize {
+		return NormalizedQueryData(query, args)
+	}
+	return UnchangedQueryData(query, args)
+}
 
 func UnchangedQueryData(query string, args []any) (QueryData, error) {
 	_, _, err := queryNormalizer.Normalize(query)

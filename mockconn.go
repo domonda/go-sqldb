@@ -16,9 +16,14 @@ var _ ListenerConnection = new(MockConn)
 // return sane defaults and no errors,
 // exept for methods with a context argument
 // where the context error is returned.
+//
+// If QueryFormatter is nil, StdQueryFormatter is used.
+//
+// If TxNo is returned by TransactionInfo
+// and a non zero value simulates a transaction.
 type MockConn struct {
-	QueryFormatter
-	TxNo uint64
+	QueryFormatter        // StdQueryFormatter{} is used if nil
+	TxNo           uint64 // Returned by TransactionInfo
 
 	MockPing                 func(context.Context, time.Duration) error
 	MockStats                func() sql.DBStats
@@ -34,6 +39,27 @@ type MockConn struct {
 	MockUnlistenChannel      func(channel string) error
 	MockIsListeningOnChannel func(channel string) bool
 	MockClose                func() error
+}
+
+func (e *MockConn) FormatTableName(name string) (string, error) {
+	if e.QueryFormatter == nil {
+		return StdQueryFormatter{}.FormatTableName(name)
+	}
+	return e.QueryFormatter.FormatTableName(name)
+}
+
+func (e *MockConn) FormatColumnName(name string) (string, error) {
+	if e.QueryFormatter == nil {
+		return StdQueryFormatter{}.FormatColumnName(name)
+	}
+	return e.QueryFormatter.FormatColumnName(name)
+}
+
+func (e *MockConn) FormatPlaceholder(paramIndex int) string {
+	if e.QueryFormatter == nil {
+		return StdQueryFormatter{}.FormatPlaceholder(paramIndex)
+	}
+	return e.QueryFormatter.FormatPlaceholder(paramIndex)
 }
 
 func (e *MockConn) Ping(ctx context.Context, timeout time.Duration) error {
@@ -127,4 +153,44 @@ func (e *MockConn) Close() error {
 		return nil
 	}
 	return e.MockClose()
+}
+
+// ----------------------------------------------------------------------------
+
+type MockConnRecording struct {
+	Execs   []QueryData
+	Queries []QueryData
+}
+
+type RecordingMockConn struct {
+	MockConn
+	MockConnRecording
+	Normalize bool
+}
+
+func NewRecordingMockConn(placeholderFmt string, normalize bool) *RecordingMockConn {
+	return &RecordingMockConn{
+		MockConn: MockConn{
+			QueryFormatter: StdQueryFormatter{PlaceholderFmt: placeholderFmt},
+		},
+		Normalize: normalize,
+	}
+}
+
+func (c *RecordingMockConn) Exec(ctx context.Context, query string, args ...any) error {
+	queryData, err := NewQueryData(query, args, c.Normalize)
+	if err != nil {
+		return err
+	}
+	c.Execs = append(c.Execs, queryData)
+	return c.MockConn.Exec(ctx, query, args...)
+}
+
+func (c *RecordingMockConn) Query(ctx context.Context, query string, args ...any) Rows {
+	queryData, err := NewQueryData(query, args, c.Normalize)
+	if err != nil {
+		return NewErrRows(err)
+	}
+	c.Queries = append(c.Queries, queryData)
+	return c.MockConn.Query(ctx, query, args...)
 }
