@@ -10,7 +10,7 @@ import (
 )
 
 func TestInsertStructWithTableName(t *testing.T) {
-	type S struct {
+	type Struct1 struct {
 		TableName `db:"my_table"`
 
 		ID   int    `db:"id,pk"`
@@ -27,7 +27,7 @@ func TestInsertStructWithTableName(t *testing.T) {
 	}{
 		{
 			name: "simple",
-			rowStruct: &S{
+			rowStruct: &Struct1{
 				ID:   1,
 				Name: "test",
 			},
@@ -37,6 +37,17 @@ func TestInsertStructWithTableName(t *testing.T) {
 					{Query: "INSERT INTO my_table(id,name) VALUES($1,$2)", Args: []any{1, "test"}},
 				},
 			},
+		},
+		// Error cases
+		{
+			name: "TableName without name tag",
+			rowStruct: struct {
+				TableName
+				ID   int    `db:"id,pk"`
+				Name string `db:"name"`
+			}{},
+			conn:    sqldb.NewRecordingMockConn("$%d", false),
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
