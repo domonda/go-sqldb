@@ -22,8 +22,6 @@ type QueryFormatter interface {
 	FormatPlaceholder(paramIndex int) string
 }
 
-var stdNameRegexp = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
-
 type StdQueryFormatter struct {
 	// PlaceholderPosPrefix is prefixed before
 	// the one based placeholder position number in queries.
@@ -39,15 +37,20 @@ type StdQueryFormatter struct {
 	PlaceholderPosPrefix string
 }
 
+var (
+	stdTableNameRegexp  = regexp.MustCompile(`^([a-zA-Z_][a-zA-Z0-9_]*\.)?[a-zA-Z_][a-zA-Z0-9_]*$`)
+	stdColumnNameRegexp = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
+)
+
 func (StdQueryFormatter) FormatTableName(name string) (string, error) {
-	if !stdNameRegexp.MatchString(name) {
+	if !stdTableNameRegexp.MatchString(name) {
 		return "", fmt.Errorf("invalid table name %q", name)
 	}
 	return name, nil
 }
 
 func (StdQueryFormatter) FormatColumnName(name string) (string, error) {
-	if !stdNameRegexp.MatchString(name) {
+	if !stdColumnNameRegexp.MatchString(name) {
 		return "", fmt.Errorf("invalid column name %q", name)
 	}
 	return name, nil

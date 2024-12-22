@@ -10,9 +10,7 @@ import (
 	"github.com/domonda/go-sqldb"
 )
 
-const (
-	Driver = "postgres"
-)
+const Driver = "postgres"
 
 // New creates a new sqldb.Connection using the passed sqldb.Config
 // and github.com/lib/pq as driver implementation.

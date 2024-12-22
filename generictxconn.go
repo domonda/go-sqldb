@@ -10,7 +10,7 @@ import (
 type genericTxConn struct {
 	QueryFormatter
 	// The parent non-transaction connection is needed
-	// for its ctx, Ping(), Stats(), and Config()
+	// for Ping(), Stats(), Config(), and Begin().
 	parent *genericConn
 	tx     *sql.Tx
 	opts   *sql.TxOptions

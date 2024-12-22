@@ -9,9 +9,9 @@ import (
 
 // NewGenericConn returns a generic Connection implementation
 // for an existing sql.DB connection.
-func NewGenericConn(db *sql.DB, config *Config, queryFormatter QueryFormatter) Connection {
+func NewGenericConn(db *sql.DB, config *Config, queryFmt QueryFormatter) Connection {
 	return &genericConn{
-		QueryFormatter: queryFormatter,
+		QueryFormatter: queryFmt,
 		db:             db,
 		config:         config,
 	}

@@ -48,10 +48,11 @@ type Connection interface {
 
 	// Begin a new transaction.
 	// If the connection is already a transaction then a brand
-	// new transaction will begin on the parent's connection.
+	// new transaction will begin based on the connection
+	// that started this transaction.
 	// The passed no will be returnd from the transaction's
 	// Connection.TransactionNo method.
-	// Implementations should use the package function NextTransactionNo
+	// Implementations should use the function NextTransactionNo
 	// to aquire a new number in a threadsafe way.
 	Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error)
 

@@ -1,0 +1,12 @@
+services:
+  test-postgres:
+    image: postgres:17.2-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpassword
+      POSTGRES_DB: testdb
+    ports:
+      # Use 5433 as the host port to avoid conflicts with
+      # a local PostgreSQL using the default port 5432
+      - "5433:5432"
