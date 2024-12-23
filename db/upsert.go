@@ -34,46 +34,58 @@ func UpsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		return fmt.Errorf("UpsertStruct to table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, pkCols, vals := ReflectStructValues(v, DefaultStructReflector, append(ignoreColumns, IgnoreReadOnly)...)
-	if len(pkCols) == 0 {
+	columns, vals := ReflectStructValues(v, DefaultStructReflector, append(ignoreColumns, IgnoreReadOnly)...)
+	hasPK := slices.ContainsFunc(columns, func(col Column) bool {
+		return col.PrimaryKey
+	})
+	if !hasPK {
 		return fmt.Errorf("UpsertStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
 
-	var b strings.Builder
-	err = writeInsertQuery(&b, table, columns, conn)
+	var query strings.Builder
+	err = writeInsertQuery(&query, table, columnNames(columns), conn)
 	if err != nil {
 		return err
 	}
-	b.WriteString(` ON CONFLICT(`)
-	for i, pkCol := range pkCols {
-		if i > 0 {
-			b.WriteByte(',')
-		}
-		fmt.Fprintf(&b, `"%s"`, columns[pkCol])
-	}
-
-	b.WriteString(`) DO UPDATE SET`)
+	query.WriteString(` ON CONFLICT(`)
 	first := true
 	for i := range columns {
-		if slices.Contains(pkCols, i) {
+		if !columns[i].PrimaryKey {
 			continue
 		}
 		if first {
 			first = false
 		} else {
-			b.WriteByte(',')
+			query.WriteByte(',')
 		}
-		column, err := conn.FormatColumnName(columns[i])
+		columnName, err := conn.FormatColumnName(columns[i].Name)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(&b, ` %s=%s`, column, conn.FormatPlaceholder(i))
+		query.WriteString(columnName)
 	}
-	query := b.String()
 
-	err = conn.Exec(ctx, query, vals...)
+	query.WriteString(`) DO UPDATE SET`)
+	first = true
+	for i := range columns {
+		if columns[i].PrimaryKey {
+			continue
+		}
+		if first {
+			first = false
+		} else {
+			query.WriteByte(',')
+		}
+		columnName, err := conn.FormatColumnName(columns[i].Name)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(&query, ` %s=%s`, columnName, conn.FormatPlaceholder(i))
+	}
+
+	err = conn.Exec(ctx, query.String(), vals...)
 	if err != nil {
-		return wrapErrorWithQuery(err, query, vals, conn)
+		return wrapErrorWithQuery(err, query.String(), vals, conn)
 	}
 	return nil
 }

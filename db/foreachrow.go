@@ -4,9 +4,12 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+
+	"github.com/domonda/go-sqldb"
 )
 
-// ForEachRowCallFunc will call the passed callback with scanned values or a struct for every row.
+// ForEachRowCallFunc returns a function that will call the
+// passed callback with scanned values or a struct for every row.
 // If the callback function has a single struct or struct pointer argument,
 // then RowScanner.ScanStruct will be used per row,
 // else RowScanner.Scan will be used for all arguments of the callback.
@@ -16,7 +19,7 @@ import (
 // If a non nil error is returned from the callback, then this error
 // is returned immediately by this function without scanning further rows.
 // In case of zero rows, no error will be returned.
-func ForEachRowCallFunc(ctx context.Context, callback any) (f func(*RowScanner) error, err error) {
+func ForEachRowCallFunc(ctx context.Context, reflector StructReflector, callback any) (f func(sqldb.Row) error, err error) {
 	val := reflect.ValueOf(callback)
 	typ := val.Type()
 	if typ.Kind() != reflect.Func {
@@ -43,7 +46,7 @@ func ForEachRowCallFunc(ctx context.Context, callback any) (f func(*RowScanner) 
 		}
 		switch t.Kind() {
 		case reflect.Struct:
-			if t.Implements(typeOfSQLScanner) || reflect.PtrTo(t).Implements(typeOfSQLScanner) {
+			if t.Implements(typeOfSQLScanner) || reflect.PointerTo(t).Implements(typeOfSQLScanner) {
 				continue
 			}
 			if structArg {
@@ -61,14 +64,14 @@ func ForEachRowCallFunc(ctx context.Context, callback any) (f func(*RowScanner) 
 		return nil, fmt.Errorf("ForEachRowCall callback function result must be of type error: %s", typ)
 	}
 
-	f = func(row *RowScanner) (err error) {
+	f = func(row sqldb.Row) (err error) {
 		// First scan row
 		scannedValPtrs := make([]any, typ.NumIn()-firstArg)
 		for i := range scannedValPtrs {
 			scannedValPtrs[i] = reflect.New(typ.In(firstArg + i)).Interface()
 		}
 		if structArg {
-			err = row.ScanStruct(scannedValPtrs[0])
+			err = scanStruct(row, reflector, scannedValPtrs[0])
 		} else {
 			err = row.Scan(scannedValPtrs...)
 		}

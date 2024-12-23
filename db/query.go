@@ -8,8 +8,6 @@ import (
 	"reflect"
 	"strings"
 	"time"
-
-	"github.com/domonda/go-sqldb"
 )
 
 // CurrentTimestamp returns the SQL CURRENT_TIMESTAMP
@@ -148,7 +146,7 @@ func GetRow[S StructWithTableName](ctx context.Context, pkValue any, pkValues ..
 	if err != nil {
 		return nil, err
 	}
-	pkColumns, err := pkColumnsOfStruct(conn, t)
+	pkColumns, err := pkColumnsOfStruct(DefaultStructReflector, t)
 	if err != nil {
 		return nil, err
 	}
@@ -184,31 +182,6 @@ func GetRowOrNil[S StructWithTableName](ctx context.Context, pkValue any, pkValu
 		return nil, err
 	}
 	return row, nil
-}
-
-func pkColumnsOfStruct(conn sqldb.Connection, t reflect.Type) (columns []string, err error) {
-	mapper := DefaultStructReflector
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		column, flags, ok := mapper.MapStructField(field)
-		if !ok {
-			continue
-		}
-
-		if column == "" {
-			columnsEmbed, err := pkColumnsOfStruct(conn, field.Type)
-			if err != nil {
-				return nil, err
-			}
-			columns = append(columns, columnsEmbed...)
-		} else if flags.PrimaryKey() {
-			// if err = conn.ValidateColumnName(column); err != nil {
-			// 	return nil, fmt.Errorf("%w in struct field %s.%s", err, t, field.Name)
-			// }
-			columns = append(columns, column)
-		}
-	}
-	return columns, nil
 }
 
 // QueryStructSlice returns queried rows as slice of the generic type S

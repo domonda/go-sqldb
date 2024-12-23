@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"slices"
 	"strings"
 
 	"github.com/domonda/go-sqldb"
@@ -191,7 +190,7 @@ func writeInsertQuery(w *strings.Builder, table string, columns []string, f sqld
 	return nil
 }
 
-func insertStructValues(table string, rowStruct any, namer StructReflector, ignoreColumns []ColumnFilter) (columns []string, vals []any, err error) {
+func insertStructValues(table string, rowStruct any, namer StructReflector, ignoreColumns []ColumnFilter) (names []string, vals []any, err error) {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
 		v = v.Elem()
@@ -203,8 +202,8 @@ func insertStructValues(table string, rowStruct any, namer StructReflector, igno
 		return nil, nil, fmt.Errorf("InsertStruct into table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, _, vals = ReflectStructValues(v, namer, append(ignoreColumns, IgnoreReadOnly)...)
-	return columns, vals, nil
+	columns, vals := ReflectStructValues(v, namer, append(ignoreColumns, IgnoreReadOnly)...)
+	return columnNames(columns), vals, nil
 }
 
 func CreateTableForStruct(ctx context.Context, typeMap map[reflect.Type]string, rowStruct StructWithTableName) error {
@@ -218,33 +217,32 @@ func CreateTableForStruct(ctx context.Context, typeMap map[reflect.Type]string, 
 	if err != nil {
 		return err
 	}
-	columns, pkCols, fields := ReflectStructFieldTypes(v, DefaultStructReflector)
+	columns, fields := ReflectStructFieldTypes(v, DefaultStructReflector)
 	if len(columns) == 0 {
 		return fmt.Errorf("CreateTableForStruct %s: no columns at struct %T", tableName, rowStruct)
 	}
 
 	var query strings.Builder
 	fmt.Fprintf(&query, "CREATE TABLE %s (\n  ", tableName)
-	for i, column := range columns {
+	for i := range columns {
 		fieldType := fields[i]
-		column, err = conn.FormatColumnName(column)
+		columnName, err := conn.FormatColumnName(columns[i].Name)
 		if err != nil {
 			return err
 		}
 		columnType := typeMap[fieldType]
 		if columnType == "" {
-			return fmt.Errorf("CreateTableForStruct %s: no column type for field %s of type %s", tableName, column, fieldType)
+			return fmt.Errorf("CreateTableForStruct %s: no column type for field %s of type %s", tableName, columnName, fieldType)
 		}
 		if i > 0 {
 			query.WriteString(",\n  ")
 		}
-		fmt.Fprint(&query, column, " ", columnType)
-		if pk := slices.Contains(pkCols, i); pk {
+		fmt.Fprint(&query, columnName, " ", columnType)
+		if columns[i].PrimaryKey {
 			query.WriteString(" PRIMARY KEY")
 		} else if !sqldb.IsNullable(fieldType) {
 			query.WriteString(" NOT NULL")
 		}
-		// TODO default
 	}
 	query.WriteString("\n)")
 

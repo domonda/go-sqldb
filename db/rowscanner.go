@@ -54,29 +54,29 @@ func (s *RowScanner) Scan(dest ...any) (err error) {
 	return s.rows.Scan(dest...)
 }
 
-// TODO integrate ScanStruct into Scan
-func (s *RowScanner) ScanStruct(dest any) (err error) {
-	defer func() {
-		err = errors.Join(err, s.rows.Close())
-		if err != nil {
-			err = wrapErrorWithQuery(err, s.query, s.args, s.queryFmt)
-		}
-	}()
+// // TODO integrate ScanStruct into Scan ?
+// func (s *RowScanner) ScanStruct(dest any) (err error) {
+// 	defer func() {
+// 		err = errors.Join(err, s.rows.Close())
+// 		if err != nil {
+// 			err = wrapErrorWithQuery(err, s.query, s.args, s.queryFmt)
+// 		}
+// 	}()
 
-	// Check if there was an error even before preparing the row with Next()
-	if s.rows.Err() != nil {
-		return s.rows.Err()
-	}
-	if !s.rows.Next() {
-		// Error during preparing the row with Next()
-		if s.rows.Err() != nil {
-			return s.rows.Err()
-		}
-		return sql.ErrNoRows
-	}
+// 	// Check if there was an error even before preparing the row with Next()
+// 	if s.rows.Err() != nil {
+// 		return s.rows.Err()
+// 	}
+// 	if !s.rows.Next() {
+// 		// Error during preparing the row with Next()
+// 		if s.rows.Err() != nil {
+// 			return s.rows.Err()
+// 		}
+// 		return sql.ErrNoRows
+// 	}
 
-	return scanStruct(s.rows, s.reflector, dest)
-}
+// 	return scanStruct(s.rows, s.reflector, dest)
+// }
 
 // ScanValues returns the values of a row exactly how they are
 // passed from the database driver to an `sql.Scanner`.

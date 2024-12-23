@@ -8,29 +8,24 @@ import (
 	"github.com/domonda/go-types/strutil"
 )
 
-// FieldFlag is a bitmask for special properties
-// of how struct fields relate to database columns.
-type FieldFlag uint
+type Column struct {
+	Name       string
+	PrimaryKey bool
+	HasDefault bool
+	ReadOnly   bool
+}
 
-// PrimaryKey indicates if FieldFlagPrimaryKey is set
-func (f FieldFlag) PrimaryKey() bool { return f&FieldFlagPrimaryKey != 0 }
+func (c *Column) IsEmbeddedField() bool {
+	return c.Name == ""
+}
 
-// ReadOnly indicates if FieldFlagReadOnly is set
-func (f FieldFlag) ReadOnly() bool { return f&FieldFlagReadOnly != 0 }
-
-// Default indicates if FieldFlagDefault is set
-func (f FieldFlag) Default() bool { return f&FieldFlagDefault != 0 }
-
-const (
-	// FieldFlagPrimaryKey marks a field as primary key
-	FieldFlagPrimaryKey FieldFlag = 1 << iota
-
-	// FieldFlagReadOnly marks a field as read-only
-	FieldFlagReadOnly
-
-	// FieldFlagDefault marks a field as having a column default value
-	FieldFlagDefault
-)
+func columnNames(columns []Column) []string {
+	names := make([]string, len(columns))
+	for i := range columns {
+		names[i] = columns[i].Name
+	}
+	return names
+}
 
 // StructReflector is used to map struct type fields to column names
 // and indicate special column properies via flags.
@@ -38,12 +33,11 @@ type StructReflector interface {
 	// TableNameForStruct returns the table name for a struct type
 	TableNameForStruct(t reflect.Type) (table string, err error)
 
-	// MapStructField returns the column name for a reflected struct field
-	// and flags for special column properies.
+	// MapStructField returns the Column information for a reflected struct field
 	// If false is returned for use then the field is not mapped.
 	// An empty name and true for use indicates an embedded struct
 	// field whose fields should be recursively mapped.
-	MapStructField(field reflect.StructField) (column string, flags FieldFlag, use bool)
+	MapStructField(field reflect.StructField) (column Column, use bool)
 }
 
 // NewTaggedStructReflector returns a default mapping.
@@ -85,53 +79,48 @@ func (m *TaggedStructReflector) TableNameForStruct(t reflect.Type) (table string
 	return TableNameForStruct(t, m.NameTag)
 }
 
-func (m *TaggedStructReflector) MapStructField(field reflect.StructField) (column string, flags FieldFlag, use bool) {
+func (m *TaggedStructReflector) MapStructField(field reflect.StructField) (column Column, use bool) {
 	if field.Anonymous {
-		column, hasTag := field.Tag.Lookup(m.NameTag)
+		tag, hasTag := field.Tag.Lookup(m.NameTag)
 		if !hasTag {
 			// Embedded struct fields are ok if not tagged with IgnoreName
-			return "", 0, true
+			return Column{}, true
 		}
-		if i := strings.IndexByte(column, ','); i != -1 {
-			column = column[:i]
-		}
+		columnName, _, _ := strings.Cut(tag, ",")
+		columnName = strings.TrimSpace(columnName)
 		// Embedded struct fields are ok if not tagged with IgnoreName
-		return "", 0, column != m.Ignore
+		return Column{}, columnName != m.Ignore
 	}
 	if !field.IsExported() {
 		// Not exported struct fields that are not
 		// anonymously embedded structs are not ok
-		return "", 0, false
+		return Column{}, false
 	}
 
 	tag, hasTag := field.Tag.Lookup(m.NameTag)
 	if hasTag {
-		for i, part := range strings.Split(tag, ",") {
-			// First part is the name
-			if i == 0 {
-				column = part
-				continue
-			}
-			// Follow on parts are flags
-			switch part {
-			case "":
-				// Ignore empty flags
+		column.Name, tag, _ = strings.Cut(tag, ",")
+		column.Name = strings.TrimSpace(column.Name)
+
+		for val, tag, ok := strings.Cut(tag, ","); ok; val, tag, ok = strings.Cut(tag, ",") {
+			switch strings.TrimSpace(val) {
 			case m.PrimaryKey:
-				flags |= FieldFlagPrimaryKey
+				column.PrimaryKey = true
 			case m.ReadOnly:
-				flags |= FieldFlagReadOnly
+				column.ReadOnly = true
 			case m.Default:
-				flags |= FieldFlagDefault
+				column.HasDefault = true
 			}
 		}
+
 	} else {
-		column = m.UntaggedNameFunc(field.Name)
+		column.Name = m.UntaggedNameFunc(field.Name)
 	}
 
-	if column == "" || column == m.Ignore {
-		return "", 0, false
+	if column.Name == "" || column.Name == m.Ignore {
+		return Column{}, false
 	}
-	return column, flags, true
+	return column, true
 }
 
 func (n TaggedStructReflector) String() string {

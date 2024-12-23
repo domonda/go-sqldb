@@ -104,16 +104,19 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		return fmt.Errorf("UpdateStruct of table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, pkCols, vals := ReflectStructValues(v, DefaultStructReflector, append(ignoreColumns, IgnoreReadOnly)...)
-	if len(pkCols) == 0 {
+	columns, vals := ReflectStructValues(v, DefaultStructReflector, append(ignoreColumns, IgnoreReadOnly)...)
+	hasPK := slices.ContainsFunc(columns, func(col Column) bool {
+		return col.PrimaryKey
+	})
+	if !hasPK {
 		return fmt.Errorf("UpdateStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
 
 	var b strings.Builder
 	fmt.Fprintf(&b, `UPDATE %s SET`, table)
 	first := true
-	for i, column := range columns {
-		if slices.Contains(pkCols, i) {
+	for i := range columns {
+		if columns[i].PrimaryKey {
 			continue
 		}
 		if first {
@@ -121,23 +124,29 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		} else {
 			b.WriteByte(',')
 		}
-		column, err = conn.FormatColumnName(column)
+		columnName, err := conn.FormatColumnName(columns[i].Name)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(&b, ` %s=%s`, column, conn.FormatPlaceholder(i))
+		fmt.Fprintf(&b, ` %s=%s`, columnName, conn.FormatPlaceholder(i))
 	}
 
 	b.WriteString(` WHERE `)
-	for i, pkCol := range pkCols {
-		if i > 0 {
+	first = true
+	for i := range columns {
+		if !columns[i].PrimaryKey {
+			continue
+		}
+		if first {
+			first = false
+		} else {
 			b.WriteString(` AND `)
 		}
-		column, err := conn.FormatColumnName(columns[pkCol])
+		columnName, err := conn.FormatColumnName(columns[i].Name)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(&b, `%s=%s`, column, conn.FormatPlaceholder(i))
+		fmt.Fprintf(&b, `%s=%s`, columnName, conn.FormatPlaceholder(i))
 	}
 
 	query := b.String()

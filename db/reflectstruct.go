@@ -8,70 +8,57 @@ import (
 	"strings"
 )
 
-func ReflectStructValues(structVal reflect.Value, reflctor StructReflector, ignoreColumns ...ColumnFilter) (columns []string, pkCols []int, values []any) {
+func ReflectStructValues(structVal reflect.Value, reflector StructReflector, ignoreColumns ...ColumnFilter) (columns []Column, values []any) {
 	for i := 0; i < structVal.NumField(); i++ {
 		structField := structVal.Type().Field(i)
-		column, flags, use := reflctor.MapStructField(structField)
+		column, use := reflector.MapStructField(structField)
 		if !use {
 			continue
 		}
 		fieldValue := structVal.Field(i)
 
-		if column == "" {
+		if column.IsEmbeddedField() {
 			// Embedded struct field
-			columnsEmbed, pkColsEmbed, valuesEmbed := ReflectStructValues(fieldValue, reflctor, ignoreColumns...)
-			for _, pkCol := range pkColsEmbed {
-				pkCols = append(pkCols, pkCol+len(columns))
-			}
+			columnsEmbed, valuesEmbed := ReflectStructValues(fieldValue, reflector, ignoreColumns...)
 			columns = append(columns, columnsEmbed...)
 			values = append(values, valuesEmbed...)
 			continue
 		}
 
-		if ignoreColumn(ignoreColumns, column, flags, structField, fieldValue) {
+		if ignoreColumn(ignoreColumns, column, structField, fieldValue) {
 			continue
 		}
 
-		if flags.PrimaryKey() {
-			pkCols = append(pkCols, len(columns))
-		}
 		columns = append(columns, column)
 		values = append(values, fieldValue.Interface())
 	}
-	return columns, pkCols, values
+	return columns, values
 }
 
-func ReflectStructFieldTypes(structVal reflect.Value, reflctor StructReflector, ignoreColumns ...ColumnFilter) (columns []string, pkCols []int, fields []reflect.Type) {
+func ReflectStructFieldTypes(structVal reflect.Value, reflctor StructReflector, ignoreColumns ...ColumnFilter) (columns []Column, fields []reflect.Type) {
 	for i := 0; i < structVal.NumField(); i++ {
 		structField := structVal.Type().Field(i)
-		column, flags, use := reflctor.MapStructField(structField)
+		column, use := reflctor.MapStructField(structField)
 		if !use {
 			continue
 		}
 		fieldValue := structVal.Field(i)
 
-		if column == "" {
-			// Embedded struct field
-			columnsEmbed, pkColsEmbed, fieldsEmbed := ReflectStructFieldTypes(fieldValue, reflctor, ignoreColumns...)
-			for _, pkCol := range pkColsEmbed {
-				pkCols = append(pkCols, pkCol+len(columns))
-			}
+		if column.IsEmbeddedField() {
+			columnsEmbed, fieldsEmbed := ReflectStructFieldTypes(fieldValue, reflctor, ignoreColumns...)
 			columns = append(columns, columnsEmbed...)
 			fields = append(fields, fieldsEmbed...)
 			continue
 		}
 
-		if ignoreColumn(ignoreColumns, column, flags, structField, fieldValue) {
+		if ignoreColumn(ignoreColumns, column, structField, fieldValue) {
 			continue
 		}
 
-		if flags.PrimaryKey() {
-			pkCols = append(pkCols, len(columns))
-		}
 		columns = append(columns, column)
 		fields = append(fields, structField.Type)
 	}
-	return columns, pkCols, fields
+	return columns, fields
 }
 
 func ReflectStructColumnPointers(structVal reflect.Value, namer StructReflector, columns []string) (pointers []any, err error) {
@@ -106,14 +93,13 @@ func reflectStructColumnPointers(structVal reflect.Value, namer StructReflector,
 	structType := structVal.Type()
 	for i := 0; i < structType.NumField(); i++ {
 		field := structType.Field(i)
-		column, _, use := namer.MapStructField(field)
+		column, use := namer.MapStructField(field)
 		if !use {
 			continue
 		}
 		fieldValue := structVal.Field(i)
 
-		if column == "" {
-			// Embedded struct field
+		if column.IsEmbeddedField() {
 			err := reflectStructColumnPointers(fieldValue, namer, columns, pointers)
 			if err != nil {
 				return err
@@ -121,13 +107,13 @@ func reflectStructColumnPointers(structVal reflect.Value, namer StructReflector,
 			continue
 		}
 
-		colIndex := slices.Index(columns, column)
+		colIndex := slices.Index(columns, column.Name)
 		if colIndex == -1 {
 			continue
 		}
 
 		if pointers[colIndex] != nil {
-			return fmt.Errorf("duplicate mapped column %s onto field %s of struct %s", column, field.Name, structType)
+			return fmt.Errorf("duplicate mapped column %s onto field %s of struct %s", column.Name, field.Name, structType)
 		}
 
 		pointer := fieldValue.Addr().Interface()
@@ -143,11 +129,35 @@ func reflectStructColumnPointers(structVal reflect.Value, namer StructReflector,
 	return nil
 }
 
-func ignoreColumn(filters []ColumnFilter, name string, flags FieldFlag, fieldType reflect.StructField, fieldValue reflect.Value) bool {
+func ignoreColumn(filters []ColumnFilter, column Column, fieldType reflect.StructField, fieldValue reflect.Value) bool {
 	for _, filter := range filters {
-		if filter.IgnoreColumn(name, flags, fieldType, fieldValue) {
+		if filter.IgnoreColumn(column, fieldType, fieldValue) {
 			return true
 		}
 	}
 	return false
+}
+
+func pkColumnsOfStruct(reflector StructReflector, t reflect.Type) (columns []string, err error) {
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		column, ok := reflector.MapStructField(field)
+		if !ok {
+			continue
+		}
+
+		if column.Name == "" {
+			columnsEmbed, err := pkColumnsOfStruct(reflector, field.Type)
+			if err != nil {
+				return nil, err
+			}
+			columns = append(columns, columnsEmbed...)
+		} else if column.PrimaryKey {
+			// if err = conn.ValidateColumnName(column); err != nil {
+			// 	return nil, fmt.Errorf("%w in struct field %s.%s", err, t, field.Name)
+			// }
+			columns = append(columns, column.Name)
+		}
+	}
+	return columns, nil
 }

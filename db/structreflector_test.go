@@ -53,32 +53,28 @@ func TestTaggedStructReflector_StructFieldName(t *testing.T) {
 	tests := []struct {
 		name        string
 		structField reflect.StructField
-		wantColumn  string
-		wantFlags   FieldFlag
+		wantColumn  Column
 		wantOk      bool
 	}{
-		{name: "index", structField: st.Field(0), wantColumn: "index", wantFlags: FieldFlagPrimaryKey, wantOk: true},
-		{name: "index_b", structField: st.Field(1), wantColumn: "index_b", wantFlags: FieldFlagPrimaryKey, wantOk: true},
-		{name: "named_str", structField: st.Field(2), wantColumn: "named_str", wantFlags: 0, wantOk: true},
-		{name: "read_only", structField: st.Field(3), wantColumn: "read_only", wantFlags: FieldFlagReadOnly, wantOk: true},
-		{name: "untagged_field", structField: st.Field(4), wantColumn: "untagged_field", wantFlags: 0, wantOk: true},
-		{name: "ignore", structField: st.Field(5), wantColumn: "", wantFlags: 0, wantOk: false},
-		{name: "pk_read_only", structField: st.Field(6), wantColumn: "pk_read_only", wantFlags: FieldFlagPrimaryKey | FieldFlagReadOnly, wantOk: true},
-		{name: "no_flag", structField: st.Field(7), wantColumn: "no_flag", wantFlags: 0, wantOk: true},
-		{name: "malformed_flags", structField: st.Field(8), wantColumn: "malformed_flags", wantFlags: FieldFlagReadOnly, wantOk: true},
-		{name: "Embedded", structField: st.Field(9), wantColumn: "", wantFlags: 0, wantOk: true},
+		{name: "index", structField: st.Field(0), wantColumn: Column{Name: "index", PrimaryKey: true}, wantOk: true},
+		{name: "index_b", structField: st.Field(1), wantColumn: Column{Name: "index_b", PrimaryKey: true}, wantOk: true},
+		{name: "named_str", structField: st.Field(2), wantColumn: Column{Name: "named_str"}, wantOk: true},
+		{name: "read_only", structField: st.Field(3), wantColumn: Column{Name: "read_only", ReadOnly: true}, wantOk: true},
+		{name: "untagged_field", structField: st.Field(4), wantColumn: Column{Name: "untagged_field"}, wantOk: true},
+		{name: "ignore", structField: st.Field(5), wantColumn: Column{}, wantOk: false},
+		{name: "pk_read_only", structField: st.Field(6), wantColumn: Column{Name: "pk_read_only", PrimaryKey: true, ReadOnly: true}, wantOk: true},
+		{name: "no_flag", structField: st.Field(7), wantColumn: Column{Name: "no_flag"}, wantOk: true},
+		{name: "malformed_flags", structField: st.Field(8), wantColumn: Column{Name: "malformed_flags", ReadOnly: true}, wantOk: true},
+		{name: "Embedded", structField: st.Field(9), wantColumn: Column{}, wantOk: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotColumn, gotFlags, gotOk := naming.MapStructField(tt.structField)
+			gotColumn, gotOk := naming.MapStructField(tt.structField)
 			if gotColumn != tt.wantColumn {
-				t.Errorf("TaggedStructReflector.MapStructField(%q) gotColumn = %q, want %q", tt.structField.Name, gotColumn, tt.wantColumn)
-			}
-			if gotFlags != tt.wantFlags {
-				t.Errorf("TaggedStructReflector.MapStructField(%q) gotFlags = %v, want %v", tt.structField.Name, gotFlags, tt.wantFlags)
+				t.Errorf("TaggedStructReflector.MapStructField(%#v) gotColumn = %#v, want %#v", tt.structField.Name, gotColumn, tt.wantColumn)
 			}
 			if gotOk != tt.wantOk {
-				t.Errorf("TaggedStructReflector.MapStructField(%q) gotOk = %v, want %v", tt.structField.Name, gotOk, tt.wantOk)
+				t.Errorf("TaggedStructReflector.MapStructField(%#v) gotOk = %#v, want %#v", tt.structField.Name, gotOk, tt.wantOk)
 			}
 		})
 	}

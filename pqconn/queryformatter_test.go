@@ -31,8 +31,9 @@ func TestQueryFormatter_FormatColumnName(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		{name: "column", want: "column"},
-		{name: "public.my_table", wantErr: true},
+		{name: `column`, want: `"column"`},
+		{name: `Hello_World`, want: `Hello_World`},
+		{name: `public.my_table`, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

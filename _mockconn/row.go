@@ -36,7 +36,8 @@ func (r *Row) Columns() ([]string, error) {
 	columns := make([]string, r.rowStructVal.NumField())
 	for i := range columns {
 		field := r.rowStructVal.Type().Field(i)
-		columns[i], _, _ = r.columnNamer.MapStructField(field)
+		col, _ = r.columnNamer.MapStructField(field)
+		columns[i] = col.Name
 	}
 	return columns, nil
 }
