@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestToSnakeCase(t *testing.T) {
@@ -26,7 +27,7 @@ func TestToSnakeCase(t *testing.T) {
 	}
 }
 
-func TestTaggedStructReflector_StructFieldName(t *testing.T) {
+func TestTaggedStructReflector_MapStructField(t *testing.T) {
 	naming := &TaggedStructReflector{
 		NameTag:          "db",
 		Ignore:           "-",
@@ -70,12 +71,8 @@ func TestTaggedStructReflector_StructFieldName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotColumn, gotOk := naming.MapStructField(tt.structField)
-			if gotColumn != tt.wantColumn {
-				t.Errorf("TaggedStructReflector.MapStructField(%#v) gotColumn = %#v, want %#v", tt.structField.Name, gotColumn, tt.wantColumn)
-			}
-			if gotOk != tt.wantOk {
-				t.Errorf("TaggedStructReflector.MapStructField(%#v) gotOk = %#v, want %#v", tt.structField.Name, gotOk, tt.wantOk)
-			}
+			require.Equal(t, tt.wantColumn, gotColumn, "MapStructField(%#v)", tt.structField.Name)
+			require.Equal(t, tt.wantOk, gotOk, "MapStructField(%#v)", tt.structField.Name)
 		})
 	}
 }

@@ -97,13 +97,13 @@ func (m *TaggedStructReflector) MapStructField(field reflect.StructField) (colum
 		return Column{}, false
 	}
 
-	tag, hasTag := field.Tag.Lookup(m.NameTag)
-	if hasTag {
+	if tag, hasTag := field.Tag.Lookup(m.NameTag); hasTag {
 		column.Name, tag, _ = strings.Cut(tag, ",")
 		column.Name = strings.TrimSpace(column.Name)
 
-		for val, tag, ok := strings.Cut(tag, ","); ok; val, tag, ok = strings.Cut(tag, ",") {
-			switch strings.TrimSpace(val) {
+		str, tag, ok := strings.Cut(tag, ",")
+		for str != "" || ok {
+			switch strings.TrimSpace(str) {
 			case m.PrimaryKey:
 				column.PrimaryKey = true
 			case m.ReadOnly:
@@ -111,8 +111,8 @@ func (m *TaggedStructReflector) MapStructField(field reflect.StructField) (colum
 			case m.Default:
 				column.HasDefault = true
 			}
+			str, tag, ok = strings.Cut(tag, ",")
 		}
-
 	} else {
 		column.Name = m.UntaggedNameFunc(field.Name)
 	}
