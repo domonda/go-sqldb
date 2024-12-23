@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/db"
 )
 
@@ -158,7 +159,7 @@ var (
 	}
 )
 
-func QuoteIdentifier(name string) string {
+func EscapeIdentifier(name string) string {
 	// See https://doxygen.postgresql.org/ruleutils_8c.html#a8c18b3ffb8863e7740b32ef5f4c05ddc
 	escaped := strings.ReplaceAll(name, `"`, `""`)
 	needsQuotes := len(escaped) != len(name)
@@ -178,16 +179,16 @@ func (QueryFormatter) FormatTableName(name string) (string, error) {
 		return "", fmt.Errorf("invalid table name %q", name)
 	}
 	if schema, table, ok := strings.Cut(name, "."); ok {
-		return QuoteIdentifier(schema) + "." + QuoteIdentifier(table), nil
+		return EscapeIdentifier(schema) + "." + EscapeIdentifier(table), nil
 	}
-	return QuoteIdentifier(name), nil
+	return EscapeIdentifier(name), nil
 }
 
 func (QueryFormatter) FormatColumnName(name string) (string, error) {
 	if !columnNameRegex.MatchString(name) {
 		return "", fmt.Errorf("invalid column name %q", name)
 	}
-	return QuoteIdentifier(name), nil
+	return EscapeIdentifier(name), nil
 }
 
 func (f QueryFormatter) FormatPlaceholder(paramIndex int) string {
@@ -195,6 +196,10 @@ func (f QueryFormatter) FormatPlaceholder(paramIndex int) string {
 		panic("paramIndex must be greater or equal zero")
 	}
 	return "$" + strconv.Itoa(paramIndex+1)
+}
+
+func (QueryFormatter) FormatStringLiteral(str string) string {
+	return sqldb.FormatSingleQuoteStringLiteral(str)
 }
 
 func NewTypeMapper() *db.StagedTypeMapper {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 // QueryFormatter has methods for formatting parts
@@ -20,6 +21,10 @@ type QueryFormatter interface {
 	// FormatPlaceholder formats a query parameter placeholder
 	// for the paramIndex starting at zero.
 	FormatPlaceholder(paramIndex int) string
+
+	// FormatStringLiteral formats a string literal
+	// by adding quotes or escaping characters if necessary.
+	FormatStringLiteral(str string) string
 }
 
 type StdQueryFormatter struct {
@@ -64,4 +69,55 @@ func (f StdQueryFormatter) FormatPlaceholder(paramIndex int) string {
 		return "?"
 	}
 	return f.PlaceholderPosPrefix + strconv.Itoa(paramIndex+1)
+}
+
+func (StdQueryFormatter) FormatStringLiteral(str string) string {
+	return FormatSingleQuoteStringLiteral(str)
+}
+
+func FormatSingleQuoteStringLiteral(str string) string {
+	quoted := len(str) >= 2 && str[0] == '\'' && str[len(str)-1] == '\''
+	if quoted {
+		inner := str[1 : len(str)-1]
+		if !strings.Contains(inner, `'`) {
+			return str // fast path
+		}
+		str = inner
+	}
+	var b strings.Builder
+	b.Grow(len(str) + 4) // 2 quotes plus some escaping
+	b.WriteByte('\'')
+	for i, r := range str {
+		switch r {
+		case '\\':
+			nextIsQuote := i+1 < len(str) && str[i+1] == '\''
+			if nextIsQuote {
+				// Change `\'` to `''`
+				b.WriteByte('\'')
+				continue
+			}
+			b.WriteByte('\\')
+
+		case '\'':
+			lastWasEscape := i > 0 && (str[i-1] == '\\' || str[i-1] == '\'')
+			if lastWasEscape {
+				// Already in escape sequence
+				b.WriteByte('\'')
+				continue
+			}
+			nextIsQuote := i+1 < len(str) && str[i+1] == '\''
+			if nextIsQuote {
+				// First of two quotes
+				b.WriteByte('\'')
+				continue
+			}
+			// Escape quote
+			b.WriteString(`''`)
+
+		default:
+			b.WriteRune(r)
+		}
+	}
+	b.WriteByte('\'')
+	return b.String()
 }

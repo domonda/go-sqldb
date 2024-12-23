@@ -4,10 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-)
 
-const (
-	Driver = "sqlserver"
+	"github.com/domonda/go-sqldb"
 )
 
 // TODO allow spaces and other characters and escaping with backticks
@@ -37,4 +35,8 @@ func (f QueryFormatter) FormatPlaceholder(paramIndex int) string {
 		panic("paramIndex must be greater or equal zero")
 	}
 	return "@p" + strconv.Itoa(paramIndex+1)
+}
+
+func (QueryFormatter) FormatStringLiteral(str string) string {
+	return sqldb.FormatSingleQuoteStringLiteral(str)
 }

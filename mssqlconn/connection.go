@@ -10,6 +10,8 @@ import (
 	"github.com/domonda/go-sqldb"
 )
 
+const Driver = "sqlserver"
+
 func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
