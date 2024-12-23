@@ -8,8 +8,9 @@ func TestQueryFormatter_FormatTableName(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		{name: "table", want: "table"},
-		{name: "public.my_table", want: "public.my_table"},
+		{name: `table`, want: `"table"`},
+		{name: `public.table`, want: `public."table"`},
+		{name: `public.my_table`, want: `public.my_table`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

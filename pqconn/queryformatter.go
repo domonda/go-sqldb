@@ -2,9 +2,13 @@ package pqconn
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
+
+	"github.com/domonda/go-sqldb/db"
 )
 
 var (
@@ -154,27 +158,36 @@ var (
 	}
 )
 
+func QuoteIdentifier(name string) string {
+	// See https://doxygen.postgresql.org/ruleutils_8c.html#a8c18b3ffb8863e7740b32ef5f4c05ddc
+	escaped := strings.ReplaceAll(name, `"`, `""`)
+	needsQuotes := len(escaped) != len(name)
+	if !needsQuotes {
+		_, needsQuotes = reservedWords[strings.ToLower(name)]
+	}
+	if needsQuotes {
+		return `"` + escaped + `"`
+	}
+	return name
+}
+
 type QueryFormatter struct{}
 
 func (QueryFormatter) FormatTableName(name string) (string, error) {
-	// See https://doxygen.postgresql.org/ruleutils_8c.html#a8c18b3ffb8863e7740b32ef5f4c05ddc
 	if !tableNameRegexp.MatchString(name) {
 		return "", fmt.Errorf("invalid table name %q", name)
 	}
-	if _, reserved := reservedWords[strings.ToLower(name)]; reserved {
-		return `"` + name + `"`, nil
+	if schema, table, ok := strings.Cut(name, "."); ok {
+		return QuoteIdentifier(schema) + "." + QuoteIdentifier(table), nil
 	}
-	return name, nil
+	return QuoteIdentifier(name), nil
 }
 
 func (QueryFormatter) FormatColumnName(name string) (string, error) {
 	if !columnNameRegex.MatchString(name) {
 		return "", fmt.Errorf("invalid column name %q", name)
 	}
-	if _, reserved := reservedWords[strings.ToLower(name)]; reserved {
-		return `"` + name + `"`, nil
-	}
-	return name, nil
+	return QuoteIdentifier(name), nil
 }
 
 func (f QueryFormatter) FormatPlaceholder(paramIndex int) string {
@@ -182,4 +195,28 @@ func (f QueryFormatter) FormatPlaceholder(paramIndex int) string {
 		panic("paramIndex must be greater or equal zero")
 	}
 	return "$" + strconv.Itoa(paramIndex+1)
+}
+
+func NewTypeMapper() *db.StagedTypeMapper {
+	return &db.StagedTypeMapper{
+		Types: map[reflect.Type]string{
+			reflect.TypeFor[time.Time](): "timestamptz",
+		},
+		Kinds: map[reflect.Kind]string{
+			reflect.Bool:    "boolean",
+			reflect.Int:     "bigint",
+			reflect.Int8:    "smallint",
+			reflect.Int16:   "smallint",
+			reflect.Int32:   "integer",
+			reflect.Int64:   "bigint",
+			reflect.Uint:    "bigint",
+			reflect.Uint8:   "smallint",
+			reflect.Uint16:  "integer",
+			reflect.Uint32:  "bigint",
+			reflect.Uint64:  "bigint", // 64 unsinged integer does not fit completely into signed bigint
+			reflect.Float32: "float4",
+			reflect.Float64: "float8",
+			reflect.String:  "text",
+		},
+	}
 }
