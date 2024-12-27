@@ -4,4 +4,5 @@ use (
 	.
 	./mssqlconn
 	./mysqlconn
+	./pqconn
 )
