@@ -1,5 +1,6 @@
 package db
 
+/*
 import (
 	"context"
 	"fmt"
@@ -95,3 +96,4 @@ func ForEachRowCallFunc(ctx context.Context, reflector StructReflector, callback
 	}
 	return f, nil
 }
+*/

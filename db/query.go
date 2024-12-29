@@ -8,6 +8,8 @@ import (
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/domonda/go-sqldb"
 )
 
 // CurrentTimestamp returns the SQL CURRENT_TIMESTAMP
@@ -234,6 +236,9 @@ func QuerySliceWithReflector[T any](ctx context.Context, reflector StructReflect
 // that does not implement the sql.Scanner interface,
 // or a pointer to a struct that does not implement the sql.Scanner interface.
 func isNonSQLScannerStruct(t reflect.Type) bool {
+	if t == typeOfTime || t.Kind() == reflect.Ptr && t.Elem() == typeOfTime {
+		return false
+	}
 	// Struct that does not implement sql.Scanner
 	if t.Kind() == reflect.Struct && !reflect.PointerTo(t).Implements(typeOfSQLScanner) {
 		return true
@@ -243,4 +248,148 @@ func isNonSQLScannerStruct(t reflect.Type) bool {
 		return true
 	}
 	return false
+}
+
+// QueryStrings scans the query result into a table of strings.
+// Byte slices will be interpreted as strings,
+// nil (SQL NULL) will be converted to an empty string,
+// all other types are converted with `fmt.Sprint`.
+func QueryStrings(ctx context.Context, query string, args ...any) (rows [][]string, err error) {
+	sqlRows := Conn(ctx).Query(ctx, query, args...)
+	defer sqlRows.Close()
+
+	cols, err := sqlRows.Columns()
+	if err != nil {
+		return nil, err
+	}
+	rows = [][]string{cols}
+	stringScannablePtrs := make([]any, len(cols))
+	for sqlRows.Next() {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		row := make([]string, len(cols))
+		// Modify stringScannablePtrs to point to the row values
+		for i := range stringScannablePtrs {
+			stringScannablePtrs[i] = (*sqldb.StringScannable)(&row[i])
+		}
+		err := sqlRows.Scan(stringScannablePtrs...)
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, row)
+	}
+	if sqlRows.Err() != nil {
+		return nil, sqlRows.Err()
+	}
+	return rows, err
+}
+
+// QueryCallback calls the passed callback
+// with scanned values or a struct for every row.
+//
+// If the callback function has a single struct or struct pointer argument,
+// then RowScanner.ScanStruct will be used per row,
+// else RowScanner.Scan will be used for all arguments of the callback.
+// If the function has a context.Context as first argument,
+// then the passed ctx will be passed on.
+//
+// The callback can have no result or a single error result value.
+//
+// If a non nil error is returned from the callback, then this error
+// is returned immediately by this function without scanning further rows.
+//
+// In case of zero rows, no error will be returned.
+func QueryCallback(ctx context.Context, callback any, query string, args ...any) error {
+	return QueryCallbackWithReflector(ctx, callback, DefaultStructReflector, query, args...)
+}
+
+func QueryCallbackWithReflector(ctx context.Context, callback any, reflector StructReflector, query string, args ...any) error {
+	val := reflect.ValueOf(callback)
+	typ := val.Type()
+	if typ.Kind() != reflect.Func {
+		return fmt.Errorf("QueryCallback expected callback function, got %s", typ)
+	}
+	if typ.IsVariadic() {
+		return fmt.Errorf("QueryCallback callback function must not be varidic: %s", typ)
+	}
+	if typ.NumIn() == 0 || (typ.NumIn() == 1 && typ.In(0) == typeOfContext) {
+		return fmt.Errorf("QueryCallback callback function has no arguments: %s", typ)
+	}
+	firstArg := 0
+	if typ.In(0) == typeOfContext {
+		firstArg = 1
+	}
+	structArg := isNonSQLScannerStruct(typ.In(firstArg))
+	if structArg && typ.NumIn()-firstArg > 1 {
+		return fmt.Errorf("QueryCallback callback function must not have further argument after struct: %s", typ)
+	}
+	for i := firstArg; i < typ.NumIn(); i++ {
+		t := typ.In(i)
+		if i > firstArg && isNonSQLScannerStruct(t) {
+			return fmt.Errorf("QueryCallback callback function argument %d has invalid argument type: %s", i, typ.In(i))
+		}
+		for t.Kind() == reflect.Ptr {
+			t = t.Elem()
+		}
+		switch t.Kind() {
+		case reflect.Chan, reflect.Func:
+			return fmt.Errorf("QueryCallback callback function argument %d has invalid argument type: %s", i, typ.In(i))
+		}
+	}
+	if typ.NumOut() > 1 {
+		return fmt.Errorf("QueryCallback callback function can only have one result value: %s", typ)
+	}
+	if typ.NumOut() == 1 && typ.Out(0) != typeOfError {
+		return fmt.Errorf("QueryCallback callback function result must be of type error: %s", typ)
+	}
+
+	sqlRows := Conn(ctx).Query(ctx, query, args...)
+	defer sqlRows.Close()
+
+	if !structArg {
+		cols, err := sqlRows.Columns()
+		if err != nil {
+			return err
+		}
+		if len(cols) != typ.NumIn()-firstArg {
+			return fmt.Errorf("QueryCallback callback function has %d non-context arguments but query result has %d columns", typ.NumIn()-firstArg, len(cols))
+		}
+	}
+
+	scannedValPtrs := make([]any, typ.NumIn()-firstArg)
+	callbackArgs := make([]reflect.Value, typ.NumIn())
+	if firstArg == 1 {
+		callbackArgs[0] = reflect.ValueOf(ctx)
+	}
+	for sqlRows.Next() {
+		err := ctx.Err()
+		if err != nil {
+			return err
+		}
+
+		// First step is to scan the row
+		for i := range scannedValPtrs {
+			scannedValPtrs[i] = reflect.New(typ.In(firstArg + i)).Interface()
+		}
+		if structArg {
+			err = scanStruct(sqlRows, reflector, reflect.ValueOf(scannedValPtrs[0]))
+		} else {
+			err = sqlRows.Scan(scannedValPtrs...)
+		}
+		if err != nil {
+			return err
+		}
+
+		// Then do callback using reflection
+		for i := firstArg; i < len(args); i++ {
+			callbackArgs[i] = reflect.ValueOf(scannedValPtrs[i-firstArg]).Elem()
+		}
+		res := val.Call(callbackArgs)
+		if len(res) > 0 && !res[0].IsNil() {
+			return res[0].Interface().(error)
+		}
+	}
+
+	return sqlRows.Err()
 }

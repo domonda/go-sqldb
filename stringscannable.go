@@ -15,13 +15,13 @@ type StringScannable string
 // nil (SQL NULL) will be converted to an empty string,
 // all other types are converted with fmt.Sprint(src).
 func (s *StringScannable) Scan(src any) error {
-	switch x := src.(type) {
+	switch src := src.(type) {
 	case nil:
 		*s = ""
 	case string:
-		*s = StringScannable(x)
+		*s = StringScannable(src)
 	case []byte:
-		*s = StringScannable(x)
+		*s = StringScannable(src)
 	default:
 		*s = StringScannable(fmt.Sprint(src))
 	}

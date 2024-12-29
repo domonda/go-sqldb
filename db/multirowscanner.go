@@ -1,13 +1,6 @@
 package db
 
-import (
-	"context"
-	"errors"
-	"fmt"
-	"reflect"
-
-	"github.com/domonda/go-sqldb"
-)
+/*
 
 // ScanRowsAsSlice scans all srcRows as slice into dest.
 //
@@ -71,7 +64,6 @@ func ScanRowsAsSlice(ctx context.Context, sqlRows sqldb.Rows, reflector StructRe
 	return nil
 }
 
-/*
 // MultiRowScanner
 type MultiRowScanner struct {
 	ctx       context.Context // ctx is checked for every row and passed through to callbacks
@@ -111,54 +103,54 @@ func (s *MultiRowScanner) ScanStructSlice(dest any) error {
 	return nil
 }
 
-// func (s *MultiRowScanner) ScanAllRowsAsStrings(headerRow bool) (rows [][]string, err error) {
-// 	cols, err := s.rows.Columns()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	if headerRow {
-// 		rows = [][]string{cols}
-// 	}
-// 	stringScannablePtrs := make([]any, len(cols))
-// 	err = s.ForEachRow(func(rowScanner sqldb.RowScanner) error {
-// 		row := make([]string, len(cols))
-// 		for i := range stringScannablePtrs {
-// 			stringScannablePtrs[i] = (*sqldb.StringScannable)(&row[i])
-// 		}
-// 		err := rowScanner.Scan(stringScannablePtrs...)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		rows = append(rows, row)
-// 		return nil
-// 	})
-// 	return rows, err
-// }
+func (s *MultiRowScanner) ScanAllRowsAsStrings(headerRow bool) (rows [][]string, err error) {
+	cols, err := s.rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+	if headerRow {
+		rows = [][]string{cols}
+	}
+	stringScannablePtrs := make([]any, len(cols))
+	err = s.ForEachRow(func(rowScanner sqldb.RowScanner) error {
+		row := make([]string, len(cols))
+		for i := range stringScannablePtrs {
+			stringScannablePtrs[i] = (*sqldb.StringScannable)(&row[i])
+		}
+		err := rowScanner.Scan(stringScannablePtrs...)
+		if err != nil {
+			return err
+		}
+		rows = append(rows, row)
+		return nil
+	})
+	return rows, err
+}
 
-// func (s *MultiRowScanner) ForEachRow(callback func(*RowScanner) error) (err error) {
-// 	defer func() {
-// 		err = errors.Join(err, s.rows.Close())
-// 		err = WrapNonNilErrorWithQuery(err, s.query, s.argFmt, s.args)
-// 	}()
+func (s *MultiRowScanner) ForEachRow(callback func(*RowScanner) error) (err error) {
+	defer func() {
+		err = errors.Join(err, s.rows.Close())
+		err = WrapNonNilErrorWithQuery(err, s.query, s.argFmt, s.args)
+	}()
 
-// 	for s.rows.Next() {
-// 		if s.ctx.Err() != nil {
-// 			return s.ctx.Err()
-// 		}
+	for s.rows.Next() {
+		if s.ctx.Err() != nil {
+			return s.ctx.Err()
+		}
 
-// 		err := callback(CurrentRowScanner{s.rows, s.reflector})
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
-// 	return s.rows.Err()
-// }
+		err := callback(CurrentRowScanner{s.rows, s.reflector})
+		if err != nil {
+			return err
+		}
+	}
+	return s.rows.Err()
+}
 
-// func (s *MultiRowScanner) ForEachRowCall(callback any) error {
-// 	forEachRowFunc, err := ForEachRowCallFunc(s.ctx, callback)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	return s.ForEachRow(forEachRowFunc)
-// }
+func (s *MultiRowScanner) ForEachRowCall(callback any) error {
+	forEachRowFunc, err := ForEachRowCallFunc(s.ctx, callback)
+	if err != nil {
+		return err
+	}
+	return s.ForEachRow(forEachRowFunc)
+}
 */
