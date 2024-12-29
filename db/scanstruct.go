@@ -4,13 +4,16 @@ import (
 	"fmt"
 	"reflect"
 
-	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb"
 )
 
 // scanStruct scans the srcRow into the destStruct using the reflector.
-func scanStruct(srcRow sqldb.Row, reflector StructReflector, destStruct any) error {
-	v := reflect.ValueOf(destStruct)
-	for v.Kind() == reflect.Ptr && !v.IsNil() {
+func scanStruct(srcRow sqldb.Row, reflector StructReflector, destStruct reflect.Value) error {
+	v := destStruct
+	for v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return fmt.Errorf("scanStruct got nil pointer for %s", destStruct.Type())
+		}
 		v = v.Elem()
 	}
 
@@ -28,7 +31,7 @@ func scanStruct(srcRow sqldb.Row, reflector StructReflector, destStruct any) err
 		v = newStructPtr.Elem()
 	}
 	if v.Kind() != reflect.Struct {
-		return fmt.Errorf("ScanStruct: expected struct but got %T", destStruct)
+		return fmt.Errorf("scanStruct expected struct or pointer to struct but got %s", destStruct.Type())
 	}
 
 	columns, err := srcRow.Columns()
@@ -38,7 +41,7 @@ func scanStruct(srcRow sqldb.Row, reflector StructReflector, destStruct any) err
 
 	fieldPointers, err := ReflectStructColumnPointers(v, reflector, columns)
 	if err != nil {
-		return fmt.Errorf("ScanStruct: %w", err)
+		return fmt.Errorf("scanStruct error from ReflectStructColumnPointers: %w", err)
 	}
 
 	err = srcRow.Scan(fieldPointers...)

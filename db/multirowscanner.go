@@ -46,7 +46,7 @@ func ScanRowsAsSlice(ctx context.Context, sqlRows sqldb.Rows, reflector StructRe
 		newSlice = reflect.Append(newSlice, reflect.Zero(sliceElemType))
 		target := newSlice.Index(newSlice.Len() - 1).Addr()
 		if reflector != nil {
-			err := scanStruct(sqlRows, reflector, target.Interface())
+			err := scanStruct(sqlRows, reflector, target)
 			if err != nil {
 				return err
 			}

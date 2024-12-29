@@ -71,7 +71,7 @@ func ForEachRowCallFunc(ctx context.Context, reflector StructReflector, callback
 			scannedValPtrs[i] = reflect.New(typ.In(firstArg + i)).Interface()
 		}
 		if structArg {
-			err = scanStruct(row, reflector, scannedValPtrs[0])
+			err = scanStruct(row, reflector, reflect.ValueOf(scannedValPtrs[0]))
 		} else {
 			err = row.Scan(scannedValPtrs...)
 		}

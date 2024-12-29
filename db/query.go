@@ -91,7 +91,7 @@ func QueryRowStruct[S any](ctx context.Context, query string, args ...any) (row 
 	conn := Conn(ctx)
 	rows := conn.Query(ctx, query, args...)
 	defer rows.Close()
-	err = scanStruct(rows, DefaultStructReflector, &row)
+	err = scanStruct(rows, DefaultStructReflector, reflect.ValueOf(&row))
 	if err != nil {
 		return nil, wrapErrorWithQuery(err, query, args, conn)
 	}
@@ -184,14 +184,63 @@ func GetRowOrNil[S StructWithTableName](ctx context.Context, pkValue any, pkValu
 	return row, nil
 }
 
-// QueryStructSlice returns queried rows as slice of the generic type S
-// which must be a struct or a pointer to a struct.
-func QueryStructSlice[S any](ctx context.Context, query string, args ...any) (rows []S, err error) {
-	conn := Conn(ctx)
-	sqlRows := conn.Query(ctx, query, args...)
-	err = ScanRowsAsSlice(ctx, sqlRows, DefaultStructReflector, &rows)
+// QuerySlice returns queried rows as slice of the generic type T.
+func QuerySlice[T any](ctx context.Context, query string, args ...any) (rows []T, err error) {
+	return QuerySliceWithReflector[T](ctx, DefaultStructReflector, query, args...)
+}
+
+// QuerySliceWithReflector returns queried rows as slice of the generic type T
+// using the passed reflector to scan column values as struct fields.
+func QuerySliceWithReflector[T any](ctx context.Context, reflector StructReflector, query string, args ...any) (rows []T, err error) {
+	sqlRows := Conn(ctx).Query(ctx, query, args...)
+	defer sqlRows.Close()
+
+	rows = make([]T, 0, 32)
+	sliceVal := reflect.ValueOf(rows)
+	sliceElemType := sliceVal.Type().Elem()
+	rowStructs := isNonSQLScannerStruct(sliceElemType)
+
+	columns, err := sqlRows.Columns()
 	if err != nil {
 		return nil, err
 	}
+	if !rowStructs && len(columns) > 1 {
+		return nil, fmt.Errorf("expected single column result for type %s but got %d columns", sliceElemType, len(columns))
+	}
+
+	for sqlRows.Next() {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+		sliceVal = reflect.Append(sliceVal, reflect.Zero(sliceElemType))
+		destPtr := sliceVal.Index(sliceVal.Len() - 1).Addr()
+		if rowStructs {
+			err = scanStruct(sqlRows, reflector, destPtr)
+		} else {
+			err = sqlRows.Scan(destPtr.Interface())
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	if sqlRows.Err() != nil {
+		return nil, sqlRows.Err()
+	}
+
 	return rows, nil
+}
+
+// isNonSQLScannerStruct returns true if the passed type is a struct
+// that does not implement the sql.Scanner interface,
+// or a pointer to a struct that does not implement the sql.Scanner interface.
+func isNonSQLScannerStruct(t reflect.Type) bool {
+	// Struct that does not implement sql.Scanner
+	if t.Kind() == reflect.Struct && !reflect.PointerTo(t).Implements(typeOfSQLScanner) {
+		return true
+	}
+	// Pointer to struct that does not implement sql.Scanner
+	if t.Kind() == reflect.Ptr && t.Elem().Kind() == reflect.Struct && !t.Implements(typeOfSQLScanner) {
+		return true
+	}
+	return false
 }
