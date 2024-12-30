@@ -22,7 +22,7 @@ type Table struct {
 }
 
 func GetTable(ctx context.Context, catalog, schema, name string) (table *Table, err error) {
-	err = db.QueryRow(ctx,
+	return db.QueryRowStruct[Table](ctx,
 		/*sql*/ `
 			SELECT *
 			FROM information_schema.tables
@@ -33,15 +33,13 @@ func GetTable(ctx context.Context, catalog, schema, name string) (table *Table, 
 		catalog,
 		schema,
 		name,
-	).ScanStruct(&table)
-	if err != nil {
-		return nil, err
-	}
-	return table, nil
+	)
 }
 
 func GetAllTables(ctx context.Context) (tables []*Table, err error) {
-	return db.QueryStructSlice[*Table](ctx,
-		/*sql*/ `SELECT * FROM information_schema.tables`,
+	return db.QuerySlice[*Table](ctx,
+		/*sql*/ `
+			SELECT * FROM information_schema.tables
+		`,
 	)
 }

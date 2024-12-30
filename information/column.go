@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/domonda/go-errs"
 	"github.com/domonda/go-sqldb/db"
 )
 
@@ -67,28 +66,24 @@ type KeyColumnUsage struct {
 	PositionInUniqueConstraint *int   `db:"position_in_unique_constraint"`
 }
 
-func ColumnExists(ctx context.Context, table, column string) (exists bool, err error) {
-	defer errs.WrapWithFuncParams(&err, ctx, table, column)
-
+func ColumnExists(ctx context.Context, table, column string) (bool, error) {
 	tableSchema, tableName, ok := strings.Cut(table, ".")
 	if !ok {
 		tableSchema = "public"
 		tableName = table
 	}
 
-	err = db.QueryRow(ctx,
-		`select exists(
-			select from information_schema.columns
-			where table_schema = $1
-				and table_name = $2
-				and column_name = $3
-		)`,
+	return db.QueryValue[bool](ctx,
+		/*sql*/ `
+			SELECT EXISTS (
+				SELECT FROM information_schema.columns
+				WHERE table_schema = $1
+					AND table_name = $2
+					AND column_name = $3
+			)
+		`,
 		tableSchema,
 		tableName,
 		column,
-	).Scan(&exists)
-	if err != nil {
-		return false, err
-	}
-	return exists, nil
+	)
 }

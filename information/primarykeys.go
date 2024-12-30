@@ -12,7 +12,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/domonda/go-errs"
 	"github.com/domonda/go-sqldb/db"
 	"github.com/domonda/go-types/uu"
 )
@@ -25,9 +24,7 @@ type PrimaryKeyColumn struct {
 }
 
 func GetPrimaryKeyColumns(ctx context.Context) (cols []PrimaryKeyColumn, err error) {
-	defer errs.WrapWithFuncParams(&err, ctx)
-
-	return db.QueryStructSlice[PrimaryKeyColumn](ctx,
+	return db.QuerySlice[PrimaryKeyColumn](ctx,
 		/*sql*/ `
 		SELECT
 			tc.table_schema||'.'||tc.table_name AS "table",
@@ -62,9 +59,7 @@ func GetPrimaryKeyColumns(ctx context.Context) (cols []PrimaryKeyColumn, err err
 }
 
 func GetPrimaryKeyColumnsOfType(ctx context.Context, pkType string) (cols []PrimaryKeyColumn, err error) {
-	defer errs.WrapWithFuncParams(&err, ctx, pkType)
-
-	return db.QueryStructSlice[PrimaryKeyColumn](ctx,
+	return db.QuerySlice[PrimaryKeyColumn](ctx,
 		/*sql*/ `
 		SELECT
 			tc.table_schema||'.'||tc.table_name AS "table",
@@ -107,32 +102,22 @@ type TableRowWithPrimaryKey struct {
 }
 
 func GetTableRowsWithPrimaryKey(ctx context.Context, pkCols []PrimaryKeyColumn, pk any) (tableRows []TableRowWithPrimaryKey, err error) {
-	defer errs.WrapWithFuncParams(&err, ctx, pkCols, pk)
-
 	for _, col := range pkCols {
 		query := fmt.Sprintf(`SELECT * FROM %s WHERE "%s" = $1`, col.Table, col.Column)
-		rows := db.QueryRows(ctx, query, pk)
-		cols, err := rows.Columns()
+		strs, err := db.QueryStrings(ctx, query, pk)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				continue
 			}
 			return nil, err
 		}
-		vals, err := rows.ScanAllRowsAsStrings(false)
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				continue
-			}
-			return nil, err
-		}
-		if len(vals) == 0 {
+		if len(strs) < 2 {
 			continue
 		}
 		tableRows = append(tableRows, TableRowWithPrimaryKey{
 			PrimaryKeyColumn: col,
-			Header:           cols,
-			Row:              vals[0],
+			Header:           strs[0],
+			Row:              strs[1],
 		})
 	}
 	return tableRows, nil

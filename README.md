@@ -2,8 +2,9 @@
 
 ## TODO for v1
 
-- [ ] Test all db functions
+- [ ] Test all pkg db functions
 - [ ] Rethink Config
+- [ ] pkg information
 - [ ] Test pqconn with dockerized Postgres
 - [ ] Cache struct types, see commit 090e73d1d9db8534d2950dd7236d7ebe192cd512
 - [ ] Std SQL driver for mocks?
