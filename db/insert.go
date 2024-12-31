@@ -108,6 +108,22 @@ func InsertStructWithTableName(ctx context.Context, rowStruct StructWithTableNam
 	return InsertStruct(ctx, table, rowStruct, ignoreColumns...)
 }
 
+// func InsertStructStmt[S StructWithTableName](ctx context.Context, query string) (stmtFunc func(ctx context.Context, rowStruct S) error, closeFunc func() error, err error) {
+// 	conn := Conn(ctx)
+// 	stmt, err := conn.Prepare(ctx, query)
+// 	if err != nil {
+// 		return nil, nil, err
+// 	}
+// 	stmtFunc = func(ctx context.Context, rowStruct S) error {
+// 		TODO
+// 		if err != nil {
+// 			return wrapErrorWithQuery(err, query, args, conn)
+// 		}
+// 		return nil
+// 	}
+// 	return stmtFunc, stmt.Close, nil
+// }
+
 // InsertUniqueStruct inserts a new row into table using the
 // DefaultStructReflector to map struct fields to column names.
 // Optional ColumnFilter can be passed to ignore mapped columns.

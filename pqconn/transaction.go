@@ -61,6 +61,14 @@ func (conn *transaction) Query(ctx context.Context, query string, args ...any) s
 	return rows
 }
 
+func (conn *transaction) Prepare(ctx context.Context, query string) (sqldb.Stmt, error) {
+	s, err := conn.tx.PrepareContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	return stmt{query, s}, nil
+}
+
 func (conn *transaction) TransactionInfo() (no uint64, opts *sql.TxOptions) {
 	return conn.no, conn.opts
 }

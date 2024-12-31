@@ -45,6 +45,10 @@ func (e ErrConn) Query(ctx context.Context, query string, args ...any) Rows {
 	return NewErrRows(e.Err)
 }
 
+func (e ErrConn) Prepare(ctx context.Context, query string) (Stmt, error) {
+	return nil, e.Err
+}
+
 func (ce ErrConn) TransactionInfo() (no uint64, opts *sql.TxOptions) {
 	return 0, nil
 }

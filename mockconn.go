@@ -30,6 +30,7 @@ type MockConn struct {
 	MockConfig               func() *Config
 	MockExec                 func(ctx context.Context, query string, args ...any) error
 	MockQuery                func(ctx context.Context, query string, args ...any) Rows
+	MockPrepare              func(ctx context.Context, query string) (Stmt, error)
 	MockTransactionInfo      func() (no uint64, opts *sql.TxOptions)
 	MockBegin                func(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error)
 	MockCommit               func() error
@@ -97,11 +98,26 @@ func (e *MockConn) Query(ctx context.Context, query string, args ...any) Rows {
 	return e.MockQuery(ctx, query, args...)
 }
 
-func (c *MockConn) TransactionInfo() (no uint64, opts *sql.TxOptions) {
-	if c.MockTransactionInfo == nil {
-		return c.TxNo, nil
+func (e *MockConn) Prepare(ctx context.Context, query string) (Stmt, error) {
+	if e.MockPrepare == nil {
+		return &MockStmt{
+			Prepared: query,
+			MockExec: func(ctx context.Context, args ...any) error {
+				return e.Exec(ctx, query, args...)
+			},
+			MockQuery: func(ctx context.Context, args ...any) Rows {
+				return e.Query(ctx, query, args...)
+			},
+		}, ctx.Err()
 	}
-	return c.MockTransactionInfo()
+	return e.MockPrepare(ctx, query)
+}
+
+func (e *MockConn) TransactionInfo() (no uint64, opts *sql.TxOptions) {
+	if e.MockTransactionInfo == nil {
+		return e.TxNo, nil
+	}
+	return e.MockTransactionInfo()
 }
 
 func (e *MockConn) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error) {

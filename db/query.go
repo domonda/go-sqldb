@@ -38,6 +38,22 @@ func Exec(ctx context.Context, query string, args ...any) error {
 	return nil
 }
 
+func ExecStmt(ctx context.Context, query string) (stmtFunc func(ctx context.Context, args ...any) error, closeFunc func() error, err error) {
+	conn := Conn(ctx)
+	stmt, err := conn.Prepare(ctx, query)
+	if err != nil {
+		return nil, nil, err
+	}
+	stmtFunc = func(ctx context.Context, args ...any) error {
+		err := stmt.Exec(ctx, args...)
+		if err != nil {
+			return wrapErrorWithQuery(err, query, args, conn)
+		}
+		return nil
+	}
+	return stmtFunc, stmt.Close, nil
+}
+
 // QueryRow queries a single row and returns a RowScanner for the results.
 func QueryRow(ctx context.Context, query string, args ...any) *RowScanner {
 	conn := Conn(ctx)

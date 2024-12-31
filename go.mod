@@ -10,6 +10,7 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/domonda/go-errs v0.0.0-20240702051036-0e696c849b5f // indirect
 	github.com/domonda/go-pretty v0.0.0-20240110134850-17385799142f // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect

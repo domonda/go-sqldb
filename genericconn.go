@@ -53,6 +53,14 @@ func (conn *genericConn) Query(ctx context.Context, query string, args ...any) R
 	return rows
 }
 
+func (conn *genericConn) Prepare(ctx context.Context, query string) (Stmt, error) {
+	stmt, err := conn.db.PrepareContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	return NewStmt(stmt, query), nil
+}
+
 func (conn *genericConn) TransactionInfo() (no uint64, opts *sql.TxOptions) {
 	return 0, nil
 }
@@ -65,7 +73,7 @@ func (conn *genericConn) Begin(ctx context.Context, no uint64, opts *sql.TxOptio
 	if err != nil {
 		return nil, err
 	}
-	return newGenericTxConn(conn, tx, opts, no), nil
+	return newGenericTx(conn, tx, opts, no), nil
 }
 
 func (conn *genericConn) Commit() error {
