@@ -1,23 +1,26 @@
 package db
 
-import "sort"
+import (
+	"cmp"
+	"slices"
+)
 
 // Values is a map from column names to values
 type Values map[string]any
 
-// Sorted returns the names and values from the Values map
+// SortedColumnsAndValues returns the names and values from the Values map
 // as separated slices sorted by name.
-func (v Values) Sorted() (names []string, values []any) {
-	names = make([]string, 0, len(v))
+func (v Values) SortedColumnsAndValues() (columns []Column, values []any) {
+	columns = make([]Column, 0, len(v))
 	for name := range v {
-		names = append(names, name)
+		columns = append(columns, Column{Name: name})
 	}
-	sort.Strings(names)
-
+	slices.SortFunc(columns, func(a, b Column) int {
+		return cmp.Compare(a.Name, b.Name)
+	})
 	values = make([]any, len(v))
-	for i, name := range names {
-		values[i] = v[name]
+	for i := range columns {
+		values[i] = v[columns[i].Name]
 	}
-
-	return names, values
+	return columns, values
 }

@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func ReflectStructValues(structVal reflect.Value, reflector StructReflector, ignoreColumns ...ColumnFilter) (columns []Column, values []any) {
+func ReflectStructColumnsAndValues(structVal reflect.Value, reflector StructReflector, ignoreColumns ...ColumnFilter) (columns []Column, values []any) {
 	for i := 0; i < structVal.NumField(); i++ {
 		structField := structVal.Type().Field(i)
 		column, use := reflector.MapStructField(structField)
@@ -19,13 +19,13 @@ func ReflectStructValues(structVal reflect.Value, reflector StructReflector, ign
 
 		if column.IsEmbeddedField() {
 			// Embedded struct field
-			columnsEmbed, valuesEmbed := ReflectStructValues(fieldValue, reflector, ignoreColumns...)
+			columnsEmbed, valuesEmbed := ReflectStructColumnsAndValues(fieldValue, reflector, ignoreColumns...)
 			columns = append(columns, columnsEmbed...)
 			values = append(values, valuesEmbed...)
 			continue
 		}
 
-		if ignoreColumn(ignoreColumns, column, structField, fieldValue) {
+		if ColumnFilters(ignoreColumns).IgnoreColumn(column, structField) {
 			continue
 		}
 
@@ -35,7 +35,55 @@ func ReflectStructValues(structVal reflect.Value, reflector StructReflector, ign
 	return columns, values
 }
 
-func ReflectStructFieldTypes(structVal reflect.Value, reflctor StructReflector, ignoreColumns ...ColumnFilter) (columns []Column, fields []reflect.Type) {
+func ReflectStructValues(structVal reflect.Value, reflector StructReflector, ignoreColumns ...ColumnFilter) (values []any) {
+	for i := 0; i < structVal.NumField(); i++ {
+		structField := structVal.Type().Field(i)
+		column, use := reflector.MapStructField(structField)
+		if !use {
+			continue
+		}
+		fieldValue := structVal.Field(i)
+
+		if column.IsEmbeddedField() {
+			// Embedded struct field
+			valuesEmbed := ReflectStructValues(fieldValue, reflector, ignoreColumns...)
+			values = append(values, valuesEmbed...)
+			continue
+		}
+
+		if ColumnFilters(ignoreColumns).IgnoreColumn(column, structField) {
+			continue
+		}
+
+		values = append(values, fieldValue.Interface())
+	}
+	return values
+}
+
+func ReflectStructColumns(structType reflect.Type, reflctor StructReflector, ignoreColumns ...ColumnFilter) (columns []Column) {
+	for i := 0; i < structType.NumField(); i++ {
+		structField := structType.Field(i)
+		column, use := reflctor.MapStructField(structField)
+		if !use {
+			continue
+		}
+
+		if column.IsEmbeddedField() {
+			columnsEmbed := ReflectStructColumns(structField.Type, reflctor, ignoreColumns...)
+			columns = append(columns, columnsEmbed...)
+			continue
+		}
+
+		if ColumnFilters(ignoreColumns).IgnoreColumn(column, structField) {
+			continue
+		}
+
+		columns = append(columns, column)
+	}
+	return columns
+}
+
+func ReflectStructColumnsAndFields(structVal reflect.Value, reflctor StructReflector, ignoreColumns ...ColumnFilter) (columns []Column, fields []reflect.Type) {
 	for i := 0; i < structVal.NumField(); i++ {
 		structField := structVal.Type().Field(i)
 		column, use := reflctor.MapStructField(structField)
@@ -45,13 +93,13 @@ func ReflectStructFieldTypes(structVal reflect.Value, reflctor StructReflector, 
 		fieldValue := structVal.Field(i)
 
 		if column.IsEmbeddedField() {
-			columnsEmbed, fieldsEmbed := ReflectStructFieldTypes(fieldValue, reflctor, ignoreColumns...)
+			columnsEmbed, fieldsEmbed := ReflectStructColumnsAndFields(fieldValue, reflctor, ignoreColumns...)
 			columns = append(columns, columnsEmbed...)
 			fields = append(fields, fieldsEmbed...)
 			continue
 		}
 
-		if ignoreColumn(ignoreColumns, column, structField, fieldValue) {
+		if ColumnFilters(ignoreColumns).IgnoreColumn(column, structField) {
 			continue
 		}
 
@@ -129,15 +177,6 @@ func reflectStructColumnPointers(structVal reflect.Value, namer StructReflector,
 	return nil
 }
 
-func ignoreColumn(filters []ColumnFilter, column Column, fieldType reflect.StructField, fieldValue reflect.Value) bool {
-	for _, filter := range filters {
-		if filter.IgnoreColumn(column, fieldType, fieldValue) {
-			return true
-		}
-	}
-	return false
-}
-
 func pkColumnsOfStruct(reflector StructReflector, t reflect.Type) (columns []string, err error) {
 	for i := 0; i < t.NumField(); i++ {
 		field := t.Field(i)
@@ -160,4 +199,18 @@ func pkColumnsOfStruct(reflector StructReflector, t reflect.Type) (columns []str
 		}
 	}
 	return columns, nil
+}
+
+func derefStruct(v reflect.Value) (reflect.Value, error) {
+	strct := v
+	for strct.Kind() == reflect.Ptr {
+		if strct.IsNil() {
+			return reflect.Value{}, fmt.Errorf("nil pointer %s", v.Type())
+		}
+		strct = strct.Elem()
+	}
+	if strct.Kind() != reflect.Struct {
+		return reflect.Value{}, fmt.Errorf("expected struct or pointer to struct, but got %s", v.Type())
+	}
+	return strct, nil
 }

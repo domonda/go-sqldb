@@ -50,7 +50,7 @@ func CreateTableForStruct(ctx context.Context, typeMap TypeMapper, rowStruct Str
 	if err != nil {
 		return err
 	}
-	columns, fields := ReflectStructFieldTypes(v, DefaultStructReflector)
+	columns, fields := ReflectStructColumnsAndFields(v, DefaultStructReflector)
 	if len(columns) == 0 {
 		return fmt.Errorf("CreateTableForStruct %s: no columns at struct %T", tableName, rowStruct)
 	}
@@ -93,7 +93,7 @@ func CreateTablesAndInsertStructs(ctx context.Context, typeMap TypeMapper, table
 			return err
 		}
 		for _, row := range rows {
-			err := InsertStructWithTableName(ctx, row)
+			err := InsertStruct(ctx, row)
 			if err != nil {
 				return err
 			}

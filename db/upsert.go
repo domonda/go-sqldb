@@ -34,7 +34,7 @@ func UpsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		return fmt.Errorf("UpsertStruct to table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, vals := ReflectStructValues(v, DefaultStructReflector, append(ignoreColumns, IgnoreReadOnly)...)
+	columns, vals := ReflectStructColumnsAndValues(v, DefaultStructReflector, append(ignoreColumns, IgnoreReadOnly)...)
 	hasPK := slices.ContainsFunc(columns, func(col Column) bool {
 		return col.PrimaryKey
 	})
@@ -43,7 +43,7 @@ func UpsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 	}
 
 	var query strings.Builder
-	err = writeInsertQuery(&query, table, columnNames(columns), conn)
+	err = writeInsertQuery(&query, table, columns, conn)
 	if err != nil {
 		return err
 	}

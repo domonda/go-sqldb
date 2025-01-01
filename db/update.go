@@ -60,12 +60,12 @@ func buildUpdateQuery(table string, values Values, where string, args []any, f s
 		return "", nil, err
 	}
 
-	var query strings.Builder
+	query := strings.Builder{}
 	fmt.Fprintf(&query, `UPDATE %s SET`, table)
 
-	columns, vals := values.Sorted()
-	for i, column := range columns {
-		column, err = f.FormatColumnName(column)
+	columns, vals := values.SortedColumnsAndValues()
+	for i := range columns {
+		column, err := f.FormatColumnName(columns[i].Name)
 		if err != nil {
 			return "", nil, err
 		}
@@ -104,7 +104,7 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		return fmt.Errorf("UpdateStruct of table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, vals := ReflectStructValues(v, DefaultStructReflector, append(ignoreColumns, IgnoreReadOnly)...)
+	columns, vals := ReflectStructColumnsAndValues(v, DefaultStructReflector, append(ignoreColumns, IgnoreReadOnly)...)
 	hasPK := slices.ContainsFunc(columns, func(col Column) bool {
 		return col.PrimaryKey
 	})

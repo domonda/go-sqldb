@@ -9,7 +9,7 @@ import (
 	"github.com/domonda/go-sqldb"
 )
 
-func TestInsertStructWithTableName(t *testing.T) {
+func TestInsertStruct(t *testing.T) {
 	type Struct1 struct {
 		TableName `db:"my_table"`
 
@@ -53,7 +53,7 @@ func TestInsertStructWithTableName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := ContextWithConn(context.Background(), tt.conn)
-			err := InsertStructWithTableName(ctx, tt.rowStruct, tt.ignoreColumns...)
+			err := InsertStruct(ctx, tt.rowStruct, tt.ignoreColumns...)
 			if tt.wantErr {
 				require.Error(t, err, "error from InsertStructWithTableName")
 				return

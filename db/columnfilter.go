@@ -2,22 +2,31 @@ package db
 
 import (
 	"reflect"
-
-	"github.com/domonda/go-sqldb"
 )
 
 type ColumnFilter interface {
-	IgnoreColumn(column Column, fieldType reflect.StructField, fieldValue reflect.Value) bool
+	IgnoreColumn(column Column, field reflect.StructField) bool
 }
 
-type ColumnFilterFunc func(column Column, fieldType reflect.StructField, fieldValue reflect.Value) bool
+type ColumnFilterFunc func(column Column, field reflect.StructField) bool
 
-func (f ColumnFilterFunc) IgnoreColumn(column Column, fieldType reflect.StructField, fieldValue reflect.Value) bool {
-	return f(column, fieldType, fieldValue)
+func (f ColumnFilterFunc) IgnoreColumn(column Column, field reflect.StructField) bool {
+	return f(column, field)
+}
+
+type ColumnFilters []ColumnFilter
+
+func (filters ColumnFilters) IgnoreColumn(column Column, field reflect.StructField) bool {
+	for _, filter := range filters {
+		if filter.IgnoreColumn(column, field) {
+			return true
+		}
+	}
+	return false
 }
 
 func IgnoreColumns(names ...string) ColumnFilter {
-	return ColumnFilterFunc(func(column Column, fieldType reflect.StructField, fieldValue reflect.Value) bool {
+	return ColumnFilterFunc(func(column Column, field reflect.StructField) bool {
 		for _, ignore := range names {
 			if column.Name == ignore {
 				return true
@@ -28,7 +37,7 @@ func IgnoreColumns(names ...string) ColumnFilter {
 }
 
 func OnlyColumns(names ...string) ColumnFilter {
-	return ColumnFilterFunc(func(column Column, fieldType reflect.StructField, fieldValue reflect.Value) bool {
+	return ColumnFilterFunc(func(column Column, field reflect.StructField) bool {
 		for _, include := range names {
 			if column.Name == include {
 				return false
@@ -39,9 +48,9 @@ func OnlyColumns(names ...string) ColumnFilter {
 }
 
 func IgnoreStructFields(names ...string) ColumnFilter {
-	return ColumnFilterFunc(func(column Column, fieldType reflect.StructField, fieldValue reflect.Value) bool {
+	return ColumnFilterFunc(func(column Column, field reflect.StructField) bool {
 		for _, ignore := range names {
-			if fieldType.Name == ignore {
+			if field.Name == ignore {
 				return true
 			}
 		}
@@ -50,9 +59,9 @@ func IgnoreStructFields(names ...string) ColumnFilter {
 }
 
 func OnlyStructFields(names ...string) ColumnFilter {
-	return ColumnFilterFunc(func(column Column, fieldType reflect.StructField, fieldValue reflect.Value) bool {
+	return ColumnFilterFunc(func(column Column, field reflect.StructField) bool {
 		for _, include := range names {
-			if fieldType.Name == include {
+			if field.Name == include {
 				return false
 			}
 		}
@@ -60,26 +69,14 @@ func OnlyStructFields(names ...string) ColumnFilter {
 	})
 }
 
-var IgnoreHasDefault ColumnFilter = ColumnFilterFunc(func(column Column, fieldType reflect.StructField, fieldValue reflect.Value) bool {
+var IgnoreHasDefault ColumnFilter = ColumnFilterFunc(func(column Column, field reflect.StructField) bool {
 	return column.HasDefault
 })
 
-var IgnorePrimaryKey ColumnFilter = ColumnFilterFunc(func(column Column, fieldType reflect.StructField, fieldValue reflect.Value) bool {
+var IgnorePrimaryKey ColumnFilter = ColumnFilterFunc(func(column Column, field reflect.StructField) bool {
 	return column.PrimaryKey
 })
 
-var IgnoreReadOnly ColumnFilter = ColumnFilterFunc(func(column Column, fieldType reflect.StructField, fieldValue reflect.Value) bool {
+var IgnoreReadOnly ColumnFilter = ColumnFilterFunc(func(column Column, field reflect.StructField) bool {
 	return column.ReadOnly
-})
-
-var IgnoreNull ColumnFilter = ColumnFilterFunc(func(column Column, fieldType reflect.StructField, fieldValue reflect.Value) bool {
-	return sqldb.IsNull(fieldValue)
-})
-
-var IgnoreNullOrZero ColumnFilter = ColumnFilterFunc(func(column Column, fieldType reflect.StructField, fieldValue reflect.Value) bool {
-	return sqldb.IsNullOrZero(fieldValue)
-})
-
-var IgnoreNullOrZeroDefault ColumnFilter = ColumnFilterFunc(func(column Column, fieldType reflect.StructField, fieldValue reflect.Value) bool {
-	return column.HasDefault && sqldb.IsNullOrZero(fieldValue)
 })
