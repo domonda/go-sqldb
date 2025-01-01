@@ -20,7 +20,7 @@ func Insert(ctx context.Context, table string, values Values) error {
 	query := strings.Builder{}
 	cols, vals := values.SortedColumnsAndValues()
 
-	err := writeInsertQuery(&query, table, cols, conn)
+	err := buildInsertQuery(&query, table, cols, conn)
 	if err != nil {
 		return fmt.Errorf("can't create INSERT query because: %w", err)
 	}
@@ -46,7 +46,7 @@ func InsertUnique(ctx context.Context, table string, values Values, onConflict s
 
 	var query strings.Builder
 	cols, vals := values.SortedColumnsAndValues()
-	err = writeInsertQuery(&query, table, cols, conn)
+	err = buildInsertQuery(&query, table, cols, conn)
 	if err != nil {
 		return false, fmt.Errorf("can't create INSERT query because: %w", err)
 	}
@@ -94,7 +94,7 @@ func InsertStruct(ctx context.Context, rowStruct StructWithTableName, ignoreColu
 	conn := Conn(ctx)
 
 	query := strings.Builder{}
-	err = writeInsertQuery(&query, table, columns, conn)
+	err = buildInsertQuery(&query, table, columns, conn)
 	if err != nil {
 		return fmt.Errorf("can't create INSERT query because: %w", err)
 	}
@@ -117,7 +117,7 @@ func InsertStructStmt[S StructWithTableName](ctx context.Context, ignoreColumns 
 	ignoreColumns = append(ignoreColumns, IgnoreReadOnly)
 	columns := ReflectStructColumns(structType, reflector, ignoreColumns...)
 	query := strings.Builder{}
-	err = writeInsertQuery(&query, table, columns, conn)
+	err = buildInsertQuery(&query, table, columns, conn)
 	if err != nil {
 		return nil, nil, fmt.Errorf("can't create INSERT query because: %w", err)
 	}
@@ -182,7 +182,7 @@ func InsertUniqueStruct(ctx context.Context, rowStruct StructWithTableName, onCo
 	}
 
 	var query strings.Builder
-	err = writeInsertQuery(&query, table, columns, conn)
+	err = buildInsertQuery(&query, table, columns, conn)
 	if err != nil {
 		return false, fmt.Errorf("can't create INSERT query because: %w", err)
 	}
@@ -226,7 +226,7 @@ func InsertStructs[S StructWithTableName](ctx context.Context, rowStructs []S, i
 	})
 }
 
-func writeInsertQuery(w *strings.Builder, table string, columns []Column, f sqldb.QueryFormatter) (err error) {
+func buildInsertQuery(w *strings.Builder, table string, columns []Column, f sqldb.QueryFormatter) (err error) {
 	table, err = f.FormatTableName(table)
 	if err != nil {
 		return err

@@ -45,7 +45,7 @@ func NewTaggedStructReflector() *TaggedStructReflector {
 	return &TaggedStructReflector{
 		NameTag:          "db",
 		Ignore:           "-",
-		PrimaryKey:       "pk",
+		PrimaryKey:       "primarykey",
 		ReadOnly:         "readonly",
 		Default:          "default",
 		UntaggedNameFunc: IgnoreStructField,

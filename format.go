@@ -77,9 +77,9 @@ func FormatValue(val any) (string, error) {
 	return fmt.Sprint(val), nil
 }
 
-func FormatQuery(argFmt QueryFormatter, query string, args ...any) string {
+func FormatQuery(f QueryFormatter, query string, args ...any) string {
 	for i := len(args) - 1; i >= 0; i-- {
-		placeholder := argFmt.FormatPlaceholder(i)
+		placeholder := f.FormatPlaceholder(i)
 		value, err := FormatValue(args[i])
 		if err != nil {
 			value = "FORMATERROR:" + err.Error()

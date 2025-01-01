@@ -42,133 +42,133 @@ type MockConn struct {
 	MockClose                func() error
 }
 
-func (e *MockConn) FormatTableName(name string) (string, error) {
-	if e.QueryFormatter == nil {
+func (c *MockConn) FormatTableName(name string) (string, error) {
+	if c.QueryFormatter == nil {
 		return StdQueryFormatter{}.FormatTableName(name)
 	}
-	return e.QueryFormatter.FormatTableName(name)
+	return c.QueryFormatter.FormatTableName(name)
 }
 
-func (e *MockConn) FormatColumnName(name string) (string, error) {
-	if e.QueryFormatter == nil {
+func (c *MockConn) FormatColumnName(name string) (string, error) {
+	if c.QueryFormatter == nil {
 		return StdQueryFormatter{}.FormatColumnName(name)
 	}
-	return e.QueryFormatter.FormatColumnName(name)
+	return c.QueryFormatter.FormatColumnName(name)
 }
 
-func (e *MockConn) FormatPlaceholder(paramIndex int) string {
-	if e.QueryFormatter == nil {
+func (c *MockConn) FormatPlaceholder(paramIndex int) string {
+	if c.QueryFormatter == nil {
 		return StdQueryFormatter{}.FormatPlaceholder(paramIndex)
 	}
-	return e.QueryFormatter.FormatPlaceholder(paramIndex)
+	return c.QueryFormatter.FormatPlaceholder(paramIndex)
 }
 
-func (e *MockConn) Ping(ctx context.Context, timeout time.Duration) error {
-	if e.MockPing == nil {
+func (c *MockConn) Ping(ctx context.Context, timeout time.Duration) error {
+	if c.MockPing == nil {
 		return ctx.Err()
 	}
-	return e.MockPing(ctx, timeout)
+	return c.MockPing(ctx, timeout)
 }
 
-func (e *MockConn) Stats() sql.DBStats {
-	if e.MockPing == nil {
+func (c *MockConn) Stats() sql.DBStats {
+	if c.MockPing == nil {
 		return sql.DBStats{}
 	}
-	return e.MockStats()
+	return c.MockStats()
 }
 
-func (e *MockConn) Config() *Config {
-	if e.MockConfig == nil {
+func (c *MockConn) Config() *Config {
+	if c.MockConfig == nil {
 		return &Config{Driver: "MockConn"}
 	}
-	return e.MockConfig()
+	return c.MockConfig()
 }
 
-func (e *MockConn) Exec(ctx context.Context, query string, args ...any) error {
-	if e.MockExec == nil {
+func (c *MockConn) Exec(ctx context.Context, query string, args ...any) error {
+	if c.MockExec == nil {
 		return ctx.Err()
 	}
-	return e.MockExec(ctx, query, args...)
+	return c.MockExec(ctx, query, args...)
 }
 
-func (e *MockConn) Query(ctx context.Context, query string, args ...any) Rows {
-	if e.MockQuery == nil {
+func (c *MockConn) Query(ctx context.Context, query string, args ...any) Rows {
+	if c.MockQuery == nil {
 		return NewErrRows(ctx.Err())
 	}
-	return e.MockQuery(ctx, query, args...)
+	return c.MockQuery(ctx, query, args...)
 }
 
-func (e *MockConn) Prepare(ctx context.Context, query string) (Stmt, error) {
-	if e.MockPrepare == nil {
+func (c *MockConn) Prepare(ctx context.Context, query string) (Stmt, error) {
+	if c.MockPrepare == nil {
 		return &MockStmt{
 			Prepared: query,
 			MockExec: func(ctx context.Context, args ...any) error {
-				return e.Exec(ctx, query, args...)
+				return c.Exec(ctx, query, args...)
 			},
 			MockQuery: func(ctx context.Context, args ...any) Rows {
-				return e.Query(ctx, query, args...)
+				return c.Query(ctx, query, args...)
 			},
 		}, ctx.Err()
 	}
-	return e.MockPrepare(ctx, query)
+	return c.MockPrepare(ctx, query)
 }
 
-func (e *MockConn) TransactionInfo() (no uint64, opts *sql.TxOptions) {
-	if e.MockTransactionInfo == nil {
-		return e.TxNo, nil
+func (c *MockConn) TransactionInfo() (no uint64, opts *sql.TxOptions) {
+	if c.MockTransactionInfo == nil {
+		return c.TxNo, nil
 	}
-	return e.MockTransactionInfo()
+	return c.MockTransactionInfo()
 }
 
-func (e *MockConn) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error) {
-	if e.MockBegin == nil {
-		tx := *e // copy
+func (c *MockConn) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error) {
+	if c.MockBegin == nil {
+		tx := *c // copy
 		tx.TxNo = no
 		return &tx, nil
 	}
-	return e.MockBegin(ctx, no, opts)
+	return c.MockBegin(ctx, no, opts)
 }
 
-func (e *MockConn) Commit() error {
-	if e.MockCommit == nil {
+func (c *MockConn) Commit() error {
+	if c.MockCommit == nil {
 		return nil
 	}
-	return e.MockCommit()
+	return c.MockCommit()
 }
 
-func (e *MockConn) Rollback() error {
-	if e.MockCommit == nil {
+func (c *MockConn) Rollback() error {
+	if c.MockCommit == nil {
 		return nil
 	}
-	return e.MockCommit()
+	return c.MockCommit()
 }
 
-func (e *MockConn) ListenOnChannel(channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error {
-	if e.MockListenOnChannel == nil {
+func (c *MockConn) ListenOnChannel(channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error {
+	if c.MockListenOnChannel == nil {
 		return nil
 	}
-	return e.MockListenOnChannel(channel, onNotify, onUnlisten)
+	return c.MockListenOnChannel(channel, onNotify, onUnlisten)
 }
 
-func (e *MockConn) UnlistenChannel(channel string) error {
-	if e.MockUnlistenChannel == nil {
+func (c *MockConn) UnlistenChannel(channel string) error {
+	if c.MockUnlistenChannel == nil {
 		return nil
 	}
-	return e.MockUnlistenChannel(channel)
+	return c.MockUnlistenChannel(channel)
 }
 
-func (e *MockConn) IsListeningOnChannel(channel string) bool {
-	if e.MockIsListeningOnChannel == nil {
+func (c *MockConn) IsListeningOnChannel(channel string) bool {
+	if c.MockIsListeningOnChannel == nil {
 		return false
 	}
-	return e.MockIsListeningOnChannel(channel)
+	return c.MockIsListeningOnChannel(channel)
 }
 
-func (e *MockConn) Close() error {
-	if e.MockClose == nil {
+func (c *MockConn) Close() error {
+	if c.MockClose == nil {
 		return nil
 	}
-	return e.MockClose()
+	return c.MockClose()
 }
 
 // ----------------------------------------------------------------------------
