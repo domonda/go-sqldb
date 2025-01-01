@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -75,22 +76,15 @@ func InsertUnique(ctx context.Context, table string, values Values, onConflict s
 // 	return conn.QueryRow(query.String(), vals...) // TODO wrap error with query
 // }
 
-// InsertStruct inserts a new row into table using the
-// DefaultStructReflector to map struct fields to column names.
+// InsertStruct inserts a new row into table.
 // Optional ColumnFilter can be passed to ignore mapped columns.
 func InsertStruct(ctx context.Context, rowStruct StructWithTableName, ignoreColumns ...ColumnFilter) error {
-	return InsertStructWithReflector(ctx, DefaultStructReflector, rowStruct, ignoreColumns...)
-}
-
-// InsertStructWithReflector inserts a new row into table using the
-// passed StructReflector to map struct fields to column names.
-// Optional ColumnFilter can be passed to ignore mapped columns.
-func InsertStructWithReflector(ctx context.Context, reflector StructReflector, rowStruct StructWithTableName, ignoreColumns ...ColumnFilter) error {
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return err
 	}
 
+	reflector := GetStructReflector(ctx)
 	table, err := reflector.TableNameForStruct(structVal.Type())
 	if err != nil {
 		return err
@@ -113,10 +107,7 @@ func InsertStructWithReflector(ctx context.Context, reflector StructReflector, r
 }
 
 func InsertStructStmt[S StructWithTableName](ctx context.Context, ignoreColumns ...ColumnFilter) (insertFunc func(ctx context.Context, rowStruct S) error, closeFunc func() error, err error) {
-	return InsertStructWithReflectorStmt[S](ctx, DefaultStructReflector, ignoreColumns...)
-}
-
-func InsertStructWithReflectorStmt[S StructWithTableName](ctx context.Context, reflector StructReflector, ignoreColumns ...ColumnFilter) (insertFunc func(ctx context.Context, rowStruct S) error, closeFunc func() error, err error) {
+	reflector := GetStructReflector(ctx)
 	structType := reflect.TypeFor[S]()
 	table, err := reflector.TableNameForStruct(structType)
 	if err != nil {
@@ -167,17 +158,17 @@ func InsertStructWithReflectorStmt[S StructWithTableName](ctx context.Context, r
 // 	return stmtFunc, stmt.Close, nil
 // }
 
-// InsertUniqueStruct inserts a new row into table using the
-// DefaultStructReflector to map struct fields to column names.
+// InsertUniqueStruct inserts a new row with unique private key.
 // Optional ColumnFilter can be passed to ignore mapped columns.
 // Does nothing if the onConflict statement applies
 // and returns true if a row was inserted.
-func InsertUniqueStructWithReflector(ctx context.Context, reflector StructReflector, rowStruct StructWithTableName, onConflict string, ignoreColumns ...ColumnFilter) (inserted bool, err error) {
+func InsertUniqueStruct(ctx context.Context, rowStruct StructWithTableName, onConflict string, ignoreColumns ...ColumnFilter) (inserted bool, err error) {
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return false, err
 	}
 
+	reflector := GetStructReflector(ctx)
 	table, err := reflector.TableNameForStruct(structVal.Type())
 	if err != nil {
 		return false, err
@@ -216,12 +207,14 @@ func InsertStructs[S StructWithTableName](ctx context.Context, rowStructs []S, i
 	case 1:
 		return InsertStruct(ctx, rowStructs[0], ignoreColumns...)
 	}
-	return Transaction(ctx, func(ctx context.Context) error {
+	return Transaction(ctx, func(ctx context.Context) (e error) {
 		insertFunc, closeFunc, err := InsertStructStmt[S](ctx, ignoreColumns...)
 		if err != nil {
 			return err
 		}
-		defer closeFunc()
+		defer func() {
+			e = errors.Join(e, closeFunc())
+		}()
 
 		for _, rowStruct := range rowStructs {
 			err = insertFunc(ctx, rowStruct)

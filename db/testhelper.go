@@ -42,7 +42,7 @@ func (m *StagedTypeMapper) ColumnType(t reflect.Type) string {
 func CreateTableForStruct(ctx context.Context, typeMap TypeMapper, rowStruct StructWithTableName) error {
 	conn := Conn(ctx)
 	v := reflect.ValueOf(rowStruct)
-	tableName, err := DefaultStructReflector.TableNameForStruct(v.Type())
+	tableName, err := defaultStructReflector.TableNameForStruct(v.Type())
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func CreateTableForStruct(ctx context.Context, typeMap TypeMapper, rowStruct Str
 	if err != nil {
 		return err
 	}
-	columns, fields := ReflectStructColumnsAndFields(v, DefaultStructReflector)
+	columns, fields := ReflectStructColumnsAndFields(v, defaultStructReflector)
 	if len(columns) == 0 {
 		return fmt.Errorf("CreateTableForStruct %s: no columns at struct %T", tableName, rowStruct)
 	}

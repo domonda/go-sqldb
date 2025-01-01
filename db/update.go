@@ -104,7 +104,7 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, ignoreColumn
 		return fmt.Errorf("UpdateStruct of table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, vals := ReflectStructColumnsAndValues(v, DefaultStructReflector, append(ignoreColumns, IgnoreReadOnly)...)
+	columns, vals := ReflectStructColumnsAndValues(v, defaultStructReflector, append(ignoreColumns, IgnoreReadOnly)...)
 	hasPK := slices.ContainsFunc(columns, func(col Column) bool {
 		return col.PrimaryKey
 	})

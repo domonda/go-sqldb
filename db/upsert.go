@@ -8,33 +8,25 @@ import (
 	"strings"
 )
 
-// UpsertStruct upserts a row to table using the exported fields
-// of rowStruct which have a `db` tag that is not "-".
-// If restrictToColumns are provided, then only struct fields with a `db` tag
-// matching any of the passed column names will be used.
-// The struct must have at least one field with a `db` tag value having a ",pk" suffix
-// to mark primary key column(s).
+// UpsertStruct TODO
 // If inserting conflicts on the primary key column(s), then an update is performed.
-func UpsertStruct(ctx context.Context, table string, rowStruct any, ignoreColumns ...ColumnFilter) error {
+func UpsertStruct(ctx context.Context, rowStruct StructWithTableName, ignoreColumns ...ColumnFilter) error {
+	v, err := derefStruct(reflect.ValueOf(rowStruct))
+	if err != nil {
+		return err
+	}
+	reflector := GetStructReflector(ctx)
+	table, err := reflector.TableNameForStruct(v.Type())
+	if err != nil {
+		return err
+	}
 	conn := Conn(ctx)
-
-	table, err := conn.FormatTableName(table)
+	table, err = conn.FormatTableName(table)
 	if err != nil {
 		return err
 	}
 
-	v := reflect.ValueOf(rowStruct)
-	for v.Kind() == reflect.Ptr && !v.IsNil() {
-		v = v.Elem()
-	}
-	switch {
-	case v.Kind() == reflect.Ptr && v.IsNil():
-		return fmt.Errorf("UpsertStruct to table %s: can't insert nil", table)
-	case v.Kind() != reflect.Struct:
-		return fmt.Errorf("UpsertStruct to table %s: expected struct but got %T", table, rowStruct)
-	}
-
-	columns, vals := ReflectStructColumnsAndValues(v, DefaultStructReflector, append(ignoreColumns, IgnoreReadOnly)...)
+	columns, vals := ReflectStructColumnsAndValues(v, reflector, append(ignoreColumns, IgnoreReadOnly)...)
 	hasPK := slices.ContainsFunc(columns, func(col Column) bool {
 		return col.PrimaryKey
 	})

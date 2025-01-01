@@ -58,7 +58,7 @@ func ExecStmt(ctx context.Context, query string) (stmtFunc func(ctx context.Cont
 func QueryRow(ctx context.Context, query string, args ...any) *RowScanner {
 	conn := Conn(ctx)
 	rows := conn.Query(ctx, query, args...)
-	return NewRowScanner(rows, DefaultStructReflector, conn, query, args)
+	return NewRowScanner(rows, defaultStructReflector, conn, query, args)
 }
 
 // // QueryRows queries multiple rows and returns a RowsScanner for the results.
@@ -109,7 +109,7 @@ func QueryRowStruct[S any](ctx context.Context, query string, args ...any) (row 
 	conn := Conn(ctx)
 	rows := conn.Query(ctx, query, args...)
 	defer rows.Close()
-	err = scanStruct(rows, DefaultStructReflector, reflect.ValueOf(&row))
+	err = scanStruct(rows, defaultStructReflector, reflect.ValueOf(&row))
 	if err != nil {
 		return nil, wrapErrorWithQuery(err, query, args, conn)
 	}
@@ -156,7 +156,7 @@ func GetRow[S StructWithTableName](ctx context.Context, pkValue any, pkValues ..
 		return nil, fmt.Errorf("expected struct template type instead of %s", t)
 	}
 	conn := Conn(ctx)
-	table, err := DefaultStructReflector.TableNameForStruct(t)
+	table, err := defaultStructReflector.TableNameForStruct(t)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +164,7 @@ func GetRow[S StructWithTableName](ctx context.Context, pkValue any, pkValues ..
 	if err != nil {
 		return nil, err
 	}
-	pkColumns, err := pkColumnsOfStruct(DefaultStructReflector, t)
+	pkColumns, err := pkColumnsOfStruct(defaultStructReflector, t)
 	if err != nil {
 		return nil, err
 	}
@@ -202,14 +202,10 @@ func GetRowOrNil[S StructWithTableName](ctx context.Context, pkValue any, pkValu
 	return row, nil
 }
 
+// QuerySlice returns queried rows as slice of the generic type T
+// using the passed reflector to scan column values as struct fields.
 // QuerySlice returns queried rows as slice of the generic type T.
 func QuerySlice[T any](ctx context.Context, query string, args ...any) (rows []T, err error) {
-	return QuerySliceWithReflector[T](ctx, DefaultStructReflector, query, args...)
-}
-
-// QuerySliceWithReflector returns queried rows as slice of the generic type T
-// using the passed reflector to scan column values as struct fields.
-func QuerySliceWithReflector[T any](ctx context.Context, reflector StructReflector, query string, args ...any) (rows []T, err error) {
 	sqlRows := Conn(ctx).Query(ctx, query, args...)
 	defer sqlRows.Close()
 
@@ -225,6 +221,8 @@ func QuerySliceWithReflector[T any](ctx context.Context, reflector StructReflect
 	if !rowStructs && len(columns) > 1 {
 		return nil, fmt.Errorf("expected single column result for type %s but got %d columns", sliceElemType, len(columns))
 	}
+
+	reflector := GetStructReflector(ctx)
 
 	for sqlRows.Next() {
 		if ctx.Err() != nil {
@@ -317,10 +315,6 @@ func QueryStrings(ctx context.Context, query string, args ...any) (rows [][]stri
 //
 // In case of zero rows, no error will be returned.
 func QueryCallback(ctx context.Context, callback any, query string, args ...any) error {
-	return QueryCallbackWithReflector(ctx, callback, DefaultStructReflector, query, args...)
-}
-
-func QueryCallbackWithReflector(ctx context.Context, callback any, reflector StructReflector, query string, args ...any) error {
 	val := reflect.ValueOf(callback)
 	typ := val.Type()
 	if typ.Kind() != reflect.Func {
@@ -372,6 +366,8 @@ func QueryCallbackWithReflector(ctx context.Context, callback any, reflector Str
 			return fmt.Errorf("QueryCallback callback function has %d non-context arguments but query result has %d columns", typ.NumIn()-firstArg, len(cols))
 		}
 	}
+
+	reflector := GetStructReflector(ctx)
 
 	scannedValPtrs := make([]any, typ.NumIn()-firstArg)
 	callbackArgs := make([]reflect.Value, typ.NumIn())
