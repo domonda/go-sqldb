@@ -12,18 +12,17 @@ import (
 func TestInsertStruct(t *testing.T) {
 	type Struct1 struct {
 		TableName `db:"my_table"`
-
-		ID   int    `db:"id,pk"`
-		Name string `db:"name"`
+		ID        int    `db:"id,pk"`
+		Name      string `db:"name"`
 	}
 
 	tests := []struct {
-		name          string
-		rowStruct     StructWithTableName
-		ignoreColumns []ColumnFilter
-		conn          *sqldb.RecordingMockConn
-		want          sqldb.MockConnRecording
-		wantErr       bool
+		name      string
+		rowStruct StructWithTableName
+		options   []QueryOption
+		conn      *sqldb.RecordingMockConn
+		want      sqldb.MockConnRecording
+		wantErr   bool
 	}{
 		{
 			name: "simple",
@@ -53,7 +52,7 @@ func TestInsertStruct(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := ContextWithConn(context.Background(), tt.conn)
-			err := InsertStruct(ctx, tt.rowStruct, tt.ignoreColumns...)
+			err := InsertStruct(ctx, tt.rowStruct, tt.options...)
 			if tt.wantErr {
 				require.Error(t, err, "error from InsertStructWithTableName")
 				return

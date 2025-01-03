@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func ReflectStructColumnsAndValues(structVal reflect.Value, reflector StructReflector, ignoreColumns ...ColumnFilter) (columns []Column, values []any) {
+func ReflectStructColumnsAndValues(structVal reflect.Value, reflector StructReflector, options ...QueryOption) (columns []Column, values []any) {
 	for i := 0; i < structVal.NumField(); i++ {
 		structField := structVal.Type().Field(i)
 		column, use := reflector.MapStructField(structField)
@@ -19,13 +19,13 @@ func ReflectStructColumnsAndValues(structVal reflect.Value, reflector StructRefl
 
 		if column.IsEmbeddedField() {
 			// Embedded struct field
-			columnsEmbed, valuesEmbed := ReflectStructColumnsAndValues(fieldValue, reflector, ignoreColumns...)
+			columnsEmbed, valuesEmbed := ReflectStructColumnsAndValues(fieldValue, reflector, options...)
 			columns = append(columns, columnsEmbed...)
 			values = append(values, valuesEmbed...)
 			continue
 		}
 
-		if ColumnFilters(ignoreColumns).IgnoreColumn(&column) {
+		if QueryOptionsIgnoreColumn(&column, options) || QueryOptionsIgnoreStructField(&structField, options) {
 			continue
 		}
 
@@ -35,7 +35,7 @@ func ReflectStructColumnsAndValues(structVal reflect.Value, reflector StructRefl
 	return columns, values
 }
 
-func ReflectStructValues(structVal reflect.Value, reflector StructReflector, ignoreColumns ...ColumnFilter) (values []any) {
+func ReflectStructValues(structVal reflect.Value, reflector StructReflector, options ...QueryOption) (values []any) {
 	for i := 0; i < structVal.NumField(); i++ {
 		structField := structVal.Type().Field(i)
 		column, use := reflector.MapStructField(structField)
@@ -46,12 +46,12 @@ func ReflectStructValues(structVal reflect.Value, reflector StructReflector, ign
 
 		if column.IsEmbeddedField() {
 			// Embedded struct field
-			valuesEmbed := ReflectStructValues(fieldValue, reflector, ignoreColumns...)
+			valuesEmbed := ReflectStructValues(fieldValue, reflector, options...)
 			values = append(values, valuesEmbed...)
 			continue
 		}
 
-		if ColumnFilters(ignoreColumns).IgnoreColumn(&column) {
+		if QueryOptionsIgnoreColumn(&column, options) || QueryOptionsIgnoreStructField(&structField, options) {
 			continue
 		}
 
@@ -60,7 +60,7 @@ func ReflectStructValues(structVal reflect.Value, reflector StructReflector, ign
 	return values
 }
 
-func ReflectStructColumns(structType reflect.Type, reflctor StructReflector, ignoreColumns ...ColumnFilter) (columns []Column) {
+func ReflectStructColumns(structType reflect.Type, reflctor StructReflector, options ...QueryOption) (columns []Column) {
 	for i := 0; i < structType.NumField(); i++ {
 		structField := structType.Field(i)
 		column, use := reflctor.MapStructField(structField)
@@ -69,12 +69,12 @@ func ReflectStructColumns(structType reflect.Type, reflctor StructReflector, ign
 		}
 
 		if column.IsEmbeddedField() {
-			columnsEmbed := ReflectStructColumns(structField.Type, reflctor, ignoreColumns...)
+			columnsEmbed := ReflectStructColumns(structField.Type, reflctor, options...)
 			columns = append(columns, columnsEmbed...)
 			continue
 		}
 
-		if ColumnFilters(ignoreColumns).IgnoreColumn(&column) {
+		if QueryOptionsIgnoreColumn(&column, options) || QueryOptionsIgnoreStructField(&structField, options) {
 			continue
 		}
 
@@ -83,7 +83,7 @@ func ReflectStructColumns(structType reflect.Type, reflctor StructReflector, ign
 	return columns
 }
 
-func ReflectStructColumnsAndFields(structVal reflect.Value, reflctor StructReflector, ignoreColumns ...ColumnFilter) (columns []Column, fields []reflect.Type) {
+func ReflectStructColumnsAndFields(structVal reflect.Value, reflctor StructReflector, options ...QueryOption) (columns []Column, fields []reflect.Type) {
 	for i := 0; i < structVal.NumField(); i++ {
 		structField := structVal.Type().Field(i)
 		column, use := reflctor.MapStructField(structField)
@@ -93,13 +93,13 @@ func ReflectStructColumnsAndFields(structVal reflect.Value, reflctor StructRefle
 		fieldValue := structVal.Field(i)
 
 		if column.IsEmbeddedField() {
-			columnsEmbed, fieldsEmbed := ReflectStructColumnsAndFields(fieldValue, reflctor, ignoreColumns...)
+			columnsEmbed, fieldsEmbed := ReflectStructColumnsAndFields(fieldValue, reflctor, options...)
 			columns = append(columns, columnsEmbed...)
 			fields = append(fields, fieldsEmbed...)
 			continue
 		}
 
-		if ColumnFilters(ignoreColumns).IgnoreColumn(&column) {
+		if QueryOptionsIgnoreColumn(&column, options) || QueryOptionsIgnoreStructField(&structField, options) {
 			continue
 		}
 

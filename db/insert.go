@@ -78,7 +78,7 @@ func InsertUnique(ctx context.Context, table string, values Values, onConflict s
 
 // InsertStruct inserts a new row into table.
 // Optional ColumnFilter can be passed to ignore mapped columns.
-func InsertStruct(ctx context.Context, rowStruct StructWithTableName, ignoreColumns ...ColumnFilter) error {
+func InsertStruct(ctx context.Context, rowStruct StructWithTableName, options ...QueryOption) error {
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return err
@@ -90,7 +90,7 @@ func InsertStruct(ctx context.Context, rowStruct StructWithTableName, ignoreColu
 		return err
 	}
 
-	columns, vals := ReflectStructColumnsAndValues(structVal, reflector, append(ignoreColumns, IgnoreReadOnly)...)
+	columns, vals := ReflectStructColumnsAndValues(structVal, reflector, append(options, IgnoreReadOnly)...)
 	conn := Conn(ctx)
 
 	query := strings.Builder{}
@@ -106,7 +106,7 @@ func InsertStruct(ctx context.Context, rowStruct StructWithTableName, ignoreColu
 	return nil
 }
 
-func InsertStructStmt[S StructWithTableName](ctx context.Context, ignoreColumns ...ColumnFilter) (insertFunc func(ctx context.Context, rowStruct S) error, closeFunc func() error, err error) {
+func InsertStructStmt[S StructWithTableName](ctx context.Context, options ...QueryOption) (insertFunc func(ctx context.Context, rowStruct S) error, closeFunc func() error, err error) {
 	reflector := GetStructReflector(ctx)
 	structType := reflect.TypeFor[S]()
 	table, err := reflector.TableNameForStruct(structType)
@@ -114,8 +114,8 @@ func InsertStructStmt[S StructWithTableName](ctx context.Context, ignoreColumns 
 		return nil, nil, err
 	}
 	conn := Conn(ctx)
-	ignoreColumns = append(ignoreColumns, IgnoreReadOnly)
-	columns := ReflectStructColumns(structType, reflector, ignoreColumns...)
+	options = append(options, IgnoreReadOnly)
+	columns := ReflectStructColumns(structType, reflector, options...)
 	query := strings.Builder{}
 	err = buildInsertQuery(&query, table, columns, conn)
 	if err != nil {
@@ -132,7 +132,7 @@ func InsertStructStmt[S StructWithTableName](ctx context.Context, ignoreColumns 
 		if err != nil {
 			return err
 		}
-		vals := ReflectStructValues(strct, reflector, ignoreColumns...)
+		vals := ReflectStructValues(strct, reflector, options...)
 		err = stmt.Exec(ctx, vals...)
 		if err != nil {
 			return wrapErrorWithQuery(err, query.String(), vals, conn)
@@ -162,7 +162,7 @@ func InsertStructStmt[S StructWithTableName](ctx context.Context, ignoreColumns 
 // Optional ColumnFilter can be passed to ignore mapped columns.
 // Does nothing if the onConflict statement applies
 // and returns true if a row was inserted.
-func InsertUniqueStruct(ctx context.Context, rowStruct StructWithTableName, onConflict string, ignoreColumns ...ColumnFilter) (inserted bool, err error) {
+func InsertUniqueStruct(ctx context.Context, rowStruct StructWithTableName, onConflict string, options ...QueryOption) (inserted bool, err error) {
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return false, err
@@ -174,7 +174,7 @@ func InsertUniqueStruct(ctx context.Context, rowStruct StructWithTableName, onCo
 		return false, err
 	}
 
-	columns, vals := ReflectStructColumnsAndValues(structVal, reflector, append(ignoreColumns, IgnoreReadOnly)...)
+	columns, vals := ReflectStructColumnsAndValues(structVal, reflector, append(options, IgnoreReadOnly)...)
 	conn := Conn(ctx)
 
 	if strings.HasPrefix(onConflict, "(") && strings.HasSuffix(onConflict, ")") {
@@ -199,16 +199,16 @@ func InsertUniqueStruct(ctx context.Context, rowStruct StructWithTableName, onCo
 // InsertStructs inserts a slice structs
 // as new rows into table using the DefaultStructReflector.
 // Optional ColumnFilter can be passed to ignore mapped columns.
-func InsertStructs[S StructWithTableName](ctx context.Context, rowStructs []S, ignoreColumns ...ColumnFilter) error {
+func InsertStructs[S StructWithTableName](ctx context.Context, rowStructs []S, options ...QueryOption) error {
 	// TODO optimized version that combines multiple structs in one query depending or maxArgs
 	switch len(rowStructs) {
 	case 0:
 		return nil
 	case 1:
-		return InsertStruct(ctx, rowStructs[0], ignoreColumns...)
+		return InsertStruct(ctx, rowStructs[0], options...)
 	}
 	return Transaction(ctx, func(ctx context.Context) (e error) {
-		insertFunc, closeFunc, err := InsertStructStmt[S](ctx, ignoreColumns...)
+		insertFunc, closeFunc, err := InsertStructStmt[S](ctx, options...)
 		if err != nil {
 			return err
 		}
