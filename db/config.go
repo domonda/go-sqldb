@@ -32,7 +32,7 @@ var (
 )
 
 func GetStructReflector(ctx context.Context) StructReflector {
-	if r := ctx.Value(&structReflectorCtxKey).(StructReflector); r != nil {
+	if r, ok := ctx.Value(&structReflectorCtxKey).(StructReflector); ok {
 		return r
 	}
 	return defaultStructReflector

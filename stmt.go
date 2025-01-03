@@ -44,12 +44,13 @@ func (s wrappedStmt) Close() error {
 }
 
 type unpreparedStmt struct {
-	conn  Connection
-	query string
+	conn      Connection
+	query     string
+	closeFunc func() error
 }
 
-func NewUnpreparedStmt(conn Connection, query string) Stmt {
-	return &unpreparedStmt{conn: conn, query: query}
+func NewUnpreparedStmt(conn Connection, query string, closeFunc func() error) Stmt {
+	return &unpreparedStmt{conn, query, closeFunc}
 }
 
 func (s *unpreparedStmt) PreparedQuery() string {
@@ -72,5 +73,8 @@ func (s *unpreparedStmt) Query(ctx context.Context, args ...any) Rows {
 
 func (s *unpreparedStmt) Close() error {
 	s.conn = nil
-	return nil
+	if s.closeFunc == nil {
+		return nil
+	}
+	return s.closeFunc()
 }

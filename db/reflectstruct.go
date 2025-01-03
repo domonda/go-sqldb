@@ -25,7 +25,7 @@ func ReflectStructColumnsAndValues(structVal reflect.Value, reflector StructRefl
 			continue
 		}
 
-		if ColumnFilters(ignoreColumns).IgnoreColumn(column, structField) {
+		if ColumnFilters(ignoreColumns).IgnoreColumn(&column) {
 			continue
 		}
 
@@ -51,7 +51,7 @@ func ReflectStructValues(structVal reflect.Value, reflector StructReflector, ign
 			continue
 		}
 
-		if ColumnFilters(ignoreColumns).IgnoreColumn(column, structField) {
+		if ColumnFilters(ignoreColumns).IgnoreColumn(&column) {
 			continue
 		}
 
@@ -74,7 +74,7 @@ func ReflectStructColumns(structType reflect.Type, reflctor StructReflector, ign
 			continue
 		}
 
-		if ColumnFilters(ignoreColumns).IgnoreColumn(column, structField) {
+		if ColumnFilters(ignoreColumns).IgnoreColumn(&column) {
 			continue
 		}
 
@@ -99,7 +99,7 @@ func ReflectStructColumnsAndFields(structVal reflect.Value, reflctor StructRefle
 			continue
 		}
 
-		if ColumnFilters(ignoreColumns).IgnoreColumn(column, structField) {
+		if ColumnFilters(ignoreColumns).IgnoreColumn(&column) {
 			continue
 		}
 

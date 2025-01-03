@@ -49,7 +49,7 @@ func UpsertStruct(ctx context.Context, rowStruct StructWithTableName, ignoreColu
 	return nil
 }
 
-func UpsertStructStmt[S StructWithTableName](ctx context.Context, ignoreColumns ...ColumnFilter) (upsertFunc func(ctx context.Context, rowStruct S) error, closeFunc func() error, err error) {
+func UpsertStructStmt[S StructWithTableName](ctx context.Context, ignoreColumns ...ColumnFilter) (upsert func(ctx context.Context, rowStruct S) error, done func() error, err error) {
 	structType := reflect.TypeFor[S]()
 	reflector := GetStructReflector(ctx)
 	table, err := reflector.TableNameForStruct(structType)
@@ -82,7 +82,7 @@ func UpsertStructStmt[S StructWithTableName](ctx context.Context, ignoreColumns 
 		return nil, nil, fmt.Errorf("UpsertStructStmt of table %s: can't prepare UPSERT statement because: %w", table, err)
 	}
 
-	upsertFunc = func(ctx context.Context, rowStruct S) error {
+	upsert = func(ctx context.Context, rowStruct S) error {
 		v, err := derefStruct(reflect.ValueOf(rowStruct))
 		if err != nil {
 			return err
@@ -94,7 +94,7 @@ func UpsertStructStmt[S StructWithTableName](ctx context.Context, ignoreColumns 
 		}
 		return nil
 	}
-	return upsertFunc, stmt.Close, nil
+	return upsert, stmt.Close, nil
 }
 
 func UpsertStructs[S StructWithTableName](ctx context.Context, rowStructs []S, ignoreColumns ...ColumnFilter) error {

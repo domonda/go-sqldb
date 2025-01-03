@@ -40,6 +40,7 @@ type Connection interface {
 	// Any error will be returned by the Rows.Err method.
 	Query(ctx context.Context, query string, args ...any) Rows
 
+	// Prepare a statement for execution.
 	Prepare(ctx context.Context, query string) (Stmt, error)
 
 	// TransactionInfo returns the number and sql.TxOptions

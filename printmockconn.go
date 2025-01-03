@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 )
 
@@ -15,14 +16,26 @@ type printMockConn struct {
 	QueryFormatter // StdQueryFormatter{} is used if nil
 	out            io.Writer
 	listening      map[string]struct{}
-	txNo           uint64 // Returned by TransactionInfo
+	// queryNormalizer *sqllexer.Normalizer
+	txNo   uint64 // Returned by TransactionInfo
+	stmtNo uint64
 }
 
 func NewPrintMockConn(out io.Writer, queryFormatter QueryFormatter) *printMockConn {
+	if queryFormatter == nil {
+		queryFormatter = StdQueryFormatter{}
+	}
 	return &printMockConn{
 		QueryFormatter: queryFormatter,
 		out:            out,
 		listening:      make(map[string]struct{}),
+		// queryNormalizer: sqllexer.NewNormalizer(
+		// 	sqllexer.WithCollectCommands(true),
+		// 	sqllexer.WithCollectTables(true),
+		// 	sqllexer.WithKeepSQLAlias(true),
+		// 	sqllexer.WithRemoveSpaceBetweenParentheses(true),
+		// 	sqllexer.WithKeepIdentifierQuotation(true),
+		// ),
 	}
 }
 
@@ -39,21 +52,39 @@ func (c *printMockConn) Config() *Config {
 }
 
 func (c *printMockConn) Exec(ctx context.Context, query string, args ...any) error {
+	// query, _, err := c.queryNormalizer.Normalize(query)
+	// if err != nil {
+	// 	return err
+	// }
 	_, err := io.WriteString(c.out, FormatQuery(c.QueryFormatter, query, args...)+";\n")
 	return err
 }
 
 func (c *printMockConn) Query(ctx context.Context, query string, args ...any) Rows {
+	// query, _, err := c.queryNormalizer.Normalize(query)
+	// if err != nil {
+	// 	return NewErrRows(err)
+	// }
 	_, err := io.WriteString(c.out, FormatQuery(c.QueryFormatter, query, args...)+";\n")
 	return NewErrRows(err) // Empty result
 }
 
 func (c *printMockConn) Prepare(ctx context.Context, query string) (Stmt, error) {
-	_, err := fmt.Fprintf(c.out, "PREPARE %s;\n", query)
+	// query, _, err := c.queryNormalizer.Normalize(query)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	c.stmtNo++
+	_, err := fmt.Fprintf(c.out, "PREPARE stmt%d AS %s;\n", c.stmtNo, query)
 	if err != nil {
 		return nil, err
 	}
-	return NewUnpreparedStmt(c, query), nil
+	dealloc := fmt.Sprintf("DEALLOCATE PREPARE stmt%d;\n", c.stmtNo)
+	closeFunc := func() error {
+		_, err := io.WriteString(c.out, dealloc)
+		return err
+	}
+	return NewUnpreparedStmt(c, query, closeFunc), nil
 }
 
 func (c *printMockConn) TransactionInfo() (no uint64, opts *sql.TxOptions) {
@@ -61,16 +92,16 @@ func (c *printMockConn) TransactionInfo() (no uint64, opts *sql.TxOptions) {
 }
 
 func (c *printMockConn) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error) {
-	optsString := ""
+	query := "BEGIN"
 	if opts != nil {
 		if opts.Isolation != sql.LevelDefault {
-			optsString = " ISOLATION LEVEL " + opts.Isolation.String()
+			query += " ISOLATION LEVEL " + strings.ToUpper(opts.Isolation.String())
 		}
 		if opts.ReadOnly {
-			optsString += " READ ONLY"
+			query += " READ ONLY"
 		}
 	}
-	_, err := fmt.Fprintf(c.out, "BEGIN%s;\n", optsString)
+	_, err := io.WriteString(c.out, query+";\n")
 	if err != nil {
 		return nil, err
 	}

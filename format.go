@@ -78,13 +78,30 @@ func FormatValue(val any) (string, error) {
 }
 
 func FormatQuery(f QueryFormatter, query string, args ...any) string {
-	for i := len(args) - 1; i >= 0; i-- {
-		placeholder := f.FormatPlaceholder(i)
-		value, err := FormatValue(args[i])
-		if err != nil {
-			value = "FORMATERROR:" + err.Error()
+	if len(args) > 0 {
+		if placeholder := f.FormatPlaceholder(0); f.FormatPlaceholder(1) == placeholder {
+			// Uniform placeholders, replace every instance with one arg
+			for _, arg := range args {
+				value, err := FormatValue(arg)
+				if err != nil {
+					value = "FORMATERROR:" + err.Error()
+				}
+				// Note that this will replace placeholders in comments and strings
+				query = strings.Replace(query, placeholder, value, 1)
+			}
+		} else {
+			// Numbered placeholders, replace in reverse order
+			// to avoid replacing shorter placeholders contained in longer ones
+			for i := len(args) - 1; i >= 0; i-- {
+				placeholder := f.FormatPlaceholder(i)
+				value, err := FormatValue(args[i])
+				if err != nil {
+					value = "FORMATERROR:" + err.Error()
+				}
+				// Note that this will replace placeholders in comments and strings
+				query = strings.ReplaceAll(query, placeholder, value)
+			}
 		}
-		query = strings.ReplaceAll(query, placeholder, value)
 	}
 
 	lines := strings.Split(query, "\n")

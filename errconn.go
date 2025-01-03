@@ -21,7 +21,6 @@ func NewErrConn(err error) ErrConn {
 // where all methods except Close return Err.
 type ErrConn struct {
 	StdQueryFormatter
-
 	Err error
 }
 

@@ -5,78 +5,88 @@ import (
 )
 
 type ColumnFilter interface {
-	IgnoreColumn(column Column, field reflect.StructField) bool
+	IgnoreColumn(column *Column) bool
 }
 
-type ColumnFilterFunc func(column Column, field reflect.StructField) bool
+type ColumnFilterFunc func(column *Column) bool
 
-func (f ColumnFilterFunc) IgnoreColumn(column Column, field reflect.StructField) bool {
-	return f(column, field)
+func (f ColumnFilterFunc) IgnoreColumn(column *Column) bool {
+	return f(column)
+}
+
+type StructFieldFilter interface {
+	IgnoreField(field *reflect.StructField) bool
+}
+
+type StructFieldFilterFunc func(field *reflect.StructField) bool
+
+func (f StructFieldFilterFunc) IgnoreField(field *reflect.StructField) bool {
+	return f(field)
 }
 
 type ColumnFilters []ColumnFilter
 
-func (filters ColumnFilters) IgnoreColumn(column Column, field reflect.StructField) bool {
+func (filters ColumnFilters) IgnoreColumn(column *Column) bool {
 	for _, filter := range filters {
-		if filter.IgnoreColumn(column, field) {
+		if filter.IgnoreColumn(column) {
 			return true
 		}
 	}
 	return false
 }
 
-func IgnoreColumns(names ...string) ColumnFilter {
-	return ColumnFilterFunc(func(column Column, field reflect.StructField) bool {
+func IgnoreColumns(names ...string) ColumnFilterFunc {
+	return func(column *Column) bool {
 		for _, ignore := range names {
 			if column.Name == ignore {
 				return true
 			}
 		}
 		return false
-	})
+	}
 }
 
-func OnlyColumns(names ...string) ColumnFilter {
-	return ColumnFilterFunc(func(column Column, field reflect.StructField) bool {
+func OnlyColumns(names ...string) ColumnFilterFunc {
+	return func(column *Column) bool {
 		for _, include := range names {
 			if column.Name == include {
 				return false
 			}
 		}
 		return true
-	})
+	}
 }
 
-func IgnoreStructFields(names ...string) ColumnFilter {
-	return ColumnFilterFunc(func(column Column, field reflect.StructField) bool {
+func IgnoreStructFields(names ...string) StructFieldFilterFunc {
+	return func(field *reflect.StructField) bool {
 		for _, ignore := range names {
 			if field.Name == ignore {
 				return true
 			}
 		}
 		return false
-	})
+	}
 }
 
-func OnlyStructFields(names ...string) ColumnFilter {
-	return ColumnFilterFunc(func(column Column, field reflect.StructField) bool {
+func OnlyStructFields(names ...string) StructFieldFilterFunc {
+	return func(field *reflect.StructField) bool {
 		for _, include := range names {
 			if field.Name == include {
 				return false
 			}
 		}
 		return true
-	})
+	}
 }
 
-var IgnoreHasDefault ColumnFilter = ColumnFilterFunc(func(column Column, field reflect.StructField) bool {
+var IgnoreHasDefault = ColumnFilterFunc(func(column *Column) bool {
 	return column.HasDefault
 })
 
-var IgnorePrimaryKey ColumnFilter = ColumnFilterFunc(func(column Column, field reflect.StructField) bool {
+var IgnorePrimaryKey = ColumnFilterFunc(func(column *Column) bool {
 	return column.PrimaryKey
 })
 
-var IgnoreReadOnly ColumnFilter = ColumnFilterFunc(func(column Column, field reflect.StructField) bool {
+var IgnoreReadOnly = ColumnFilterFunc(func(column *Column) bool {
 	return column.ReadOnly
 })
