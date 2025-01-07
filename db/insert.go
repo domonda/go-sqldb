@@ -208,16 +208,16 @@ func InsertStructs[S StructWithTableName](ctx context.Context, rowStructs []S, o
 		return InsertStruct(ctx, rowStructs[0], options...)
 	}
 	return Transaction(ctx, func(ctx context.Context) (e error) {
-		insertFunc, closeFunc, err := InsertStructStmt[S](ctx, options...)
+		insert, done, err := InsertStructStmt[S](ctx, options...)
 		if err != nil {
 			return err
 		}
 		defer func() {
-			e = errors.Join(e, closeFunc())
+			e = errors.Join(e, done())
 		}()
 
 		for _, rowStruct := range rowStructs {
-			err = insertFunc(ctx, rowStruct)
+			err = insert(ctx, rowStruct)
 			if err != nil {
 				return err
 			}

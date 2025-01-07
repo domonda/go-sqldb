@@ -2,17 +2,18 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"testing"
-
-	"github.com/stretchr/testify/require"
+	"time"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInsertStruct(t *testing.T) {
 	type Struct1 struct {
 		TableName `db:"my_table"`
-		ID        int    `db:"id,pk"`
+		ID        int    `db:"id"`
 		Name      string `db:"name"`
 	}
 
@@ -42,7 +43,7 @@ func TestInsertStruct(t *testing.T) {
 			name: "TableName without name tag",
 			rowStruct: struct {
 				TableName
-				ID   int    `db:"id,pk"`
+				ID   int    `db:"id"`
 				Name string `db:"name"`
 			}{},
 			conn:    sqldb.NewRecordingMockConn("$", false),
@@ -54,10 +55,63 @@ func TestInsertStruct(t *testing.T) {
 			ctx := ContextWithConn(context.Background(), tt.conn)
 			err := InsertStruct(ctx, tt.rowStruct, tt.options...)
 			if tt.wantErr {
-				require.Error(t, err, "error from InsertStructWithTableName")
+				require.Error(t, err, "error from InsertStruct")
 				return
 			}
-			require.NoError(t, err, "error from InsertStructWithTableName")
+			require.NoError(t, err, "error from InsertStruct")
+			require.Equal(t, tt.want, tt.conn.MockConnRecording, "MockConnRecording")
+		})
+	}
+}
+
+func TestInsert(t *testing.T) {
+	timestamp := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name    string
+		table   string
+		values  Values
+		conn    *sqldb.RecordingMockConn
+		want    sqldb.MockConnRecording
+		wantErr bool
+	}{
+		{
+			name:  "basic",
+			table: "public.my_table",
+			values: Values{
+				"id":         1,
+				"name":       "Test",
+				"created_at": timestamp,
+				"updated_at": sql.NullTime{},
+			},
+			conn: sqldb.NewRecordingMockConn("$", false),
+			want: sqldb.MockConnRecording{
+				Execs: []sqldb.QueryData{
+					{
+						Query: `INSERT INTO public.my_table(created_at,id,name,updated_at) VALUES($1,$2,$3,$4)`,
+						Args:  []any{timestamp, 1, "Test", sql.NullTime{}},
+					},
+				},
+			},
+		},
+
+		// Error cases
+		{
+			name:    "no values",
+			table:   "public.my_table",
+			values:  Values{},
+			conn:    sqldb.NewRecordingMockConn("$", false),
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := ContextWithConn(context.Background(), tt.conn)
+			err := Insert(ctx, tt.table, tt.values)
+			if tt.wantErr {
+				require.Error(t, err, "error from Insert")
+				return
+			}
+			require.NoError(t, err, "error from Insert")
 			require.Equal(t, tt.want, tt.conn.MockConnRecording, "MockConnRecording")
 		})
 	}

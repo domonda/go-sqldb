@@ -8,8 +8,8 @@ import (
 // Values is a map from column names to values
 type Values map[string]any
 
-// SortedColumnsAndValues returns the names and values from the Values map
-// as separated slices sorted by name.
+// SortedColumnsAndValues returns the column names and values
+// from the Values map as separated slices sorted by column name.
 func (v Values) SortedColumnsAndValues() (columns []Column, values []any) {
 	columns = make([]Column, 0, len(v))
 	for name := range v {
