@@ -22,7 +22,7 @@ func TestInsertStruct(t *testing.T) {
 		rowStruct StructWithTableName
 		options   []QueryOption
 		conn      *sqldb.RecordingMockConn
-		want      sqldb.MockConnRecording
+		want      sqldb.QueryRecording
 		wantErr   bool
 	}{
 		{
@@ -32,7 +32,7 @@ func TestInsertStruct(t *testing.T) {
 				Name: "test",
 			},
 			conn: sqldb.NewRecordingMockConn("$", false),
-			want: sqldb.MockConnRecording{
+			want: sqldb.QueryRecording{
 				Execs: []sqldb.QueryData{
 					{Query: "INSERT INTO my_table(id,name) VALUES($1,$2)", Args: []any{1, "test"}},
 				},
@@ -59,7 +59,7 @@ func TestInsertStruct(t *testing.T) {
 				return
 			}
 			require.NoError(t, err, "error from InsertStruct")
-			require.Equal(t, tt.want, tt.conn.MockConnRecording, "MockConnRecording")
+			require.Equal(t, tt.want, tt.conn.QueryRecording, "MockConnRecording")
 		})
 	}
 }
@@ -71,7 +71,7 @@ func TestInsert(t *testing.T) {
 		table   string
 		values  Values
 		conn    *sqldb.RecordingMockConn
-		want    sqldb.MockConnRecording
+		want    sqldb.QueryRecording
 		wantErr bool
 	}{
 		{
@@ -84,7 +84,7 @@ func TestInsert(t *testing.T) {
 				"updated_at": sql.NullTime{},
 			},
 			conn: sqldb.NewRecordingMockConn("$", false),
-			want: sqldb.MockConnRecording{
+			want: sqldb.QueryRecording{
 				Execs: []sqldb.QueryData{
 					{
 						Query: `INSERT INTO public.my_table(created_at,id,name,updated_at) VALUES($1,$2,$3,$4)`,
@@ -112,7 +112,7 @@ func TestInsert(t *testing.T) {
 				return
 			}
 			require.NoError(t, err, "error from Insert")
-			require.Equal(t, tt.want, tt.conn.MockConnRecording, "MockConnRecording")
+			require.Equal(t, tt.want, tt.conn.QueryRecording, "MockConnRecording")
 		})
 	}
 }

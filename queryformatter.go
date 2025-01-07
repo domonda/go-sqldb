@@ -42,6 +42,10 @@ type StdQueryFormatter struct {
 	PlaceholderPosPrefix string
 }
 
+func NewStdQueryFormatter(placeholderPosPrefix string) StdQueryFormatter {
+	return StdQueryFormatter{PlaceholderPosPrefix: placeholderPosPrefix}
+}
+
 var (
 	stdTableNameRegexp  = regexp.MustCompile(`^([a-zA-Z_][a-zA-Z0-9_]*\.)?[a-zA-Z_][a-zA-Z0-9_]*$`)
 	stdColumnNameRegexp = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
