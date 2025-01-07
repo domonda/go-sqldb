@@ -22,10 +22,10 @@ func ExampleUpsertStructStmt() {
 		{ID: 3, Name: "Charlie", Email: "charlie@example.com"},
 	}
 
-	conn := sqldb.NewPrintMockConn(
-		os.Stdout,
-		sqldb.StdQueryFormatter{PlaceholderPosPrefix: "$"},
-	)
+	conn := &sqldb.MockConn{
+		QueryFormatter: sqldb.NewStdQueryFormatter("$"),
+		QueryWriter:    os.Stdout,
+	}
 	ctx := db.ContextWithConn(context.Background(), conn)
 
 	err := db.Transaction(ctx, func(ctx context.Context) error {

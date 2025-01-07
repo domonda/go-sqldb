@@ -2,6 +2,22 @@ package sqldb
 
 import "github.com/DataDog/go-sqllexer"
 
+type NormalizeQueryFunc func(query string) (string, error)
+
+func NewQueryNormalizer() NormalizeQueryFunc {
+	normalizer := sqllexer.NewNormalizer(
+		sqllexer.WithCollectCommands(true),
+		sqllexer.WithCollectTables(true),
+		sqllexer.WithKeepSQLAlias(true),
+		sqllexer.WithRemoveSpaceBetweenParentheses(true),
+		sqllexer.WithKeepIdentifierQuotation(true),
+	)
+	return func(query string) (string, error) {
+		query, _, err := normalizer.Normalize(query)
+		return query, err
+	}
+}
+
 // QueryData holds an SQL query with its arguments
 // (query parameters).
 type QueryData struct {
@@ -12,39 +28,13 @@ type QueryData struct {
 	Args []any
 }
 
-var queryNormalizer = sqllexer.NewNormalizer(
-	sqllexer.WithCollectCommands(true),
-	sqllexer.WithCollectTables(true),
-	sqllexer.WithKeepSQLAlias(true),
-	sqllexer.WithRemoveSpaceBetweenParentheses(true),
-	sqllexer.WithKeepIdentifierQuotation(true),
-)
-
-func NewQueryData(query string, args []any, normalize bool) (QueryData, error) {
-	if normalize {
-		return NormalizedQueryData(query, args)
-	}
-	return UnchangedQueryData(query, args)
-}
-
-func UnchangedQueryData(query string, args []any) (QueryData, error) {
-	_, _, err := queryNormalizer.Normalize(query)
-	if err != nil {
-		return QueryData{}, err
+func NewQueryData(query string, args []any, normalize NormalizeQueryFunc) (QueryData, error) {
+	var err error
+	if normalize != nil {
+		query, err = normalize(query)
 	}
 	return QueryData{
 		Query: query,
 		Args:  args,
-	}, nil
-}
-
-func NormalizedQueryData(query string, args []any) (QueryData, error) {
-	query, _, err := queryNormalizer.Normalize(query)
-	if err != nil {
-		return QueryData{}, err
-	}
-	return QueryData{
-		Query: query,
-		Args:  args,
-	}, nil
+	}, err
 }
