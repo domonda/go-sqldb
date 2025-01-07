@@ -1,9 +1,14 @@
 package db
 
 import (
+	"context"
+	"database/sql/driver"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/domonda/go-sqldb"
+	"github.com/stretchr/testify/require"
 )
 
 func Test_isNonSQLScannerStruct(t *testing.T) {
@@ -23,4 +28,18 @@ func Test_isNonSQLScannerStruct(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestQueryValue(t *testing.T) {
+	query := /*sql*/ `SELECT EXISTS (SELECT FROM my_table WHERE id = $1)`
+	conn := sqldb.NewMockConn("$", nil, nil).WithQueryResult(
+		[]string{"exists"},       // columns
+		[][]driver.Value{{true}}, // rows
+		query,                    // query
+		666,                      // args
+	)
+	ctx := ContextWithConn(context.Background(), conn)
+	value, err := QueryValue[bool](ctx, query, 666)
+	require.NoError(t, err)
+	require.Equal(t, true, value, "QueryValue[bool] result")
 }

@@ -61,12 +61,10 @@ func QueryRow(ctx context.Context, query string, args ...any) *RowScanner {
 	return NewRowScanner(rows, defaultStructReflector, conn, query, args)
 }
 
-// // QueryRows queries multiple rows and returns a RowsScanner for the results.
-// func QueryRows(ctx context.Context, query string, args ...any) *MultiRowScanner {
-// 	conn := Conn(ctx)
-// 	rows := conn.Query(query, args...)
-// 	return NewMultiRowScanner(ctx, rows, DefaultStructReflector, conn, query, args)
-// }
+// QueryRows queries multiple rows and returns a sqldb.Rows for the results.
+func QueryRows(ctx context.Context, query string, args ...any) sqldb.Rows {
+	return Conn(ctx).Query(ctx, query, args...)
+}
 
 // QueryValue queries a single value of type T.
 func QueryValue[T any](ctx context.Context, query string, args ...any) (value T, err error) {

@@ -3,8 +3,10 @@ package sqldb
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"io"
+	"maps"
 	"strings"
 	"time"
 )
@@ -33,14 +35,15 @@ type MockConn struct {
 	QueryFormatter QueryFormatter // StdQueryFormatter{} is used if nil
 
 	NormalizeQuery NormalizeQueryFunc // nil means no normalization
-	QueryWriter    io.Writer          // nil means no writing of queries
+	QueryLog       io.Writer          // nil means no writing of queries
 
 	// Connection state
 	TxNo        uint64 // Returned by TransactionInfo
 	StmtNo      uint64
 	ListeningOn map[string]struct{}
 
-	Recordings QueryRecordings
+	Recordings       QueryRecordings
+	MockQueryResults map[string]*MockRows
 
 	MockPing                 func(context.Context, time.Duration) error
 	MockStats                func() sql.DBStats
@@ -62,11 +65,34 @@ type MockConn struct {
 // MockConn implements ListenerConnection
 var _ ListenerConnection = new(MockConn)
 
-func NewRecordingMockConn(placeholderPosPrefix string, normalizeQuery NormalizeQueryFunc) *MockConn {
+func NewMockConn(placeholderPosPrefix string, normalizeQuery NormalizeQueryFunc, queryLog io.Writer) *MockConn {
 	return &MockConn{
 		QueryFormatter: NewStdQueryFormatter(placeholderPosPrefix),
 		NormalizeQuery: normalizeQuery,
+		QueryLog:       queryLog,
 	}
+}
+
+func (c *MockConn) Clone() *MockConn {
+	copy := *c
+	copy.ListeningOn = maps.Clone(c.ListeningOn)
+	copy.MockQueryResults = maps.Clone(c.MockQueryResults)
+	return &copy
+}
+
+func (c *MockConn) WithQueryResult(columns []string, rows [][]driver.Value, forQuery string, args ...any) *MockConn {
+	queryFormatter := c.QueryFormatter
+	if queryFormatter == nil {
+		queryFormatter = StdQueryFormatter{}
+	}
+	normQuery := MustNormalizeAndFormatQuery(c.NormalizeQuery, queryFormatter, forQuery, args...)
+
+	cc := c.Clone()
+	if cc.MockQueryResults == nil {
+		cc.MockQueryResults = make(map[string]*MockRows)
+	}
+	cc.MockQueryResults[normQuery] = NewMockRows(columns, rows)
+	return cc
 }
 
 func (c *MockConn) FormatTableName(name string) (string, error) {
@@ -122,14 +148,14 @@ func (c *MockConn) Exec(ctx context.Context, query string, args ...any) (err err
 	}
 	c.Recordings.Execs = append(c.Recordings.Execs, queryData)
 
-	if c.QueryWriter != nil {
+	if c.QueryLog != nil {
 		if c.NormalizeQuery != nil {
 			query, err = c.NormalizeQuery(query)
 			if err != nil {
 				return err
 			}
 		}
-		_, err = fmt.Fprint(c.QueryWriter, FormatQuery(c.QueryFormatter, query, args...), ";\n")
+		_, err = fmt.Fprint(c.QueryLog, FormatQuery(c.QueryFormatter, query, args...), ";\n")
 		if err != nil {
 			return err
 		}
@@ -148,7 +174,7 @@ func (c *MockConn) Query(ctx context.Context, query string, args ...any) Rows {
 	}
 	c.Recordings.Queries = append(c.Recordings.Queries, queryData)
 
-	if c.QueryWriter != nil {
+	if c.QueryLog != nil {
 		var err error
 		if c.NormalizeQuery != nil {
 			query, err = c.NormalizeQuery(query)
@@ -156,20 +182,24 @@ func (c *MockConn) Query(ctx context.Context, query string, args ...any) Rows {
 				return NewErrRows(err)
 			}
 		}
-		_, err = fmt.Fprint(c.QueryWriter, FormatQuery(c.QueryFormatter, query, args...), ";\n")
+		_, err = fmt.Fprint(c.QueryLog, FormatQuery(c.QueryFormatter, query, args...), ";\n")
 		if err != nil {
 			return NewErrRows(err)
 		}
 	}
 
 	if c.MockQuery == nil {
-		return NewErrRows(ctx.Err())
+		mockRows := c.MockQueryResults[queryData.Format(c.QueryFormatter)]
+		if mockRows == nil {
+			return NewErrRows(ctx.Err())
+		}
+		return mockRows.WithErr(ctx.Err())
 	}
 	return c.MockQuery(ctx, query, args...)
 }
 
 func (c *MockConn) Prepare(ctx context.Context, query string) (Stmt, error) {
-	if c.QueryWriter != nil {
+	if c.QueryLog != nil {
 		var err error
 		if c.NormalizeQuery != nil {
 			query, err = c.NormalizeQuery(query)
@@ -178,7 +208,7 @@ func (c *MockConn) Prepare(ctx context.Context, query string) (Stmt, error) {
 			}
 		}
 		c.StmtNo++
-		_, err = fmt.Fprintf(c.QueryWriter, "PREPARE stmt%d AS %s;\n", c.StmtNo, query)
+		_, err = fmt.Fprintf(c.QueryLog, "PREPARE stmt%d AS %s;\n", c.StmtNo, query)
 		if err != nil {
 			return nil, err
 		}
@@ -194,10 +224,10 @@ func (c *MockConn) Prepare(ctx context.Context, query string) (Stmt, error) {
 				return c.Query(ctx, query, args...)
 			},
 		}
-		if c.QueryWriter != nil {
+		if c.QueryLog != nil {
 			dealloc := fmt.Sprintf("DEALLOCATE PREPARE stmt%d;\n", c.StmtNo)
 			stmt.MockClose = func() error {
-				_, err := fmt.Fprint(c.QueryWriter, dealloc)
+				_, err := fmt.Fprint(c.QueryLog, dealloc)
 				return err
 			}
 		}
@@ -214,7 +244,7 @@ func (c *MockConn) TransactionInfo() (no uint64, opts *sql.TxOptions) {
 }
 
 func (c *MockConn) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error) {
-	if c.QueryWriter != nil {
+	if c.QueryLog != nil {
 		query := "BEGIN"
 		if opts != nil {
 			if opts.Isolation != sql.LevelDefault {
@@ -224,7 +254,7 @@ func (c *MockConn) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (C
 				query += " READ ONLY"
 			}
 		}
-		_, err := fmt.Fprint(c.QueryWriter, query+";\n")
+		_, err := fmt.Fprint(c.QueryLog, query+";\n")
 		if err != nil {
 			return nil, err
 		}
@@ -239,8 +269,8 @@ func (c *MockConn) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (C
 }
 
 func (c *MockConn) Commit() error {
-	if c.QueryWriter != nil {
-		_, err := fmt.Fprint(c.QueryWriter, "COMMIT;\n")
+	if c.QueryLog != nil {
+		_, err := fmt.Fprint(c.QueryLog, "COMMIT;\n")
 		if err != nil {
 			return err
 		}
@@ -253,8 +283,8 @@ func (c *MockConn) Commit() error {
 }
 
 func (c *MockConn) Rollback() error {
-	if c.QueryWriter != nil {
-		_, err := fmt.Fprint(c.QueryWriter, "ROLLBACK;\n")
+	if c.QueryLog != nil {
+		_, err := fmt.Fprint(c.QueryLog, "ROLLBACK;\n")
 		if err != nil {
 			return err
 		}
@@ -272,8 +302,8 @@ func (c *MockConn) ListenOnChannel(channel string, onNotify OnNotifyFunc, onUnli
 	}
 	c.ListeningOn[channel] = struct{}{}
 
-	if c.QueryWriter != nil {
-		_, err := fmt.Fprintf(c.QueryWriter, "LISTEN %s;\n", channel)
+	if c.QueryLog != nil {
+		_, err := fmt.Fprintf(c.QueryLog, "LISTEN %s;\n", channel)
 		if err != nil {
 			return err
 		}
@@ -288,8 +318,8 @@ func (c *MockConn) ListenOnChannel(channel string, onNotify OnNotifyFunc, onUnli
 func (c *MockConn) UnlistenChannel(channel string) error {
 	delete(c.ListeningOn, channel)
 
-	if c.QueryWriter != nil {
-		_, err := fmt.Fprintf(c.QueryWriter, "UNLISTEN %s;\n", channel)
+	if c.QueryLog != nil {
+		_, err := fmt.Fprintf(c.QueryLog, "UNLISTEN %s;\n", channel)
 		if err != nil {
 			return err
 		}

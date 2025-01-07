@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"os"
 	"testing"
 	"time"
 
@@ -31,7 +32,7 @@ func TestInsertStruct(t *testing.T) {
 				ID:   1,
 				Name: "test",
 			},
-			conn: sqldb.NewRecordingMockConn("$", nil),
+			conn: sqldb.NewMockConn("$", nil, os.Stdout),
 			want: sqldb.QueryRecordings{
 				Execs: []sqldb.QueryData{
 					{Query: "INSERT INTO my_table(id,name) VALUES($1,$2)", Args: []any{1, "test"}},
@@ -46,7 +47,7 @@ func TestInsertStruct(t *testing.T) {
 				ID   int    `db:"id"`
 				Name string `db:"name"`
 			}{},
-			conn:    sqldb.NewRecordingMockConn("$", nil),
+			conn:    sqldb.NewMockConn("$", nil, os.Stdout),
 			wantErr: true,
 		},
 	}
@@ -83,7 +84,7 @@ func TestInsert(t *testing.T) {
 				"created_at": timestamp,
 				"updated_at": sql.NullTime{},
 			},
-			conn: sqldb.NewRecordingMockConn("$", nil),
+			conn: sqldb.NewMockConn("$", nil, os.Stdout),
 			want: sqldb.QueryRecordings{
 				Execs: []sqldb.QueryData{
 					{
@@ -99,7 +100,7 @@ func TestInsert(t *testing.T) {
 			name:    "no values",
 			table:   "public.my_table",
 			values:  Values{},
-			conn:    sqldb.NewRecordingMockConn("$", nil),
+			conn:    sqldb.NewMockConn("$", nil, os.Stdout),
 			wantErr: true,
 		},
 	}

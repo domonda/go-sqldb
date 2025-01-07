@@ -77,6 +77,28 @@ func FormatValue(val any) (string, error) {
 	return fmt.Sprint(val), nil
 }
 
+func NormalizeAndFormatQuery(normalize NormalizeQueryFunc, formatter QueryFormatter, query string, args ...any) (string, error) {
+	if normalize == nil {
+		normalize = NoChangeNormalizeQuery
+	}
+	if formatter == nil {
+		formatter = NewStdQueryFormatter("$")
+	}
+	query, err := normalize(query)
+	if err != nil {
+		return "", err
+	}
+	return FormatQuery(formatter, query, args...), nil
+}
+
+func MustNormalizeAndFormatQuery(normalize NormalizeQueryFunc, formatter QueryFormatter, query string, args ...any) string {
+	query, err := NormalizeAndFormatQuery(normalize, formatter, query, args...)
+	if err != nil {
+		panic("NormalizeAndFormatQuery error: " + err.Error())
+	}
+	return query
+}
+
 func FormatQuery(f QueryFormatter, query string, args ...any) string {
 	if len(args) > 0 {
 		if placeholder := f.FormatPlaceholder(0); f.FormatPlaceholder(1) == placeholder {

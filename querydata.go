@@ -4,6 +4,10 @@ import "github.com/DataDog/go-sqllexer"
 
 type NormalizeQueryFunc func(query string) (string, error)
 
+func NoChangeNormalizeQuery(query string) (string, error) {
+	return query, nil
+}
+
 func NewQueryNormalizer() NormalizeQueryFunc {
 	normalizer := sqllexer.NewNormalizer(
 		sqllexer.WithCollectCommands(true),
@@ -37,4 +41,8 @@ func NewQueryData(query string, args []any, normalize NormalizeQueryFunc) (Query
 		Query: query,
 		Args:  args,
 	}, err
+}
+
+func (q *QueryData) Format(formatter QueryFormatter) string {
+	return FormatQuery(formatter, q.Query, q.Args...)
 }
