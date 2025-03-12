@@ -68,6 +68,17 @@ func Transaction(ctx context.Context, txFunc func(context.Context) error) error 
 	})
 }
 
+// OptionalTransaction executes txFunc within a database transaction if doTransaction is true.
+// If doTransaction is false, then txFunc is executed without a transaction.
+//
+// See [Transaction] for more details.
+func OptionalTransaction(ctx context.Context, doTransaction bool, txFunc func(context.Context) error) error {
+	if !doTransaction {
+		return txFunc(ctx)
+	}
+	return Transaction(ctx, txFunc)
+}
+
 // SerializedTransaction executes txFunc "serially" within a database transaction that is passed in to txFunc via the context.
 // Use db.Conn(ctx) to get the transaction connection within txFunc.
 // Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
