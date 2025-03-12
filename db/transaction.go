@@ -20,7 +20,7 @@ func IsTransaction(ctx context.Context) bool {
 	return tx != 0
 }
 
-// ValidateWithinTransaction returns sqldb.ErrNotWithinTransaction
+// ValidateWithinTransaction returns [sqldb.ErrNotWithinTransaction]
 // if the database connection from the context is not a transaction.
 func ValidateWithinTransaction(ctx context.Context) error {
 	conn := Conn(ctx)
@@ -33,7 +33,7 @@ func ValidateWithinTransaction(ctx context.Context) error {
 	return nil
 }
 
-// ValidateNotWithinTransaction returns sqldb.ErrWithinTransaction
+// ValidateNotWithinTransaction returns [sqldb.ErrWithinTransaction]
 // if the database connection from the context is a transaction.
 func ValidateNotWithinTransaction(ctx context.Context) error {
 	conn := Conn(ctx)
@@ -52,11 +52,11 @@ func DebugNoTransaction(ctx context.Context, nonTxFunc func(context.Context) err
 	return nonTxFunc(ctx)
 }
 
-// IsolatedTransaction executes txFunc within a database transaction that is passed in to txFunc as tx Connection.
+// IsolatedTransaction executes txFunc within a database transaction that is passed in to txFunc as tx [Connection].
 // IsolatedTransaction returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, a brand new transaction will begin on the parent's connection.
 // Errors and panics from txFunc will rollback the transaction.
-// Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
+// Recovered panics are re-paniced and rollback errors after a panic are logged with [ErrLogger].
 func IsolatedTransaction(ctx context.Context, txFunc func(context.Context) error) error {
 	return sqldb.IsolatedTransaction(ctx, Conn(ctx), nil, func(tx sqldb.Connection) error {
 		return txFunc(context.WithValue(ctx, &globalConnCtxKey, tx))
@@ -64,16 +64,27 @@ func IsolatedTransaction(ctx context.Context, txFunc func(context.Context) error
 }
 
 // Transaction executes txFunc within a database transaction that is passed in to txFunc via the context.
-// Use db.Conn(ctx) to get the transaction connection within txFunc.
+// Use `db.Conn(ctx)` to get the transaction connection within txFunc.
 // Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
-// If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
+// If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx [sqldb.Connection].
 // and no parentConn.Begin, Commit, or Rollback calls will occour within this Transaction call.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
-// Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
+// Recovered panics are re-paniced and rollback errors after a panic are logged with [sqldb.ErrLogger].
 func Transaction(ctx context.Context, txFunc func(context.Context) error) error {
 	return sqldb.Transaction(ctx, Conn(ctx), nil, func(tx sqldb.Connection) error {
 		return txFunc(context.WithValue(ctx, &globalConnCtxKey, tx))
 	})
+}
+
+// OptionalTransaction executes txFunc within a database transaction if doTransaction is true.
+// If doTransaction is false, then txFunc is executed without a transaction.
+//
+// See [Transaction] for more details.
+func OptionalTransaction(ctx context.Context, doTransaction bool, txFunc func(context.Context) error) error {
+	if !doTransaction {
+		return txFunc(ctx)
+	}
+	return Transaction(ctx, txFunc)
 }
 
 // SerializedTransaction executes txFunc "serially" within a database transaction that is passed in to txFunc via the context.
@@ -82,7 +93,7 @@ func Transaction(ctx context.Context, txFunc func(context.Context) error) error 
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
 // and no parentConn.Begin, Commit, or Rollback calls will occour within this Transaction call.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
-// Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
+// Recovered panics are re-paniced and rollback errors after a panic are logged with [sqldb.ErrLogger].
 //
 // Serialized transactions are typically necessary when an insert depends on a previous select within
 // the transaction, but that pre-insert select can't lock the table like it's possible with SELECT FOR UPDATE.

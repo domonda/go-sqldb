@@ -75,20 +75,6 @@ func QueryValue[T any](ctx context.Context, query string, args ...any) (value T,
 	return value, nil
 }
 
-// QueryValueReplaceErrNoRows queries a single value of type T.
-// In case of an sql.ErrNoRows error, errNoRows will be called
-// and its result returned together with the default value for T.
-func QueryValueReplaceErrNoRows[T any](ctx context.Context, errNoRows func() error, query string, args ...any) (value T, err error) {
-	err = QueryRow(ctx, query, args...).Scan(&value)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) && errNoRows != nil {
-			return *new(T), errNoRows()
-		}
-		return *new(T), err
-	}
-	return value, nil
-}
-
 // QueryValueOr queries a single value of type T
 // or returns the passed defaultValue in case of sql.ErrNoRows.
 func QueryValueOr[T any](ctx context.Context, defaultValue T, query string, args ...any) (value T, err error) {
@@ -106,7 +92,9 @@ func QueryValueOr[T any](ctx context.Context, defaultValue T, query string, args
 func QueryRowStruct[S any](ctx context.Context, query string, args ...any) (row S, err error) {
 	conn := Conn(ctx)
 	rows := conn.Query(ctx, query, args...)
-	defer rows.Close()
+	defer func() {
+		err = errors.Join(err, rows.Close())
+	}()
 	err = scanStruct(rows, defaultStructReflector, reflect.ValueOf(&row))
 	if err != nil {
 		return *new(S), wrapErrorWithQuery(err, query, args, conn)
@@ -205,7 +193,9 @@ func GetRowOrNil[S StructWithTableName](ctx context.Context, pkValue any, pkValu
 // QuerySlice returns queried rows as slice of the generic type T.
 func QuerySlice[T any](ctx context.Context, query string, args ...any) (rows []T, err error) {
 	sqlRows := Conn(ctx).Query(ctx, query, args...)
-	defer sqlRows.Close()
+	defer func() {
+		err = errors.Join(err, sqlRows.Close())
+	}()
 
 	rows = make([]T, 0, 32)
 	sliceVal := reflect.ValueOf(rows)
@@ -273,7 +263,9 @@ func isNonSQLScannerStruct(t reflect.Type) bool {
 // and no error will be returned.
 func QueryStrings(ctx context.Context, query string, args ...any) (rows [][]string, err error) {
 	sqlRows := Conn(ctx).Query(ctx, query, args...)
-	defer sqlRows.Close()
+	defer func() {
+		err = errors.Join(err, sqlRows.Close())
+	}()
 
 	cols, err := sqlRows.Columns()
 	if err != nil {

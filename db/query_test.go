@@ -46,12 +46,23 @@ func TestQueryValue(t *testing.T) {
 			[][]driver.Value{{true}}, // rows
 			query,                    // query
 			666,                      // args
+		).
+		WithQueryResult(
+			[]string{"exists"}, // columns
+			nil,                // rows
+			query,              // query
+			777,                // args
 		)
 	ctx := ContextWithConn(context.Background(), conn)
 
+	// id 666 has a row with the value true
 	value, err := QueryValue[bool](ctx, query, 666)
 	require.NoError(t, err)
 	require.Equal(t, true, value, "QueryValue[bool] result")
+
+	// id 777 has no rows
+	value, err = QueryValue[bool](ctx, query, 777)
+	require.ErrorIs(t, err, sql.ErrNoRows, "QueryValue[bool] result for 777 is sql.ErrNoRows")
 }
 
 func TestQueryValueOr(t *testing.T) {
@@ -74,12 +85,12 @@ func TestQueryValueOr(t *testing.T) {
 	// id 666 has a row with the value true
 	value, err := QueryValueOr[bool](ctx, false, query, 666)
 	require.NoError(t, err)
-	require.Equal(t, true, value, "QueryValue[bool] result for 666")
+	require.Equal(t, true, value, "QueryValueOr[bool] result for 666")
 
 	// id 777 has no rows
 	value, err = QueryValueOr[bool](ctx, false, query, 777)
 	require.NoError(t, err)
-	require.Equal(t, false, value, "QueryValue[bool] result for 777")
+	require.Equal(t, false, value, "QueryValueOr[bool] result for 777")
 }
 
 func TestQueryStrings(t *testing.T) {

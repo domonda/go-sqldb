@@ -162,8 +162,8 @@ var RenderUUIDPrimaryKeyRefsHTML = http.HandlerFunc(func(writer http.ResponseWri
 		for _, tableRow := range tableRows { //#nosec
 			fmt.Fprintf(&b, "<h3>%s</h3>", html.EscapeString(tableRow.Table))
 			fmt.Fprintf(&b, "<table>")
-			for col, title := range tableRow.Header {
-				val := tableRow.Row[col]
+			for colIdx, title := range tableRow.Header {
+				val := tableRow.Row[colIdx]
 				id, err := uu.IDFromString(val)
 				if err == nil {
 					if id == pk {
