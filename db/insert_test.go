@@ -7,11 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/domonda/go-sqldb"
 	"github.com/stretchr/testify/require"
+
+	"github.com/domonda/go-sqldb"
 )
 
-func TestInsertStruct(t *testing.T) {
+func TestInsertRowStruct(t *testing.T) {
 	type Struct1 struct {
 		TableName `db:"my_table"`
 		ID        int    `db:"id"`
@@ -54,7 +55,7 @@ func TestInsertStruct(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := ContextWithConn(context.Background(), tt.conn)
-			err := InsertStruct(ctx, tt.rowStruct, tt.options...)
+			err := InsertRowStruct(ctx, tt.rowStruct, tt.options...)
 			if tt.wantErr {
 				require.Error(t, err, "error from InsertStruct")
 				return

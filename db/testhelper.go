@@ -93,7 +93,7 @@ func CreateTablesAndInsertStructs(ctx context.Context, typeMap TypeMapper, table
 			return err
 		}
 		for _, row := range rows {
-			err := InsertStruct(ctx, row)
+			err := InsertRowStruct(ctx, row)
 			if err != nil {
 				return err
 			}

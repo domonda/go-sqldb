@@ -76,9 +76,9 @@ func InsertUnique(ctx context.Context, table string, values Values, onConflict s
 // 	return conn.QueryRow(query.String(), vals...) // TODO wrap error with query
 // }
 
-// InsertStruct inserts a new row into table.
+// InsertRowStruct inserts a new row into table.
 // Optional ColumnFilter can be passed to ignore mapped columns.
-func InsertStruct(ctx context.Context, rowStruct StructWithTableName, options ...QueryOption) error {
+func InsertRowStruct(ctx context.Context, rowStruct StructWithTableName, options ...QueryOption) error {
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return err
@@ -106,7 +106,7 @@ func InsertStruct(ctx context.Context, rowStruct StructWithTableName, options ..
 	return nil
 }
 
-func InsertStructStmt[S StructWithTableName](ctx context.Context, options ...QueryOption) (insertFunc func(ctx context.Context, rowStruct S) error, closeFunc func() error, err error) {
+func InsertRowStructStmt[S StructWithTableName](ctx context.Context, options ...QueryOption) (insertFunc func(ctx context.Context, rowStruct S) error, closeFunc func() error, err error) {
 	reflector := GetStructReflector(ctx)
 	structType := reflect.TypeFor[S]()
 	table, err := reflector.TableNameForStruct(structType)
@@ -158,11 +158,11 @@ func InsertStructStmt[S StructWithTableName](ctx context.Context, options ...Que
 // 	return stmtFunc, stmt.Close, nil
 // }
 
-// InsertUniqueStruct inserts a new row with unique private key.
+// InsertUniqueRowStruct inserts a new row with unique private key.
 // Optional ColumnFilter can be passed to ignore mapped columns.
 // Does nothing if the onConflict statement applies
 // and returns true if a row was inserted.
-func InsertUniqueStruct(ctx context.Context, rowStruct StructWithTableName, onConflict string, options ...QueryOption) (inserted bool, err error) {
+func InsertUniqueRowStruct(ctx context.Context, rowStruct StructWithTableName, onConflict string, options ...QueryOption) (inserted bool, err error) {
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return false, err
@@ -196,19 +196,19 @@ func InsertUniqueStruct(ctx context.Context, rowStruct StructWithTableName, onCo
 	return inserted, err
 }
 
-// InsertStructs inserts a slice structs
+// InsertRowStructs inserts a slice structs
 // as new rows into table using the DefaultStructReflector.
 // Optional ColumnFilter can be passed to ignore mapped columns.
-func InsertStructs[S StructWithTableName](ctx context.Context, rowStructs []S, options ...QueryOption) error {
+func InsertRowStructs[S StructWithTableName](ctx context.Context, rowStructs []S, options ...QueryOption) error {
 	// TODO optimized version that combines multiple structs in one query depending or maxArgs
 	switch len(rowStructs) {
 	case 0:
 		return nil
 	case 1:
-		return InsertStruct(ctx, rowStructs[0], options...)
+		return InsertRowStruct(ctx, rowStructs[0], options...)
 	}
 	return Transaction(ctx, func(ctx context.Context) (e error) {
-		insert, done, err := InsertStructStmt[S](ctx, options...)
+		insert, done, err := InsertRowStructStmt[S](ctx, options...)
 		if err != nil {
 			return err
 		}
