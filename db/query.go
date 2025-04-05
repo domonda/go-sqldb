@@ -137,7 +137,7 @@ func GetRow[S StructWithTableName](ctx context.Context, pkValue any, pkValues ..
 	// Using explicit first pkValue value
 	// to not be able to compile without any value
 	pkValues = append([]any{pkValue}, pkValues...)
-	t := reflect.TypeOf(rowPtr).Elem()
+	t := reflect.TypeFor[S]()
 	if t.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("expected struct template type instead of %s", t)
 	}
