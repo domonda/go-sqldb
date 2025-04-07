@@ -8,8 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/domonda/go-sqldb"
 	"github.com/stretchr/testify/require"
+
+	"github.com/domonda/go-sqldb"
 )
 
 func Test_isNonSQLScannerStruct(t *testing.T) {
@@ -83,12 +84,12 @@ func TestQueryValueOr(t *testing.T) {
 	ctx := ContextWithConn(context.Background(), conn)
 
 	// id 666 has a row with the value true
-	value, err := QueryValueOr[bool](ctx, false, query, 666)
+	value, err := QueryValueOr(ctx, false, query, 666)
 	require.NoError(t, err)
 	require.Equal(t, true, value, "QueryValueOr[bool] result for 666")
 
 	// id 777 has no rows
-	value, err = QueryValueOr[bool](ctx, false, query, 777)
+	value, err = QueryValueOr(ctx, false, query, 777)
 	require.NoError(t, err)
 	require.Equal(t, false, value, "QueryValueOr[bool] result for 777")
 }

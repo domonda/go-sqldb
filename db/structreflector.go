@@ -19,14 +19,6 @@ func (c *Column) IsEmbeddedField() bool {
 	return c.Name == ""
 }
 
-func columnNames(columns []Column) []string {
-	names := make([]string, len(columns))
-	for i := range columns {
-		names[i] = columns[i].Name
-	}
-	return names
-}
-
 // StructReflector is used to map struct type fields to column names
 // and indicate special column properies via flags.
 type StructReflector interface {
