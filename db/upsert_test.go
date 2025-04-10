@@ -23,7 +23,7 @@ func ExampleUpsertStructStmt() {
 	}
 
 	conn := &sqldb.MockConn{
-		QueryFormatter: sqldb.NewStdQueryFormatter("$"),
+		QueryFormatter: sqldb.NewQueryFormatter("$"),
 		QueryLog:       os.Stdout,
 	}
 	ctx := db.ContextWithConn(context.Background(), conn)

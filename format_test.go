@@ -85,8 +85,8 @@ WHERE
 		args   []any
 		want   string
 	}{
-		{name: "query1", query: query1, argFmt: StdQueryFormatter{}, args: []any{createdAt, true, `Erik's Test`}, want: query1formatted},
-		{name: "query2", query: query2, argFmt: StdQueryFormatter{}, args: []any{"", 2, "3"}, want: query2formatted},
+		{name: "query1", query: query1, argFmt: NewQueryFormatter("$"), args: []any{createdAt, true, `Erik's Test`}, want: query1formatted},
+		{name: "query2", query: query2, argFmt: NewQueryFormatter("$"), args: []any{"", 2, "3"}, want: query2formatted},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

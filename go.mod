@@ -1,10 +1,10 @@
 module github.com/domonda/go-sqldb
 
-go 1.23
+go 1.24
 
 require (
 	github.com/DataDog/go-sqllexer v0.1.3
-	github.com/domonda/go-types v0.0.0-20250225133122-0516d5b855ff
+	github.com/domonda/go-types v0.0.0-20250327120403-f5ca1ab99ab1
 	github.com/stretchr/testify v1.10.0
 )
 

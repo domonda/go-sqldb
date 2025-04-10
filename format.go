@@ -82,7 +82,7 @@ func NormalizeAndFormatQuery(normalize NormalizeQueryFunc, formatter QueryFormat
 		normalize = NoChangeNormalizeQuery
 	}
 	if formatter == nil {
-		formatter = NewStdQueryFormatter("$")
+		formatter = NewQueryFormatter("$")
 	}
 	query, err := normalize(query)
 	if err != nil {

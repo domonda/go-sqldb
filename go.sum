@@ -13,6 +13,8 @@ github.com/domonda/go-types v0.0.0-20241220151539-e2cc4555efcb h1:DM4CDrotl9SpUF
 github.com/domonda/go-types v0.0.0-20241220151539-e2cc4555efcb/go.mod h1:t7awxEpSfA0dmLk1nxVP6sEmv0DJgmxqTEbE2So/cD4=
 github.com/domonda/go-types v0.0.0-20250225133122-0516d5b855ff h1:387ozbEPNeB+CnD4vV34f0Lv3H1s8UEr/bsk/TMYnAY=
 github.com/domonda/go-types v0.0.0-20250225133122-0516d5b855ff/go.mod h1:sEYFQpYhnYjcvQkzQGIEfgzA/1g3lgpBYS7hQS+QtE8=
+github.com/domonda/go-types v0.0.0-20250327120403-f5ca1ab99ab1 h1:IJIjmsxiWANdYW2eiywfGtxbJxrY4zwf1xQTR1pZrOw=
+github.com/domonda/go-types v0.0.0-20250327120403-f5ca1ab99ab1/go.mod h1:ERms6PNEXE11w+m+Q5aZXq+I3SJNcXw9OjXD4RHngoo=
 github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=
 github.com/jinzhu/now v1.1.5/go.mod h1:d3SSVoowX0Lcu0IBviAWJpolVfI5UJVZZ7cO71lE/z8=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=

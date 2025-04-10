@@ -67,7 +67,7 @@ var _ ListenerConnection = new(MockConn)
 
 func NewMockConn(placeholderPosPrefix string, normalizeQuery NormalizeQueryFunc, queryLog io.Writer) *MockConn {
 	return &MockConn{
-		QueryFormatter: NewStdQueryFormatter(placeholderPosPrefix),
+		QueryFormatter: NewQueryFormatter(placeholderPosPrefix),
 		NormalizeQuery: normalizeQuery,
 		QueryLog:       queryLog,
 	}

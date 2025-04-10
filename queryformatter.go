@@ -42,7 +42,8 @@ type StdQueryFormatter struct {
 	PlaceholderPosPrefix string
 }
 
-func NewStdQueryFormatter(placeholderPosPrefix string) StdQueryFormatter {
+// NewQueryFormatter returns a [StdQueryFormatter] with the given `placeholderPosPrefix`.
+func NewQueryFormatter(placeholderPosPrefix string) StdQueryFormatter {
 	return StdQueryFormatter{PlaceholderPosPrefix: placeholderPosPrefix}
 }
 
