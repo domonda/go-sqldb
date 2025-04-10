@@ -2,7 +2,7 @@ name: go-sqldb-pqconn-test
 
 services:
   postgres:
-    image: postgres:17.2-alpine
+    image: postgres:17.4-alpine
     restart: always
     environment:
       POSTGRES_USER: testuser
