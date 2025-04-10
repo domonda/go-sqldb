@@ -76,11 +76,10 @@ func Conn(ctx context.Context) sqldb.Connection {
 // ConnOr returns a non nil sqldb.Connection from ctx
 // or the passed defaultConn.
 func ConnOr(ctx context.Context, defaultConn sqldb.Connection) sqldb.Connection {
-	c := ctx.Value(&globalConnCtxKey).(sqldb.Connection)
-	if c == nil {
-		return defaultConn
+	if c, _ := ctx.Value(&globalConnCtxKey).(sqldb.Connection); c != nil {
+		return c
 	}
-	return c
+	return defaultConn
 }
 
 // ContextWithConn returns a new context with the passed sqldb.Connection
