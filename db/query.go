@@ -99,7 +99,7 @@ func QueryRowStruct[S any](ctx context.Context, query string, args ...any) (row 
 		rowScanner,
 		columns,
 		defaultStructReflector,
-		reflect.ValueOf(&row),
+		&row,
 	)
 	if err != nil {
 		return *new(S), err // Error already wrapped with query by RowScanner
@@ -193,18 +193,16 @@ func GetRowStructOrNil[S StructWithTableName](ctx context.Context, pkValue any, 
 	return rowPtr, nil
 }
 
-// QuerySlice returns queried rows as slice of the generic type T
+// QueryRowsAsSlice returns queried rows as slice of the generic type T
 // using the passed reflector to scan column values as struct fields.
-// QuerySlice returns queried rows as slice of the generic type T.
-func QuerySlice[T any](ctx context.Context, query string, args ...any) (rows []T, err error) {
+// QueryRowsAsSlice returns queried rows as slice of the generic type T.
+func QueryRowsAsSlice[T any](ctx context.Context, query string, args ...any) (rows []T, err error) {
 	sqlRows := Conn(ctx).Query(ctx, query, args...)
 	defer func() {
 		err = errors.Join(err, sqlRows.Close())
 	}()
 
-	rows = make([]T, 0, 32)
-	sliceVal := reflect.ValueOf(rows)
-	sliceElemType := sliceVal.Type().Elem()
+	sliceElemType := reflect.TypeOf(rows).Elem()
 	rowStructs := isNonSQLScannerStruct(sliceElemType)
 
 	columns, err := sqlRows.Columns()
@@ -215,18 +213,20 @@ func QuerySlice[T any](ctx context.Context, query string, args ...any) (rows []T
 		return nil, fmt.Errorf("expected single column result for type %s but got %d columns", sliceElemType, len(columns))
 	}
 
-	reflector := GetStructReflector(ctx)
+	var reflector StructReflector
+	if rowStructs {
+		reflector = GetStructReflector(ctx)
+	}
 
 	for sqlRows.Next() {
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
 		}
-		sliceVal = reflect.Append(sliceVal, reflect.Zero(sliceElemType))
-		destPtr := sliceVal.Index(sliceVal.Len() - 1).Addr()
+		rows = append(rows, *new(T))
 		if rowStructs {
-			err = scanStruct(sqlRows, columns, reflector, destPtr)
+			err = scanStruct(sqlRows, columns, reflector, &rows[len(rows)-1])
 		} else {
-			err = sqlRows.Scan(destPtr.Interface())
+			err = sqlRows.Scan(&rows[len(rows)-1])
 		}
 		if err != nil {
 			return nil, err
@@ -257,7 +257,7 @@ func isNonSQLScannerStruct(t reflect.Type) bool {
 	return false
 }
 
-// QueryStrings scans the query result into a table of strings
+// QueryRowsAsStrings scans the query result into a table of strings
 // where the first row is a header row with the column names.
 //
 // Byte slices will be interpreted as strings,
@@ -266,7 +266,7 @@ func isNonSQLScannerStruct(t reflect.Type) bool {
 //
 // If the query result has no rows, then only the header row
 // and no error will be returned.
-func QueryStrings(ctx context.Context, query string, args ...any) (rows [][]string, err error) {
+func QueryRowsAsStrings(ctx context.Context, query string, args ...any) (rows [][]string, err error) {
 	sqlRows := Conn(ctx).Query(ctx, query, args...)
 	defer func() {
 		err = errors.Join(err, sqlRows.Close())
@@ -383,7 +383,7 @@ func QueryCallback(ctx context.Context, callback any, query string, args ...any)
 			scannedValPtrs[i] = reflect.New(typ.In(firstArg + i)).Interface()
 		}
 		if structArg {
-			err = scanStruct(sqlRows, columns, reflector, reflect.ValueOf(scannedValPtrs[0]))
+			err = scanStruct(sqlRows, columns, reflector, scannedValPtrs[0])
 		} else {
 			err = sqlRows.Scan(scannedValPtrs...)
 		}

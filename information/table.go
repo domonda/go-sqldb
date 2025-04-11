@@ -37,7 +37,7 @@ func GetTable(ctx context.Context, catalog, schema, name string) (table *Table, 
 }
 
 func GetAllTables(ctx context.Context) (tables []*Table, err error) {
-	return db.QuerySlice[*Table](ctx,
+	return db.QueryRowsAsSlice[*Table](ctx,
 		/*sql*/ `
 			SELECT * FROM information_schema.tables
 		`,

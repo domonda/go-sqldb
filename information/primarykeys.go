@@ -24,7 +24,7 @@ type PrimaryKeyColumn struct {
 }
 
 func GetPrimaryKeyColumns(ctx context.Context) (cols []PrimaryKeyColumn, err error) {
-	return db.QuerySlice[PrimaryKeyColumn](ctx,
+	return db.QueryRowsAsSlice[PrimaryKeyColumn](ctx,
 		/*sql*/ `
 		SELECT
 			tc.table_schema||'.'||tc.table_name AS "table",
@@ -59,7 +59,7 @@ func GetPrimaryKeyColumns(ctx context.Context) (cols []PrimaryKeyColumn, err err
 }
 
 func GetPrimaryKeyColumnsOfType(ctx context.Context, pkType string) (cols []PrimaryKeyColumn, err error) {
-	return db.QuerySlice[PrimaryKeyColumn](ctx,
+	return db.QueryRowsAsSlice[PrimaryKeyColumn](ctx,
 		/*sql*/ `
 		SELECT
 			tc.table_schema||'.'||tc.table_name AS "table",
@@ -104,7 +104,7 @@ type TableRowWithPrimaryKey struct {
 func GetTableRowsWithPrimaryKey(ctx context.Context, pkCols []PrimaryKeyColumn, pk any) (tableRows []TableRowWithPrimaryKey, err error) {
 	for _, col := range pkCols {
 		query := fmt.Sprintf(`SELECT * FROM %s WHERE "%s" = $1`, col.Table, col.Column)
-		strs, err := db.QueryStrings(ctx, query, pk)
+		strs, err := db.QueryRowsAsStrings(ctx, query, pk)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				continue

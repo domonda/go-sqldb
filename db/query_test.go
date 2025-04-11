@@ -143,7 +143,7 @@ func TestQueryStrings(t *testing.T) {
 	ctx := ContextWithConn(context.Background(), conn)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotRows, err := QueryStrings(ctx, tt.query, tt.args...)
+			gotRows, err := QueryRowsAsStrings(ctx, tt.query, tt.args...)
 			if tt.wantErr {
 				require.Error(t, err, "QueryStrings() error")
 				return

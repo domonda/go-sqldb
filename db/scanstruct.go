@@ -13,11 +13,11 @@ type scanStructRow interface {
 }
 
 // scanStruct scans the srcRow into the destStruct using the reflector.
-func scanStruct(srcRow scanStructRow, columns []string, reflector StructReflector, destStruct reflect.Value) error {
-	v := destStruct
+func scanStruct(srcRow scanStructRow, columns []string, reflector StructReflector, destStruct any) error {
+	v := reflect.ValueOf(destStruct)
 	if v.Kind() == reflect.Ptr {
 		if v.IsNil() {
-			return fmt.Errorf("scanStruct got nil pointer for %s", destStruct.Type())
+			return fmt.Errorf("scanStruct got nil pointer for %T", destStruct)
 		}
 		v = v.Elem()
 	}
@@ -36,22 +36,19 @@ func scanStruct(srcRow scanStructRow, columns []string, reflector StructReflecto
 		v = newStructPtr.Elem()
 	}
 	if v.Kind() != reflect.Struct {
-		return fmt.Errorf("scanStruct expected struct or pointer to struct but got %s", destStruct.Type())
+		return fmt.Errorf("scanStruct expected struct or pointer to struct but got %T", destStruct)
 	}
 
 	fieldPointers, err := ReflectStructColumnPointers(v, reflector, columns)
 	if err != nil {
 		return fmt.Errorf("scanStruct error from ReflectStructColumnPointers: %w", err)
 	}
-
 	err = srcRow.Scan(fieldPointers...)
 	if err != nil {
 		return err
 	}
-
 	if setDestStructPtr {
 		destStructPtr.Set(newStructPtr)
 	}
-
 	return nil
 }
