@@ -71,13 +71,14 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// ConnectURL for connecting to a database
-func (c *Config) ConnectURL() string {
+// ConnectURL returns a URL with the connection parameters
+// for connecting to a database based on the Config.
+func (c *Config) ConnectURL() *url.URL {
 	extra := make(url.Values)
 	for key, val := range c.Extra {
 		extra.Add(key, val)
 	}
-	u := url.URL{
+	u := &url.URL{
 		Scheme:   c.Driver,
 		Host:     c.Host,
 		Path:     c.Database,
@@ -89,7 +90,7 @@ func (c *Config) ConnectURL() string {
 	if c.User != "" {
 		u.User = url.UserPassword(c.User, c.Password)
 	}
-	return u.String()
+	return u
 }
 
 // Connect opens a new sql.DB connection,
@@ -100,7 +101,7 @@ func (c *Config) Connect(ctx context.Context) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	db, err := sql.Open(c.Driver, c.ConnectURL())
+	db, err := sql.Open(c.Driver, c.ConnectURL().String())
 	if err != nil {
 		return nil, err
 	}

@@ -29,11 +29,6 @@ func newTransaction(parent *connection, tx *sql.Tx, opts *sql.TxOptions, no uint
 	}
 }
 
-func (conn *transaction) clone() *transaction {
-	c := *conn
-	return &c
-}
-
 func (conn *transaction) Ping(ctx context.Context, timeout time.Duration) error {
 	return conn.parent.Ping(ctx, timeout)
 }
