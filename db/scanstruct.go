@@ -3,14 +3,19 @@ package db
 import (
 	"fmt"
 	"reflect"
-
-	"github.com/domonda/go-sqldb"
 )
 
+type scanStructRow interface {
+	// Scan copies the columns in the current row into the values pointed
+	// at by dest. The number of values in dest must be the same as the
+	// number of columns in Rows.
+	Scan(dest ...any) error
+}
+
 // scanStruct scans the srcRow into the destStruct using the reflector.
-func scanStruct(srcRow sqldb.Row, reflector StructReflector, destStruct reflect.Value) error {
+func scanStruct(srcRow scanStructRow, columns []string, reflector StructReflector, destStruct reflect.Value) error {
 	v := destStruct
-	for v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Ptr {
 		if v.IsNil() {
 			return fmt.Errorf("scanStruct got nil pointer for %s", destStruct.Type())
 		}
@@ -32,11 +37,6 @@ func scanStruct(srcRow sqldb.Row, reflector StructReflector, destStruct reflect.
 	}
 	if v.Kind() != reflect.Struct {
 		return fmt.Errorf("scanStruct expected struct or pointer to struct but got %s", destStruct.Type())
-	}
-
-	columns, err := srcRow.Columns()
-	if err != nil {
-		return err
 	}
 
 	fieldPointers, err := ReflectStructColumnPointers(v, reflector, columns)

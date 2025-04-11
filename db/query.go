@@ -58,7 +58,7 @@ func ExecStmt(ctx context.Context, query string) (stmtFunc func(ctx context.Cont
 func QueryRow(ctx context.Context, query string, args ...any) *RowScanner {
 	conn := Conn(ctx)
 	rows := conn.Query(ctx, query, args...)
-	return NewRowScanner(rows, defaultStructReflector, conn, query, args)
+	return NewRowScanner(rows, conn, query, args)
 }
 
 // QueryRows queries multiple rows and returns a sqldb.Rows for the results.
@@ -90,14 +90,19 @@ func QueryValueOr[T any](ctx context.Context, defaultValue T, query string, args
 
 // QueryRowStruct queries a row and scans it as struct.
 func QueryRowStruct[S any](ctx context.Context, query string, args ...any) (row S, err error) {
-	conn := Conn(ctx)
-	rows := conn.Query(ctx, query, args...)
-	defer func() {
-		err = errors.Join(err, rows.Close())
-	}()
-	err = scanStruct(rows, defaultStructReflector, reflect.ValueOf(&row))
+	rowScanner := QueryRow(ctx, query, args...)
+	columns, err := rowScanner.Columns()
 	if err != nil {
-		return *new(S), wrapErrorWithQuery(err, query, args, conn)
+		return *new(S), wrapErrorWithQuery(err, query, args, Conn(ctx))
+	}
+	err = scanStruct(
+		rowScanner,
+		columns,
+		defaultStructReflector,
+		reflect.ValueOf(&row),
+	)
+	if err != nil {
+		return *new(S), err // Error already wrapped with query by RowScanner
 	}
 	return row, nil
 }
@@ -219,7 +224,7 @@ func QuerySlice[T any](ctx context.Context, query string, args ...any) (rows []T
 		sliceVal = reflect.Append(sliceVal, reflect.Zero(sliceElemType))
 		destPtr := sliceVal.Index(sliceVal.Len() - 1).Addr()
 		if rowStructs {
-			err = scanStruct(sqlRows, reflector, destPtr)
+			err = scanStruct(sqlRows, columns, reflector, destPtr)
 		} else {
 			err = sqlRows.Scan(destPtr.Interface())
 		}
@@ -352,14 +357,12 @@ func QueryCallback(ctx context.Context, callback any, query string, args ...any)
 	sqlRows := Conn(ctx).Query(ctx, query, args...)
 	defer sqlRows.Close()
 
-	if !structArg {
-		cols, err := sqlRows.Columns()
-		if err != nil {
-			return err
-		}
-		if len(cols) != typ.NumIn()-firstArg {
-			return fmt.Errorf("QueryCallback callback function has %d non-context arguments but query result has %d columns", typ.NumIn()-firstArg, len(cols))
-		}
+	columns, err := sqlRows.Columns()
+	if err != nil {
+		return err
+	}
+	if !structArg && len(columns) != typ.NumIn()-firstArg {
+		return fmt.Errorf("QueryCallback callback function has %d non-context arguments but query result has %d columns", typ.NumIn()-firstArg, len(columns))
 	}
 
 	reflector := GetStructReflector(ctx)
@@ -380,7 +383,7 @@ func QueryCallback(ctx context.Context, callback any, query string, args ...any)
 			scannedValPtrs[i] = reflect.New(typ.In(firstArg + i)).Interface()
 		}
 		if structArg {
-			err = scanStruct(sqlRows, reflector, reflect.ValueOf(scannedValPtrs[0]))
+			err = scanStruct(sqlRows, columns, reflector, reflect.ValueOf(scannedValPtrs[0]))
 		} else {
 			err = sqlRows.Scan(scannedValPtrs...)
 		}
