@@ -7,31 +7,31 @@ import (
 	sqldb "github.com/domonda/go-sqldb"
 )
 
-// RowScanner wraps [sqldb.Rows] to scan a single row from a query.
-type RowScanner struct {
+// Row wraps [sqldb.Rows] to scan a single row from a query.
+type Row struct {
 	rows     sqldb.Rows
 	queryFmt sqldb.QueryFormatter // for error wrapping
 	query    string               // for error wrapping
 	args     []any                // for error wrapping
 }
 
-func NewRowScanner(rows sqldb.Rows, queryFmt sqldb.QueryFormatter, query string, args []any) *RowScanner {
-	return &RowScanner{rows, queryFmt, query, args}
+func NewRow(rows sqldb.Rows, queryFmt sqldb.QueryFormatter, query string, args []any) *Row {
+	return &Row{rows, queryFmt, query, args}
 }
 
-func (s *RowScanner) Columns() ([]string, error) {
-	cols, err := s.rows.Columns()
+func (r *Row) Columns() ([]string, error) {
+	cols, err := r.rows.Columns()
 	if err != nil {
-		return nil, wrapErrorWithQuery(err, s.query, s.args, s.queryFmt)
+		return nil, wrapErrorWithQuery(err, r.query, r.args, r.queryFmt)
 	}
 	return cols, nil
 }
 
-func (s *RowScanner) Scan(dest ...any) (err error) {
+func (r *Row) Scan(dest ...any) (err error) {
 	defer func() {
-		err = errors.Join(err, s.rows.Close())
+		err = errors.Join(err, r.rows.Close())
 		if err != nil {
-			err = wrapErrorWithQuery(err, s.query, s.args, s.queryFmt)
+			err = wrapErrorWithQuery(err, r.query, r.args, r.queryFmt)
 		}
 	}()
 
@@ -39,25 +39,25 @@ func (s *RowScanner) Scan(dest ...any) (err error) {
 		return errors.New("RowScanner.Scan called with no destination arguments")
 	}
 	// Check if there was an error even before preparing the row with Next()
-	if s.rows.Err() != nil {
-		return s.rows.Err()
+	if r.rows.Err() != nil {
+		return r.rows.Err()
 	}
-	if !s.rows.Next() {
+	if !r.rows.Next() {
 		// Error during preparing the row with Next()
-		if s.rows.Err() != nil {
-			return s.rows.Err()
+		if r.rows.Err() != nil {
+			return r.rows.Err()
 		}
 		return sql.ErrNoRows
 	}
 
-	return s.rows.Scan(dest...)
+	return r.rows.Scan(dest...)
 }
 
 // ScanValues returns the values of a row exactly how they are
 // passed from the database driver to an `sql.Scanner`.
 // Byte slices will be copied.
-func (s *RowScanner) ScanValues() (vals []any, err error) {
-	cols, err := s.Columns()
+func (r *Row) ScanValues() (vals []any, err error) {
+	cols, err := r.Columns()
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (s *RowScanner) ScanValues() (vals []any, err error) {
 	for i := range result {
 		result[i] = &anys[i]
 	}
-	err = s.Scan(result...)
+	err = r.Scan(result...)
 	if err != nil {
 		return nil, err
 	}
@@ -85,8 +85,8 @@ func (s *RowScanner) ScanValues() (vals []any, err error) {
 // Byte slices will be interpreted as strings,
 // nil (SQL NULL) will be converted to an empty string,
 // all other types are converted with `fmt.Sprint`.
-func (s *RowScanner) ScanStrings() (vals []string, err error) {
-	cols, err := s.Columns()
+func (r *Row) ScanStrings() (vals []string, err error) {
+	cols, err := r.Columns()
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func (s *RowScanner) ScanStrings() (vals []string, err error) {
 	for i := range resultPtrs {
 		resultPtrs[i] = (*sqldb.StringScannable)(&result[i])
 	}
-	err = s.Scan(resultPtrs...)
+	err = r.Scan(resultPtrs...)
 	if err != nil {
 		return nil, err
 	}

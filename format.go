@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 	"time"
 	"unicode"
@@ -135,7 +136,7 @@ func FormatQuery(f QueryFormatter, query string, args ...any) string {
 	for i := 0; i < len(lines); i++ {
 		lines[i] = strings.TrimRightFunc(lines[i], unicode.IsSpace)
 		if lines[i] == "" {
-			lines = append(lines[:i], lines[i+1:]...)
+			lines = slices.Delete(lines, i, i+1)
 			i--
 		}
 	}

@@ -5,15 +5,11 @@ import (
 	"reflect"
 )
 
-type scanStructRow interface {
-	// Scan copies the columns in the current row into the values pointed
-	// at by dest. The number of values in dest must be the same as the
-	// number of columns in Rows.
+type rowScanner interface {
 	Scan(dest ...any) error
 }
 
-// scanStruct scans the srcRow into the destStruct using the reflector.
-func scanStruct(srcRow scanStructRow, columns []string, reflector StructReflector, destStruct any) error {
+func scanStruct(row rowScanner, columns []string, reflector StructReflector, destStruct any) error {
 	v := reflect.ValueOf(destStruct)
 	if v.Kind() == reflect.Ptr {
 		if v.IsNil() {
@@ -43,7 +39,7 @@ func scanStruct(srcRow scanStructRow, columns []string, reflector StructReflecto
 	if err != nil {
 		return fmt.Errorf("scanStruct error from ReflectStructColumnPointers: %w", err)
 	}
-	err = srcRow.Scan(fieldPointers...)
+	err = row.Scan(fieldPointers...)
 	if err != nil {
 		return err
 	}

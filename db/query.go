@@ -42,7 +42,7 @@ func ExecStmt(ctx context.Context, query string) (stmtFunc func(ctx context.Cont
 	conn := Conn(ctx)
 	stmt, err := conn.Prepare(ctx, query)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, wrapErrorWithQuery(err, query, nil, conn)
 	}
 	stmtFunc = func(ctx context.Context, args ...any) error {
 		err := stmt.Exec(ctx, args...)
@@ -55,16 +55,16 @@ func ExecStmt(ctx context.Context, query string) (stmtFunc func(ctx context.Cont
 }
 
 // QueryRow queries a single row and returns a RowScanner for the results.
-func QueryRow(ctx context.Context, query string, args ...any) *RowScanner {
+func QueryRow(ctx context.Context, query string, args ...any) *Row {
 	conn := Conn(ctx)
 	rows := conn.Query(ctx, query, args...)
-	return NewRowScanner(rows, conn, query, args)
+	return NewRow(rows, conn, query, args)
 }
 
 // QueryRows queries multiple rows and returns a sqldb.Rows for the results.
-func QueryRows(ctx context.Context, query string, args ...any) sqldb.Rows {
-	return Conn(ctx).Query(ctx, query, args...)
-}
+// func QueryRows(ctx context.Context, query string, args ...any) sqldb.Rows {
+// 	return Conn(ctx).Query(ctx, query, args...)
+// }
 
 // QueryValue queries a single value of type T.
 func QueryValue[T any](ctx context.Context, query string, args ...any) (value T, err error) {
@@ -78,14 +78,30 @@ func QueryValue[T any](ctx context.Context, query string, args ...any) (value T,
 // QueryValueOr queries a single value of type T
 // or returns the passed defaultValue in case of sql.ErrNoRows.
 func QueryValueOr[T any](ctx context.Context, defaultValue T, query string, args ...any) (value T, err error) {
-	err = QueryRow(ctx, query, args...).Scan(&value)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return defaultValue, nil
+	conn := Conn(ctx)
+	rows := conn.Query(ctx, query, args...)
+	defer func() {
+		err = errors.Join(err, rows.Close())
+		if err != nil {
+			err = wrapErrorWithQuery(err, query, args, conn)
 		}
+	}()
+	// Check if there was an error even before preparing the row with Next()
+	if err := rows.Err(); err != nil {
 		return *new(T), err
 	}
-	return value, err
+	if !rows.Next() {
+		// Error during preparing the row with Next()
+		if err := rows.Err(); err != nil {
+			return *new(T), err
+		}
+		return defaultValue, nil
+	}
+	err = rows.Scan(&value)
+	if err != nil {
+		return *new(T), err
+	}
+	return value, nil
 }
 
 // QueryRowStruct queries a row and scans it as struct.
