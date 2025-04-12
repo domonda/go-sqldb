@@ -105,22 +105,53 @@ func QueryValueOr[T any](ctx context.Context, defaultValue T, query string, args
 }
 
 // QueryRowStruct queries a row and scans it as struct.
-func QueryRowStruct[S any](ctx context.Context, query string, args ...any) (row S, err error) {
-	rowScanner := QueryRow(ctx, query, args...)
-	columns, err := rowScanner.Columns()
+func QueryRowStruct[S any](ctx context.Context, query string, args ...any) (rowStruct S, err error) {
+	conn := Conn(ctx)
+	rows := conn.Query(ctx, query, args...)
+	row := NewRow(rows, conn, query, args)
+	columns, err := row.Columns()
 	if err != nil {
-		return *new(S), wrapErrorWithQuery(err, query, args, Conn(ctx))
+		return *new(S), err // Error already wrapped with query by Row.Columns
 	}
 	err = scanStruct(
-		rowScanner,
+		row,
 		columns,
 		defaultStructReflector,
-		&row,
+		&rowStruct,
 	)
 	if err != nil {
-		return *new(S), err // Error already wrapped with query by RowScanner
+		return *new(S), err // Error already wrapped with query by Row.Scan
 	}
-	return row, nil
+	return rowStruct, nil
+}
+
+func QueryRowStructStmt[S any](ctx context.Context, query string) (queryFunc func(ctx context.Context, args ...any) (rowStruct S, err error), closeFunc func() error, err error) {
+	conn := Conn(ctx)
+	stmt, err := conn.Prepare(ctx, query)
+	if err != nil {
+		err = fmt.Errorf("can't prepare query because: %w", err)
+		return nil, nil, wrapErrorWithQuery(err, query, nil, conn)
+	}
+
+	queryFunc = func(ctx context.Context, args ...any) (rowStruct S, err error) {
+		rows := stmt.Query(ctx, args...)
+		row := NewRow(rows, conn, query, args)
+		columns, err := row.Columns()
+		if err != nil {
+			return *new(S), err // Error already wrapped with query by Row.Columns
+		}
+		err = scanStruct(
+			row,
+			columns,
+			defaultStructReflector,
+			&rowStruct,
+		)
+		if err != nil {
+			return *new(S), err // Error already wrapped with query by Row.Scan
+		}
+		return rowStruct, nil
+	}
+	return queryFunc, stmt.Close, nil
 }
 
 // QueryRowStructReplaceErrNoRows queries a row and scans it as struct.
