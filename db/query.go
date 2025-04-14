@@ -62,10 +62,10 @@ func QueryRowValueStmt[T any](ctx context.Context, query string) (queryFunc func
 		return nil, nil, wrapErrorWithQuery(err, query, nil, conn)
 	}
 
-	queryFunc = func(ctx context.Context, args ...any) (row T, err error) {
+	queryFunc = func(ctx context.Context, args ...any) (val T, err error) {
 		rows := stmt.Query(ctx, args...)
-		err = NewRow(rows, conn, query, args).Scan(&row)
-		return row, err
+		err = NewRow(rows, conn, query, args).Scan(&val)
+		return val, err
 	}
 	return queryFunc, stmt.Close, nil
 }

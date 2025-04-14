@@ -40,7 +40,7 @@ func (r *Row) Scan(dest ...any) (err error) {
 	if len(dest) == 0 {
 		return errors.New("Row.Scan called with no destination arguments")
 	}
-	// Find out if scanStruct should be used
+	isStruct := false
 	if len(dest) == 1 {
 		v := reflect.ValueOf(dest[0])
 		if v.Kind() != reflect.Ptr {
@@ -55,11 +55,7 @@ func (r *Row) Scan(dest ...any) (err error) {
 			// dest[0] points to a struct or pointer to struct
 			if !t.Implements(typeOfSQLScanner) && !reflect.PointerTo(t).Implements(typeOfSQLScanner) {
 				// dest[0] does not implement sql.Scanner
-				cols, err := r.rows.Columns()
-				if err != nil {
-					return err
-				}
-				return scanStruct(r.rows, cols, defaultStructReflector, dest[0])
+				isStruct = true
 			}
 		}
 	}
@@ -76,6 +72,13 @@ func (r *Row) Scan(dest ...any) (err error) {
 		return sql.ErrNoRows
 	}
 
+	if isStruct {
+		cols, err := r.rows.Columns()
+		if err != nil {
+			return err
+		}
+		return scanStruct(r.rows, cols, defaultStructReflector, dest[0])
+	}
 	return r.rows.Scan(dest...)
 }
 
