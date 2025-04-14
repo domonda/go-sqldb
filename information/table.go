@@ -22,7 +22,7 @@ type Table struct {
 }
 
 func GetTable(ctx context.Context, catalog, schema, name string) (table *Table, err error) {
-	return db.QueryRowStruct[*Table](ctx,
+	return db.QueryRowValue[*Table](ctx,
 		/*sql*/ `
 			SELECT *
 			FROM information_schema.tables
@@ -30,9 +30,9 @@ func GetTable(ctx context.Context, catalog, schema, name string) (table *Table, 
 				AND table_schema = $2
 				AND table_name = $3
 		`,
-		catalog,
-		schema,
-		name,
+		catalog, // $1
+		schema,  // $2
+		name,    // $3
 	)
 }
 

@@ -3,6 +3,8 @@ package db
 import (
 	"database/sql"
 	"errors"
+	"fmt"
+	"reflect"
 
 	sqldb "github.com/domonda/go-sqldb"
 )
@@ -36,8 +38,32 @@ func (r *Row) Scan(dest ...any) (err error) {
 	}()
 
 	if len(dest) == 0 {
-		return errors.New("RowScanner.Scan called with no destination arguments")
+		return errors.New("Row.Scan called with no destination arguments")
 	}
+	// Find out if scanStruct should be used
+	if len(dest) == 1 {
+		v := reflect.ValueOf(dest[0])
+		if v.Kind() != reflect.Ptr {
+			return fmt.Errorf("Row.Scan destination %T is not a pointer", dest[0])
+		}
+		if v.IsNil() {
+			return fmt.Errorf("Row.Scan destination %T is nil", dest[0])
+		}
+		v = v.Elem()
+		t := v.Type()
+		if t.Kind() == reflect.Struct || t.Kind() == reflect.Ptr && t.Elem().Kind() == reflect.Struct {
+			// dest[0] points to a struct or pointer to struct
+			if !t.Implements(typeOfSQLScanner) && !reflect.PointerTo(t).Implements(typeOfSQLScanner) {
+				// dest[0] does not implement sql.Scanner
+				cols, err := r.rows.Columns()
+				if err != nil {
+					return err
+				}
+				return scanStruct(r.rows, cols, defaultStructReflector, dest[0])
+			}
+		}
+	}
+
 	// Check if there was an error even before preparing the row with Next()
 	if r.rows.Err() != nil {
 		return r.rows.Err()

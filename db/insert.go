@@ -52,7 +52,7 @@ func InsertUnique(ctx context.Context, table string, values Values, onConflict s
 	}
 	fmt.Fprintf(&query, " ON CONFLICT (%s) DO NOTHING RETURNING TRUE", onConflict)
 
-	inserted, err = QueryValue[bool](ctx, query.String(), vals...)
+	inserted, err = QueryRowValue[bool](ctx, query.String(), vals...)
 	err = sqldb.ReplaceErrNoRows(err, nil)
 	if err != nil {
 		return false, wrapErrorWithQuery(err, query.String(), vals, conn)
@@ -188,7 +188,7 @@ func InsertUniqueRowStruct(ctx context.Context, rowStruct StructWithTableName, o
 	}
 	fmt.Fprintf(&query, " ON CONFLICT (%s) DO NOTHING RETURNING TRUE", onConflict)
 
-	inserted, err = QueryValue[bool](ctx, query.String(), vals...)
+	inserted, err = QueryRowValue[bool](ctx, query.String(), vals...)
 	err = sqldb.ReplaceErrNoRows(err, nil)
 	if err != nil {
 		return false, wrapErrorWithQuery(err, query.String(), vals, conn)

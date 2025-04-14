@@ -21,37 +21,11 @@ import (
 // Useful for getting the timestamp of a
 // SQL transaction for use in Go code.
 func CurrentTimestamp(ctx context.Context) time.Time {
-	t, err := QueryValue[time.Time](ctx, `SELECT CURRENT_TIMESTAMP`)
+	t, err := QueryRowValue[time.Time](ctx, `SELECT CURRENT_TIMESTAMP`)
 	if err != nil {
 		return time.Now()
 	}
 	return t
-}
-
-// Exec executes a query with optional args.
-func Exec(ctx context.Context, query string, args ...any) error {
-	conn := Conn(ctx)
-	err := conn.Exec(ctx, query, args...)
-	if err != nil {
-		return wrapErrorWithQuery(err, query, args, conn)
-	}
-	return nil
-}
-
-func ExecStmt(ctx context.Context, query string) (stmtFunc func(ctx context.Context, args ...any) error, closeFunc func() error, err error) {
-	conn := Conn(ctx)
-	stmt, err := conn.Prepare(ctx, query)
-	if err != nil {
-		return nil, nil, wrapErrorWithQuery(err, query, nil, conn)
-	}
-	stmtFunc = func(ctx context.Context, args ...any) error {
-		err := stmt.Exec(ctx, args...)
-		if err != nil {
-			return wrapErrorWithQuery(err, query, args, conn)
-		}
-		return nil
-	}
-	return stmtFunc, stmt.Close, nil
 }
 
 // QueryRow queries a single row and returns a RowScanner for the results.
@@ -61,71 +35,26 @@ func QueryRow(ctx context.Context, query string, args ...any) *Row {
 	return NewRow(rows, conn, query, args)
 }
 
-// QueryRows queries multiple rows and returns a sqldb.Rows for the results.
-// func QueryRows(ctx context.Context, query string, args ...any) sqldb.Rows {
-// 	return Conn(ctx).Query(ctx, query, args...)
-// }
-
-// QueryValue queries a single value of type T.
-func QueryValue[T any](ctx context.Context, query string, args ...any) (value T, err error) {
-	err = QueryRow(ctx, query, args...).Scan(&value)
+// QueryRowValue queries a single row mapped to the type T.
+func QueryRowValue[T any](ctx context.Context, query string, args ...any) (val T, err error) {
+	err = QueryRow(ctx, query, args...).Scan(&val)
 	if err != nil {
 		return *new(T), err
 	}
-	return value, nil
+	return val, nil
 }
 
-// QueryValueOr queries a single value of type T
-// or returns the passed defaultValue in case of sql.ErrNoRows.
-func QueryValueOr[T any](ctx context.Context, defaultValue T, query string, args ...any) (value T, err error) {
-	conn := Conn(ctx)
-	rows := conn.Query(ctx, query, args...)
-	defer func() {
-		err = errors.Join(err, rows.Close())
-		if err != nil {
-			err = wrapErrorWithQuery(err, query, args, conn)
-		}
-	}()
-	// Check if there was an error even before preparing the row with Next()
-	if err := rows.Err(); err != nil {
-		return *new(T), err
+// QueryRowValueOr queries a single value of type T
+// or returns the passed defaultVal in case of sql.ErrNoRows.
+func QueryRowValueOr[T any](ctx context.Context, defaultVal T, query string, args ...any) (val T, err error) {
+	val, err = QueryRowValue[T](ctx, query, args...)
+	if errors.Is(err, sql.ErrNoRows) {
+		return defaultVal, nil
 	}
-	if !rows.Next() {
-		// Error during preparing the row with Next()
-		if err := rows.Err(); err != nil {
-			return *new(T), err
-		}
-		return defaultValue, nil
-	}
-	err = rows.Scan(&value)
-	if err != nil {
-		return *new(T), err
-	}
-	return value, nil
+	return val, err
 }
 
-// QueryRowStruct queries a row and scans it as struct.
-func QueryRowStruct[S any](ctx context.Context, query string, args ...any) (rowStruct S, err error) {
-	conn := Conn(ctx)
-	rows := conn.Query(ctx, query, args...)
-	row := NewRow(rows, conn, query, args)
-	columns, err := row.Columns()
-	if err != nil {
-		return *new(S), err // Error already wrapped with query by Row.Columns
-	}
-	err = scanStruct(
-		row,
-		columns,
-		defaultStructReflector,
-		&rowStruct,
-	)
-	if err != nil {
-		return *new(S), err // Error already wrapped with query by Row.Scan
-	}
-	return rowStruct, nil
-}
-
-func QueryRowStructStmt[S any](ctx context.Context, query string) (queryFunc func(ctx context.Context, args ...any) (rowStruct S, err error), closeFunc func() error, err error) {
+func QueryRowValueStmt[T any](ctx context.Context, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
 	conn := Conn(ctx)
 	stmt, err := conn.Prepare(ctx, query)
 	if err != nil {
@@ -133,86 +62,49 @@ func QueryRowStructStmt[S any](ctx context.Context, query string) (queryFunc fun
 		return nil, nil, wrapErrorWithQuery(err, query, nil, conn)
 	}
 
-	queryFunc = func(ctx context.Context, args ...any) (rowStruct S, err error) {
+	queryFunc = func(ctx context.Context, args ...any) (row T, err error) {
 		rows := stmt.Query(ctx, args...)
-		row := NewRow(rows, conn, query, args)
-		columns, err := row.Columns()
-		if err != nil {
-			return *new(S), err // Error already wrapped with query by Row.Columns
-		}
-		err = scanStruct(
-			row,
-			columns,
-			defaultStructReflector,
-			&rowStruct,
-		)
-		if err != nil {
-			return *new(S), err // Error already wrapped with query by Row.Scan
-		}
-		return rowStruct, nil
+		err = NewRow(rows, conn, query, args).Scan(&row)
+		return row, err
 	}
 	return queryFunc, stmt.Close, nil
 }
 
-// QueryRowStructReplaceErrNoRows queries a row and scans it as struct.
-// In case of an sql.ErrNoRows error, errNoRows will be called
-// and its result returned as error together with the zero value of S.
-func QueryRowStructReplaceErrNoRows[S any](ctx context.Context, errNoRows func() error, query string, args ...any) (row S, err error) {
-	row, err = QueryRowStruct[S](ctx, query, args...)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) && errNoRows != nil {
-			return *new(S), errNoRows()
-		}
-		return *new(S), err
-	}
-	return row, nil
-}
-
-// QueryRowStructOrNil queries a row and scans it as struct
-// or returns nil in case of sql.ErrNoRows.
-func QueryRowStructOrNil[S any](ctx context.Context, query string, args ...any) (rowPtr *S, err error) {
-	row, err := QueryRowStruct[S](ctx, query, args...)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return &row, nil
-}
-
-// GetRowStruct uses the passed pkValue+pkValues to query a table row
-// and scan it into a struct of type S that must have tagged fields
+// ReadRowStruct uses the passed pkValue+pkValues to query a table row
+// and scan it into a struct of type `*S` that must have tagged fields
 // with primary key flags to identify the primary key column names
 // for the passed pkValue+pkValues and a table name.
-func GetRowStruct[S StructWithTableName](ctx context.Context, pkValue any, pkValues ...any) (rowPtr *S, err error) {
+func ReadRowStruct[S StructWithTableName](ctx context.Context, pkValue any, pkValues ...any) (S, error) {
 	// Using explicit first pkValue value
 	// to not be able to compile without any value
 	pkValues = append([]any{pkValue}, pkValues...)
 	t := reflect.TypeFor[S]()
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
 	if t.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("expected struct template type instead of %s", t)
+		return *new(S), fmt.Errorf("expected struct or pointer to struct, got %s", reflect.TypeFor[S]())
 	}
 	conn := Conn(ctx)
 	table, err := defaultStructReflector.TableNameForStruct(t)
 	if err != nil {
-		return nil, err
+		return *new(S), err
 	}
 	table, err = conn.FormatTableName(table)
 	if err != nil {
-		return nil, err
+		return *new(S), err
 	}
 	pkColumns, err := pkColumnsOfStruct(defaultStructReflector, t)
 	if err != nil {
-		return nil, err
+		return *new(S), err
 	}
 	if len(pkColumns) != len(pkValues) {
-		return nil, fmt.Errorf("got %d primary key values, but struct %s has %d primary key fields", len(pkValues), t, len(pkColumns))
+		return *new(S), fmt.Errorf("got %d primary key values, but struct %s has %d primary key fields", len(pkValues), t, len(pkColumns))
 	}
 	for i, column := range pkColumns {
 		pkColumns[i], err = conn.FormatColumnName(column)
 		if err != nil {
-			return nil, err
+			return *new(S), err
 		}
 	}
 	var query strings.Builder
@@ -220,24 +112,21 @@ func GetRowStruct[S StructWithTableName](ctx context.Context, pkValue any, pkVal
 	for i := 1; i < len(pkColumns); i++ {
 		fmt.Fprintf(&query, ` AND %s = %s`, pkColumns[i], conn.FormatPlaceholder(i)) //#nosec G104
 	}
-	return QueryRowStruct[*S](ctx, query.String(), pkValues...)
+	return QueryRowValue[S](ctx, query.String(), pkValues...)
 }
 
-// GetRowStructOrNil uses the passed pkValue+pkValues to query a table row
+// ReadRowStructOr uses the passed pkValue+pkValues to query a table row
 // and scan it into a struct of type S that must have tagged fields
 // with primary key flags to identify the primary key column names
 // for the passed pkValue+pkValues and a table name.
 // Returns nil as row and error if no row could be found with the
 // passed pkValue+pkValues.
-func GetRowStructOrNil[S StructWithTableName](ctx context.Context, pkValue any, pkValues ...any) (rowPtr *S, err error) {
-	rowPtr, err = GetRowStruct[S](ctx, pkValue, pkValues...)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
+func ReadRowStructOr[S StructWithTableName](ctx context.Context, defaultVal S, pkValue any, pkValues ...any) (S, error) {
+	row, err := ReadRowStruct[S](ctx, pkValue, pkValues...)
+	if errors.Is(err, sql.ErrNoRows) {
+		return defaultVal, nil
 	}
-	return rowPtr, nil
+	return row, err
 }
 
 // QueryRowsAsSlice returns queried rows as slice of the generic type T
