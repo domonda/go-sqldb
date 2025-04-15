@@ -9,12 +9,14 @@ import (
 
 func TestParseConfigURL(t *testing.T) {
 	tests := []struct {
-		configURL string
-		want      *Config
-		wantErr   bool
+		configURL              string
+		wantURLWithoutPassword string
+		want                   *Config
+		wantErr                bool
 	}{
 		{
-			configURL: "postgres://user:password@localhost:5432/database?sslmode=disable",
+			configURL:              "postgres://user:password@localhost:5432/database?sslmode=disable",
+			wantURLWithoutPassword: "postgres://user@localhost:5432/database?sslmode=disable",
 			want: &Config{
 				Driver:   "postgres",
 				Host:     "localhost",
@@ -35,7 +37,8 @@ func TestParseConfigURL(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
-			assert.Equal(t, tt.configURL, got.String(), "convertig back to URL should match original")
+			assert.Equal(t, tt.configURL, got.URL().String(), "convertig back to URL should match original")
+			assert.Equal(t, tt.wantURLWithoutPassword, got.String(), "convertig back to URL without password")
 		})
 	}
 }

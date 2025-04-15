@@ -133,20 +133,23 @@ func (c *Config) URL() *url.URL {
 }
 
 // String returns the connection URI string for the Config
-// and implements the [fmt.Stringer] interface.
+// without the password and implements the [fmt.Stringer] interface.
+//
+// To get the full connection URI including the password use [Config.URL].
 //
 // The returned string will not include the following fields:
+//   - Password
 //   - MaxOpenConns
 //   - MaxIdleConns
 //   - ConnMaxLifetime
 //   - DefaultIsolationLevel
 //   - Err
 //
-// The returned string is suitable for passing to [sql.Open].
-//
 // See also [ParseConfig]
 func (c *Config) String() string {
-	return c.URL().String()
+	uri := c.URL()
+	uri.User = url.User(c.User)
+	return uri.String()
 }
 
 // Connect opens a new [sql.DB] connection,
