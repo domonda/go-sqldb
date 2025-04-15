@@ -28,14 +28,14 @@ func TestParseConfigURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.configURL, func(t *testing.T) {
-			got, err := ParseConfigURL(tt.configURL)
+			got, err := ParseConfig(tt.configURL)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
-			assert.Equal(t, tt.configURL, got.URL().String(), "convertig back to URL should match original")
+			assert.Equal(t, tt.configURL, got.String(), "convertig back to URL should match original")
 		})
 	}
 }

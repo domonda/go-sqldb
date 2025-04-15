@@ -30,7 +30,7 @@ type listener struct {
 }
 
 func (conn *connection) getOrCreateListener() *listener {
-	connURL := conn.config.URL().String()
+	connURL := conn.config.String()
 
 	globalListenersMtx.Lock()
 	defer globalListenersMtx.Unlock()
@@ -59,7 +59,7 @@ func (conn *connection) getOrCreateListener() *listener {
 }
 
 func (conn *connection) getListenerOrNil() *listener {
-	connURL := conn.config.URL().String()
+	connURL := conn.config.String()
 
 	globalListenersMtx.RLock()
 	l := globalListeners[connURL]

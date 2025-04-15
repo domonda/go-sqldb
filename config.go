@@ -54,16 +54,18 @@ type Config struct {
 	Err                   error              `json:"-"`
 }
 
-// ParseConfigURL parses a connection URL string and returns a Config.
-// The URL must be in the format:
+// ParseConfig parses a connection URI string and returns a Config.
+// The URI must be in the format:
 //
 //	driver://user:password@host:port/database?key=value&key2=value2
 //
 // For example:
 //
 //	postgres://user:password@localhost:5432/database?sslmode=disable
-func ParseConfigURL(configURL string) (*Config, error) {
-	parsed, err := url.Parse(configURL)
+//
+// See also [Config.String]
+func ParseConfig(uri string) (*Config, error) {
+	parsed, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
 	}
@@ -130,26 +132,42 @@ func (c *Config) URL() *url.URL {
 	return u
 }
 
-// Connect opens a new sql.DB connection,
+// String returns the connection URI string for the Config
+// and implements the [fmt.Stringer] interface.
+//
+// The returned string will not include the following fields:
+//   - MaxOpenConns
+//   - MaxIdleConns
+//   - ConnMaxLifetime
+//   - DefaultIsolationLevel
+//   - Err
+//
+// The returned string is suitable for passing to [sql.Open].
+//
+// See also [ParseConfig]
+func (c *Config) String() string {
+	return c.URL().String()
+}
+
+// Connect opens a new [sql.DB] connection,
 // sets all Config values and performs a ping with ctx.
-// The sql.DB will be returned if the ping was successful.
+// The [sql.DB] will be returned if the ping was successful.
 func (c *Config) Connect(ctx context.Context) (*sql.DB, error) {
 	err := c.Validate()
 	if err != nil {
 		return nil, err
 	}
-	db, err := sql.Open(c.Driver, c.URL().String())
+	db, err := sql.Open(c.Driver, c.String())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error opening database connection: %w", err)
 	}
 	db.SetMaxOpenConns(c.MaxOpenConns)
 	db.SetMaxIdleConns(c.MaxIdleConns)
 	db.SetConnMaxLifetime(c.ConnMaxLifetime)
 	err = db.PingContext(ctx)
 	if err != nil {
-		e := db.Close()
-		if e != nil {
-			err = fmt.Errorf("%w, then %s", err, e)
+		if e := db.Close(); e != nil {
+			err = fmt.Errorf("%w, then %w", err, e)
 		}
 		return nil, err
 	}
