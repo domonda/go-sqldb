@@ -160,7 +160,7 @@ func (c *Config) Connect(ctx context.Context) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	db, err := sql.Open(c.Driver, c.String())
+	db, err := sql.Open(c.Driver, c.URL().String())
 	if err != nil {
 		return nil, fmt.Errorf("error opening database connection: %w", err)
 	}
