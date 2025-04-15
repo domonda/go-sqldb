@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -52,6 +54,41 @@ type Config struct {
 	Err                   error              `json:"-"`
 }
 
+// ParseConfigURL parses a connection URL string and returns a Config.
+// The URL must be in the format:
+//
+//	driver://user:password@host:port/database?key=value&key2=value2
+//
+// For example:
+//
+//	postgres://user:password@localhost:5432/database?sslmode=disable
+func ParseConfigURL(configURL string) (*Config, error) {
+	parsed, err := url.Parse(configURL)
+	if err != nil {
+		return nil, err
+	}
+	port, err := strconv.ParseUint(parsed.Port(), 10, 16)
+	if err != nil {
+		return nil, err
+	}
+	password, _ := parsed.User.Password()
+	config := &Config{
+		Driver:   parsed.Scheme,
+		Host:     parsed.Hostname(),
+		Port:     uint16(port),
+		User:     parsed.User.Username(),
+		Password: password,
+		Database: strings.TrimPrefix(parsed.Path, "/"),
+	}
+	if vals := parsed.Query(); len(vals) > 0 {
+		config.Extra = make(map[string]string)
+		for key, val := range vals {
+			config.Extra[key] = val[0]
+		}
+	}
+	return config, nil
+}
+
 // Validate returns Config.Err if it is not nil
 // or an error if the Config does not have
 // a Driver, Host, or Database.
@@ -71,9 +108,9 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-// ConnectURL returns a URL with the connection parameters
+// URL returns a [*url.URL] with the connection parameters
 // for connecting to a database based on the Config.
-func (c *Config) ConnectURL() *url.URL {
+func (c *Config) URL() *url.URL {
 	extra := make(url.Values)
 	for key, val := range c.Extra {
 		extra.Add(key, val)
@@ -81,11 +118,11 @@ func (c *Config) ConnectURL() *url.URL {
 	u := &url.URL{
 		Scheme:   c.Driver,
 		Host:     c.Host,
-		Path:     c.Database,
+		Path:     "/" + c.Database,
 		RawQuery: extra.Encode(),
 	}
 	if c.Port != 0 {
-		u.Host = fmt.Sprintf("%s:%d", c.Host, c.Port)
+		u.Host += fmt.Sprintf(":%d", c.Port)
 	}
 	if c.User != "" {
 		u.User = url.UserPassword(c.User, c.Password)
@@ -101,7 +138,7 @@ func (c *Config) Connect(ctx context.Context) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	db, err := sql.Open(c.Driver, c.ConnectURL().String())
+	db, err := sql.Open(c.Driver, c.URL().String())
 	if err != nil {
 		return nil, err
 	}
