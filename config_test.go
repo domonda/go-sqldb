@@ -9,14 +9,14 @@ import (
 
 func TestParseConfigURL(t *testing.T) {
 	tests := []struct {
-		configURL              string
-		wantURLWithoutPassword string
+		uri                    string
+		wantURIWithoutPassword string
 		want                   *Config
 		wantErr                bool
 	}{
 		{
-			configURL:              "postgres://user:password@localhost:5432/database?sslmode=disable",
-			wantURLWithoutPassword: "postgres://user@localhost:5432/database?sslmode=disable",
+			uri:                    "postgres://user:password@localhost:5432/database?sslmode=disable",
+			wantURIWithoutPassword: "postgres://user@localhost:5432/database?sslmode=disable",
 			want: &Config{
 				Driver:   "postgres",
 				Host:     "localhost",
@@ -29,16 +29,16 @@ func TestParseConfigURL(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.configURL, func(t *testing.T) {
-			got, err := ParseConfig(tt.configURL)
+		t.Run(tt.uri, func(t *testing.T) {
+			got, err := ParseConfig(tt.uri)
 			if tt.wantErr {
 				require.Error(t, err)
 				return
 			}
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
-			assert.Equal(t, tt.configURL, got.URL().String(), "convertig back to URL should match original")
-			assert.Equal(t, tt.wantURLWithoutPassword, got.String(), "convertig back to URL without password")
+			assert.Equal(t, tt.uri, got.URL().String(), "convertig back to URI should match original")
+			assert.Equal(t, tt.wantURIWithoutPassword, got.String(), "convertig back to URI without password")
 		})
 	}
 }

@@ -12,10 +12,10 @@ require (
 	github.com/domonda/go-sqldb/pqconn v0.0.0-00010101000000-000000000000 // replaced
 )
 
-require github.com/domonda/go-types v0.0.0-20250327120403-f5ca1ab99ab1
+require github.com/domonda/go-types v0.0.0-20250412141721-fed19dbf3b04
 
 require (
-	github.com/DataDog/go-sqllexer v0.1.3 // indirect
+	github.com/DataDog/go-sqllexer v0.1.4 // indirect
 	github.com/cention-sany/utf7 v0.0.0-20170124080048-26cad61bd60a // indirect
 	github.com/domonda/go-errs v0.0.0-20240702051036-0e696c849b5f // indirect
 	github.com/domonda/go-pretty v0.0.0-20240110134850-17385799142f // indirect
