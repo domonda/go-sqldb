@@ -16,7 +16,9 @@ import (
 )
 
 type User struct {
-	ID uu.ID `db:"id,pk,default"`
+	db.TableName `db:"public.user"`
+
+	ID uu.ID `db:"id,primarykey,default"`
 
 	Email email.NullableAddress   `db:"email"`
 	Title nullable.NonEmptyString `db:"title"`
@@ -38,7 +40,7 @@ func main() {
 		Extra:    map[string]string{"sslmode": "disable"},
 	}
 
-	fmt.Println("Connecting to:", config.ConnectURL())
+	fmt.Println("Connecting to:", config)
 
 	conn, err := pqconn.New(context.Background(), config)
 	if err != nil {
@@ -88,7 +90,7 @@ func main() {
 	}
 
 	newUser := &User{ /* ... */ }
-	err = conn.InsertStruct("public.user", newUser)
+	err = db.InsertRowStruct(ctx, newUser)
 	if err != nil {
 		panic(err)
 	}
@@ -98,7 +100,7 @@ func main() {
 		panic(err)
 	}
 
-	err = conn.Insert("public.user", sqldb.Values{
+	err = conn.InsertStruct(sqldb.Values{
 		"name":  "Erik Unger",
 		"email": "erik@domonda.com",
 	})
