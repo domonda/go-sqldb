@@ -27,83 +27,79 @@ type PrimaryKeyColumn struct {
 func GetPrimaryKeyColumns(ctx context.Context) (cols []PrimaryKeyColumn, err error) {
 	defer errs.WrapWithFuncParams(&err, ctx)
 
-	err = db.QueryRows(ctx, `
-		select
-			tc.table_schema||'.'||tc.table_name as "table",
-			kc.column_name                      as "column",
-			col.data_type                       as "type",
-			(select exists(
-				select from information_schema.table_constraints as fk_tc
-				inner join information_schema.key_column_usage as fk_kc
-					on fk_kc.table_schema = fk_tc.table_schema
-					and fk_kc.table_name = fk_tc.table_name
-					and fk_kc.constraint_name = fk_tc.constraint_name
-				where fk_tc.constraint_type = 'FOREIGN KEY'
-					and fk_tc.table_schema = tc.table_schema
-					and fk_tc.table_name = tc.table_name
-					and fk_kc.column_name = kc.column_name
-			)) as "foreign_key"
-		from information_schema.table_constraints as tc
-		inner join information_schema.key_column_usage as kc
-			on kc.table_schema = tc.table_schema
-			and kc.table_name = tc.table_name
-			and kc.constraint_name = tc.constraint_name
-		inner join information_schema.columns as col
-			on col.table_schema = tc.table_schema
-			and col.table_name = tc.table_name
-			and col.column_name = kc.column_name
-		where tc.constraint_type = 'PRIMARY KEY'
-			and kc.ordinal_position is not null
-		order by
-			tc.table_schema,
-			tc.table_name`,
-	).ScanStructSlice(&cols)
-	if err != nil {
-		return nil, err
-	}
-	return cols, nil
+	return db.QueryStructSlice[PrimaryKeyColumn](ctx,
+		/*sql*/ `
+			select
+				tc.table_schema||'.'||tc.table_name as "table",
+				kc.column_name                      as "column",
+				col.data_type                       as "type",
+				(select exists(
+					select from information_schema.table_constraints as fk_tc
+					inner join information_schema.key_column_usage as fk_kc
+						on fk_kc.table_schema = fk_tc.table_schema
+						and fk_kc.table_name = fk_tc.table_name
+						and fk_kc.constraint_name = fk_tc.constraint_name
+					where fk_tc.constraint_type = 'FOREIGN KEY'
+						and fk_tc.table_schema = tc.table_schema
+						and fk_tc.table_name = tc.table_name
+						and fk_kc.column_name = kc.column_name
+				)) as "foreign_key"
+			from information_schema.table_constraints as tc
+			inner join information_schema.key_column_usage as kc
+				on kc.table_schema = tc.table_schema
+				and kc.table_name = tc.table_name
+				and kc.constraint_name = tc.constraint_name
+			inner join information_schema.columns as col
+				on col.table_schema = tc.table_schema
+				and col.table_name = tc.table_name
+				and col.column_name = kc.column_name
+			where tc.constraint_type = 'PRIMARY KEY'
+				and kc.ordinal_position is not null
+			order by
+				tc.table_schema,
+				tc.table_name
+		`,
+	)
 }
 
 func GetPrimaryKeyColumnsOfType(ctx context.Context, pkType string) (cols []PrimaryKeyColumn, err error) {
 	defer errs.WrapWithFuncParams(&err, ctx, pkType)
 
-	err = db.QueryRows(ctx, `
-		select
-			tc.table_schema||'.'||tc.table_name as "table",
-			kc.column_name                      as "column",
-			col.data_type                       as "type",
-			(select exists(
-				select from information_schema.table_constraints as fk_tc
-				inner join information_schema.key_column_usage as fk_kc
-					on fk_kc.table_schema = fk_tc.table_schema
-					and fk_kc.table_name = fk_tc.table_name
-					and fk_kc.constraint_name = fk_tc.constraint_name
-				where fk_tc.constraint_type = 'FOREIGN KEY'
-					and fk_tc.table_schema = tc.table_schema
-					and fk_tc.table_name = tc.table_name
-					and fk_kc.column_name = kc.column_name
-			)) as "foreign_key"
-		from information_schema.table_constraints as tc
-		inner join information_schema.key_column_usage as kc
-			on kc.table_schema = tc.table_schema
-			and kc.table_name = tc.table_name
-			and kc.constraint_name = tc.constraint_name
-		inner join information_schema.columns as col
-			on col.table_schema = tc.table_schema
-			and col.table_name = tc.table_name
-			and col.column_name = kc.column_name
-		where tc.constraint_type = 'PRIMARY KEY'
-			and kc.ordinal_position is not null
-			and col.data_type = $1
-		order by
-			tc.table_schema,
-			tc.table_name`,
-		pkType,
-	).ScanStructSlice(&cols)
-	if err != nil {
-		return nil, err
-	}
-	return cols, nil
+	return db.QueryStructSlice[PrimaryKeyColumn](ctx,
+		/*sql*/ `
+			select
+				tc.table_schema||'.'||tc.table_name as "table",
+				kc.column_name                      as "column",
+				col.data_type                       as "type",
+				(select exists(
+					select from information_schema.table_constraints as fk_tc
+					inner join information_schema.key_column_usage as fk_kc
+						on fk_kc.table_schema = fk_tc.table_schema
+						and fk_kc.table_name = fk_tc.table_name
+						and fk_kc.constraint_name = fk_tc.constraint_name
+					where fk_tc.constraint_type = 'FOREIGN KEY'
+						and fk_tc.table_schema = tc.table_schema
+						and fk_tc.table_name = tc.table_name
+						and fk_kc.column_name = kc.column_name
+				)) as "foreign_key"
+			from information_schema.table_constraints as tc
+			inner join information_schema.key_column_usage as kc
+				on kc.table_schema = tc.table_schema
+				and kc.table_name = tc.table_name
+				and kc.constraint_name = tc.constraint_name
+			inner join information_schema.columns as col
+				on col.table_schema = tc.table_schema
+				and col.table_name = tc.table_name
+				and col.column_name = kc.column_name
+			where tc.constraint_type = 'PRIMARY KEY'
+				and kc.ordinal_position is not null
+				and col.data_type = $1
+			order by
+				tc.table_schema,
+				tc.table_name
+		`,
+		pkType, // $1
+	)
 }
 
 type TableRowWithPrimaryKey struct {
@@ -154,7 +150,7 @@ var RenderUUIDPrimaryKeyRefsHTML = http.HandlerFunc(func(writer http.ResponseWri
 	pk, err := uu.IDFromString(request.URL.Query().Get("pk"))
 	if err != nil {
 		title = "Primary Key UUID"
-		mainContent = `
+		mainContent = /*html*/ `
 			<form onsubmit="event.preventDefault();location='.?pk='+encodeURIComponent(document.getElementById('uuid').value.trim())">
 				<input type="text" size="40" id="uuid"/>
 				<input type="submit" value="Look up"/>
@@ -222,7 +218,7 @@ var RenderUUIDPrimaryKeyRefsHTML = http.HandlerFunc(func(writer http.ResponseWri
 	writer.Write(buf.Bytes()) //#nosec G104
 })
 
-var htmlTemplate = `<!DOCTYPE html>
+var htmlTemplate = /*html*/ `<!DOCTYPE html>
 <html lang="en">
 <head>
 	<meta charset="utf-8">
@@ -254,9 +250,9 @@ var htmlTemplate = `<!DOCTYPE html>
 </body>
 </html>`
 
-const StyleAllMonospace = `<style>* { font-family: "Lucida Console", Monaco, monospace; }</style>`
+const StyleAllMonospace = /*html*/ `<style>* { font-family: "Lucida Console", Monaco, monospace; }</style>`
 
-const StyleDefaultTable = `<style>
+const StyleDefaultTable = /*html*/ `<style>
 	table {
 		margin-top: 1em;
 		margin-bottom: 1em;
