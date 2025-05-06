@@ -58,8 +58,8 @@ var (
 	serializedTransactionCtxKey int
 )
 
-// SetConn sets the global connection returned by Conn
-// if there is no other connection in the context passed to Conn.
+// SetConn sets the global connection that will be returned by [Conn]
+// if there is no other connection in the context passed to [Conn].
 func SetConn(c sqldb.Connection) {
 	if c == nil {
 		panic("can't set nil sqldb.Connection")
@@ -83,9 +83,14 @@ func ConnOr(ctx context.Context, defaultConn sqldb.Connection) sqldb.Connection 
 }
 
 // ContextWithConn returns a new context with the passed sqldb.Connection
-// added as value so it can be retrieved again using Conn(ctx).
-// Passing a nil connection causes Conn(ctx)
-// to return the global connection set with SetConn.
+// added as value so it can be retrieved again using [Conn].
+// Passing a nil connection causes [Conn] to return the global connection
+// configured with [SetConn].
 func ContextWithConn(ctx context.Context, conn sqldb.Connection) context.Context {
 	return context.WithValue(ctx, &globalConnCtxKey, conn)
+}
+
+// Close the global connection that was configured with [SetConn].
+func Close() error {
+	return globalConn.Close()
 }
