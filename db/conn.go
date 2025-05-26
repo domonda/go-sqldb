@@ -46,6 +46,12 @@ func ContextWithConn(ctx context.Context, conn sqldb.Connection) context.Context
 	return context.WithValue(ctx, &globalConnCtxKey, conn)
 }
 
+// ContextWithGlobalConn returns a new context with the global connection
+// added as value so it can be retrieved again using Conn(ctx).
+func ContextWithGlobalConn(ctx context.Context) context.Context {
+	return ContextWithConn(ctx, globalConn)
+}
+
 // IsTransaction indicates if the connection from the context,
 // or the default connection if the context has none,
 // is a transaction.
