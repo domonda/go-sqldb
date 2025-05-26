@@ -90,6 +90,12 @@ func ContextWithConn(ctx context.Context, conn sqldb.Connection) context.Context
 	return context.WithValue(ctx, &globalConnCtxKey, conn)
 }
 
+// ContextWithGlobalConn returns a new context with the global connection
+// added as value so it can be retrieved again using Conn(ctx).
+func ContextWithGlobalConn(ctx context.Context) context.Context {
+	return ContextWithConn(ctx, globalConn)
+}
+
 // Close the global connection that was configured with [SetConn].
 func Close() error {
 	return globalConn.Close()
