@@ -4,7 +4,7 @@ go 1.24
 
 require (
 	github.com/DataDog/go-sqllexer v0.1.6
-	github.com/domonda/go-types v0.0.0-20250425101633-45f6e09e0587
+	github.com/domonda/go-types v0.0.0-20250526125918-165038381c4d
 	github.com/stretchr/testify v1.10.0
 )
 
@@ -12,7 +12,7 @@ require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/domonda/go-errs v0.0.0-20240702051036-0e696c849b5f // indirect
+	github.com/domonda/go-errs v0.0.0-20250509130707-0373cd8156d7 // indirect
 	github.com/domonda/go-pretty v0.0.0-20240110134850-17385799142f // indirect
 	github.com/invopop/jsonschema v0.13.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
