@@ -1,6 +1,6 @@
 module github.com/domonda/go-sqldb/mysqlconn
 
-go 1.24
+go 1.23
 
 replace github.com/domonda/go-sqldb => ..
 
