@@ -26,6 +26,23 @@ func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if config.ReadOnly {
+		_, err = db.ExecContext(ctx, `SET default_transaction_read_only = on`)
+		if err != nil {
+			return nil, fmt.Errorf("failed to set default_transaction_read_only: %w", err)
+		}
+		// transaction_read_only should be on after setting default_transaction_read_only
+		var readOnlyMode string
+		err = db.QueryRowContext(ctx, `SHOW transaction_read_only`).Scan(&readOnlyMode)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check read-only mode: %w", err)
+		}
+		if readOnlyMode != "on" {
+			return nil, errors.New("read-only mode is not enabled")
+		}
+	}
+
 	return &connection{
 		db:     db,
 		config: config,

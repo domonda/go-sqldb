@@ -21,6 +21,12 @@ type Config struct {
 	Database string            `json:"database"`
 	Extra    map[string]string `json:"misc,omitempty"`
 
+	// ReadOnly sets the database connection to read-only mode
+	// if supported by the database connection.
+	//
+	// The default is false.
+	ReadOnly bool `json:"readOnly,omitempty"`
+
 	// MaxOpenConns sets the maximum number of open connections to the database.
 	//
 	// If MaxIdleConns is greater than 0 and the new MaxOpenConns is less than
