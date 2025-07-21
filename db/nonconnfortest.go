@@ -17,7 +17,6 @@ import (
 // without any actual transaction handling.
 //
 // All methods execpt the following will cause the test to fail:
-//
 //   - Context()
 //   - WithContext(context.Context)
 //   - WithStructFieldMapper(sqldb.StructFieldMapper)
@@ -32,6 +31,29 @@ import (
 //   - Transaction(opts *sql.TxOptions, txFunc func(tx sqldb.Connection) error) error
 func NonConnectionForTest(t *testing.T) sqldb.Connection {
 	return &nonConnForTest{t: t, ctx: context.TODO(), namer: sqldb.DefaultStructFieldMapping}
+}
+
+// ContextWithNonConnectionForTest returns a new context with a sqldb.Connection
+// intended for unit tests that should run without an actual database connection.
+//
+// The transaction related methods of that connection
+// simulate a transaction without any actual transaction handling.
+//
+// All methods of that connection execpt the following will cause the test to fail:
+//   - Context()
+//   - WithContext(context.Context)
+//   - WithStructFieldMapper(sqldb.StructFieldMapper)
+//   - Placeholder(paramIndex int)
+//   - ValidateColumnName(name string)
+//   - IsTransaction()
+//   - TransactionNo()
+//   - TransactionOptions()
+//   - Begin(opts *sql.TxOptions, no uint64) (sqldb.Connection, error)
+//   - Commit() error
+//   - Rollback() error
+//   - Transaction(opts *sql.TxOptions, txFunc func(tx sqldb.Connection) error) error
+func ContextWithNonConnectionForTest(ctx context.Context, t *testing.T) context.Context {
+	return ContextWithConn(ctx, NonConnectionForTest(t))
 }
 
 type nonConnForTest struct {
