@@ -12,10 +12,23 @@ import (
 	"github.com/domonda/go-sqldb"
 )
 
+var noTransactionsCtxKey int
+
+func ContextWithoutTransactions(ctx context.Context) context.Context {
+	return context.WithValue(ctx, &noTransactionsCtxKey, struct{}{})
+}
+
+func IsContextWithoutTransactions(ctx context.Context) bool {
+	return ctx.Value(&noTransactionsCtxKey) != nil
+}
+
 // IsTransaction indicates if the connection from the context,
 // or the default connection if the context has none,
 // is a transaction.
 func IsTransaction(ctx context.Context) bool {
+	if IsContextWithoutTransactions(ctx) {
+		return false
+	}
 	tx, _ := Conn(ctx).TransactionInfo()
 	return tx != 0
 }
@@ -23,6 +36,9 @@ func IsTransaction(ctx context.Context) bool {
 // ValidateWithinTransaction returns [sqldb.ErrNotWithinTransaction]
 // if the database connection from the context is not a transaction.
 func ValidateWithinTransaction(ctx context.Context) error {
+	if IsContextWithoutTransactions(ctx) {
+		return sqldb.ErrNotWithinTransaction
+	}
 	conn := Conn(ctx)
 	if err := conn.Config().Err; err != nil {
 		return err
@@ -36,6 +52,9 @@ func ValidateWithinTransaction(ctx context.Context) error {
 // ValidateNotWithinTransaction returns [sqldb.ErrWithinTransaction]
 // if the database connection from the context is a transaction.
 func ValidateNotWithinTransaction(ctx context.Context) error {
+	if IsContextWithoutTransactions(ctx) {
+		return nil
+	}
 	conn := Conn(ctx)
 	if err := conn.Config().Err; err != nil {
 		return err
@@ -58,6 +77,9 @@ func DebugNoTransaction(ctx context.Context, nonTxFunc func(context.Context) err
 // Errors and panics from txFunc will rollback the transaction.
 // Recovered panics are re-paniced and rollback errors after a panic are logged with [ErrLogger].
 func IsolatedTransaction(ctx context.Context, txFunc func(context.Context) error) error {
+	if IsContextWithoutTransactions(ctx) {
+		return txFunc(ctx)
+	}
 	return sqldb.IsolatedTransaction(ctx, Conn(ctx), nil, func(tx sqldb.Connection) error {
 		return txFunc(context.WithValue(ctx, &globalConnCtxKey, tx))
 	})
@@ -71,6 +93,9 @@ func IsolatedTransaction(ctx context.Context, txFunc func(context.Context) error
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
 // Recovered panics are re-paniced and rollback errors after a panic are logged with [sqldb.ErrLogger].
 func Transaction(ctx context.Context, txFunc func(context.Context) error) error {
+	if IsContextWithoutTransactions(ctx) {
+		return txFunc(ctx)
+	}
 	return sqldb.Transaction(ctx, Conn(ctx), nil, func(tx sqldb.Connection) error {
 		return txFunc(context.WithValue(ctx, &globalConnCtxKey, tx))
 	})
@@ -81,7 +106,7 @@ func Transaction(ctx context.Context, txFunc func(context.Context) error) error 
 //
 // See [Transaction] for more details.
 func OptionalTransaction(ctx context.Context, doTransaction bool, txFunc func(context.Context) error) error {
-	if !doTransaction {
+	if !doTransaction || IsContextWithoutTransactions(ctx) {
 		return txFunc(ctx)
 	}
 	return Transaction(ctx, txFunc)
@@ -123,6 +148,10 @@ func OptionalTransaction(ctx context.Context, doTransaction bool, txFunc func(co
 //
 // Because of the retryable nature, please be careful with the size of the transaction and the retry cost.
 func SerializedTransaction(ctx context.Context, txFunc func(context.Context) error) error {
+	if IsContextWithoutTransactions(ctx) {
+		return txFunc(ctx)
+	}
+
 	// Pass nested serialized transactions through
 	if IsTransaction(ctx) {
 		if ctx.Value(&serializedTransactionCtxKey) == nil {
@@ -153,6 +182,9 @@ func SerializedTransaction(ctx context.Context, txFunc func(context.Context) err
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
 // Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
 func TransactionOpts(ctx context.Context, opts *sql.TxOptions, txFunc func(context.Context) error) error {
+	if IsContextWithoutTransactions(ctx) {
+		return txFunc(ctx)
+	}
 	return sqldb.Transaction(ctx, Conn(ctx), opts, func(tx sqldb.Connection) error {
 		return txFunc(context.WithValue(ctx, &globalConnCtxKey, tx))
 	})
@@ -166,6 +198,9 @@ func TransactionOpts(ctx context.Context, opts *sql.TxOptions, txFunc func(conte
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
 // Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
 func TransactionReadOnly(ctx context.Context, txFunc func(context.Context) error) error {
+	if IsContextWithoutTransactions(ctx) {
+		return txFunc(ctx)
+	}
 	opts := sql.TxOptions{ReadOnly: true}
 	return sqldb.Transaction(ctx, Conn(ctx), &opts, func(tx sqldb.Connection) error {
 		return txFunc(context.WithValue(ctx, &globalConnCtxKey, tx))
@@ -184,6 +219,10 @@ func TransactionReadOnly(ctx context.Context, txFunc func(context.Context) error
 // Panics from txFunc are not recovered to rollback to the savepoint,
 // they should behandled by the parent Transaction function.
 func TransactionSavepoint(ctx context.Context, txFunc func(context.Context) error) error {
+	if IsContextWithoutTransactions(ctx) {
+		return txFunc(ctx)
+	}
+
 	conn := Conn(ctx)
 	if tx, _ := conn.TransactionInfo(); tx == 0 {
 		// If not already in a transaction, then execute txFunc
