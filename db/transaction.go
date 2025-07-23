@@ -55,6 +55,19 @@ func IsolatedTransaction(ctx context.Context, txFunc func(context.Context) error
 	})
 }
 
+// IsolatedTransactionResult executes txFunc within a database transaction that is passed in to txFunc as tx Connection.
+// IsolatedTransactionResult returns all errors from txFunc or transaction commit errors happening after txFunc.
+// If parentConn is already a transaction, a brand new transaction will begin on the parent's connection.
+// Errors and panics from txFunc will rollback the transaction.
+// Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
+func IsolatedTransactionResult[T any](ctx context.Context, txFunc func(context.Context) (T, error)) (result T, err error) {
+	err = IsolatedTransaction(ctx, func(ctx context.Context) error {
+		result, err = txFunc(ctx)
+		return err
+	})
+	return result, err
+}
+
 // Transaction executes txFunc within a database transaction that is passed in to txFunc via the context.
 // Use db.Conn(ctx) to get the transaction connection within txFunc.
 // Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
@@ -68,15 +81,41 @@ func Transaction(ctx context.Context, txFunc func(context.Context) error) error 
 	})
 }
 
-// OptionalTransaction executes txFunc within a database transaction if doTransaction is true.
-// If doTransaction is false, then txFunc is executed without a transaction.
+// TransactionResult executes txFunc within a database transaction and returns the result of txFunc.
+// Use db.Conn(ctx) to get the transaction connection within txFunc.
+// Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
+// If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
+// and no parentConn.Begin, Commit, or Rollback calls will occour within this TransactionResult call.
+// Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
+// Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
+func TransactionResult[T any](ctx context.Context, txFunc func(context.Context) (T, error)) (result T, err error) {
+	err = Transaction(ctx, func(ctx context.Context) error {
+		result, err = txFunc(ctx)
+		return err
+	})
+	return result, err
+}
+
+// OptionalTransaction executes txFunc within a database transaction if useTransaction is true.
+// If useTransaction is false, then txFunc is executed without a transaction.
 //
 // See [Transaction] for more details.
-func OptionalTransaction(ctx context.Context, doTransaction bool, txFunc func(context.Context) error) error {
-	if !doTransaction {
+func OptionalTransaction(ctx context.Context, useTransaction bool, txFunc func(context.Context) error) error {
+	if !useTransaction {
 		return txFunc(ctx)
 	}
 	return Transaction(ctx, txFunc)
+}
+
+// OptionalTransactionResult executes txFunc within a database transaction if useTransaction is true.
+// If useTransaction is false, then txFunc is executed without a transaction.
+//
+// See [TransactionResult] for more details.
+func OptionalTransactionResult[T any](ctx context.Context, useTransaction bool, txFunc func(context.Context) (T, error)) (result T, err error) {
+	if !useTransaction {
+		return txFunc(ctx)
+	}
+	return TransactionResult(ctx, txFunc)
 }
 
 // SerializedTransaction executes txFunc "serially" within a database transaction that is passed in to txFunc via the context.
