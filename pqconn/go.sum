@@ -4,6 +4,8 @@ github.com/domonda/go-pretty v0.0.0-20240110134850-17385799142f h1:5eA74m451Pqlq
 github.com/domonda/go-pretty v0.0.0-20240110134850-17385799142f/go.mod h1:3QkM8UJdyJMeKZiIo7hYzSkQBpRS3k0gOHw4ysyEIB4=
 github.com/domonda/go-types v0.0.0-20250225133122-0516d5b855ff h1:387ozbEPNeB+CnD4vV34f0Lv3H1s8UEr/bsk/TMYnAY=
 github.com/domonda/go-types v0.0.0-20250225133122-0516d5b855ff/go.mod h1:sEYFQpYhnYjcvQkzQGIEfgzA/1g3lgpBYS7hQS+QtE8=
+github.com/domonda/go-types v0.0.0-20250711130302-a138ad20cd49 h1:726lTBHv/+EGQ4CYeQPlSTgSBdzqMRbdcg4wUoUBv7c=
+github.com/domonda/go-types v0.0.0-20250711130302-a138ad20cd49/go.mod h1:5esmMaEB57phklyiGu9a9/ttw338cZBZDCcxoO8A7kY=
 github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=
 github.com/jinzhu/now v1.1.5/go.mod h1:d3SSVoowX0Lcu0IBviAWJpolVfI5UJVZZ7cO71lE/z8=
 github.com/lib/pq v1.10.9 h1:YXG7RB+JIjhP29X+OtkiDnYaXQwpS4JEWq7dtCCRUEw=
