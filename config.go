@@ -57,7 +57,7 @@ type Config struct {
 	ConnMaxLifetime time.Duration `json:"connMaxLifetime,omitempty"`
 
 	DefaultIsolationLevel sql.IsolationLevel `json:"-"`
-	Err                   error              `json:"-"`
+	Err                   error              `json:"-"` // TODO: remove this field
 }
 
 // ParseConfig parses a connection URI string and returns a Config.

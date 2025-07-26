@@ -2,14 +2,31 @@
 
 ## Major TODOs from README.md
 
-- [ ] Test all pkg db functions
 - [ ] Rethink Config
+- [ ] Remove Err field from Config
+- [ ] Test all pkg db functions
 - [ ] pkg information completion
 - [ ] Test pqconn with dockerized Postgres
 - [ ] Cache struct types (see commit 090e73d1d9db8534d2950dd7236d7ebe192cd512)
 - [ ] Std SQL driver for mocks
 - [ ] Smooth out listener for Postgres
 - [ ] SQLite integration https://github.com/zombiezen/go-sqlite
+- [ ] Separate concerns of query and transaction
+```go
+    type Queryer interface {
+      Query(ctx context.Context, query string, args ...any) Rows
+      Exec(ctx context.Context, query string, args ...any) error
+    }
+    type Transactor interface {
+      Begin(ctx context.Context, opts *sql.TxOptions)
+      ...
+    }
+```
+- [ ] Bartch insert
+```go
+  func BatchInsert[T any](ctx context.Context, table string, items []T, 
+  batchSize int) error
+```
 
 ## Code-Level TODOs and Missing Implementations
 
