@@ -3,6 +3,7 @@ package sqldb
 import (
 	"fmt"
 	"io"
+	"strings"
 )
 
 func DefaultQueryBuilder() QueryBuilder {
@@ -29,7 +30,7 @@ func (defaultQueryBuilder) QueryForRowWithPK(w io.Writer, table string, pkColumn
 	return nil
 }
 
-func (defaultQueryBuilder) InsertQuery(w io.Writer, table string, columns []ColumnInfo, f QueryFormatter) (err error) {
+func (defaultQueryBuilder) Insert(w io.Writer, table string, columns []ColumnInfo, f QueryFormatter) (err error) {
 	table, err = f.FormatTableName(table)
 	if err != nil {
 		return err
@@ -75,17 +76,20 @@ func (defaultQueryBuilder) InsertQuery(w io.Writer, table string, columns []Colu
 	return nil
 }
 
-func (b defaultQueryBuilder) InsertUniqueQuery(w io.Writer, table string, columns []ColumnInfo, onConflict string, f QueryFormatter) error {
-	err := b.InsertQuery(w, table, columns, f)
+func (b defaultQueryBuilder) InsertUnique(w io.Writer, table string, columns []ColumnInfo, onConflict string, f QueryFormatter) error {
+	err := b.Insert(w, table, columns, f)
 	if err != nil {
 		return err
+	}
+	if strings.HasPrefix(onConflict, "(") && strings.HasSuffix(onConflict, ")") {
+		onConflict = onConflict[1 : len(onConflict)-1]
 	}
 	_, err = fmt.Fprintf(w, " ON CONFLICT (%s) DO NOTHING RETURNING TRUE", onConflict)
 	return err
 }
 
-func (b defaultQueryBuilder) UpsertQuery(w io.Writer, table string, columns []ColumnInfo, f QueryFormatter) (err error) {
-	err = b.InsertQuery(w, table, columns, f)
+func (b defaultQueryBuilder) Upsert(w io.Writer, table string, columns []ColumnInfo, f QueryFormatter) (err error) {
+	err = b.Insert(w, table, columns, f)
 	if err != nil {
 		return err
 	}
@@ -141,7 +145,7 @@ func (b defaultQueryBuilder) UpsertQuery(w io.Writer, table string, columns []Co
 	return nil
 }
 
-func (b defaultQueryBuilder) UpdateValuesQuery(w io.Writer, table string, values Values, where string, args []any, f QueryFormatter) (vals []any, err error) {
+func (b defaultQueryBuilder) UpdateValues(w io.Writer, table string, values Values, where string, args []any, f QueryFormatter) (vals []any, err error) {
 	table, err = f.FormatTableName(table)
 	if err != nil {
 		return nil, err
@@ -177,7 +181,7 @@ func (b defaultQueryBuilder) UpdateValuesQuery(w io.Writer, table string, values
 	return append(args, vals...), nil
 }
 
-func (b defaultQueryBuilder) UpdateColumnsQuery(w io.Writer, table string, columns []ColumnInfo, f QueryFormatter) error {
+func (b defaultQueryBuilder) UpdateColumns(w io.Writer, table string, columns []ColumnInfo, f QueryFormatter) error {
 	table, err := f.FormatTableName(table)
 	if err != nil {
 		return err

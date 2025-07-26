@@ -12,18 +12,7 @@ import (
 
 // Update table rows(s) with values using the where statement with passed in args starting at $1.
 func Update(ctx context.Context, table string, values sqldb.Values, where string, args ...any) error {
-	if len(values) == 0 {
-		return fmt.Errorf("Update table %s: no values passed", table)
-	}
-	conn := Conn(ctx)
-	queryBuilder := QueryBuilderFromContext(ctx)
-
-	var query strings.Builder
-	vals, err := queryBuilder.UpdateValuesQuery(&query, table, values, where, args, conn)
-	if err != nil {
-		return err
-	}
-	return sqldb.Exec(ctx, conn, query.String(), vals...)
+	return sqldb.Update(ctx, Conn(ctx), QueryBuilderFromContext(ctx), table, values, where, args...)
 }
 
 // // UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
@@ -83,7 +72,7 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, options ...Q
 	queryBuilder := QueryBuilderFromContext(ctx)
 
 	var query strings.Builder
-	err := queryBuilder.UpdateColumnsQuery(&query, table, columns, conn)
+	err := queryBuilder.UpdateColumns(&query, table, columns, conn)
 	if err != nil {
 		return err
 	}

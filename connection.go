@@ -24,7 +24,7 @@ type TransactionInfo struct {
 	DefaultIsolationLevel sql.IsolationLevel
 }
 
-type Queryer interface {
+type QueryExec interface {
 	QueryFormatter
 
 	// Prepare a statement for execution.
@@ -40,7 +40,6 @@ type Queryer interface {
 
 // Connection represents a database connection or transaction
 type Connection interface {
-
 	// Ping returns an error if the database
 	// does not answer on this connection
 	// with an optional timeout.
@@ -55,7 +54,7 @@ type Connection interface {
 	// to create this connection.
 	Config() *Config
 
-	Queryer
+	QueryExec
 
 	// TransactionInfo returns the transaction info of the connection
 	TransactionInfo() TransactionInfo
