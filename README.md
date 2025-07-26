@@ -1,17 +1,5 @@
 # go-sqldb
 
-## TODO for v1
-
-- [ ] Test all pkg db functions
-- [ ] Rethink Config
-- [ ] pkg information
-- [ ] Test pqconn with dockerized Postgres
-- [ ] Cache struct types, see commit 090e73d1d9db8534d2950dd7236d7ebe192cd512
-- [ ] Std SQL driver for mocks?
-- [ ] Smooth out listener for Postgres
-- [ ] SQLite https://github.com/zombiezen/go-sqlite
-
-
 [![Go Reference](https://pkg.go.dev/badge/github.com/domonda/go-sqldb.svg)](https://pkg.go.dev/github.com/domonda/go-sqldb) [![license](https://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://raw.githubusercontent.com/domonda/go-sqldb/master/LICENSE)
 
 This package started out as an extension wrapper of [github.com/jmoiron/sqlx](https://github.com/jmoiron/sqlx) but turned into a complete rewrite using the same philosophy of representing table rows as Go structs.
