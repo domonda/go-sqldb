@@ -110,7 +110,7 @@ func ReadRowStruct[S StructWithTableName](ctx context.Context, pkValue any, pkVa
 	queryBuilder := QueryBuilderFromContext(ctx)
 
 	var query strings.Builder
-	err = queryBuilder.QueryForRowWithPK(&query, table, pkColumns, conn)
+	err = queryBuilder.QueryRowWithPK(&query, table, pkColumns)
 	if err != nil {
 		return *new(S), err
 	}

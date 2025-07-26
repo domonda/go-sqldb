@@ -72,7 +72,7 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, options ...Q
 	queryBuilder := QueryBuilderFromContext(ctx)
 
 	var query strings.Builder
-	err := queryBuilder.UpdateColumns(&query, table, columns, conn)
+	err := queryBuilder.UpdateColumns(&query, table, columns)
 	if err != nil {
 		return err
 	}

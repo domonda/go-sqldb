@@ -40,7 +40,7 @@ func UpsertStruct(ctx context.Context, rowStruct StructWithTableName, options ..
 	queryBuilder := QueryBuilderFromContext(ctx)
 
 	var query strings.Builder
-	err = queryBuilder.Upsert(&query, table, columns, conn)
+	err = queryBuilder.Upsert(&query, table, columns)
 	if err != nil {
 		return fmt.Errorf("UpsertStruct of table %s: can't create UPSERT query because: %w", table, err)
 	}
@@ -72,7 +72,7 @@ func UpsertStructStmt[S StructWithTableName](ctx context.Context, options ...Que
 	queryBuilder := QueryBuilderFromContext(ctx)
 
 	var query strings.Builder
-	err = queryBuilder.Upsert(&query, table, columns, conn)
+	err = queryBuilder.Upsert(&query, table, columns)
 	if err != nil {
 		return nil, nil, fmt.Errorf("UpsertStructStmt of table %s: can't create UPSERT query because: %w", table, err)
 	}

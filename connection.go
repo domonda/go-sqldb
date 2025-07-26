@@ -24,15 +24,17 @@ type TransactionInfo struct {
 	DefaultIsolationLevel sql.IsolationLevel
 }
 
-type QueryExec interface {
-	QueryFormatter
-
+type Preparer interface {
 	// Prepare a statement for execution.
 	Prepare(ctx context.Context, query string) (Stmt, error)
+}
 
+type Executor interface {
 	// Exec executes a query with optional args.
 	Exec(ctx context.Context, query string, args ...any) error
+}
 
+type Querier interface {
 	// Query queries rows with optional args.
 	// Any error will be returned by the Rows.Err method.
 	Query(ctx context.Context, query string, args ...any) Rows
@@ -54,7 +56,10 @@ type Connection interface {
 	// to create this connection.
 	Config() *Config
 
-	QueryExec
+	QueryFormatter
+	Preparer
+	Executor
+	Querier
 
 	// TransactionInfo returns the transaction info of the connection
 	TransactionInfo() TransactionInfo

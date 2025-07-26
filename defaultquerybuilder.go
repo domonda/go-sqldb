@@ -6,23 +6,28 @@ import (
 	"strings"
 )
 
-func DefaultQueryBuilder() QueryBuilder {
-	return defaultQueryBuilder{}
+func DefaultQueryBuilder(formatter QueryFormatter) QueryBuilder {
+	if formatter == nil {
+		formatter = StdQueryFormatter{}
+	}
+	return defaultQueryBuilder{formatter}
 }
 
-type defaultQueryBuilder struct{}
+type defaultQueryBuilder struct {
+	QueryFormatter
+}
 
-func (defaultQueryBuilder) QueryForRowWithPK(w io.Writer, table string, pkColumns []string, f QueryFormatter) (err error) {
-	table, err = f.FormatTableName(table)
+func (b defaultQueryBuilder) QueryRowWithPK(w io.Writer, table string, pkColumns []string) (err error) {
+	table, err = b.FormatTableName(table)
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintf(w, `SELECT * FROM %s WHERE %s = %s`, table, pkColumns[0], f.FormatPlaceholder(0))
+	_, err = fmt.Fprintf(w, `SELECT * FROM %s WHERE %s = %s`, table, pkColumns[0], b.FormatPlaceholder(0))
 	if err != nil {
 		return err
 	}
 	for i := 1; i < len(pkColumns); i++ {
-		_, err = fmt.Fprintf(w, ` AND %s = %s`, pkColumns[i], f.FormatPlaceholder(i))
+		_, err = fmt.Fprintf(w, ` AND %s = %s`, pkColumns[i], b.FormatPlaceholder(i))
 		if err != nil {
 			return err
 		}
@@ -30,15 +35,15 @@ func (defaultQueryBuilder) QueryForRowWithPK(w io.Writer, table string, pkColumn
 	return nil
 }
 
-func (defaultQueryBuilder) Insert(w io.Writer, table string, columns []ColumnInfo, f QueryFormatter) (err error) {
-	table, err = f.FormatTableName(table)
+func (b defaultQueryBuilder) Insert(w io.Writer, table string, columns []ColumnInfo) (err error) {
+	table, err = b.FormatTableName(table)
 	if err != nil {
 		return err
 	}
 	fmt.Fprintf(w, `INSERT INTO %s(`, table)
 	for i := range columns {
 		column := columns[i].Name
-		column, err = f.FormatColumnName(column)
+		column, err = b.FormatColumnName(column)
 		if err != nil {
 			return err
 		}
@@ -64,7 +69,7 @@ func (defaultQueryBuilder) Insert(w io.Writer, table string, columns []ColumnInf
 				return err
 			}
 		}
-		_, err = io.WriteString(w, f.FormatPlaceholder(i))
+		_, err = io.WriteString(w, b.FormatPlaceholder(i))
 		if err != nil {
 			return err
 		}
@@ -76,8 +81,8 @@ func (defaultQueryBuilder) Insert(w io.Writer, table string, columns []ColumnInf
 	return nil
 }
 
-func (b defaultQueryBuilder) InsertUnique(w io.Writer, table string, columns []ColumnInfo, onConflict string, f QueryFormatter) error {
-	err := b.Insert(w, table, columns, f)
+func (b defaultQueryBuilder) InsertUnique(w io.Writer, table string, columns []ColumnInfo, onConflict string) error {
+	err := b.Insert(w, table, columns)
 	if err != nil {
 		return err
 	}
@@ -88,8 +93,8 @@ func (b defaultQueryBuilder) InsertUnique(w io.Writer, table string, columns []C
 	return err
 }
 
-func (b defaultQueryBuilder) Upsert(w io.Writer, table string, columns []ColumnInfo, f QueryFormatter) (err error) {
-	err = b.Insert(w, table, columns, f)
+func (b defaultQueryBuilder) Upsert(w io.Writer, table string, columns []ColumnInfo) (err error) {
+	err = b.Insert(w, table, columns)
 	if err != nil {
 		return err
 	}
@@ -110,7 +115,7 @@ func (b defaultQueryBuilder) Upsert(w io.Writer, table string, columns []ColumnI
 				return err
 			}
 		}
-		columnName, err := f.FormatColumnName(columns[i].Name)
+		columnName, err := b.FormatColumnName(columns[i].Name)
 		if err != nil {
 			return err
 		}
@@ -136,17 +141,17 @@ func (b defaultQueryBuilder) Upsert(w io.Writer, table string, columns []ColumnI
 				return err
 			}
 		}
-		columnName, err := f.FormatColumnName(columns[i].Name)
+		columnName, err := b.FormatColumnName(columns[i].Name)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(w, ` %s=%s`, columnName, f.FormatPlaceholder(i))
+		fmt.Fprintf(w, ` %s=%s`, columnName, b.FormatPlaceholder(i))
 	}
 	return nil
 }
 
-func (b defaultQueryBuilder) UpdateValues(w io.Writer, table string, values Values, where string, args []any, f QueryFormatter) (vals []any, err error) {
-	table, err = f.FormatTableName(table)
+func (b defaultQueryBuilder) UpdateValues(w io.Writer, table string, values Values, where string, args []any) (vals []any, err error) {
+	table, err = b.FormatTableName(table)
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +163,7 @@ func (b defaultQueryBuilder) UpdateValues(w io.Writer, table string, values Valu
 
 	columns, vals := values.SortedColumnsAndValues()
 	for i := range columns {
-		column, err := f.FormatColumnName(columns[i].Name)
+		column, err := b.FormatColumnName(columns[i].Name)
 		if err != nil {
 			return nil, err
 		}
@@ -168,7 +173,7 @@ func (b defaultQueryBuilder) UpdateValues(w io.Writer, table string, values Valu
 				return nil, err
 			}
 		}
-		_, err = fmt.Fprintf(w, ` %s=%s`, column, f.FormatPlaceholder(len(args)+i))
+		_, err = fmt.Fprintf(w, ` %s=%s`, column, b.FormatPlaceholder(len(args)+i))
 		if err != nil {
 			return nil, err
 		}
@@ -181,8 +186,8 @@ func (b defaultQueryBuilder) UpdateValues(w io.Writer, table string, values Valu
 	return append(args, vals...), nil
 }
 
-func (b defaultQueryBuilder) UpdateColumns(w io.Writer, table string, columns []ColumnInfo, f QueryFormatter) error {
-	table, err := f.FormatTableName(table)
+func (b defaultQueryBuilder) UpdateColumns(w io.Writer, table string, columns []ColumnInfo) error {
+	table, err := b.FormatTableName(table)
 	if err != nil {
 		return err
 	}
@@ -205,11 +210,11 @@ func (b defaultQueryBuilder) UpdateColumns(w io.Writer, table string, columns []
 				return err
 			}
 		}
-		columnName, err := f.FormatColumnName(columns[i].Name)
+		columnName, err := b.FormatColumnName(columns[i].Name)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(w, ` %s=%s`, columnName, f.FormatPlaceholder(i))
+		fmt.Fprintf(w, ` %s=%s`, columnName, b.FormatPlaceholder(i))
 	}
 
 	_, err = io.WriteString(w, ` WHERE `)
@@ -230,11 +235,11 @@ func (b defaultQueryBuilder) UpdateColumns(w io.Writer, table string, columns []
 				return err
 			}
 		}
-		columnName, err := f.FormatColumnName(columns[i].Name)
+		columnName, err := b.FormatColumnName(columns[i].Name)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(w, `%s = %s`, columnName, f.FormatPlaceholder(i))
+		fmt.Fprintf(w, `%s = %s`, columnName, b.FormatPlaceholder(i))
 	}
 
 	return nil

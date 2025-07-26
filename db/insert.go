@@ -58,7 +58,7 @@ func InsertRowStruct(ctx context.Context, rowStruct StructWithTableName, options
 	queryBuilder := QueryBuilderFromContext(ctx)
 
 	query := strings.Builder{}
-	err = queryBuilder.Insert(&query, table, columns, conn)
+	err = queryBuilder.Insert(&query, table, columns)
 	if err != nil {
 		return fmt.Errorf("can't create INSERT query because: %w", err)
 	}
@@ -83,7 +83,7 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, options ...
 
 	queryBuilder := QueryBuilderFromContext(ctx)
 	query := strings.Builder{}
-	err = queryBuilder.Insert(&query, table, columns, conn)
+	err = queryBuilder.Insert(&query, table, columns)
 	if err != nil {
 		return nil, nil, fmt.Errorf("can't create INSERT query because: %w", err)
 	}
@@ -150,7 +150,7 @@ func InsertUniqueRowStruct(ctx context.Context, rowStruct StructWithTableName, o
 	queryBuilder := QueryBuilderFromContext(ctx)
 
 	var query strings.Builder
-	err = queryBuilder.InsertUnique(&query, table, columns, onConflict, conn)
+	err = queryBuilder.InsertUnique(&query, table, columns, onConflict)
 	if err != nil {
 		return false, fmt.Errorf("can't create INSERT query because: %w", err)
 	}

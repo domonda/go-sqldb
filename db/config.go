@@ -53,7 +53,7 @@ var (
 	globalConn       sqldb.Connection = sqldb.NewErrConn(sqldb.ErrNoDatabaseConnection)
 	globalConnCtxKey int
 
-	queryBuilder       = sqldb.DefaultQueryBuilder()
+	queryBuilder       = sqldb.DefaultQueryBuilder(nil)
 	queryBuilderCtxKey int
 
 	serializedTransactionCtxKey int
@@ -113,6 +113,7 @@ func ContextWithQueryBuilder(ctx context.Context, builder sqldb.QueryBuilder) co
 	return context.WithValue(ctx, &queryBuilderCtxKey, builder)
 }
 
+// TODO also consider Connection
 func QueryBuilderFromContext(ctx context.Context) sqldb.QueryBuilder {
 	if builder, _ := ctx.Value(&queryBuilderCtxKey).(sqldb.QueryBuilder); builder != nil {
 		return builder
