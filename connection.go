@@ -24,10 +24,22 @@ type TransactionInfo struct {
 	DefaultIsolationLevel sql.IsolationLevel
 }
 
+type Queryer interface {
+	QueryFormatter
+
+	// Prepare a statement for execution.
+	Prepare(ctx context.Context, query string) (Stmt, error)
+
+	// Exec executes a query with optional args.
+	Exec(ctx context.Context, query string, args ...any) error
+
+	// Query queries rows with optional args.
+	// Any error will be returned by the Rows.Err method.
+	Query(ctx context.Context, query string, args ...any) Rows
+}
+
 // Connection represents a database connection or transaction
 type Connection interface {
-	// A Connection is also a QueryFormatter
-	QueryFormatter
 
 	// Ping returns an error if the database
 	// does not answer on this connection
@@ -43,15 +55,7 @@ type Connection interface {
 	// to create this connection.
 	Config() *Config
 
-	// Exec executes a query with optional args.
-	Exec(ctx context.Context, query string, args ...any) error
-
-	// Query queries rows with optional args.
-	// Any error will be returned by the Rows.Err method.
-	Query(ctx context.Context, query string, args ...any) Rows
-
-	// Prepare a statement for execution.
-	Prepare(ctx context.Context, query string) (Stmt, error)
+	Queryer
 
 	// TransactionInfo returns the transaction info of the connection
 	TransactionInfo() TransactionInfo

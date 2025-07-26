@@ -59,7 +59,7 @@ func QueryRowValueStmt[T any](ctx context.Context, query string) (queryFunc func
 	stmt, err := conn.Prepare(ctx, query)
 	if err != nil {
 		err = fmt.Errorf("can't prepare query because: %w", err)
-		return nil, nil, wrapErrorWithQuery(err, query, nil, conn)
+		return nil, nil, sqldb.WrapErrorWithQuery(err, query, nil, conn)
 	}
 
 	queryFunc = func(ctx context.Context, args ...any) (val T, err error) {
@@ -107,10 +107,12 @@ func ReadRowStruct[S StructWithTableName](ctx context.Context, pkValue any, pkVa
 			return *new(S), err
 		}
 	}
+	queryBuilder := QueryBuilderFromContext(ctx)
+
 	var query strings.Builder
-	fmt.Fprintf(&query, `SELECT * FROM %s WHERE %s = %s`, table, pkColumns[0], conn.FormatPlaceholder(0)) //#nosec G104
-	for i := 1; i < len(pkColumns); i++ {
-		fmt.Fprintf(&query, ` AND %s = %s`, pkColumns[i], conn.FormatPlaceholder(i)) //#nosec G104
+	err = queryBuilder.QueryForRowWithPK(&query, table, pkColumns, conn)
+	if err != nil {
+		return *new(S), err
 	}
 	return QueryRowValue[S](ctx, query.String(), pkValues...)
 }

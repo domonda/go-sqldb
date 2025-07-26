@@ -71,7 +71,7 @@ func TestInsert(t *testing.T) {
 	tests := []struct {
 		name    string
 		table   string
-		values  Values
+		values  sqldb.Values
 		conn    *sqldb.MockConn
 		want    sqldb.QueryRecordings
 		wantErr bool
@@ -79,7 +79,7 @@ func TestInsert(t *testing.T) {
 		{
 			name:  "basic",
 			table: "public.my_table",
-			values: Values{
+			values: sqldb.Values{
 				"id":         1,
 				"name":       "Test",
 				"created_at": timestamp,
@@ -100,7 +100,7 @@ func TestInsert(t *testing.T) {
 		{
 			name:    "no values",
 			table:   "public.my_table",
-			values:  Values{},
+			values:  sqldb.Values{},
 			conn:    sqldb.NewMockConn("$", nil, os.Stdout),
 			wantErr: true,
 		},

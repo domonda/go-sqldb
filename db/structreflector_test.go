@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/domonda/go-sqldb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -54,19 +55,19 @@ func TestTaggedStructReflector_MapStructField(t *testing.T) {
 	tests := []struct {
 		name        string
 		structField reflect.StructField
-		wantColumn  Column
+		wantColumn  sqldb.ColumnInfo
 		wantOk      bool
 	}{
-		{name: "index", structField: st.Field(0), wantColumn: Column{Name: "index", PrimaryKey: true}, wantOk: true},
-		{name: "index_b", structField: st.Field(1), wantColumn: Column{Name: "index_b", PrimaryKey: true}, wantOk: true},
-		{name: "named_str", structField: st.Field(2), wantColumn: Column{Name: "named_str"}, wantOk: true},
-		{name: "read_only", structField: st.Field(3), wantColumn: Column{Name: "read_only", ReadOnly: true}, wantOk: true},
-		{name: "untagged_field", structField: st.Field(4), wantColumn: Column{Name: "untagged_field"}, wantOk: true},
-		{name: "ignore", structField: st.Field(5), wantColumn: Column{}, wantOk: false},
-		{name: "pk_read_only", structField: st.Field(6), wantColumn: Column{Name: "pk_read_only", PrimaryKey: true, ReadOnly: true}, wantOk: true},
-		{name: "no_flag", structField: st.Field(7), wantColumn: Column{Name: "no_flag"}, wantOk: true},
-		{name: "malformed_flags", structField: st.Field(8), wantColumn: Column{Name: "malformed_flags", ReadOnly: true}, wantOk: true},
-		{name: "Embedded", structField: st.Field(9), wantColumn: Column{}, wantOk: true},
+		{name: "index", structField: st.Field(0), wantColumn: sqldb.ColumnInfo{Name: "index", PrimaryKey: true}, wantOk: true},
+		{name: "index_b", structField: st.Field(1), wantColumn: sqldb.ColumnInfo{Name: "index_b", PrimaryKey: true}, wantOk: true},
+		{name: "named_str", structField: st.Field(2), wantColumn: sqldb.ColumnInfo{Name: "named_str"}, wantOk: true},
+		{name: "read_only", structField: st.Field(3), wantColumn: sqldb.ColumnInfo{Name: "read_only", ReadOnly: true}, wantOk: true},
+		{name: "untagged_field", structField: st.Field(4), wantColumn: sqldb.ColumnInfo{Name: "untagged_field"}, wantOk: true},
+		{name: "ignore", structField: st.Field(5), wantColumn: sqldb.ColumnInfo{}, wantOk: false},
+		{name: "pk_read_only", structField: st.Field(6), wantColumn: sqldb.ColumnInfo{Name: "pk_read_only", PrimaryKey: true, ReadOnly: true}, wantOk: true},
+		{name: "no_flag", structField: st.Field(7), wantColumn: sqldb.ColumnInfo{Name: "no_flag"}, wantOk: true},
+		{name: "malformed_flags", structField: st.Field(8), wantColumn: sqldb.ColumnInfo{Name: "malformed_flags", ReadOnly: true}, wantOk: true},
+		{name: "Embedded", structField: st.Field(9), wantColumn: sqldb.ColumnInfo{}, wantOk: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

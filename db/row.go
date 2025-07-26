@@ -24,7 +24,7 @@ func NewRow(rows sqldb.Rows, queryFmt sqldb.QueryFormatter, query string, args [
 func (r *Row) Columns() ([]string, error) {
 	cols, err := r.rows.Columns()
 	if err != nil {
-		return nil, wrapErrorWithQuery(err, r.query, r.args, r.queryFmt)
+		return nil, sqldb.WrapErrorWithQuery(err, r.query, r.args, r.queryFmt)
 	}
 	return cols, nil
 }
@@ -33,7 +33,7 @@ func (r *Row) Scan(dest ...any) (err error) {
 	defer func() {
 		err = errors.Join(err, r.rows.Close())
 		if err != nil {
-			err = wrapErrorWithQuery(err, r.query, r.args, r.queryFmt)
+			err = sqldb.WrapErrorWithQuery(err, r.query, r.args, r.queryFmt)
 		}
 	}()
 

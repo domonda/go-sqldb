@@ -11,7 +11,7 @@ import (
 )
 
 // Insert a new row into table using the values.
-func Insert(ctx context.Context, table string, values Values) error {
+func Insert(ctx context.Context, table string, values sqldb.Values) error {
 	if len(values) == 0 {
 		return fmt.Errorf("Insert into table %s: no values", table)
 	}
@@ -20,13 +20,15 @@ func Insert(ctx context.Context, table string, values Values) error {
 	query := strings.Builder{}
 	cols, vals := values.SortedColumnsAndValues()
 
-	err := buildInsertQuery(&query, table, cols, conn)
+	queryBuilder := QueryBuilderFromContext(ctx)
+
+	err := queryBuilder.InsertQuery(&query, table, cols, conn)
 	if err != nil {
 		return fmt.Errorf("can't create INSERT query because: %w", err)
 	}
 	err = conn.Exec(ctx, query.String(), vals...)
 	if err != nil {
-		return wrapErrorWithQuery(err, query.String(), vals, conn)
+		return sqldb.WrapErrorWithQuery(err, query.String(), vals, conn)
 	}
 	return nil
 }
@@ -34,11 +36,12 @@ func Insert(ctx context.Context, table string, values Values) error {
 // InsertUnique inserts a new row into table using the passed values
 // or does nothing if the onConflict statement applies.
 // Returns if a row was inserted.
-func InsertUnique(ctx context.Context, table string, values Values, onConflict string) (inserted bool, err error) {
+func InsertUnique(ctx context.Context, table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
 	if len(values) == 0 {
 		return false, fmt.Errorf("InsertUnique into table %s: no values", table)
 	}
 	conn := Conn(ctx)
+	queryBuilder := QueryBuilderFromContext(ctx)
 
 	if strings.HasPrefix(onConflict, "(") && strings.HasSuffix(onConflict, ")") {
 		onConflict = onConflict[1 : len(onConflict)-1]
@@ -46,7 +49,7 @@ func InsertUnique(ctx context.Context, table string, values Values, onConflict s
 
 	var query strings.Builder
 	cols, vals := values.SortedColumnsAndValues()
-	err = buildInsertQuery(&query, table, cols, conn)
+	err = queryBuilder.InsertQuery(&query, table, cols, conn)
 	if err != nil {
 		return false, fmt.Errorf("can't create INSERT query because: %w", err)
 	}
@@ -55,7 +58,7 @@ func InsertUnique(ctx context.Context, table string, values Values, onConflict s
 	inserted, err = QueryRowValue[bool](ctx, query.String(), vals...)
 	err = sqldb.ReplaceErrNoRows(err, nil)
 	if err != nil {
-		return false, wrapErrorWithQuery(err, query.String(), vals, conn)
+		return false, sqldb.WrapErrorWithQuery(err, query.String(), vals, conn)
 	}
 	return inserted, err
 }
@@ -93,15 +96,17 @@ func InsertRowStruct(ctx context.Context, rowStruct StructWithTableName, options
 	columns, vals := ReflectStructColumnsAndValues(structVal, reflector, append(options, IgnoreReadOnly)...)
 	conn := Conn(ctx)
 
+	queryBuilder := QueryBuilderFromContext(ctx)
+
 	query := strings.Builder{}
-	err = buildInsertQuery(&query, table, columns, conn)
+	err = queryBuilder.InsertQuery(&query, table, columns, conn)
 	if err != nil {
 		return fmt.Errorf("can't create INSERT query because: %w", err)
 	}
 
 	err = conn.Exec(ctx, query.String(), vals...)
 	if err != nil {
-		return wrapErrorWithQuery(err, query.String(), vals, conn)
+		return sqldb.WrapErrorWithQuery(err, query.String(), vals, conn)
 	}
 	return nil
 }
@@ -116,8 +121,10 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, options ...
 	conn := Conn(ctx)
 	options = append(options, IgnoreReadOnly)
 	columns := ReflectStructColumns(structType, reflector, options...)
+
+	queryBuilder := QueryBuilderFromContext(ctx)
 	query := strings.Builder{}
-	err = buildInsertQuery(&query, table, columns, conn)
+	err = queryBuilder.InsertQuery(&query, table, columns, conn)
 	if err != nil {
 		return nil, nil, fmt.Errorf("can't create INSERT query because: %w", err)
 	}
@@ -135,7 +142,7 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, options ...
 		vals := ReflectStructValues(strct, reflector, options...)
 		err = stmt.Exec(ctx, vals...)
 		if err != nil {
-			return wrapErrorWithQuery(err, query.String(), vals, conn)
+			return sqldb.WrapErrorWithQuery(err, query.String(), vals, conn)
 		}
 		return nil
 	}
@@ -151,7 +158,7 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, options ...
 // 	stmtFunc = func(ctx context.Context, rowStruct S) error {
 // 		TODO
 // 		if err != nil {
-// 			return wrapErrorWithQuery(err, query, args, conn)
+// 			return sqldb.WrapErrorWithQuery(err, query, args, conn)
 // 		}
 // 		return nil
 // 	}
@@ -181,17 +188,18 @@ func InsertUniqueRowStruct(ctx context.Context, rowStruct StructWithTableName, o
 		onConflict = onConflict[1 : len(onConflict)-1]
 	}
 
+	queryBuilder := QueryBuilderFromContext(ctx)
+
 	var query strings.Builder
-	err = buildInsertQuery(&query, table, columns, conn)
+	err = queryBuilder.InsertUniqueQuery(&query, table, columns, onConflict, conn)
 	if err != nil {
 		return false, fmt.Errorf("can't create INSERT query because: %w", err)
 	}
-	fmt.Fprintf(&query, " ON CONFLICT (%s) DO NOTHING RETURNING TRUE", onConflict)
 
 	inserted, err = QueryRowValue[bool](ctx, query.String(), vals...)
 	err = sqldb.ReplaceErrNoRows(err, nil)
 	if err != nil {
-		return false, wrapErrorWithQuery(err, query.String(), vals, conn)
+		return false, sqldb.WrapErrorWithQuery(err, query.String(), vals, conn)
 	}
 	return inserted, err
 }
@@ -224,32 +232,4 @@ func InsertRowStructs[S StructWithTableName](ctx context.Context, rowStructs []S
 		}
 		return nil
 	})
-}
-
-func buildInsertQuery(w *strings.Builder, table string, columns []Column, f sqldb.QueryFormatter) (err error) {
-	table, err = f.FormatTableName(table)
-	if err != nil {
-		return err
-	}
-	fmt.Fprintf(w, `INSERT INTO %s(`, table)
-	for i := range columns {
-		column := columns[i].Name
-		column, err = f.FormatColumnName(column)
-		if err != nil {
-			return err
-		}
-		if i > 0 {
-			w.WriteByte(',')
-		}
-		w.WriteString(column)
-	}
-	w.WriteString(`) VALUES(`)
-	for i := range columns {
-		if i > 0 {
-			w.WriteByte(',')
-		}
-		w.WriteString(f.FormatPlaceholder(i))
-	}
-	w.WriteByte(')')
-	return nil
 }

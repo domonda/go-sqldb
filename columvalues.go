@@ -1,21 +1,32 @@
-package db
+package sqldb
 
 import (
 	"cmp"
 	"slices"
 )
 
+type ColumnInfo struct {
+	Name       string
+	PrimaryKey bool
+	HasDefault bool
+	ReadOnly   bool
+}
+
+func (c *ColumnInfo) IsEmbeddedField() bool {
+	return c.Name == ""
+}
+
 // Values is a map from column names to values
 type Values map[string]any
 
 // SortedColumnsAndValues returns the column names and values
 // from the Values map as separated slices sorted by column name.
-func (v Values) SortedColumnsAndValues() (columns []Column, values []any) {
-	columns = make([]Column, 0, len(v))
+func (v Values) SortedColumnsAndValues() (columns []ColumnInfo, values []any) {
+	columns = make([]ColumnInfo, 0, len(v))
 	for name := range v {
-		columns = append(columns, Column{Name: name})
+		columns = append(columns, ColumnInfo{Name: name})
 	}
-	slices.SortFunc(columns, func(a, b Column) int {
+	slices.SortFunc(columns, func(a, b ColumnInfo) int {
 		return cmp.Compare(a.Name, b.Name)
 	})
 	values = make([]any, len(v))

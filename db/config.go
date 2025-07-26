@@ -50,10 +50,11 @@ func ContextWithStructReflector(ctx context.Context, reflector StructReflector) 
 }
 
 var (
-	globalConn sqldb.Connection = sqldb.NewErrConn(
-		sqldb.ErrNoDatabaseConnection,
-	)
+	globalConn       sqldb.Connection = sqldb.NewErrConn(sqldb.ErrNoDatabaseConnection)
 	globalConnCtxKey int
+
+	queryBuilder       = sqldb.DefaultQueryBuilder()
+	queryBuilderCtxKey int
 
 	serializedTransactionCtxKey int
 )
@@ -62,7 +63,7 @@ var (
 // if there is no other connection in the context passed to [Conn].
 func SetConn(c sqldb.Connection) {
 	if c == nil {
-		panic("can't set nil sqldb.Connection")
+		panic("can't set nil sqldb.Connection") // Prefer to panic early
 	}
 	globalConn = c
 }
@@ -99,4 +100,22 @@ func ContextWithGlobalConn(ctx context.Context) context.Context {
 // Close the global connection that was configured with [SetConn].
 func Close() error {
 	return globalConn.Close()
+}
+
+func SetQueryBuilder(builder sqldb.QueryBuilder) {
+	if builder == nil {
+		panic("can't set nil sqldb.QueryBuilder") // Prefer to panic early
+	}
+	queryBuilder = builder
+}
+
+func ContextWithQueryBuilder(ctx context.Context, builder sqldb.QueryBuilder) context.Context {
+	return context.WithValue(ctx, &queryBuilderCtxKey, builder)
+}
+
+func QueryBuilderFromContext(ctx context.Context) sqldb.QueryBuilder {
+	if builder, _ := ctx.Value(&queryBuilderCtxKey).(sqldb.QueryBuilder); builder != nil {
+		return builder
+	}
+	return queryBuilder
 }

@@ -2,6 +2,9 @@ package db
 
 import (
 	"reflect"
+	"slices"
+
+	"github.com/domonda/go-sqldb"
 )
 
 // QueryOption is the base for all query options
@@ -16,10 +19,10 @@ type QueryOption interface {
 type ColumnFilter interface {
 	QueryOption
 
-	IgnoreColumn(column *Column) bool
+	IgnoreColumn(column *sqldb.ColumnInfo) bool
 }
 
-func QueryOptionsIgnoreColumn(column *Column, opts []QueryOption) bool {
+func QueryOptionsIgnoreColumn(column *sqldb.ColumnInfo, opts []QueryOption) bool {
 	for _, opt := range opts {
 		if filter, ok := opt.(ColumnFilter); ok && filter.IgnoreColumn(column) {
 			return true
@@ -28,45 +31,35 @@ func QueryOptionsIgnoreColumn(column *Column, opts []QueryOption) bool {
 	return false
 }
 
-type ColumnFilterFunc func(column *Column) bool
+type IgnoreColumnFunc func(column *sqldb.ColumnInfo) bool
 
-func (f ColumnFilterFunc) QueryOption() {}
+func (f IgnoreColumnFunc) QueryOption() {}
 
-func (f ColumnFilterFunc) IgnoreColumn(column *Column) bool {
+func (f IgnoreColumnFunc) IgnoreColumn(column *sqldb.ColumnInfo) bool {
 	return f(column)
 }
 
-var IgnoreHasDefault = ColumnFilterFunc(func(column *Column) bool {
+var IgnoreHasDefault = IgnoreColumnFunc(func(column *sqldb.ColumnInfo) bool {
 	return column.HasDefault
 })
 
-var IgnorePrimaryKey = ColumnFilterFunc(func(column *Column) bool {
+var IgnorePrimaryKey = IgnoreColumnFunc(func(column *sqldb.ColumnInfo) bool {
 	return column.PrimaryKey
 })
 
-var IgnoreReadOnly = ColumnFilterFunc(func(column *Column) bool {
+var IgnoreReadOnly = IgnoreColumnFunc(func(column *sqldb.ColumnInfo) bool {
 	return column.ReadOnly
 })
 
-func IgnoreColumns(names ...string) ColumnFilterFunc {
-	return func(column *Column) bool {
-		for _, ignore := range names {
-			if column.Name == ignore {
-				return true
-			}
-		}
-		return false
+func IgnoreColumns(names ...string) IgnoreColumnFunc {
+	return func(column *sqldb.ColumnInfo) bool {
+		return slices.Contains(names, column.Name)
 	}
 }
 
-func OnlyColumns(names ...string) ColumnFilterFunc {
-	return func(column *Column) bool {
-		for _, include := range names {
-			if column.Name == include {
-				return false
-			}
-		}
-		return true
+func OnlyColumns(names ...string) IgnoreColumnFunc {
+	return func(column *sqldb.ColumnInfo) bool {
+		return !slices.Contains(names, column.Name)
 	}
 }
 

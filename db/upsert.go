@@ -30,23 +30,21 @@ func UpsertStruct(ctx context.Context, rowStruct StructWithTableName, options ..
 	}
 
 	columns, vals := ReflectStructColumnsAndValues(v, reflector, append(options, IgnoreReadOnly)...)
-	hasPK := slices.ContainsFunc(columns, func(col Column) bool {
+	hasPK := slices.ContainsFunc(columns, func(col sqldb.ColumnInfo) bool {
 		return col.PrimaryKey
 	})
 	if !hasPK {
 		return fmt.Errorf("UpsertStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
 
+	queryBuilder := QueryBuilderFromContext(ctx)
+
 	var query strings.Builder
-	err = buildUpsertQuery(&query, table, columns, conn)
+	err = queryBuilder.UpsertQuery(&query, table, columns, conn)
 	if err != nil {
 		return fmt.Errorf("UpsertStruct of table %s: can't create UPSERT query because: %w", table, err)
 	}
-	err = conn.Exec(ctx, query.String(), vals...)
-	if err != nil {
-		return wrapErrorWithQuery(err, query.String(), vals, conn)
-	}
-	return nil
+	return sqldb.Exec(ctx, conn, query.String(), vals...)
 }
 
 func UpsertStructStmt[S StructWithTableName](ctx context.Context, options ...QueryOption) (upsert func(ctx context.Context, rowStruct S) error, done func() error, err error) {
@@ -64,15 +62,17 @@ func UpsertStructStmt[S StructWithTableName](ctx context.Context, options ...Que
 
 	options = append(options, IgnoreReadOnly)
 	columns := ReflectStructColumns(structType, reflector, options...)
-	hasPK := slices.ContainsFunc(columns, func(col Column) bool {
+	hasPK := slices.ContainsFunc(columns, func(col sqldb.ColumnInfo) bool {
 		return col.PrimaryKey
 	})
 	if !hasPK {
 		return nil, nil, fmt.Errorf("UpsertStructStmt of table %s: %s has no mapped primary key field", table, structType)
 	}
 
+	queryBuilder := QueryBuilderFromContext(ctx)
+
 	var query strings.Builder
-	err = buildUpsertQuery(&query, table, columns, conn)
+	err = queryBuilder.UpsertQuery(&query, table, columns, conn)
 	if err != nil {
 		return nil, nil, fmt.Errorf("UpsertStructStmt of table %s: can't create UPSERT query because: %w", table, err)
 	}
@@ -90,7 +90,7 @@ func UpsertStructStmt[S StructWithTableName](ctx context.Context, options ...Que
 		vals := ReflectStructValues(v, reflector, options...)
 		err = stmt.Exec(ctx, vals...)
 		if err != nil {
-			return wrapErrorWithQuery(err, query.String(), vals, conn)
+			return sqldb.WrapErrorWithQuery(err, query.String(), vals, conn)
 		}
 		return nil
 	}
@@ -121,46 +121,4 @@ func UpsertStructs[S StructWithTableName](ctx context.Context, rowStructs []S, o
 		}
 		return nil
 	})
-}
-
-func buildUpsertQuery(w *strings.Builder, table string, columns []Column, f sqldb.QueryFormatter) (err error) {
-	err = buildInsertQuery(w, table, columns, f)
-	if err != nil {
-		return err
-	}
-	w.WriteString(` ON CONFLICT(`)
-	first := true
-	for i := range columns {
-		if !columns[i].PrimaryKey {
-			continue
-		}
-		if first {
-			first = false
-		} else {
-			w.WriteByte(',')
-		}
-		columnName, err := f.FormatColumnName(columns[i].Name)
-		if err != nil {
-			return err
-		}
-		w.WriteString(columnName)
-	}
-	w.WriteString(`) DO UPDATE SET`)
-	first = true
-	for i := range columns {
-		if columns[i].PrimaryKey {
-			continue
-		}
-		if first {
-			first = false
-		} else {
-			w.WriteByte(',')
-		}
-		columnName, err := f.FormatColumnName(columns[i].Name)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(w, ` %s=%s`, columnName, f.FormatPlaceholder(i))
-	}
-	return nil
 }

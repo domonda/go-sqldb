@@ -6,9 +6,11 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+
+	"github.com/domonda/go-sqldb"
 )
 
-func ReflectStructColumnsAndValues(structVal reflect.Value, reflector StructReflector, options ...QueryOption) (columns []Column, values []any) {
+func ReflectStructColumnsAndValues(structVal reflect.Value, reflector StructReflector, options ...QueryOption) (columns []sqldb.ColumnInfo, values []any) {
 	for i := 0; i < structVal.NumField(); i++ {
 		structField := structVal.Type().Field(i)
 		column, use := reflector.MapStructField(structField)
@@ -60,7 +62,7 @@ func ReflectStructValues(structVal reflect.Value, reflector StructReflector, opt
 	return values
 }
 
-func ReflectStructColumns(structType reflect.Type, reflctor StructReflector, options ...QueryOption) (columns []Column) {
+func ReflectStructColumns(structType reflect.Type, reflctor StructReflector, options ...QueryOption) (columns []sqldb.ColumnInfo) {
 	for i := 0; i < structType.NumField(); i++ {
 		structField := structType.Field(i)
 		column, use := reflctor.MapStructField(structField)
@@ -83,7 +85,7 @@ func ReflectStructColumns(structType reflect.Type, reflctor StructReflector, opt
 	return columns
 }
 
-func ReflectStructColumnsAndFields(structVal reflect.Value, reflctor StructReflector, options ...QueryOption) (columns []Column, fields []reflect.Type) {
+func ReflectStructColumnsAndFields(structVal reflect.Value, reflctor StructReflector, options ...QueryOption) (columns []sqldb.ColumnInfo, fields []reflect.Type) {
 	for i := 0; i < structVal.NumField(); i++ {
 		structField := structVal.Type().Field(i)
 		column, use := reflctor.MapStructField(structField)

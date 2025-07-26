@@ -11,21 +11,19 @@ import (
 )
 
 // Update table rows(s) with values using the where statement with passed in args starting at $1.
-func Update(ctx context.Context, table string, values Values, where string, args ...any) error {
+func Update(ctx context.Context, table string, values sqldb.Values, where string, args ...any) error {
 	if len(values) == 0 {
 		return fmt.Errorf("Update table %s: no values passed", table)
 	}
 	conn := Conn(ctx)
+	queryBuilder := QueryBuilderFromContext(ctx)
 
-	query, vals, err := buildUpdateQuery(table, values, where, args, conn)
+	var query strings.Builder
+	vals, err := queryBuilder.UpdateValuesQuery(&query, table, values, where, args, conn)
 	if err != nil {
-		return fmt.Errorf("can't create UPDATE query because: %w", err)
+		return err
 	}
-	err = conn.Exec(ctx, query, vals...)
-	if err != nil {
-		return wrapErrorWithQuery(err, query, vals, conn)
-	}
-	return nil
+	return sqldb.Exec(ctx, conn, query.String(), vals...)
 }
 
 // // UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
@@ -54,31 +52,6 @@ func Update(ctx context.Context, table string, values Values, where string, args
 // 	return conn.QueryRows(query, vals...)
 // }
 
-func buildUpdateQuery(table string, values Values, where string, args []any, f sqldb.QueryFormatter) (string, []any, error) {
-	table, err := f.FormatTableName(table)
-	if err != nil {
-		return "", nil, err
-	}
-
-	query := strings.Builder{}
-	fmt.Fprintf(&query, `UPDATE %s SET`, table)
-
-	columns, vals := values.SortedColumnsAndValues()
-	for i := range columns {
-		column, err := f.FormatColumnName(columns[i].Name)
-		if err != nil {
-			return "", nil, err
-		}
-		if i > 0 {
-			query.WriteByte(',')
-		}
-		fmt.Fprintf(&query, ` %s=%s`, column, f.FormatPlaceholder(len(args)+i))
-	}
-	fmt.Fprintf(&query, ` WHERE %s`, where)
-
-	return query.String(), append(args, vals...), nil
-}
-
 // UpdateStruct updates a row in a table using the exported fields
 // of rowStruct which have a `db` tag that is not "-".
 // If restrictToColumns are provided, then only struct fields with a `db` tag
@@ -87,11 +60,6 @@ func buildUpdateQuery(table string, values Values, where string, args []any, f s
 // to mark primary key column(s).
 func UpdateStruct(ctx context.Context, table string, rowStruct any, options ...QueryOption) error {
 	conn := Conn(ctx)
-
-	table, err := conn.FormatTableName(table)
-	if err != nil {
-		return err
-	}
 
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
@@ -105,55 +73,19 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, options ...Q
 	}
 
 	columns, vals := ReflectStructColumnsAndValues(v, defaultStructReflector, append(options, IgnoreReadOnly)...)
-	hasPK := slices.ContainsFunc(columns, func(col Column) bool {
+	hasPK := slices.ContainsFunc(columns, func(col sqldb.ColumnInfo) bool {
 		return col.PrimaryKey
 	})
 	if !hasPK {
 		return fmt.Errorf("UpdateStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
 
-	var b strings.Builder
-	fmt.Fprintf(&b, `UPDATE %s SET`, table)
-	first := true
-	for i := range columns {
-		if columns[i].PrimaryKey {
-			continue
-		}
-		if first {
-			first = false
-		} else {
-			b.WriteByte(',')
-		}
-		columnName, err := conn.FormatColumnName(columns[i].Name)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(&b, ` %s=%s`, columnName, conn.FormatPlaceholder(i))
-	}
+	queryBuilder := QueryBuilderFromContext(ctx)
 
-	b.WriteString(` WHERE `)
-	first = true
-	for i := range columns {
-		if !columns[i].PrimaryKey {
-			continue
-		}
-		if first {
-			first = false
-		} else {
-			b.WriteString(` AND `)
-		}
-		columnName, err := conn.FormatColumnName(columns[i].Name)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(&b, `%s=%s`, columnName, conn.FormatPlaceholder(i))
-	}
-
-	query := b.String()
-
-	err = conn.Exec(ctx, query, vals...)
+	var query strings.Builder
+	err := queryBuilder.UpdateColumnsQuery(&query, table, columns, conn)
 	if err != nil {
-		return wrapErrorWithQuery(err, query, vals, conn)
+		return err
 	}
-	return nil
+	return sqldb.Exec(ctx, conn, query.String(), vals...)
 }
