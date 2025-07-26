@@ -55,9 +55,6 @@ type Config struct {
 	//
 	// If ConnMaxLifetime <= 0, connections are not closed due to a connection's age.
 	ConnMaxLifetime time.Duration `json:"connMaxLifetime,omitempty"`
-
-	DefaultIsolationLevel sql.IsolationLevel `json:"-"`
-	Err                   error              `json:"-"` // TODO: remove this field
 }
 
 // ParseConfig parses a connection URI string and returns a Config.
@@ -101,9 +98,6 @@ func ParseConfig(uri string) (*Config, error) {
 // or an error if the Config does not have
 // a Driver, Host, or Database.
 func (c *Config) Validate() error {
-	if c.Err != nil {
-		return c.Err
-	}
 	if c.Driver == "" {
 		return fmt.Errorf("missing sqldb.Config.Driver")
 	}

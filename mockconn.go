@@ -51,7 +51,7 @@ type MockConn struct {
 	MockExec                 func(ctx context.Context, query string, args ...any) error
 	MockQuery                func(ctx context.Context, query string, args ...any) Rows
 	MockPrepare              func(ctx context.Context, query string) (Stmt, error)
-	MockTransactionInfo      func() (no uint64, opts *sql.TxOptions)
+	MockTransactionInfo      func() TransactionInfo
 	MockBegin                func(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error)
 	MockCommit               func() error
 	MockRollback             func() error
@@ -236,9 +236,13 @@ func (c *MockConn) Prepare(ctx context.Context, query string) (Stmt, error) {
 	return c.MockPrepare(ctx, query)
 }
 
-func (c *MockConn) TransactionInfo() (no uint64, opts *sql.TxOptions) {
+func (c *MockConn) TransactionInfo() TransactionInfo {
 	if c.MockTransactionInfo == nil {
-		return c.TxNo, nil
+		return TransactionInfo{
+			No:                    c.TxNo,
+			Opts:                  nil,
+			DefaultIsolationLevel: sql.LevelDefault,
+		}
 	}
 	return c.MockTransactionInfo()
 }

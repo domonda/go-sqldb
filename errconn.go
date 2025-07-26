@@ -33,7 +33,12 @@ func (e ErrConn) Stats() sql.DBStats {
 }
 
 func (e ErrConn) Config() *Config {
-	return &Config{Err: e.Err}
+	return &Config{
+		Driver:   "error",
+		Host:     "error",
+		Database: "error",
+		Extra:    map[string]string{"error": e.Err.Error()},
+	}
 }
 
 func (e ErrConn) Exec(ctx context.Context, query string, args ...any) error {
@@ -48,8 +53,12 @@ func (e ErrConn) Prepare(ctx context.Context, query string) (Stmt, error) {
 	return nil, e.Err
 }
 
-func (ce ErrConn) TransactionInfo() (no uint64, opts *sql.TxOptions) {
-	return 0, nil
+func (e ErrConn) TransactionInfo() TransactionInfo {
+	return TransactionInfo{
+		No:                    0,
+		Opts:                  nil,
+		DefaultIsolationLevel: sql.LevelDefault,
+	}
 }
 
 func (e ErrConn) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error) {

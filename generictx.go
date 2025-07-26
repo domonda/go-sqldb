@@ -54,8 +54,12 @@ func (conn *genericTx) Prepare(ctx context.Context, query string) (Stmt, error) 
 	return NewStmt(stmt, query), nil
 }
 
-func (conn *genericTx) TransactionInfo() (no uint64, opts *sql.TxOptions) {
-	return conn.no, conn.opts
+func (conn *genericTx) TransactionInfo() TransactionInfo {
+	return TransactionInfo{
+		No:                    conn.no,
+		Opts:                  conn.opts,
+		DefaultIsolationLevel: conn.parent.defaultIsolationLevel,
+	}
 }
 
 func (conn *genericTx) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error) {

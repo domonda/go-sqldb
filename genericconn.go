@@ -9,18 +9,20 @@ import (
 
 // NewGenericConn returns a generic Connection implementation
 // for an existing sql.DB connection.
-func NewGenericConn(db *sql.DB, config *Config, queryFmt QueryFormatter) Connection {
+func NewGenericConn(db *sql.DB, config *Config, queryFmt QueryFormatter, defaultIsolationLevel sql.IsolationLevel) Connection {
 	return &genericConn{
-		QueryFormatter: queryFmt,
-		db:             db,
-		config:         config,
+		QueryFormatter:        queryFmt,
+		db:                    db,
+		config:                config,
+		defaultIsolationLevel: defaultIsolationLevel,
 	}
 }
 
 type genericConn struct {
 	QueryFormatter
-	db     *sql.DB
-	config *Config
+	db                    *sql.DB
+	config                *Config
+	defaultIsolationLevel sql.IsolationLevel
 }
 
 func (conn *genericConn) Ping(ctx context.Context, timeout time.Duration) error {
@@ -61,8 +63,12 @@ func (conn *genericConn) Prepare(ctx context.Context, query string) (Stmt, error
 	return NewStmt(stmt, query), nil
 }
 
-func (conn *genericConn) TransactionInfo() (no uint64, opts *sql.TxOptions) {
-	return 0, nil
+func (conn *genericConn) TransactionInfo() TransactionInfo {
+	return TransactionInfo{
+		No:                    0,
+		Opts:                  nil,
+		DefaultIsolationLevel: conn.defaultIsolationLevel,
+	}
 }
 
 func (conn *genericConn) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error) {

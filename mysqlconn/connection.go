@@ -16,13 +16,12 @@ func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
-	config.DefaultIsolationLevel = sql.LevelRepeatableRead // mysql default
 
 	db, err := config.Connect(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return sqldb.NewGenericConn(db, config, sqldb.StdQueryFormatter{}), nil
+	return sqldb.NewGenericConn(db, config, sqldb.StdQueryFormatter{}, sql.LevelRepeatableRead), nil
 }
 
 // MustNew creates a new sqldb.Connection using the passed sqldb.Config

@@ -59,8 +59,12 @@ func (e *nonConnForTest) Prepare(ctx context.Context, query string) (sqldb.Stmt,
 	return nil, nil
 }
 
-func (e *nonConnForTest) TransactionInfo() (no uint64, opts *sql.TxOptions) {
-	return e.txNo, e.txOpts
+func (e *nonConnForTest) TransactionInfo() sqldb.TransactionInfo {
+	return sqldb.TransactionInfo{
+		No:                    e.txNo,
+		Opts:                  e.txOpts,
+		DefaultIsolationLevel: sql.LevelDefault,
+	}
 }
 
 func (e *nonConnForTest) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (sqldb.Connection, error) {

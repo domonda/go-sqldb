@@ -14,6 +14,16 @@ type (
 	OnUnlistenFunc func(channel string)
 )
 
+type TransactionInfo struct {
+	No   uint64
+	Opts *sql.TxOptions
+
+	// The default isolation level of the database connection
+	// that is used when no isolation level
+	// is specified when beginning a new transaction.
+	DefaultIsolationLevel sql.IsolationLevel
+}
+
 // Connection represents a database connection or transaction
 type Connection interface {
 	// A Connection is also a QueryFormatter
@@ -43,11 +53,8 @@ type Connection interface {
 	// Prepare a statement for execution.
 	Prepare(ctx context.Context, query string) (Stmt, error)
 
-	// TransactionInfo returns the number and sql.TxOptions
-	// of the connection's transaction,
-	// or zero and nil if the connection is not
-	// in a transaction.
-	TransactionInfo() (no uint64, opts *sql.TxOptions)
+	// TransactionInfo returns the transaction info of the connection
+	TransactionInfo() TransactionInfo
 
 	// Begin a new transaction.
 	// If the connection is already a transaction then a brand

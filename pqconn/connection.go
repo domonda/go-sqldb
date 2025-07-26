@@ -20,7 +20,6 @@ func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
-	config.DefaultIsolationLevel = sql.LevelReadCommitted // postgres default
 
 	db, err := config.Connect(ctx)
 	if err != nil {
@@ -112,8 +111,12 @@ func (conn *connection) Prepare(ctx context.Context, query string) (sqldb.Stmt, 
 	return stmt{query, s}, nil
 }
 
-func (conn *connection) TransactionInfo() (no uint64, opts *sql.TxOptions) {
-	return 0, nil // No transaction
+func (conn *connection) TransactionInfo() sqldb.TransactionInfo {
+	return sqldb.TransactionInfo{
+		No:                    0,
+		Opts:                  nil,
+		DefaultIsolationLevel: sql.LevelReadCommitted, // postgres default
+	}
 }
 
 func (conn *connection) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (sqldb.Connection, error) {

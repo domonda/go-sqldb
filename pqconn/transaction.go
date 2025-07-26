@@ -64,8 +64,12 @@ func (conn *transaction) Prepare(ctx context.Context, query string) (sqldb.Stmt,
 	return stmt{query, s}, nil
 }
 
-func (conn *transaction) TransactionInfo() (no uint64, opts *sql.TxOptions) {
-	return conn.no, conn.opts
+func (conn *transaction) TransactionInfo() sqldb.TransactionInfo {
+	return sqldb.TransactionInfo{
+		No:                    conn.no,
+		Opts:                  conn.opts,
+		DefaultIsolationLevel: sql.LevelReadCommitted, // postgres default
+	}
 }
 
 func (conn *transaction) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
