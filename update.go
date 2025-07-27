@@ -10,7 +10,7 @@ func Update(ctx context.Context, conn Executor, queryBuilder QueryBuilder, table
 	if len(values) == 0 {
 		return fmt.Errorf("Update table %s: no values passed", table)
 	}
-	query, vals, err := queryBuilder.UpdateValues(table, values, where, args)
+	query, vals, err := queryBuilder.Update(table, values, where, args)
 	if err != nil {
 		return fmt.Errorf("can't create UPDATE query because: %w", err)
 	}
