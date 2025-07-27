@@ -53,8 +53,8 @@ var (
 	globalConn       sqldb.Connection = sqldb.NewErrConn(sqldb.ErrNoDatabaseConnection)
 	globalConnCtxKey int
 
-	queryBuilder       = sqldb.DefaultQueryBuilder(nil)
-	queryBuilderCtxKey int
+	queryBuilderFunc       sqldb.QueryBuilderFunc = sqldb.DefaultQueryBuilder
+	queryBuilderFuncCtxKey int
 
 	serializedTransactionCtxKey int
 )
@@ -102,21 +102,20 @@ func Close() error {
 	return globalConn.Close()
 }
 
-func SetQueryBuilder(builder sqldb.QueryBuilder) {
-	if builder == nil {
-		panic("can't set nil sqldb.QueryBuilder") // Prefer to panic early
+func SetQueryBuilderFunc(f sqldb.QueryBuilderFunc) {
+	if f == nil {
+		panic("can't set nil sqldb.QueryBuilderFunc") // Prefer to panic early
 	}
-	queryBuilder = builder
+	queryBuilderFunc = f
 }
 
-func ContextWithQueryBuilder(ctx context.Context, builder sqldb.QueryBuilder) context.Context {
-	return context.WithValue(ctx, &queryBuilderCtxKey, builder)
+func ContextWithQueryBuilderFunc(ctx context.Context, f sqldb.QueryBuilderFunc) context.Context {
+	return context.WithValue(ctx, &queryBuilderFuncCtxKey, f)
 }
 
-// TODO also consider Connection
-func QueryBuilderFromContext(ctx context.Context) sqldb.QueryBuilder {
-	if builder, _ := ctx.Value(&queryBuilderCtxKey).(sqldb.QueryBuilder); builder != nil {
-		return builder
+func QueryBuilderFuncFromContext(ctx context.Context) sqldb.QueryBuilderFunc {
+	if f, _ := ctx.Value(&queryBuilderFuncCtxKey).(sqldb.QueryBuilderFunc); f != nil {
+		return f
 	}
-	return queryBuilder
+	return queryBuilderFunc
 }

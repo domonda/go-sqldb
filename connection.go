@@ -55,6 +55,8 @@ type Connection interface {
 	// to be considered.
 	Ping(ctx context.Context, timeout time.Duration) error
 
+	// QueryFormatter has methods for formatting parts
+	// of a query dependent on the database driver.
 	QueryFormatter
 
 	Preparer
@@ -62,11 +64,11 @@ type Connection interface {
 	Querier
 
 	// DefaultIsolationLevel returns the isolation level of the database
-	// implementation that is used when no isolation level
+	// driver that is used when no isolation level
 	// is specified when beginning a new transaction.
 	DefaultIsolationLevel() sql.IsolationLevel
 
-	// TransactionState returns the transaction state of the connection
+	// Transaction returns the transaction state of the connection
 	Transaction() TransactionState
 
 	// Begin a new transaction.

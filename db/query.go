@@ -86,6 +86,7 @@ func ReadRowStruct[S StructWithTableName](ctx context.Context, pkValue any, pkVa
 		return *new(S), fmt.Errorf("expected struct or pointer to struct, got %s", reflect.TypeFor[S]())
 	}
 	conn := Conn(ctx)
+	queryBuilder := QueryBuilderFuncFromContext(ctx)(conn)
 	table, err := defaultStructReflector.TableNameForStruct(t)
 	if err != nil {
 		return *new(S), err
@@ -107,7 +108,6 @@ func ReadRowStruct[S StructWithTableName](ctx context.Context, pkValue any, pkVa
 			return *new(S), err
 		}
 	}
-	queryBuilder := QueryBuilderFromContext(ctx)
 
 	var query strings.Builder
 	err = queryBuilder.QueryRowWithPK(&query, table, pkColumns)

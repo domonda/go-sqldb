@@ -6,6 +6,8 @@ import (
 	"strings"
 )
 
+type QueryBuilderFunc func(conn QueryFormatter) QueryBuilder
+
 func DefaultQueryBuilder(formatter QueryFormatter) QueryBuilder {
 	if formatter == nil {
 		formatter = StdQueryFormatter{}

@@ -12,7 +12,9 @@ import (
 
 // Update table rows(s) with values using the where statement with passed in args starting at $1.
 func Update(ctx context.Context, table string, values sqldb.Values, where string, args ...any) error {
-	return sqldb.Update(ctx, Conn(ctx), QueryBuilderFromContext(ctx), table, values, where, args...)
+	conn := Conn(ctx)
+	queryBuilder := QueryBuilderFuncFromContext(ctx)(conn)
+	return sqldb.Update(ctx, conn, queryBuilder, table, values, where, args...)
 }
 
 // // UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
@@ -49,6 +51,7 @@ func Update(ctx context.Context, table string, values sqldb.Values, where string
 // to mark primary key column(s).
 func UpdateStruct(ctx context.Context, table string, rowStruct any, options ...QueryOption) error {
 	conn := Conn(ctx)
+	queryBuilder := QueryBuilderFuncFromContext(ctx)(conn)
 
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Ptr && !v.IsNil() {
@@ -68,8 +71,6 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, options ...Q
 	if !hasPK {
 		return fmt.Errorf("UpdateStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
-
-	queryBuilder := QueryBuilderFromContext(ctx)
 
 	var query strings.Builder
 	err := queryBuilder.UpdateColumns(&query, table, columns)

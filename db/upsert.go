@@ -24,6 +24,7 @@ func UpsertStruct(ctx context.Context, rowStruct StructWithTableName, options ..
 		return err
 	}
 	conn := Conn(ctx)
+	queryBuilder := QueryBuilderFuncFromContext(ctx)(conn)
 	table, err = conn.FormatTableName(table)
 	if err != nil {
 		return err
@@ -36,8 +37,6 @@ func UpsertStruct(ctx context.Context, rowStruct StructWithTableName, options ..
 	if !hasPK {
 		return fmt.Errorf("UpsertStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
-
-	queryBuilder := QueryBuilderFromContext(ctx)
 
 	var query strings.Builder
 	err = queryBuilder.Upsert(&query, table, columns)
@@ -55,6 +54,7 @@ func UpsertStructStmt[S StructWithTableName](ctx context.Context, options ...Que
 		return nil, nil, err
 	}
 	conn := Conn(ctx)
+	queryBuilder := QueryBuilderFuncFromContext(ctx)(conn)
 	table, err = conn.FormatTableName(table)
 	if err != nil {
 		return nil, nil, err
@@ -68,8 +68,6 @@ func UpsertStructStmt[S StructWithTableName](ctx context.Context, options ...Que
 	if !hasPK {
 		return nil, nil, fmt.Errorf("UpsertStructStmt of table %s: %s has no mapped primary key field", table, structType)
 	}
-
-	queryBuilder := QueryBuilderFromContext(ctx)
 
 	var query strings.Builder
 	err = queryBuilder.Upsert(&query, table, columns)

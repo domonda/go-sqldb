@@ -12,14 +12,18 @@ import (
 
 // Insert a new row into table using the values.
 func Insert(ctx context.Context, table string, values sqldb.Values) error {
-	return sqldb.Insert(ctx, Conn(ctx), QueryBuilderFromContext(ctx), table, values)
+	conn := Conn(ctx)
+	queryBuilder := QueryBuilderFuncFromContext(ctx)(conn)
+	return sqldb.Insert(ctx, conn, queryBuilder, table, values)
 }
 
 // InsertUnique inserts a new row into table using the passed values
 // or does nothing if the onConflict statement applies.
 // Returns if a row was inserted.
 func InsertUnique(ctx context.Context, table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
-	return sqldb.InsertUnique(ctx, Conn(ctx), QueryBuilderFromContext(ctx), table, values, onConflict)
+	conn := Conn(ctx)
+	queryBuilder := QueryBuilderFuncFromContext(ctx)(conn)
+	return sqldb.InsertUnique(ctx, conn, queryBuilder, table, values, onConflict)
 }
 
 // // InsertReturning inserts a new row into table using values
@@ -54,8 +58,7 @@ func InsertRowStruct(ctx context.Context, rowStruct StructWithTableName, options
 
 	columns, vals := ReflectStructColumnsAndValues(structVal, reflector, append(options, IgnoreReadOnly)...)
 	conn := Conn(ctx)
-
-	queryBuilder := QueryBuilderFromContext(ctx)
+	queryBuilder := QueryBuilderFuncFromContext(ctx)(conn)
 
 	query := strings.Builder{}
 	err = queryBuilder.Insert(&query, table, columns)
@@ -78,10 +81,10 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, options ...
 		return nil, nil, err
 	}
 	conn := Conn(ctx)
+	queryBuilder := QueryBuilderFuncFromContext(ctx)(conn)
 	options = append(options, IgnoreReadOnly)
 	columns := ReflectStructColumns(structType, reflector, options...)
 
-	queryBuilder := QueryBuilderFromContext(ctx)
 	query := strings.Builder{}
 	err = queryBuilder.Insert(&query, table, columns)
 	if err != nil {
@@ -142,12 +145,11 @@ func InsertUniqueRowStruct(ctx context.Context, rowStruct StructWithTableName, o
 
 	columns, vals := ReflectStructColumnsAndValues(structVal, reflector, append(options, IgnoreReadOnly)...)
 	conn := Conn(ctx)
+	queryBuilder := QueryBuilderFuncFromContext(ctx)(conn)
 
 	if strings.HasPrefix(onConflict, "(") && strings.HasSuffix(onConflict, ")") {
 		onConflict = onConflict[1 : len(onConflict)-1]
 	}
-
-	queryBuilder := QueryBuilderFromContext(ctx)
 
 	var query strings.Builder
 	err = queryBuilder.InsertUnique(&query, table, columns, onConflict)
