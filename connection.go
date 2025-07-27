@@ -41,6 +41,13 @@ type Querier interface {
 
 // Connection represents a database connection or transaction
 type Connection interface {
+	// Config returns the configuration used
+	// to create this connection.
+	Config() *Config
+
+	// Stats returns the sql.DBStats of this connection.
+	Stats() sql.DBStats
+
 	// Ping returns an error if the database
 	// does not answer on this connection
 	// with an optional timeout.
@@ -48,14 +55,8 @@ type Connection interface {
 	// to be considered.
 	Ping(ctx context.Context, timeout time.Duration) error
 
-	// Stats returns the sql.DBStats of this connection.
-	Stats() sql.DBStats
-
-	// Config returns the configuration used
-	// to create this connection.
-	Config() *Config
-
 	QueryFormatter
+
 	Preparer
 	Executor
 	Querier
@@ -72,10 +73,10 @@ type Connection interface {
 	// If the connection is already a transaction then a brand
 	// new transaction will begin based on the connection
 	// that started this transaction.
-	// The passed id will be returnd from the transaction's
-	// Connection.Transaction method.
+	// The passed id and opts will be returned from the transaction's
+	// Connection.Transaction method as TransactionState.
 	// Implementations should use the function NextTransactionID
-	// to aquire a new number in a threadsafe way.
+	// to aquire a new ID in a threadsafe way.
 	Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (Connection, error)
 
 	// Commit the current transaction.
