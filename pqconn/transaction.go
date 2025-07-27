@@ -17,15 +17,15 @@ type transaction struct {
 	parent *connection
 	tx     *sql.Tx
 	opts   *sql.TxOptions
-	no     uint64
+	id     uint64
 }
 
-func newTransaction(parent *connection, tx *sql.Tx, opts *sql.TxOptions, no uint64) *transaction {
+func newTransaction(parent *connection, tx *sql.Tx, opts *sql.TxOptions, id uint64) *transaction {
 	return &transaction{
 		parent: parent,
 		tx:     tx,
 		opts:   opts,
-		no:     no,
+		id:     id,
 	}
 }
 
@@ -64,23 +64,26 @@ func (conn *transaction) Prepare(ctx context.Context, query string) (sqldb.Stmt,
 	return stmt{query, s}, nil
 }
 
-func (conn *transaction) TransactionInfo() sqldb.TransactionInfo {
-	return sqldb.TransactionInfo{
-		No:                    conn.no,
-		Opts:                  conn.opts,
-		DefaultIsolationLevel: sql.LevelReadCommitted, // postgres default
+func (*transaction) DefaultIsolationLevel() sql.IsolationLevel {
+	return sql.LevelReadCommitted // postgres default
+}
+
+func (conn *transaction) Transaction() sqldb.TransactionState {
+	return sqldb.TransactionState{
+		ID:   conn.id,
+		Opts: conn.opts,
 	}
 }
 
-func (conn *transaction) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
-	if no == 0 {
-		return nil, errors.New("transaction number must not be zero")
+func (conn *transaction) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
+	if id == 0 {
+		return nil, errors.New("transaction ID must not be zero")
 	}
 	tx, err := conn.parent.db.BeginTx(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	return newTransaction(conn.parent, tx, opts, no), nil
+	return newTransaction(conn.parent, tx, opts, id), nil
 }
 
 func (conn *transaction) Commit() error {

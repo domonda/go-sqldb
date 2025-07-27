@@ -88,7 +88,7 @@ func (conn *connection) Query(query string, args ...any) sqldb.Rows {
 // 	return conn.rowsProvider.QueryRows(conn.structFieldNamer, query, args...)
 // }
 
-func (conn *connection) TransactionInfo() (no uint64, opts *sql.TxOptions) {
+func (conn *connection) Transaction() (no uint64, opts *sql.TxOptions) {
 	return 0, nil
 }
 

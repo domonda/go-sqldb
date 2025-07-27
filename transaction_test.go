@@ -121,9 +121,9 @@ func TestCheckTxOptionsCompatibility(t *testing.T) {
 	}
 }
 
-func TestNextTransactionNo(t *testing.T) {
+func TestNextTransactionID(t *testing.T) {
 	// Always returns >= 1
-	if NextTransactionNo() < 1 {
-		t.Fatal("NextTransactionNo() < 1")
+	if NextTransactionID() < 1 {
+		t.Fatal("NextTransactionID() < 1")
 	}
 }

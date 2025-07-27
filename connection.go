@@ -14,14 +14,13 @@ type (
 	OnUnlistenFunc func(channel string)
 )
 
-type TransactionInfo struct {
-	No   uint64
+type TransactionState struct {
+	ID   uint64
 	Opts *sql.TxOptions
+}
 
-	// The default isolation level of the database connection
-	// that is used when no isolation level
-	// is specified when beginning a new transaction.
-	DefaultIsolationLevel sql.IsolationLevel
+func (ts TransactionState) Active() bool {
+	return ts.ID != 0
 }
 
 type Preparer interface {
@@ -61,18 +60,23 @@ type Connection interface {
 	Executor
 	Querier
 
-	// TransactionInfo returns the transaction info of the connection
-	TransactionInfo() TransactionInfo
+	// DefaultIsolationLevel returns the isolation level of the database
+	// implementation that is used when no isolation level
+	// is specified when beginning a new transaction.
+	DefaultIsolationLevel() sql.IsolationLevel
+
+	// TransactionState returns the transaction state of the connection
+	Transaction() TransactionState
 
 	// Begin a new transaction.
 	// If the connection is already a transaction then a brand
 	// new transaction will begin based on the connection
 	// that started this transaction.
-	// The passed no will be returnd from the transaction's
-	// Connection.TransactionNo method.
-	// Implementations should use the function NextTransactionNo
+	// The passed id will be returnd from the transaction's
+	// Connection.Transaction method.
+	// Implementations should use the function NextTransactionID
 	// to aquire a new number in a threadsafe way.
-	Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error)
+	Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (Connection, error)
 
 	// Commit the current transaction.
 	// Returns ErrNotWithinTransaction if the connection

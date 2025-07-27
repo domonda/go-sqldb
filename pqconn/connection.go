@@ -111,23 +111,26 @@ func (conn *connection) Prepare(ctx context.Context, query string) (sqldb.Stmt, 
 	return stmt{query, s}, nil
 }
 
-func (conn *connection) TransactionInfo() sqldb.TransactionInfo {
-	return sqldb.TransactionInfo{
-		No:                    0,
-		Opts:                  nil,
-		DefaultIsolationLevel: sql.LevelReadCommitted, // postgres default
+func (*connection) DefaultIsolationLevel() sql.IsolationLevel {
+	return sql.LevelReadCommitted // postgres default
+}
+
+func (conn *connection) Transaction() sqldb.TransactionState {
+	return sqldb.TransactionState{
+		ID:   0,
+		Opts: nil,
 	}
 }
 
-func (conn *connection) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
-	if no == 0 {
-		return nil, errors.New("transaction number must not be zero")
+func (conn *connection) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
+	if id == 0 {
+		return nil, errors.New("transaction ID must not be zero")
 	}
 	tx, err := conn.db.BeginTx(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	return newTransaction(conn, tx, opts, no), nil
+	return newTransaction(conn, tx, opts, id), nil
 }
 
 func (conn *connection) Commit() error {

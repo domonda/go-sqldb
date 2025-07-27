@@ -29,7 +29,7 @@ func IsTransaction(ctx context.Context) bool {
 	if IsContextWithoutTransactions(ctx) {
 		return false
 	}
-	return Conn(ctx).TransactionInfo().No != 0
+	return Conn(ctx).Transaction().Active()
 }
 
 // ValidateWithinTransaction returns [sqldb.ErrNotWithinTransaction]
@@ -38,7 +38,7 @@ func ValidateWithinTransaction(ctx context.Context) error {
 	if IsContextWithoutTransactions(ctx) {
 		return sqldb.ErrNotWithinTransaction
 	}
-	if Conn(ctx).TransactionInfo().No == 0 {
+	if !Conn(ctx).Transaction().Active() {
 		return sqldb.ErrNotWithinTransaction
 	}
 	return nil
@@ -50,7 +50,7 @@ func ValidateNotWithinTransaction(ctx context.Context) error {
 	if IsContextWithoutTransactions(ctx) {
 		return nil
 	}
-	if Conn(ctx).TransactionInfo().No != 0 {
+	if Conn(ctx).Transaction().Active() {
 		return sqldb.ErrWithinTransaction
 	}
 	return nil
@@ -254,7 +254,7 @@ func TransactionSavepoint(ctx context.Context, txFunc func(context.Context) erro
 	}
 
 	conn := Conn(ctx)
-	if conn.TransactionInfo().No == 0 {
+	if !conn.Transaction().Active() {
 		// If not already in a transaction, then execute txFunc
 		// within a as transaction instead of using savepoints:
 		return Transaction(ctx, txFunc)

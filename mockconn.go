@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"io"
 	"maps"
@@ -28,7 +29,7 @@ type QueryRecordings struct {
 //
 // If NormalizeQuery is nil, the query is not normalized.
 //
-// If TxNo is returned by TransactionInfo
+// If TxNo is returned by TransactionState
 // and a non zero value simulates a transaction.
 type MockConn struct {
 	// Configuration
@@ -38,7 +39,7 @@ type MockConn struct {
 	QueryLog       io.Writer          // nil means no writing of queries
 
 	// Connection state
-	TxNo        uint64 // Returned by TransactionInfo
+	TxID        uint64 // Returned by TransactionState
 	StmtNo      uint64
 	ListeningOn map[string]struct{}
 
@@ -51,11 +52,10 @@ type MockConn struct {
 	MockExec                 func(ctx context.Context, query string, args ...any) error
 	MockQuery                func(ctx context.Context, query string, args ...any) Rows
 	MockPrepare              func(ctx context.Context, query string) (Stmt, error)
-	MockTransactionInfo      func() TransactionInfo
-	MockBegin                func(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error)
+	MockTransaction          func() TransactionState
+	MockBegin                func(ctx context.Context, id uint64, opts *sql.TxOptions) (Connection, error)
 	MockCommit               func() error
 	MockRollback             func() error
-	MockTransaction          func(opts *sql.TxOptions, txFunc func(tx Connection) error) error
 	MockListenOnChannel      func(channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error
 	MockUnlistenChannel      func(channel string) error
 	MockIsListeningOnChannel func(channel string) bool
@@ -236,18 +236,24 @@ func (c *MockConn) Prepare(ctx context.Context, query string) (Stmt, error) {
 	return c.MockPrepare(ctx, query)
 }
 
-func (c *MockConn) TransactionInfo() TransactionInfo {
-	if c.MockTransactionInfo == nil {
-		return TransactionInfo{
-			No:                    c.TxNo,
-			Opts:                  nil,
-			DefaultIsolationLevel: sql.LevelDefault,
-		}
-	}
-	return c.MockTransactionInfo()
+func (c *MockConn) DefaultIsolationLevel() sql.IsolationLevel {
+	return sql.LevelDefault
 }
 
-func (c *MockConn) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error) {
+func (c *MockConn) Transaction() TransactionState {
+	if c.MockTransaction == nil {
+		return TransactionState{
+			ID:   c.TxID,
+			Opts: nil,
+		}
+	}
+	return c.MockTransaction()
+}
+
+func (c *MockConn) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (Connection, error) {
+	if id == 0 {
+		return nil, errors.New("transaction ID must not be zero")
+	}
 	if c.QueryLog != nil {
 		query := "BEGIN"
 		if opts != nil {
@@ -266,10 +272,10 @@ func (c *MockConn) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (C
 
 	if c.MockBegin == nil {
 		tx := *c // copy
-		tx.TxNo = no
+		tx.TxID = id
 		return &tx, nil
 	}
-	return c.MockBegin(ctx, no, opts)
+	return c.MockBegin(ctx, id, opts)
 }
 
 func (c *MockConn) Commit() error {

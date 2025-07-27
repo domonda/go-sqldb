@@ -63,23 +63,26 @@ func (conn *genericConn) Prepare(ctx context.Context, query string) (Stmt, error
 	return NewStmt(stmt, query), nil
 }
 
-func (conn *genericConn) TransactionInfo() TransactionInfo {
-	return TransactionInfo{
-		No:                    0,
-		Opts:                  nil,
-		DefaultIsolationLevel: conn.defaultIsolationLevel,
+func (conn *genericConn) DefaultIsolationLevel() sql.IsolationLevel {
+	return conn.defaultIsolationLevel
+}
+
+func (conn *genericConn) Transaction() TransactionState {
+	return TransactionState{
+		ID:   0,
+		Opts: nil,
 	}
 }
 
-func (conn *genericConn) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error) {
-	if no == 0 {
-		return nil, errors.New("transaction number must not be zero")
+func (conn *genericConn) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (Connection, error) {
+	if id == 0 {
+		return nil, errors.New("transaction ID must not be zero")
 	}
 	tx, err := conn.db.BeginTx(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	return newGenericTx(conn, tx, opts, no), nil
+	return newGenericTx(conn, tx, opts, id), nil
 }
 
 func (conn *genericConn) Commit() error {

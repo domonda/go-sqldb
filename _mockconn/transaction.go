@@ -16,7 +16,7 @@ type transaction struct {
 	no   uint64
 }
 
-func (conn transaction) TransactionInfo() (no uint64, opts *sql.TxOptions) {
+func (conn transaction) Transaction() (no uint64, opts *sql.TxOptions) {
 	return conn.no, conn.opts
 }
 

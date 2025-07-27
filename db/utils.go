@@ -32,7 +32,7 @@ func IsOtherThanErrNoRows(err error) bool {
 // or an error if the time could not be queried.
 func DebugPrintConn(ctx context.Context, args ...any) {
 	conn := Conn(ctx)
-	if tx := conn.TransactionInfo(); tx.No != 0 {
+	if tx := conn.Transaction(); tx.Active() {
 		args = append(args, "SQL-Transaction")
 		if optsStr := TxOptionsString(tx.Opts); optsStr != "" {
 			args = append(args, "Isolation", optsStr)

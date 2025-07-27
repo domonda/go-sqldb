@@ -14,16 +14,16 @@ type genericTx struct {
 	parent *genericConn
 	tx     *sql.Tx
 	opts   *sql.TxOptions
-	no     uint64
+	id     uint64
 }
 
-func newGenericTx(parent *genericConn, tx *sql.Tx, opts *sql.TxOptions, no uint64) *genericTx {
+func newGenericTx(parent *genericConn, tx *sql.Tx, opts *sql.TxOptions, id uint64) *genericTx {
 	return &genericTx{
 		QueryFormatter: parent.QueryFormatter,
 		parent:         parent,
 		tx:             tx,
 		opts:           opts,
-		no:             no,
+		id:             id,
 	}
 }
 
@@ -54,23 +54,26 @@ func (conn *genericTx) Prepare(ctx context.Context, query string) (Stmt, error) 
 	return NewStmt(stmt, query), nil
 }
 
-func (conn *genericTx) TransactionInfo() TransactionInfo {
-	return TransactionInfo{
-		No:                    conn.no,
-		Opts:                  conn.opts,
-		DefaultIsolationLevel: conn.parent.defaultIsolationLevel,
+func (conn *genericTx) DefaultIsolationLevel() sql.IsolationLevel {
+	return conn.parent.defaultIsolationLevel
+}
+
+func (conn *genericTx) Transaction() TransactionState {
+	return TransactionState{
+		ID:   conn.id,
+		Opts: conn.opts,
 	}
 }
 
-func (conn *genericTx) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error) {
-	if no == 0 {
-		return nil, errors.New("transaction number must not be zero")
+func (conn *genericTx) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (Connection, error) {
+	if id == 0 {
+		return nil, errors.New("transaction ID must not be zero")
 	}
 	tx, err := conn.parent.db.BeginTx(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
-	return newGenericTx(conn.parent, tx, opts, no), nil
+	return newGenericTx(conn.parent, tx, opts, id), nil
 }
 
 func (conn *genericTx) Commit() error {

@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 	"time"
 
@@ -25,7 +26,7 @@ type nonConnForTest struct {
 
 	t *testing.T
 
-	txNo   uint64
+	txID   uint64
 	txOpts *sql.TxOptions
 }
 
@@ -59,30 +60,36 @@ func (e *nonConnForTest) Prepare(ctx context.Context, query string) (sqldb.Stmt,
 	return nil, nil
 }
 
-func (e *nonConnForTest) TransactionInfo() sqldb.TransactionInfo {
-	return sqldb.TransactionInfo{
-		No:                    e.txNo,
-		Opts:                  e.txOpts,
-		DefaultIsolationLevel: sql.LevelDefault,
+func (*nonConnForTest) DefaultIsolationLevel() sql.IsolationLevel {
+	return sql.LevelDefault
+}
+
+func (e *nonConnForTest) Transaction() sqldb.TransactionState {
+	return sqldb.TransactionState{
+		ID:   e.txID,
+		Opts: e.txOpts,
 	}
 }
 
-func (e *nonConnForTest) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
-	if e.txNo != 0 {
+func (e *nonConnForTest) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
+	if id == 0 {
+		return nil, errors.New("transaction ID must not be zero")
+	}
+	if e.txID != 0 {
 		return nil, sqldb.ErrWithinTransaction
 	}
-	return &nonConnForTest{t: e.t, txNo: no, txOpts: opts}, nil
+	return &nonConnForTest{t: e.t, txID: id, txOpts: opts}, nil
 }
 
 func (e *nonConnForTest) Commit() error {
-	if e.txNo == 0 {
+	if e.txID == 0 {
 		return sqldb.ErrNotWithinTransaction
 	}
 	return nil
 }
 
 func (e *nonConnForTest) Rollback() error {
-	if e.txNo == 0 {
+	if e.txID == 0 {
 		return sqldb.ErrNotWithinTransaction
 	}
 	return nil

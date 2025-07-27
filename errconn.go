@@ -53,15 +53,18 @@ func (e ErrConn) Prepare(ctx context.Context, query string) (Stmt, error) {
 	return nil, e.Err
 }
 
-func (e ErrConn) TransactionInfo() TransactionInfo {
-	return TransactionInfo{
-		No:                    0,
-		Opts:                  nil,
-		DefaultIsolationLevel: sql.LevelDefault,
+func (e ErrConn) DefaultIsolationLevel() sql.IsolationLevel {
+	return sql.LevelDefault
+}
+
+func (e ErrConn) Transaction() TransactionState {
+	return TransactionState{
+		ID:   0,
+		Opts: nil,
 	}
 }
 
-func (e ErrConn) Begin(ctx context.Context, no uint64, opts *sql.TxOptions) (Connection, error) {
+func (e ErrConn) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (Connection, error) {
 	return nil, e.Err
 }
 
