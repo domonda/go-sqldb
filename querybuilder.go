@@ -12,8 +12,12 @@ type QueryBuilder interface {
 	Insert(table string, columns []ColumnInfo) (query string, err error)
 	InsertUnique(table string, columns []ColumnInfo, onConflict string) (query string, err error)
 	Upsert(table string, columns []ColumnInfo) (query string, err error)
-	// UpdateValues returns queryArgs to be used together with the returned	query.
-	UpdateValues(table string, values Values, where string, args []any) (query string, queryArgs []any, err error)
+	// UpdateValues updates a table rows with the passed values using the
+	// passed where clause. That where clause can contain placeholders
+	// starting at $1 for the passed whereArgs.
+	// It returns queryArgs to be used together with the returned query
+	// that combine the passed whereArgs with the passed values.
+	UpdateValues(table string, values Values, where string, whereArgs []any) (query string, queryArgs []any, err error)
 	UpdateColumns(table string, columns []ColumnInfo) (query string, err error)
 }
 
@@ -138,7 +142,7 @@ func (b defaultQueryBuilder) Upsert(table string, columns []ColumnInfo) (query s
 	return q.String(), nil
 }
 
-func (b defaultQueryBuilder) UpdateValues(table string, values Values, where string, args []any) (query string, queryArgs []any, err error) {
+func (b defaultQueryBuilder) UpdateValues(table string, values Values, where string, whereArgs []any) (query string, queryArgs []any, err error) {
 	var q strings.Builder
 	table, err = b.FormatTableName(table)
 	if err != nil {
@@ -155,11 +159,11 @@ func (b defaultQueryBuilder) UpdateValues(table string, values Values, where str
 		if i > 0 {
 			q.WriteByte(',')
 		}
-		fmt.Fprintf(&q, ` %s=%s`, column, b.FormatPlaceholder(len(args)+i))
+		fmt.Fprintf(&q, ` %s=%s`, column, b.FormatPlaceholder(len(whereArgs)+i))
 	}
 	fmt.Fprintf(&q, ` WHERE %s`, where)
 
-	return q.String(), append(args, vals...), nil
+	return q.String(), append(whereArgs, vals...), nil
 }
 
 func (b defaultQueryBuilder) UpdateColumns(table string, columns []ColumnInfo) (query string, err error) {
