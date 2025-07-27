@@ -3,7 +3,6 @@ package sqldb
 import (
 	"context"
 	"fmt"
-	"strings"
 )
 
 // Insert a new row into table using the values.
@@ -11,15 +10,14 @@ func Insert(ctx context.Context, conn Executor, queryBuilder QueryBuilder, table
 	if len(values) == 0 {
 		return fmt.Errorf("Insert into table %s: no values", table)
 	}
-	query := strings.Builder{}
 	cols, vals := values.SortedColumnsAndValues()
-	err := queryBuilder.Insert(&query, table, cols)
+	query, err := queryBuilder.Insert(table, cols)
 	if err != nil {
 		return fmt.Errorf("can't create INSERT query because: %w", err)
 	}
-	err = conn.Exec(ctx, query.String(), vals...)
+	err = conn.Exec(ctx, query, vals...)
 	if err != nil {
-		return WrapErrorWithQuery(err, query.String(), vals, queryBuilder)
+		return WrapErrorWithQuery(err, query, vals, queryBuilder)
 	}
 	return nil
 }
@@ -32,17 +30,16 @@ func InsertUnique(ctx context.Context, conn Querier, queryBuilder QueryBuilder, 
 		return false, fmt.Errorf("InsertUnique into table %s: no values", table)
 	}
 
-	var query strings.Builder
 	cols, vals := values.SortedColumnsAndValues()
-	err = queryBuilder.InsertUnique(&query, table, cols, onConflict)
+	query, err := queryBuilder.InsertUnique(table, cols, onConflict)
 	if err != nil {
 		return false, fmt.Errorf("can't create INSERT query because: %w", err)
 	}
 
-	rows := conn.Query(ctx, query.String(), vals...)
+	rows := conn.Query(ctx, query, vals...)
 	defer rows.Close()
 	if err = rows.Err(); err != nil {
-		return false, WrapErrorWithQuery(err, query.String(), vals, queryBuilder)
+		return false, WrapErrorWithQuery(err, query, vals, queryBuilder)
 	}
 	// If there is a row returned, then a row was inserted.
 	// The content of the returned row is not relevant.

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
-	"strings"
 
 	"github.com/domonda/go-sqldb"
 )
@@ -38,12 +37,11 @@ func UpsertStruct(ctx context.Context, rowStruct StructWithTableName, options ..
 		return fmt.Errorf("UpsertStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
 
-	var query strings.Builder
-	err = queryBuilder.Upsert(&query, table, columns)
+	query, err := queryBuilder.Upsert(table, columns)
 	if err != nil {
 		return fmt.Errorf("UpsertStruct of table %s: can't create UPSERT query because: %w", table, err)
 	}
-	return sqldb.Exec(ctx, conn, query.String(), vals...)
+	return sqldb.Exec(ctx, conn, query, vals...)
 }
 
 func UpsertStructStmt[S StructWithTableName](ctx context.Context, options ...QueryOption) (upsert func(ctx context.Context, rowStruct S) error, done func() error, err error) {
@@ -69,13 +67,12 @@ func UpsertStructStmt[S StructWithTableName](ctx context.Context, options ...Que
 		return nil, nil, fmt.Errorf("UpsertStructStmt of table %s: %s has no mapped primary key field", table, structType)
 	}
 
-	var query strings.Builder
-	err = queryBuilder.Upsert(&query, table, columns)
+	query, err := queryBuilder.Upsert(table, columns)
 	if err != nil {
 		return nil, nil, fmt.Errorf("UpsertStructStmt of table %s: can't create UPSERT query because: %w", table, err)
 	}
 
-	stmt, err := conn.Prepare(ctx, query.String())
+	stmt, err := conn.Prepare(ctx, query)
 	if err != nil {
 		return nil, nil, fmt.Errorf("UpsertStructStmt of table %s: can't prepare UPSERT statement because: %w", table, err)
 	}
@@ -88,7 +85,7 @@ func UpsertStructStmt[S StructWithTableName](ctx context.Context, options ...Que
 		vals := ReflectStructValues(v, reflector, options...)
 		err = stmt.Exec(ctx, vals...)
 		if err != nil {
-			return sqldb.WrapErrorWithQuery(err, query.String(), vals, conn)
+			return sqldb.WrapErrorWithQuery(err, query, vals, conn)
 		}
 		return nil
 	}

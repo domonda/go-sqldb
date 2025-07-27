@@ -3,7 +3,6 @@ package sqldb
 import (
 	"context"
 	"fmt"
-	"strings"
 )
 
 // Update table rows(s) with values using the where statement with passed in args starting at $1.
@@ -11,14 +10,13 @@ func Update(ctx context.Context, conn Executor, queryBuilder QueryBuilder, table
 	if len(values) == 0 {
 		return fmt.Errorf("Update table %s: no values passed", table)
 	}
-	var query strings.Builder
-	vals, err := queryBuilder.UpdateValues(&query, table, values, where, args)
+	query, vals, err := queryBuilder.UpdateValues(table, values, where, args)
 	if err != nil {
 		return fmt.Errorf("can't create UPDATE query because: %w", err)
 	}
-	err = conn.Exec(ctx, query.String(), vals...)
+	err = conn.Exec(ctx, query, vals...)
 	if err != nil {
-		return WrapErrorWithQuery(err, query.String(), args, queryBuilder)
+		return WrapErrorWithQuery(err, query, args, queryBuilder)
 	}
 	return nil
 }

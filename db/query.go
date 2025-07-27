@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/domonda/go-sqldb"
@@ -109,12 +108,11 @@ func ReadRowStruct[S StructWithTableName](ctx context.Context, pkValue any, pkVa
 		}
 	}
 
-	var query strings.Builder
-	err = queryBuilder.QueryRowWithPK(&query, table, pkColumns)
+	query, err := queryBuilder.QueryRowWithPK(table, pkColumns)
 	if err != nil {
 		return *new(S), err
 	}
-	return QueryRowValue[S](ctx, query.String(), pkValues...)
+	return QueryRowValue[S](ctx, query, pkValues...)
 }
 
 // ReadRowStructOr uses the passed pkValue+pkValues to query a table row

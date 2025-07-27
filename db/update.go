@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
-	"strings"
 
 	"github.com/domonda/go-sqldb"
 )
@@ -72,10 +71,9 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, options ...Q
 		return fmt.Errorf("UpdateStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
 
-	var query strings.Builder
-	err := queryBuilder.UpdateColumns(&query, table, columns)
+	query, err := queryBuilder.UpdateColumns(table, columns)
 	if err != nil {
 		return err
 	}
-	return sqldb.Exec(ctx, conn, query.String(), vals...)
+	return sqldb.Exec(ctx, conn, query, vals...)
 }

@@ -60,15 +60,14 @@ func InsertRowStruct(ctx context.Context, rowStruct StructWithTableName, options
 	conn := Conn(ctx)
 	queryBuilder := QueryBuilderFuncFromContext(ctx)(conn)
 
-	query := strings.Builder{}
-	err = queryBuilder.Insert(&query, table, columns)
+	query, err := queryBuilder.Insert(table, columns)
 	if err != nil {
 		return fmt.Errorf("can't create INSERT query because: %w", err)
 	}
 
-	err = conn.Exec(ctx, query.String(), vals...)
+	err = conn.Exec(ctx, query, vals...)
 	if err != nil {
-		return sqldb.WrapErrorWithQuery(err, query.String(), vals, conn)
+		return sqldb.WrapErrorWithQuery(err, query, vals, conn)
 	}
 	return nil
 }
@@ -85,13 +84,12 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, options ...
 	options = append(options, IgnoreReadOnly)
 	columns := ReflectStructColumns(structType, reflector, options...)
 
-	query := strings.Builder{}
-	err = queryBuilder.Insert(&query, table, columns)
+	query, err := queryBuilder.Insert(table, columns)
 	if err != nil {
 		return nil, nil, fmt.Errorf("can't create INSERT query because: %w", err)
 	}
 
-	stmt, err := conn.Prepare(ctx, query.String())
+	stmt, err := conn.Prepare(ctx, query)
 	if err != nil {
 		return nil, nil, fmt.Errorf("can't prepare INSERT query because: %w", err)
 	}
@@ -104,7 +102,7 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, options ...
 		vals := ReflectStructValues(strct, reflector, options...)
 		err = stmt.Exec(ctx, vals...)
 		if err != nil {
-			return sqldb.WrapErrorWithQuery(err, query.String(), vals, conn)
+			return sqldb.WrapErrorWithQuery(err, query, vals, conn)
 		}
 		return nil
 	}
@@ -151,16 +149,15 @@ func InsertUniqueRowStruct(ctx context.Context, rowStruct StructWithTableName, o
 		onConflict = onConflict[1 : len(onConflict)-1]
 	}
 
-	var query strings.Builder
-	err = queryBuilder.InsertUnique(&query, table, columns, onConflict)
+	query, err := queryBuilder.InsertUnique(table, columns, onConflict)
 	if err != nil {
 		return false, fmt.Errorf("can't create INSERT query because: %w", err)
 	}
 
-	inserted, err = QueryRowValue[bool](ctx, query.String(), vals...)
+	inserted, err = QueryRowValue[bool](ctx, query, vals...)
 	err = sqldb.ReplaceErrNoRows(err, nil)
 	if err != nil {
-		return false, sqldb.WrapErrorWithQuery(err, query.String(), vals, conn)
+		return false, sqldb.WrapErrorWithQuery(err, query, vals, conn)
 	}
 	return inserted, err
 }
