@@ -11,8 +11,8 @@ github.com/domonda/go-errs v0.0.0-20250603150208-71d6de0c48ea h1:jJkN+JvDKnzxM0y
 github.com/domonda/go-errs v0.0.0-20250603150208-71d6de0c48ea/go.mod h1:d1vM8jnNOby2gJSsbnCYPE/WadNbdxHTCE0sDUTMVSs=
 github.com/domonda/go-pretty v0.0.0-20250602142956-1b467adc6387 h1:ZSMYEHfFwpMlVJ+yzPXOSOfikWBNdzcnC0YxxNQxkDk=
 github.com/domonda/go-pretty v0.0.0-20250602142956-1b467adc6387/go.mod h1:3QkM8UJdyJMeKZiIo7hYzSkQBpRS3k0gOHw4ysyEIB4=
-github.com/domonda/go-types v0.0.0-20250711130302-a138ad20cd49 h1:726lTBHv/+EGQ4CYeQPlSTgSBdzqMRbdcg4wUoUBv7c=
-github.com/domonda/go-types v0.0.0-20250711130302-a138ad20cd49/go.mod h1:5esmMaEB57phklyiGu9a9/ttw338cZBZDCcxoO8A7kY=
+github.com/domonda/go-types v0.0.0-20250725104804-d473d8b9dd16 h1:Vf9f93nsItPIaLPD2/vjsMmSakEjdkkMPEJK6zJv1vg=
+github.com/domonda/go-types v0.0.0-20250725104804-d473d8b9dd16/go.mod h1:5esmMaEB57phklyiGu9a9/ttw338cZBZDCcxoO8A7kY=
 github.com/invopop/jsonschema v0.13.0 h1:KvpoAJWEjR3uD9Kbm2HWJmqsEaHt8lBUpd0qHcIi21E=
 github.com/invopop/jsonschema v0.13.0/go.mod h1:ffZ5Km5SWWRAIN6wbDXItl95euhFz2uON45H2qjYt+0=
 github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=

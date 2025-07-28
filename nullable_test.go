@@ -6,10 +6,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/domonda/go-types/date"
 	"github.com/domonda/go-types/notnull"
 	"github.com/domonda/go-types/nullable"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestIsNull(t *testing.T) {

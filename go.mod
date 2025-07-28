@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/DataDog/go-sqllexer v0.1.6
-	github.com/domonda/go-types v0.0.0-20250711130302-a138ad20cd49
+	github.com/domonda/go-types v0.0.0-20250725104804-d473d8b9dd16
 	github.com/stretchr/testify v1.10.0
 )
 

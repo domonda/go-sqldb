@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"reflect"
 
-	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb"
 )
 
 // Row wraps [sqldb.Rows] to scan a single row from a query.

@@ -1,19 +1,15 @@
-package db
+package sqldb
 
 import (
 	"fmt"
 	"reflect"
-
-	"github.com/domonda/go-sqldb"
 )
 
-// todo remove use sqldb version
 type rowScanner interface {
 	Scan(dest ...any) error
 }
 
-// todo remove use sqldb version
-func scanStruct(row rowScanner, columns []string, reflector sqldb.StructReflector, destStruct any) error {
+func scanStruct(row rowScanner, columns []string, reflector StructReflector, destStruct any) error {
 	v := reflect.ValueOf(destStruct)
 	if v.Kind() == reflect.Ptr {
 		if v.IsNil() {
@@ -39,7 +35,7 @@ func scanStruct(row rowScanner, columns []string, reflector sqldb.StructReflecto
 		return fmt.Errorf("scanStruct expected struct or pointer to struct but got %T", destStruct)
 	}
 
-	fieldPointers, err := sqldb.ReflectStructColumnPointers(v, reflector, columns)
+	fieldPointers, err := ReflectStructColumnPointers(v, reflector, columns)
 	if err != nil {
 		return fmt.Errorf("scanStruct error from ReflectStructColumnPointers: %w", err)
 	}
