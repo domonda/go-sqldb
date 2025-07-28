@@ -12,7 +12,7 @@ import (
 
 // UpsertStruct TODO
 // If inserting conflicts on the primary key column(s), then an update is performed.
-func UpsertStruct(ctx context.Context, rowStruct StructWithTableName, options ...QueryOption) error {
+func UpsertStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, options ...sqldb.QueryOption) error {
 	v, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return err
@@ -29,7 +29,7 @@ func UpsertStruct(ctx context.Context, rowStruct StructWithTableName, options ..
 		return err
 	}
 
-	columns, vals := ReflectStructColumnsAndValues(v, reflector, append(options, IgnoreReadOnly)...)
+	columns, vals := sqldb.ReflectStructColumnsAndValues(v, reflector, append(options, sqldb.IgnoreReadOnly)...)
 	hasPK := slices.ContainsFunc(columns, func(col sqldb.ColumnInfo) bool {
 		return col.PrimaryKey
 	})
@@ -44,7 +44,7 @@ func UpsertStruct(ctx context.Context, rowStruct StructWithTableName, options ..
 	return sqldb.Exec(ctx, conn, query, vals...)
 }
 
-func UpsertStructStmt[S StructWithTableName](ctx context.Context, options ...QueryOption) (upsert func(ctx context.Context, rowStruct S) error, done func() error, err error) {
+func UpsertStructStmt[S sqldb.StructWithTableName](ctx context.Context, options ...sqldb.QueryOption) (upsert func(ctx context.Context, rowStruct S) error, done func() error, err error) {
 	structType := reflect.TypeFor[S]()
 	reflector := GetStructReflector(ctx)
 	table, err := reflector.TableNameForStruct(structType)
@@ -58,8 +58,8 @@ func UpsertStructStmt[S StructWithTableName](ctx context.Context, options ...Que
 		return nil, nil, err
 	}
 
-	options = append(options, IgnoreReadOnly)
-	columns := ReflectStructColumns(structType, reflector, options...)
+	options = append(options, sqldb.IgnoreReadOnly)
+	columns := sqldb.ReflectStructColumns(structType, reflector, options...)
 	hasPK := slices.ContainsFunc(columns, func(col sqldb.ColumnInfo) bool {
 		return col.PrimaryKey
 	})
@@ -82,7 +82,7 @@ func UpsertStructStmt[S StructWithTableName](ctx context.Context, options ...Que
 		if err != nil {
 			return err
 		}
-		vals := ReflectStructValues(v, reflector, options...)
+		vals := sqldb.ReflectStructValues(v, reflector, options...)
 		err = stmt.Exec(ctx, vals...)
 		if err != nil {
 			return sqldb.WrapErrorWithQuery(err, query, vals, conn)
@@ -92,7 +92,7 @@ func UpsertStructStmt[S StructWithTableName](ctx context.Context, options ...Que
 	return upsert, stmt.Close, nil
 }
 
-func UpsertStructs[S StructWithTableName](ctx context.Context, rowStructs []S, options ...QueryOption) error {
+func UpsertStructs[S sqldb.StructWithTableName](ctx context.Context, rowStructs []S, options ...sqldb.QueryOption) error {
 	switch len(rowStructs) {
 	case 0:
 		return nil

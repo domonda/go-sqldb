@@ -5,17 +5,6 @@ import (
 	"slices"
 )
 
-type ColumnInfo struct {
-	Name       string
-	PrimaryKey bool
-	HasDefault bool
-	ReadOnly   bool
-}
-
-func (c *ColumnInfo) IsEmbeddedField() bool {
-	return c.Name == ""
-}
-
 // Values is a map from column names to values
 type Values map[string]any
 

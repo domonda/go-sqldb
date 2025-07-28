@@ -1,10 +1,8 @@
-package db
+package sqldb
 
 import (
 	"reflect"
 	"slices"
-
-	"github.com/domonda/go-sqldb"
 )
 
 // QueryOption is the base for all query options
@@ -19,10 +17,10 @@ type QueryOption interface {
 type ColumnFilter interface {
 	QueryOption
 
-	IgnoreColumn(column *sqldb.ColumnInfo) bool
+	IgnoreColumn(column *ColumnInfo) bool
 }
 
-func QueryOptionsIgnoreColumn(column *sqldb.ColumnInfo, opts []QueryOption) bool {
+func QueryOptionsIgnoreColumn(column *ColumnInfo, opts []QueryOption) bool {
 	for _, opt := range opts {
 		if filter, ok := opt.(ColumnFilter); ok && filter.IgnoreColumn(column) {
 			return true
@@ -31,34 +29,34 @@ func QueryOptionsIgnoreColumn(column *sqldb.ColumnInfo, opts []QueryOption) bool
 	return false
 }
 
-type IgnoreColumnFunc func(column *sqldb.ColumnInfo) bool
+type IgnoreColumnFunc func(column *ColumnInfo) bool
 
 func (f IgnoreColumnFunc) QueryOption() {}
 
-func (f IgnoreColumnFunc) IgnoreColumn(column *sqldb.ColumnInfo) bool {
+func (f IgnoreColumnFunc) IgnoreColumn(column *ColumnInfo) bool {
 	return f(column)
 }
 
-var IgnoreHasDefault = IgnoreColumnFunc(func(column *sqldb.ColumnInfo) bool {
+var IgnoreHasDefault = IgnoreColumnFunc(func(column *ColumnInfo) bool {
 	return column.HasDefault
 })
 
-var IgnorePrimaryKey = IgnoreColumnFunc(func(column *sqldb.ColumnInfo) bool {
+var IgnorePrimaryKey = IgnoreColumnFunc(func(column *ColumnInfo) bool {
 	return column.PrimaryKey
 })
 
-var IgnoreReadOnly = IgnoreColumnFunc(func(column *sqldb.ColumnInfo) bool {
+var IgnoreReadOnly = IgnoreColumnFunc(func(column *ColumnInfo) bool {
 	return column.ReadOnly
 })
 
 func IgnoreColumns(names ...string) IgnoreColumnFunc {
-	return func(column *sqldb.ColumnInfo) bool {
+	return func(column *ColumnInfo) bool {
 		return slices.Contains(names, column.Name)
 	}
 }
 
 func OnlyColumns(names ...string) IgnoreColumnFunc {
-	return func(column *sqldb.ColumnInfo) bool {
+	return func(column *ColumnInfo) bool {
 		return !slices.Contains(names, column.Name)
 	}
 }

@@ -27,25 +27,25 @@ var (
 )
 
 var (
-	defaultStructReflector StructReflector = NewTaggedStructReflector()
+	defaultStructReflector sqldb.StructReflector = sqldb.NewTaggedStructReflector()
 	structReflectorCtxKey  int
 )
 
-func GetStructReflector(ctx context.Context) StructReflector {
-	if r, ok := ctx.Value(&structReflectorCtxKey).(StructReflector); ok {
+func GetStructReflector(ctx context.Context) sqldb.StructReflector {
+	if r, ok := ctx.Value(&structReflectorCtxKey).(sqldb.StructReflector); ok {
 		return r
 	}
 	return defaultStructReflector
 }
 
-func SetStructReflector(reflector StructReflector) {
+func SetStructReflector(reflector sqldb.StructReflector) {
 	if reflector == nil {
 		panic("can't set nil StructReflector")
 	}
 	defaultStructReflector = reflector
 }
 
-func ContextWithStructReflector(ctx context.Context, reflector StructReflector) context.Context {
+func ContextWithStructReflector(ctx context.Context, reflector sqldb.StructReflector) context.Context {
 	return context.WithValue(ctx, &structReflectorCtxKey, reflector)
 }
 

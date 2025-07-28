@@ -1,11 +1,10 @@
-package db
+package sqldb
 
 import (
 	"fmt"
 	"reflect"
 	"strings"
 
-	"github.com/domonda/go-sqldb"
 	"github.com/domonda/go-types/strutil"
 )
 
@@ -19,7 +18,7 @@ type StructReflector interface {
 	// If false is returned for use then the field is not mapped.
 	// An empty name and true for use indicates an embedded struct
 	// field whose fields should be recursively mapped.
-	MapStructField(field reflect.StructField) (column sqldb.ColumnInfo, use bool)
+	MapStructField(field reflect.StructField) (column ColumnInfo, use bool)
 }
 
 // NewTaggedStructReflector returns a default mapping.
@@ -61,22 +60,22 @@ func (m *TaggedStructReflector) TableNameForStruct(t reflect.Type) (table string
 	return TableNameForStruct(t, m.NameTag)
 }
 
-func (m *TaggedStructReflector) MapStructField(field reflect.StructField) (column sqldb.ColumnInfo, use bool) {
+func (m *TaggedStructReflector) MapStructField(field reflect.StructField) (column ColumnInfo, use bool) {
 	if field.Anonymous {
 		tag, hasTag := field.Tag.Lookup(m.NameTag)
 		if !hasTag {
 			// Embedded struct fields are ok if not tagged with IgnoreName
-			return sqldb.ColumnInfo{}, true
+			return ColumnInfo{}, true
 		}
 		columnName, _, _ := strings.Cut(tag, ",")
 		columnName = strings.TrimSpace(columnName)
 		// Embedded struct fields are ok if not tagged with IgnoreName
-		return sqldb.ColumnInfo{}, columnName != m.Ignore
+		return ColumnInfo{}, columnName != m.Ignore
 	}
 	if !field.IsExported() {
 		// Not exported struct fields that are not
 		// anonymously embedded structs are not ok
-		return sqldb.ColumnInfo{}, false
+		return ColumnInfo{}, false
 	}
 
 	if tag, hasTag := field.Tag.Lookup(m.NameTag); hasTag {
@@ -100,7 +99,7 @@ func (m *TaggedStructReflector) MapStructField(field reflect.StructField) (colum
 	}
 
 	if column.Name == "" || column.Name == m.Ignore {
-		return sqldb.ColumnInfo{}, false
+		return ColumnInfo{}, false
 	}
 	return column, true
 }

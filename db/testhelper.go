@@ -39,7 +39,7 @@ func (m *StagedTypeMapper) ColumnType(t reflect.Type) string {
 }
 
 // CreateTableForStruct is mostly used to create tests.
-func CreateTableForStruct(ctx context.Context, typeMap TypeMapper, rowStruct StructWithTableName) error {
+func CreateTableForStruct(ctx context.Context, typeMap TypeMapper, rowStruct sqldb.StructWithTableName) error {
 	conn := Conn(ctx)
 	v := reflect.ValueOf(rowStruct)
 	tableName, err := defaultStructReflector.TableNameForStruct(v.Type())
@@ -50,7 +50,7 @@ func CreateTableForStruct(ctx context.Context, typeMap TypeMapper, rowStruct Str
 	if err != nil {
 		return err
 	}
-	columns, fields := ReflectStructColumnsAndFields(v, defaultStructReflector)
+	columns, fields := sqldb.ReflectStructColumnsAndFields(v, defaultStructReflector)
 	if len(columns) == 0 {
 		return fmt.Errorf("CreateTableForStruct %s: no columns at struct %T", tableName, rowStruct)
 	}
@@ -83,7 +83,7 @@ func CreateTableForStruct(ctx context.Context, typeMap TypeMapper, rowStruct Str
 }
 
 // CreateTablesAndInsertStructs is mostly used to create tests.
-func CreateTablesAndInsertStructs(ctx context.Context, typeMap TypeMapper, tables ...[]StructWithTableName) error {
+func CreateTablesAndInsertStructs(ctx context.Context, typeMap TypeMapper, tables ...[]sqldb.StructWithTableName) error {
 	for _, rows := range tables {
 		if len(rows) == 0 {
 			continue

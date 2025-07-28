@@ -73,7 +73,7 @@ func QueryRowValueStmt[T any](ctx context.Context, query string) (queryFunc func
 // and scan it into a struct of type `*S` that must have tagged fields
 // with primary key flags to identify the primary key column names
 // for the passed pkValue+pkValues and a table name.
-func ReadRowStruct[S StructWithTableName](ctx context.Context, pkValue any, pkValues ...any) (S, error) {
+func ReadRowStruct[S sqldb.StructWithTableName](ctx context.Context, pkValue any, pkValues ...any) (S, error) {
 	// Using explicit first pkValue value
 	// to not be able to compile without any value
 	pkValues = append([]any{pkValue}, pkValues...)
@@ -121,7 +121,7 @@ func ReadRowStruct[S StructWithTableName](ctx context.Context, pkValue any, pkVa
 // for the passed pkValue+pkValues and a table name.
 // Returns nil as row and error if no row could be found with the
 // passed pkValue+pkValues.
-func ReadRowStructOr[S StructWithTableName](ctx context.Context, defaultVal S, pkValue any, pkValues ...any) (S, error) {
+func ReadRowStructOr[S sqldb.StructWithTableName](ctx context.Context, defaultVal S, pkValue any, pkValues ...any) (S, error) {
 	row, err := ReadRowStruct[S](ctx, pkValue, pkValues...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return defaultVal, nil
@@ -149,7 +149,7 @@ func QueryRowsAsSlice[T any](ctx context.Context, query string, args ...any) (ro
 		return nil, fmt.Errorf("expected single column result for type %s but got %d columns", sliceElemType, len(columns))
 	}
 
-	var reflector StructReflector
+	var reflector sqldb.StructReflector
 	if rowStructs {
 		reflector = GetStructReflector(ctx)
 	}

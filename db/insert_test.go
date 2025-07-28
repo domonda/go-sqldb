@@ -14,15 +14,15 @@ import (
 
 func TestInsertRowStruct(t *testing.T) {
 	type Struct1 struct {
-		TableName `db:"my_table"`
-		ID        int    `db:"id"`
-		Name      string `db:"name"`
+		sqldb.TableName `db:"my_table"`
+		ID              int    `db:"id"`
+		Name            string `db:"name"`
 	}
 
 	tests := []struct {
 		name      string
-		rowStruct StructWithTableName
-		options   []QueryOption
+		rowStruct sqldb.StructWithTableName
+		options   []sqldb.QueryOption
 		conn      *sqldb.MockConn
 		want      sqldb.QueryRecordings
 		wantErr   bool
@@ -44,7 +44,7 @@ func TestInsertRowStruct(t *testing.T) {
 		{
 			name: "TableName without name tag",
 			rowStruct: struct {
-				TableName
+				sqldb.TableName
 				ID   int    `db:"id"`
 				Name string `db:"name"`
 			}{},

@@ -10,6 +10,46 @@ import (
 	"github.com/domonda/go-sqldb"
 )
 
+// todo remove
+func derefStruct(v reflect.Value) (reflect.Value, error) {
+	strct := v
+	for strct.Kind() == reflect.Ptr {
+		if strct.IsNil() {
+			return reflect.Value{}, fmt.Errorf("nil pointer %s", v.Type())
+		}
+		strct = strct.Elem()
+	}
+	if strct.Kind() != reflect.Struct {
+		return reflect.Value{}, fmt.Errorf("expected struct or pointer to struct, but got %s", v.Type())
+	}
+	return strct, nil
+}
+
+// todo remove
+func pkColumnsOfStruct(reflector sqldb.StructReflector, t reflect.Type) (columns []string, err error) {
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		column, ok := reflector.MapStructField(field)
+		if !ok {
+			continue
+		}
+
+		if column.Name == "" {
+			columnsEmbed, err := pkColumnsOfStruct(reflector, field.Type)
+			if err != nil {
+				return nil, err
+			}
+			columns = append(columns, columnsEmbed...)
+		} else if column.PrimaryKey {
+			// if err = conn.ValidateColumnName(column); err != nil {
+			// 	return nil, fmt.Errorf("%w in struct field %s.%s", err, t, field.Name)
+			// }
+			columns = append(columns, column.Name)
+		}
+	}
+	return columns, nil
+}
+
 // Insert a new row into table using the values.
 func Insert(ctx context.Context, table string, values sqldb.Values) error {
 	conn := Conn(ctx)
@@ -44,7 +84,7 @@ func InsertUnique(ctx context.Context, table string, values sqldb.Values, onConf
 
 // InsertRowStruct inserts a new row into table.
 // Optional ColumnFilter can be passed to ignore mapped columns.
-func InsertRowStruct(ctx context.Context, rowStruct StructWithTableName, options ...QueryOption) error {
+func InsertRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, options ...sqldb.QueryOption) error {
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return err
@@ -56,7 +96,7 @@ func InsertRowStruct(ctx context.Context, rowStruct StructWithTableName, options
 		return err
 	}
 
-	columns, vals := ReflectStructColumnsAndValues(structVal, reflector, append(options, IgnoreReadOnly)...)
+	columns, vals := sqldb.ReflectStructColumnsAndValues(structVal, reflector, append(options, sqldb.IgnoreReadOnly)...)
 	conn := Conn(ctx)
 	queryBuilder := QueryBuilderFuncFromContext(ctx)(conn)
 
@@ -72,7 +112,7 @@ func InsertRowStruct(ctx context.Context, rowStruct StructWithTableName, options
 	return nil
 }
 
-func InsertRowStructStmt[S StructWithTableName](ctx context.Context, options ...QueryOption) (insertFunc func(ctx context.Context, rowStruct S) error, closeFunc func() error, err error) {
+func InsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, options ...sqldb.QueryOption) (insertFunc func(ctx context.Context, rowStruct S) error, closeFunc func() error, err error) {
 	reflector := GetStructReflector(ctx)
 	structType := reflect.TypeFor[S]()
 	table, err := reflector.TableNameForStruct(structType)
@@ -81,8 +121,8 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, options ...
 	}
 	conn := Conn(ctx)
 	queryBuilder := QueryBuilderFuncFromContext(ctx)(conn)
-	options = append(options, IgnoreReadOnly)
-	columns := ReflectStructColumns(structType, reflector, options...)
+	options = append(options, sqldb.IgnoreReadOnly)
+	columns := sqldb.ReflectStructColumns(structType, reflector, options...)
 
 	query, err := queryBuilder.Insert(table, columns)
 	if err != nil {
@@ -99,7 +139,7 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, options ...
 		if err != nil {
 			return err
 		}
-		vals := ReflectStructValues(strct, reflector, options...)
+		vals := sqldb.ReflectStructValues(strct, reflector, options...)
 		err = stmt.Exec(ctx, vals...)
 		if err != nil {
 			return sqldb.WrapErrorWithQuery(err, query, vals, conn)
@@ -129,7 +169,7 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, options ...
 // Optional ColumnFilter can be passed to ignore mapped columns.
 // Does nothing if the onConflict statement applies
 // and returns true if a row was inserted.
-func InsertUniqueRowStruct(ctx context.Context, rowStruct StructWithTableName, onConflict string, options ...QueryOption) (inserted bool, err error) {
+func InsertUniqueRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, onConflict string, options ...sqldb.QueryOption) (inserted bool, err error) {
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return false, err
@@ -141,7 +181,7 @@ func InsertUniqueRowStruct(ctx context.Context, rowStruct StructWithTableName, o
 		return false, err
 	}
 
-	columns, vals := ReflectStructColumnsAndValues(structVal, reflector, append(options, IgnoreReadOnly)...)
+	columns, vals := sqldb.ReflectStructColumnsAndValues(structVal, reflector, append(options, sqldb.IgnoreReadOnly)...)
 	conn := Conn(ctx)
 	queryBuilder := QueryBuilderFuncFromContext(ctx)(conn)
 
@@ -165,7 +205,7 @@ func InsertUniqueRowStruct(ctx context.Context, rowStruct StructWithTableName, o
 // InsertRowStructs inserts a slice structs
 // as new rows into table using the DefaultStructReflector.
 // Optional ColumnFilter can be passed to ignore mapped columns.
-func InsertRowStructs[S StructWithTableName](ctx context.Context, rowStructs []S, options ...QueryOption) error {
+func InsertRowStructs[S sqldb.StructWithTableName](ctx context.Context, rowStructs []S, options ...sqldb.QueryOption) error {
 	// TODO optimized version that combines multiple structs in one query depending or maxArgs
 	switch len(rowStructs) {
 	case 0:

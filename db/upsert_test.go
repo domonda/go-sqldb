@@ -10,10 +10,10 @@ import (
 
 func ExampleUpsertStructStmt() {
 	type User struct {
-		db.TableName `db:"public.user"`
-		ID           int64  `db:"id,primarykey"`
-		Name         string `db:"name"`
-		Email        string `db:"email"`
+		sqldb.TableName `db:"public.user"`
+		ID              int64  `db:"id,primarykey"`
+		Name            string `db:"name"`
+		Email           string `db:"email"`
 	}
 
 	users := []User{

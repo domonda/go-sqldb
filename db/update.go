@@ -48,7 +48,7 @@ func Update(ctx context.Context, table string, values sqldb.Values, where string
 // matching any of the passed column names will be used.
 // The struct must have at least one field with a `db` tag value having a ",pk" suffix
 // to mark primary key column(s).
-func UpdateStruct(ctx context.Context, table string, rowStruct any, options ...QueryOption) error {
+func UpdateStruct(ctx context.Context, table string, rowStruct any, options ...sqldb.QueryOption) error {
 	conn := Conn(ctx)
 	queryBuilder := QueryBuilderFuncFromContext(ctx)(conn)
 
@@ -63,7 +63,7 @@ func UpdateStruct(ctx context.Context, table string, rowStruct any, options ...Q
 		return fmt.Errorf("UpdateStruct of table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, vals := ReflectStructColumnsAndValues(v, defaultStructReflector, append(options, IgnoreReadOnly)...)
+	columns, vals := sqldb.ReflectStructColumnsAndValues(v, defaultStructReflector, append(options, sqldb.IgnoreReadOnly)...)
 	hasPK := slices.ContainsFunc(columns, func(col sqldb.ColumnInfo) bool {
 		return col.PrimaryKey
 	})
