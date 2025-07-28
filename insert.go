@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 )
 
 // Insert a new row into table using the values.
@@ -49,6 +50,16 @@ func InsertUnique(ctx context.Context, conn Querier, queryBuilder QueryBuilder, 
 	return rows.Next(), nil
 }
 
+type queryCache struct {
+	query              string
+	structFieldIndices [][]int
+}
+
+var (
+	insertRowStructQueryCache    = make(map[reflect.Type]map[StructReflector]map[QueryBuilder]queryCache)
+	insertRowStructQueryCacheMtx sync.RWMutex
+)
+
 // InsertRowStruct inserts a new row into table.
 // Optional ColumnFilter can be passed to ignore mapped columns.
 func InsertRowStruct(ctx context.Context, conn Executor, queryBuilder QueryBuilder, reflector StructReflector, rowStruct StructWithTableName, options ...QueryOption) error {
@@ -56,22 +67,43 @@ func InsertRowStruct(ctx context.Context, conn Executor, queryBuilder QueryBuild
 	if err != nil {
 		return err
 	}
+	structType := structVal.Type()
 
-	table, err := reflector.TableNameForStruct(structVal.Type())
-	if err != nil {
-		return err
+	var vals []any
+	insertRowStructQueryCacheMtx.RLock()
+	cached, ok := insertRowStructQueryCache[structType][reflector][queryBuilder]
+	insertRowStructQueryCacheMtx.RUnlock()
+	if ok {
+		vals = make([]any, len(cached.structFieldIndices))
+		for i, fieldIndex := range cached.structFieldIndices {
+			vals[i] = structVal.FieldByIndex(fieldIndex).Interface()
+		}
+	} else {
+		var columns []ColumnInfo
+		columns, cached.structFieldIndices, vals = ReflectStructColumnsFieldIndicesAndValues(structVal, reflector, append(options, IgnoreReadOnly)...)
+		table, err := reflector.TableNameForStruct(structType)
+		if err != nil {
+			return err
+		}
+		cached.query, err = queryBuilder.Insert(table, columns)
+		if err != nil {
+			return fmt.Errorf("can't create INSERT query because: %w", err)
+		}
+
+		insertRowStructQueryCacheMtx.Lock()
+		if _, ok := insertRowStructQueryCache[structType]; !ok {
+			insertRowStructQueryCache[structType] = make(map[StructReflector]map[QueryBuilder]queryCache)
+		}
+		if _, ok := insertRowStructQueryCache[structType][reflector]; !ok {
+			insertRowStructQueryCache[structType][reflector] = make(map[QueryBuilder]queryCache)
+		}
+		insertRowStructQueryCache[structType][reflector][queryBuilder] = cached
+		insertRowStructQueryCacheMtx.Unlock()
 	}
 
-	columns, vals := ReflectStructColumnsAndValues(structVal, reflector, append(options, IgnoreReadOnly)...)
-
-	query, err := queryBuilder.Insert(table, columns)
+	err = conn.Exec(ctx, cached.query, vals...)
 	if err != nil {
-		return fmt.Errorf("can't create INSERT query because: %w", err)
-	}
-
-	err = conn.Exec(ctx, query, vals...)
-	if err != nil {
-		return WrapErrorWithQuery(err, query, vals, queryBuilder)
+		return WrapErrorWithQuery(err, cached.query, vals, queryBuilder)
 	}
 	return nil
 }

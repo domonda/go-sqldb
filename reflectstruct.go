@@ -59,6 +59,38 @@ func ReflectStructColumnsAndValues(structVal reflect.Value, reflector StructRefl
 	return columns, values
 }
 
+func ReflectStructColumnsFieldIndicesAndValues(structVal reflect.Value, reflector StructReflector, options ...QueryOption) (columns []ColumnInfo, indices [][]int, values []any) {
+	for i := 0; i < structVal.NumField(); i++ {
+		structField := structVal.Type().Field(i)
+		column, use := reflector.MapStructField(structField)
+		if !use {
+			continue
+		}
+		fieldValue := structVal.Field(i)
+
+		if column.IsEmbeddedField() {
+			// Embedded struct field
+			columnsEmbed, indicesEmbed, valuesEmbed := ReflectStructColumnsFieldIndicesAndValues(fieldValue, reflector, options...)
+			columns = append(columns, columnsEmbed...)
+			for _, embeddedIndex := range indicesEmbed {
+				// Prepending the current struct field's index to each embedded index
+				indices = append(indices, append(structField.Index, embeddedIndex...))
+			}
+			values = append(values, valuesEmbed...)
+			continue
+		}
+
+		if QueryOptionsIgnoreColumn(&column, options) || QueryOptionsIgnoreStructField(&structField, options) {
+			continue
+		}
+
+		columns = append(columns, column)
+		indices = append(indices, structField.Index)
+		values = append(values, fieldValue.Interface())
+	}
+	return columns, indices, values
+}
+
 func ReflectStructValues(structVal reflect.Value, reflector StructReflector, options ...QueryOption) (values []any) {
 	for i := 0; i < structVal.NumField(); i++ {
 		structField := structVal.Type().Field(i)
