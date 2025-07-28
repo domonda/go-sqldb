@@ -3,6 +3,7 @@ package sqldb
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
 type QueryBuilder interface {
@@ -23,15 +24,39 @@ type QueryBuilder interface {
 
 type QueryBuilderFunc func(conn QueryFormatter) QueryBuilder
 
+var (
+	queryBuilderCache    = map[QueryFormatter]QueryBuilder{}
+	queryBuilderCacheMtx sync.Mutex
+)
+
+// DefaultQueryBuilder returns a QueryBuilder for the passed formatter.
+// It caches the QueryBuilder for the formatter and returns the cached
+// QueryBuilder if the formatter is the same.
+//
+// This is not only done to reduce allocations here, but also to
+// return the same QueryBuilder for the same formatter
+// because the QueryBuilder is used as a cache key elsewhere.
 func DefaultQueryBuilder(formatter QueryFormatter) QueryBuilder {
-	if formatter == nil {
-		formatter = StdQueryFormatter{}
+	queryBuilderCacheMtx.Lock()
+	defer queryBuilderCacheMtx.Unlock()
+
+	b, ok := queryBuilderCache[formatter]
+	if !ok {
+		b = newDefaultQueryBuilder(formatter)
+		queryBuilderCache[formatter] = b
 	}
-	return defaultQueryBuilder{formatter}
+	return b
 }
 
 type defaultQueryBuilder struct {
 	QueryFormatter
+}
+
+func newDefaultQueryBuilder(formatter QueryFormatter) QueryBuilder {
+	if formatter == nil {
+		formatter = StdQueryFormatter{}
+	}
+	return defaultQueryBuilder{formatter}
 }
 
 func (b defaultQueryBuilder) QueryRowWithPK(table string, pkColumns []string) (query string, err error) {
