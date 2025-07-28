@@ -1,4 +1,4 @@
-package db
+package sqldb
 
 import (
 	"context"
@@ -6,23 +6,15 @@ import (
 	"errors"
 	"testing"
 	"time"
-
-	"github.com/domonda/go-sqldb"
 )
 
-// ContextWithNonConnectionForTest returns a new context with a sqldb.Connection
-// intended for unit tests that should work without an actual database connection
-// by mocking any SQL related functionality so that the connection won't be used.
-//
-// The transaction related methods of that connection
-// simulate a transaction without any actual transaction handling.
-// All other methods except Close will cause the test to fail.
-func ContextWithNonConnectionForTest(ctx context.Context, t *testing.T) context.Context {
-	return ContextWithConn(ctx, &nonConnForTest{t: t})
+func NonConnForTest(t *testing.T) Connection {
+	t.Helper()
+	return &nonConnForTest{t: t}
 }
 
 type nonConnForTest struct {
-	sqldb.StdQueryFormatter
+	StdQueryFormatter
 
 	t *testing.T
 
@@ -40,7 +32,7 @@ func (e *nonConnForTest) Stats() sql.DBStats {
 	return sql.DBStats{}
 }
 
-func (e *nonConnForTest) Config() *sqldb.Config {
+func (e *nonConnForTest) Config() *Config {
 	e.t.Fatal("Config() called on non-working connection for test. That call should have been mocked!")
 	return nil
 }
@@ -50,12 +42,12 @@ func (e *nonConnForTest) Exec(ctx context.Context, query string, args ...any) er
 	return nil
 }
 
-func (e *nonConnForTest) Query(ctx context.Context, query string, args ...any) sqldb.Rows {
+func (e *nonConnForTest) Query(ctx context.Context, query string, args ...any) Rows {
 	e.t.Fatal("Query() called on non-working connection for test. That call should have been mocked!")
 	return nil
 }
 
-func (e *nonConnForTest) Prepare(ctx context.Context, query string) (sqldb.Stmt, error) {
+func (e *nonConnForTest) Prepare(ctx context.Context, query string) (Stmt, error) {
 	e.t.Fatal("Prepare() called on non-working connection for test. That call should have been mocked!")
 	return nil, nil
 }
@@ -64,33 +56,33 @@ func (*nonConnForTest) DefaultIsolationLevel() sql.IsolationLevel {
 	return sql.LevelDefault
 }
 
-func (e *nonConnForTest) Transaction() sqldb.TransactionState {
-	return sqldb.TransactionState{
+func (e *nonConnForTest) Transaction() TransactionState {
+	return TransactionState{
 		ID:   e.txID,
 		Opts: e.txOpts,
 	}
 }
 
-func (e *nonConnForTest) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
+func (e *nonConnForTest) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (Connection, error) {
 	if id == 0 {
 		return nil, errors.New("transaction ID must not be zero")
 	}
 	if e.txID != 0 {
-		return nil, sqldb.ErrWithinTransaction
+		return nil, ErrWithinTransaction
 	}
 	return &nonConnForTest{t: e.t, txID: id, txOpts: opts}, nil
 }
 
 func (e *nonConnForTest) Commit() error {
 	if e.txID == 0 {
-		return sqldb.ErrNotWithinTransaction
+		return ErrNotWithinTransaction
 	}
 	return nil
 }
 
 func (e *nonConnForTest) Rollback() error {
 	if e.txID == 0 {
-		return sqldb.ErrNotWithinTransaction
+		return ErrNotWithinTransaction
 	}
 	return nil
 }

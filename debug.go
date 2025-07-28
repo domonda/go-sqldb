@@ -1,4 +1,4 @@
-package db
+package sqldb
 
 import (
 	"bytes"
@@ -15,15 +15,15 @@ import (
 // and appending the transaction state of the connection
 // and the current time of the database using `select now()`
 // or an error if the time could not be queried.
-func DebugPrintConn(ctx context.Context, args ...any) {
-	conn := Conn(ctx)
+func DebugPrintConn(ctx context.Context, conn Connection, args ...any) {
 	if tx := conn.Transaction(); tx.Active() {
 		args = append(args, "SQL-Transaction")
 		if optsStr := TxOptionsString(tx.Opts); optsStr != "" {
 			args = append(args, "Isolation", optsStr)
 		}
 	}
-	t, err := QueryRowValue[time.Time](ctx, "SELECT CURRENT_TIMESTAMP")
+	var t time.Time
+	err := conn.Query(ctx, "SELECT CURRENT_TIMESTAMP").Scan(&t)
 	if err == nil {
 		args = append(args, "CURRENT_TIMESTAMP:", t)
 	} else {
