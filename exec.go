@@ -6,11 +6,7 @@ import "context"
 func Exec(ctx context.Context, conn Executor, query string, args ...any) error {
 	err := conn.Exec(ctx, query, args...)
 	if err != nil {
-		qfmt, ok := conn.(QueryFormatter)
-		if !ok {
-			qfmt = StdQueryFormatter{}
-		}
-		return WrapErrorWithQuery(err, query, args, qfmt)
+		return WrapErrorWithQuery(err, query, args, GetQueryFormatter(conn))
 	}
 	return nil
 }
@@ -20,20 +16,12 @@ func Exec(ctx context.Context, conn Executor, query string, args ...any) error {
 func ExecStmt(ctx context.Context, conn Preparer, query string) (execFunc func(ctx context.Context, args ...any) error, closeStmt func() error, err error) {
 	stmt, err := conn.Prepare(ctx, query)
 	if err != nil {
-		qfmt, ok := conn.(QueryFormatter)
-		if !ok {
-			qfmt = StdQueryFormatter{}
-		}
-		return nil, nil, WrapErrorWithQuery(err, query, nil, qfmt)
+		return nil, nil, WrapErrorWithQuery(err, query, nil, GetQueryFormatter(conn))
 	}
 	execFunc = func(ctx context.Context, args ...any) error {
 		err := stmt.Exec(ctx, args...)
 		if err != nil {
-			qfmt, ok := conn.(QueryFormatter)
-			if !ok {
-				qfmt = StdQueryFormatter{}
-			}
-			return WrapErrorWithQuery(err, query, args, qfmt)
+			return WrapErrorWithQuery(err, query, args, GetQueryFormatter(conn))
 		}
 		return nil
 	}

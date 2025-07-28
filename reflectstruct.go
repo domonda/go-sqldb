@@ -8,6 +8,30 @@ import (
 	"strings"
 )
 
+func PrimaryKeyColumnsOfStruct(reflector StructReflector, t reflect.Type) (columns []string, err error) {
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		column, ok := reflector.MapStructField(field)
+		if !ok {
+			continue
+		}
+
+		if column.Name == "" {
+			columnsEmbed, err := PrimaryKeyColumnsOfStruct(reflector, field.Type)
+			if err != nil {
+				return nil, err
+			}
+			columns = append(columns, columnsEmbed...)
+		} else if column.PrimaryKey {
+			// if err = conn.ValidateColumnName(column); err != nil {
+			// 	return nil, fmt.Errorf("%w in struct field %s.%s", err, t, field.Name)
+			// }
+			columns = append(columns, column.Name)
+		}
+	}
+	return columns, nil
+}
+
 func ReflectStructColumnsAndValues(structVal reflect.Value, reflector StructReflector, options ...QueryOption) (columns []ColumnInfo, values []any) {
 	for i := 0; i < structVal.NumField(); i++ {
 		structField := structVal.Type().Field(i)
@@ -177,30 +201,6 @@ func reflectStructColumnPointers(structVal reflect.Value, namer StructReflector,
 	return nil
 }
 
-func pkColumnsOfStruct(reflector StructReflector, t reflect.Type) (columns []string, err error) {
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		column, ok := reflector.MapStructField(field)
-		if !ok {
-			continue
-		}
-
-		if column.Name == "" {
-			columnsEmbed, err := pkColumnsOfStruct(reflector, field.Type)
-			if err != nil {
-				return nil, err
-			}
-			columns = append(columns, columnsEmbed...)
-		} else if column.PrimaryKey {
-			// if err = conn.ValidateColumnName(column); err != nil {
-			// 	return nil, fmt.Errorf("%w in struct field %s.%s", err, t, field.Name)
-			// }
-			columns = append(columns, column.Name)
-		}
-	}
-	return columns, nil
-}
-
 func derefStruct(v reflect.Value) (reflect.Value, error) {
 	strct := v
 	for strct.Kind() == reflect.Ptr {
@@ -213,4 +213,22 @@ func derefStruct(v reflect.Value) (reflect.Value, error) {
 		return reflect.Value{}, fmt.Errorf("expected struct or pointer to struct, but got %s", v.Type())
 	}
 	return strct, nil
+}
+
+// isNonSQLScannerStruct returns true if the passed type is a struct
+// that does not implement the sql.Scanner interface,
+// or a pointer to a struct that does not implement the sql.Scanner interface.
+func isNonSQLScannerStruct(t reflect.Type) bool {
+	if t == typeOfTime || t.Kind() == reflect.Ptr && t.Elem() == typeOfTime {
+		return false
+	}
+	// Struct that does not implement sql.Scanner
+	if t.Kind() == reflect.Struct && !reflect.PointerTo(t).Implements(typeOfSQLScanner) {
+		return true
+	}
+	// Pointer to struct that does not implement sql.Scanner
+	if t.Kind() == reflect.Ptr && t.Elem().Kind() == reflect.Struct && !t.Implements(typeOfSQLScanner) {
+		return true
+	}
+	return false
 }

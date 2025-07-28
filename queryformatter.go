@@ -7,6 +7,17 @@ import (
 	"strings"
 )
 
+var DefaultQueryFormatter QueryFormatter = StdQueryFormatter{}
+
+// GetQueryFormatter tries to cast the passed source to a [QueryFormatter]
+// or returns [DefaultQueryFormatter] if the source is not a [QueryFormatter].
+func GetQueryFormatter(source any) QueryFormatter {
+	if qfmt, _ := source.(QueryFormatter); qfmt != nil {
+		return qfmt
+	}
+	return DefaultQueryFormatter
+}
+
 // QueryFormatter has methods for formatting parts
 // of a query dependent on the database driver.
 type QueryFormatter interface {
