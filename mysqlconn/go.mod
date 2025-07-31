@@ -10,5 +10,6 @@ require github.com/go-sql-driver/mysql v1.9.2
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
-	github.com/DataDog/go-sqllexer v0.1.3 // indirect
+	github.com/DataDog/go-sqllexer v0.1.6 // indirect
+	github.com/domonda/go-types v0.0.0-20250730131538-21e4dbd92676 // indirect
 )
