@@ -32,3 +32,14 @@ BEGIN
 	END LOOP;
 END $$
 `
+
+const DropAllTypesInCurrentSchemaQuery = /*sql*/ `
+DO $$
+DECLARE
+	r RECORD;
+BEGIN
+	FOR r IN (SELECT t.* FROM pg_type as t JOIN pg_namespace n ON t.typnamespace = n.oid WHERE n.nspname = current_schema()) LOOP
+		EXECUTE 'DROP TYPE IF EXISTS ' || quote_ident(r.typname) || ' CASCADE';
+	END LOOP;
+END $$
+`
