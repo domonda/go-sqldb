@@ -159,17 +159,25 @@ var (
 	}
 )
 
-func EscapeIdentifier(name string) string {
+func EscapeIdentifier(ident string) string {
 	// See https://doxygen.postgresql.org/ruleutils_8c.html#a8c18b3ffb8863e7740b32ef5f4c05ddc
-	escaped := strings.ReplaceAll(name, `"`, `""`)
-	needsQuotes := len(escaped) != len(name)
+	escaped := strings.ReplaceAll(ident, `"`, `""`)
+	needsQuotes := len(escaped) != len(ident)
 	if !needsQuotes {
-		_, needsQuotes = reservedWords[strings.ToLower(name)]
+		for _, r := range ident {
+			if (r < 'a' || r > 'z') && r != '_' {
+				needsQuotes = true
+				break
+			}
+		}
+	}
+	if !needsQuotes {
+		_, needsQuotes = reservedWords[strings.ToLower(ident)]
 	}
 	if needsQuotes {
 		return `"` + escaped + `"`
 	}
-	return name
+	return ident
 }
 
 type QueryFormatter struct{}

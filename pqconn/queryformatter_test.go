@@ -1,6 +1,8 @@
 package pqconn
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestQueryFormatter_FormatTableName(t *testing.T) {
 	tests := []struct {
@@ -33,7 +35,7 @@ func TestQueryFormatter_FormatColumnName(t *testing.T) {
 		wantErr bool
 	}{
 		{name: `column`, want: `"column"`},
-		{name: `Hello_World`, want: `Hello_World`},
+		{name: `Hello_World`, want: `"Hello_World"`},
 		{name: `public.my_table`, wantErr: true},
 	}
 	for _, tt := range tests {
@@ -45,6 +47,24 @@ func TestQueryFormatter_FormatColumnName(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("QueryFormatter.FormatColumnName(%#v) = %#v, want %#v", tt.name, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestEscapeIdentifier(t *testing.T) {
+	tests := []struct {
+		ident string
+		want  string
+	}{
+		{ident: `table`, want: `"table"`},
+		{ident: `public.table`, want: `"public.table"`},
+		{ident: `my_column`, want: `my_column`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.ident, func(t *testing.T) {
+			if got := EscapeIdentifier(tt.ident); got != tt.want {
+				t.Errorf("EscapeIdentifier(%#v) = %#v, want %#v", tt.ident, got, tt.want)
 			}
 		})
 	}
