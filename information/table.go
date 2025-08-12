@@ -2,6 +2,7 @@ package information
 
 import (
 	"context"
+	"strings"
 
 	"github.com/domonda/go-sqldb/db"
 )
@@ -33,6 +34,28 @@ func GetTable(ctx context.Context, catalog, schema, name string) (table *Table, 
 		catalog, // $1
 		schema,  // $2
 		name,    // $3
+	)
+}
+
+// TableExists checks if a table exists in the database
+// qualifiedName is in the format "schema.table" or "table"
+// If no schema is provided, "public" is assumed.
+func TableExists(ctx context.Context, qualifiedName string) (exists bool, err error) {
+	schema, table, ok := strings.Cut(qualifiedName, ".")
+	if !ok {
+		schema = "public"
+		table = qualifiedName
+	}
+	return db.QueryRowValue[bool](ctx,
+		/*sql*/ `
+			SELECT EXISTS (
+				SELECT FROM information_schema.tables
+				WHERE table_schema = $1
+					AND table_name = $2
+			)
+		`,
+		schema, // $1
+		table,  // $2
 	)
 }
 
