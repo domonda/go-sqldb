@@ -14,8 +14,8 @@ func QueryRow(ctx context.Context, conn Querier, reflector StructReflector, quer
 	return NewRow(rows, reflector, GetQueryFormatter(conn), query, args)
 }
 
-// QueryRowValue queries a single row mapped to the type T.
-func QueryRowValue[T any](ctx context.Context, conn Querier, reflector StructReflector, query string, args ...any) (val T, err error) {
+// QueryValue queries a single value mapped to the type T.
+func QueryValue[T any](ctx context.Context, conn Querier, reflector StructReflector, query string, args ...any) (val T, err error) {
 	err = QueryRow(ctx, conn, reflector, query, args...).Scan(&val)
 	if err != nil {
 		return *new(T), err
@@ -23,17 +23,62 @@ func QueryRowValue[T any](ctx context.Context, conn Querier, reflector StructRef
 	return val, nil
 }
 
-// QueryRowValueOr queries a single value of type T
+// QueryValueOr queries a single value of type T
 // or returns the passed defaultVal in case of sql.ErrNoRows.
-func QueryRowValueOr[T any](ctx context.Context, conn Querier, reflector StructReflector, defaultVal T, query string, args ...any) (val T, err error) {
-	val, err = QueryRowValue[T](ctx, conn, reflector, query, args...)
+func QueryValueOr[T any](ctx context.Context, conn Querier, reflector StructReflector, defaultVal T, query string, args ...any) (val T, err error) {
+	val, err = QueryValue[T](ctx, conn, reflector, query, args...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return defaultVal, nil
 	}
 	return val, err
 }
 
-func QueryRowValueStmt[T any](ctx context.Context, conn Preparer, reflector StructReflector, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
+// QueryRowMap queries a single row and returns the columns as map
+// using the column names as keys.
+func QueryRowMap[K ~string, V any](ctx context.Context, conn Querier, queryFmt QueryFormatter, query string, args ...any) (m map[K]V, err error) {
+	rows := conn.Query(ctx, query, args...)
+	defer func() {
+		err = errors.Join(err, rows.Close())
+		if err != nil {
+			err = WrapErrorWithQuery(err, query, args, queryFmt)
+		}
+	}()
+
+	// Check if there was an error even before preparing the row with Next()
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+	if !rows.Next() {
+		// Error during preparing the row with Next()
+		if rows.Err() != nil {
+			return nil, rows.Err()
+		}
+		return nil, sql.ErrNoRows
+	}
+
+	columns, err := rows.Columns()
+	if err != nil {
+		return nil, err
+	}
+
+	vals := make([]V, len(columns))
+	valPtrs := make([]any, len(columns))
+	for i := range valPtrs {
+		valPtrs[i] = &vals[i]
+	}
+	err = rows.Scan(valPtrs...)
+	if err != nil {
+		return nil, err
+	}
+
+	m = make(map[K]V, len(columns))
+	for i, column := range columns {
+		m[K(column)] = vals[i]
+	}
+	return m, nil
+}
+
+func QueryValueStmt[T any](ctx context.Context, conn Preparer, reflector StructReflector, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
 	stmt, err := conn.Prepare(ctx, query)
 	if err != nil {
 		err = fmt.Errorf("can't prepare query because: %w", err)
@@ -88,7 +133,7 @@ func ReadRowStruct[S StructWithTableName](ctx context.Context, conn Querier, que
 	if err != nil {
 		return *new(S), err
 	}
-	return QueryRowValue[S](ctx, conn, reflector, query, pkValues...)
+	return QueryValue[S](ctx, conn, reflector, query, pkValues...)
 }
 
 // ReadRowStructOr uses the passed pkValue+pkValues to query a table row

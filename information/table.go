@@ -23,7 +23,7 @@ type Table struct {
 }
 
 func GetTable(ctx context.Context, catalog, schema, name string) (table *Table, err error) {
-	return db.QueryRowValue[*Table](ctx,
+	return db.QueryValue[*Table](ctx,
 		/*sql*/ `
 			SELECT *
 			FROM information_schema.tables
@@ -46,7 +46,7 @@ func TableExists(ctx context.Context, qualifiedName string) (exists bool, err er
 		schema = "public"
 		table = qualifiedName
 	}
-	return db.QueryRowValue[bool](ctx,
+	return db.QueryValue[bool](ctx,
 		/*sql*/ `
 			SELECT EXISTS (
 				SELECT FROM information_schema.tables

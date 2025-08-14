@@ -42,7 +42,7 @@ func (r *Row) Scan(dest ...any) (err error) {
 	isStruct := false
 	if len(dest) == 1 {
 		v := reflect.ValueOf(dest[0])
-		if v.Kind() != reflect.Ptr {
+		if v.Kind() != reflect.Pointer {
 			return fmt.Errorf("Row.Scan destination %T is not a pointer", dest[0])
 		}
 		if v.IsNil() {

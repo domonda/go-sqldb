@@ -16,7 +16,7 @@ import (
 // Useful for getting the timestamp of a
 // SQL transaction for use in Go code.
 func CurrentTimestamp(ctx context.Context) time.Time {
-	t, err := QueryRowValue[time.Time](ctx, `SELECT CURRENT_TIMESTAMP`)
+	t, err := QueryValue[time.Time](ctx, `SELECT CURRENT_TIMESTAMP`)
 	if err != nil {
 		return time.Now()
 	}
@@ -32,31 +32,40 @@ func QueryRow(ctx context.Context, query string, args ...any) *sqldb.Row {
 	return sqldb.QueryRow(ctx, conn, reflector, query, args...)
 }
 
-// QueryRowValue queries a single row mapped to the type T.
-func QueryRowValue[T any](ctx context.Context, query string, args ...any) (val T, err error) {
+// QueryValue queries a single value mapped to the type T.
+func QueryValue[T any](ctx context.Context, query string, args ...any) (val T, err error) {
 	var (
 		conn      = Conn(ctx)
 		reflector = GetStructReflector(ctx)
 	)
-	return sqldb.QueryRowValue[T](ctx, conn, reflector, query, args...)
+	return sqldb.QueryValue[T](ctx, conn, reflector, query, args...)
 }
 
-// QueryRowValueOr queries a single value of type T
+// QueryValueOr queries a single value of type T
 // or returns the passed defaultVal in case of sql.ErrNoRows.
-func QueryRowValueOr[T any](ctx context.Context, defaultVal T, query string, args ...any) (val T, err error) {
+func QueryValueOr[T any](ctx context.Context, defaultVal T, query string, args ...any) (val T, err error) {
 	var (
 		conn      = Conn(ctx)
 		reflector = GetStructReflector(ctx)
 	)
-	return sqldb.QueryRowValueOr[T](ctx, conn, reflector, defaultVal, query, args...)
+	return sqldb.QueryValueOr(ctx, conn, reflector, defaultVal, query, args...)
 }
 
-func QueryRowValueStmt[T any](ctx context.Context, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
+// QueryRowMap queries a single row and returns the columns as map
+// using the column names as keys.
+func QueryRowMap[K ~string, V any](ctx context.Context, query string, args ...any) (m map[K]V, err error) {
+	var (
+		conn = Conn(ctx)
+	)
+	return sqldb.QueryRowMap[K, V](ctx, conn, conn, query, args...)
+}
+
+func QueryValueStmt[T any](ctx context.Context, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
 	var (
 		conn      = Conn(ctx)
 		reflector = GetStructReflector(ctx)
 	)
-	return sqldb.QueryRowValueStmt[T](ctx, conn, reflector, query)
+	return sqldb.QueryValueStmt[T](ctx, conn, reflector, query)
 }
 
 // ReadRowStruct uses the passed pkValue+pkValues to query a table row

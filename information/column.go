@@ -73,7 +73,7 @@ func ColumnExists(ctx context.Context, table, column string) (bool, error) {
 		tableName = table
 	}
 
-	return db.QueryRowValue[bool](ctx,
+	return db.QueryValue[bool](ctx,
 		/*sql*/ `
 			SELECT EXISTS (
 				SELECT FROM information_schema.columns
@@ -82,8 +82,8 @@ func ColumnExists(ctx context.Context, table, column string) (bool, error) {
 					AND column_name = $3
 			)
 		`,
-		tableSchema,
-		tableName,
-		column,
+		tableSchema, // $1
+		tableName,   // $2
+		column,      // $3
 	)
 }
