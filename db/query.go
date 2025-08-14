@@ -93,7 +93,7 @@ func ReadRowStructOr[S sqldb.StructWithTableName](ctx context.Context, defaultVa
 		queryBuilder = QueryBuilderFuncFromContext(ctx)(conn)
 		reflector    = GetStructReflector(ctx)
 	)
-	return sqldb.ReadRowStructOr[S](ctx, conn, queryBuilder, reflector, defaultVal, pkValue, pkValues...)
+	return sqldb.ReadRowStructOr(ctx, conn, queryBuilder, reflector, defaultVal, pkValue, pkValues...)
 }
 
 // QueryRowsAsSlice returns queried rows as slice of the generic type T
