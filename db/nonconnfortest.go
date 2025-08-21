@@ -153,7 +153,8 @@ func (e *nonConnForTest) TransactionNo() uint64 {
 }
 
 func (e *nonConnForTest) TransactionOptions() (*sql.TxOptions, bool) {
-	return e.txOpts, e.txNo != 0
+	// Must return false, otherwise child transaction opening is calling Config() and it throws an error.
+	return e.txOpts, false
 }
 
 func (e *nonConnForTest) Begin(opts *sql.TxOptions, no uint64) (sqldb.Connection, error) {
