@@ -28,6 +28,12 @@ func (r *Row) Columns() ([]string, error) {
 	return cols, nil
 }
 
+// Scan scans the column values of a row into the passed destination arguments
+// following the same logic as [sql.Rows.Scan].
+//
+// Except when a single destination argument is passed that is a pointer to a struct
+// that does not implement sql.Scanner, then the column values of the row
+// are scanned into the corresponding struct fields.
 func (r *Row) Scan(dest ...any) (err error) {
 	defer func() {
 		err = errors.Join(err, r.rows.Close())
@@ -50,7 +56,7 @@ func (r *Row) Scan(dest ...any) (err error) {
 		}
 		v = v.Elem()
 		t := v.Type()
-		if t.Kind() == reflect.Struct || t.Kind() == reflect.Ptr && t.Elem().Kind() == reflect.Struct {
+		if t.Kind() == reflect.Struct || t.Kind() == reflect.Pointer && t.Elem().Kind() == reflect.Struct {
 			// dest[0] points to a struct or pointer to struct
 			if !t.Implements(typeOfSQLScanner) && !reflect.PointerTo(t).Implements(typeOfSQLScanner) {
 				// dest[0] does not implement sql.Scanner
@@ -78,6 +84,7 @@ func (r *Row) Scan(dest ...any) (err error) {
 		}
 		return scanStruct(r.rows, cols, r.reflector, dest[0])
 	}
+
 	return r.rows.Scan(dest...)
 }
 
