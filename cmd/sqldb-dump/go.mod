@@ -1,6 +1,6 @@
 module github.com/domonda/go-sqldb/cmd/sqldb-dump
 
-go 1.22
+go 1.23
 
 replace github.com/domonda/go-sqldb => ../..
 
