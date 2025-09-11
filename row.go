@@ -66,13 +66,13 @@ func (r *Row) Scan(dest ...any) (err error) {
 	}
 
 	// Check if there was an error even before preparing the row with Next()
-	if r.rows.Err() != nil {
-		return r.rows.Err()
+	if err = r.rows.Err(); err != nil {
+		return err
 	}
 	if !r.rows.Next() {
 		// Error during preparing the row with Next()
-		if r.rows.Err() != nil {
-			return r.rows.Err()
+		if err = r.rows.Err(); err != nil {
+			return err
 		}
 		return sql.ErrNoRows
 	}

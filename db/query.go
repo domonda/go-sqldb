@@ -51,15 +51,6 @@ func QueryValueOr[T any](ctx context.Context, defaultVal T, query string, args .
 	return sqldb.QueryValueOr(ctx, conn, reflector, defaultVal, query, args...)
 }
 
-// QueryRowMap queries a single row and returns the columns as map
-// using the column names as keys.
-func QueryRowMap[K ~string, V any](ctx context.Context, query string, args ...any) (m map[K]V, err error) {
-	var (
-		conn = Conn(ctx)
-	)
-	return sqldb.QueryRowMap[K, V](ctx, conn, conn, query, args...)
-}
-
 func QueryValueStmt[T any](ctx context.Context, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
 	var (
 		conn      = Conn(ctx)
@@ -68,36 +59,45 @@ func QueryValueStmt[T any](ctx context.Context, query string) (queryFunc func(ct
 	return sqldb.QueryValueStmt[T](ctx, conn, reflector, query)
 }
 
-// ReadRowStruct uses the passed pkValue+pkValues to query a table row
+// ReadRowStructWithTableName uses the passed pkValue+pkValues to query a table row
 // and scan it into a struct of type `*S` that must have tagged fields
 // with primary key flags to identify the primary key column names
 // for the passed pkValue+pkValues and a table name.
-func ReadRowStruct[S sqldb.StructWithTableName](ctx context.Context, pkValue any, pkValues ...any) (S, error) {
+func ReadRowStructWithTableName[S sqldb.StructWithTableName](ctx context.Context, pkValue any, pkValues ...any) (S, error) {
 	var (
 		conn         = Conn(ctx)
 		queryBuilder = QueryBuilderFuncFromContext(ctx)(conn)
 		reflector    = GetStructReflector(ctx)
 	)
-	return sqldb.ReadRowStruct[S](ctx, conn, queryBuilder, reflector, pkValue, pkValues...)
+	return sqldb.ReadRowStructWithTableName[S](ctx, conn, queryBuilder, reflector, pkValue, pkValues...)
 }
 
-// ReadRowStructOr uses the passed pkValue+pkValues to query a table row
+// ReadRowStructWithTableNameOr uses the passed pkValue+pkValues to query a table row
 // and scan it into a struct of type S that must have tagged fields
 // with primary key flags to identify the primary key column names
 // for the passed pkValue+pkValues and a table name.
 // Returns nil as row and error if no row could be found with the
 // passed pkValue+pkValues.
-func ReadRowStructOr[S sqldb.StructWithTableName](ctx context.Context, defaultVal S, pkValue any, pkValues ...any) (S, error) {
+func ReadRowStructWithTableNameOr[S sqldb.StructWithTableName](ctx context.Context, defaultVal S, pkValue any, pkValues ...any) (S, error) {
 	var (
 		conn         = Conn(ctx)
 		queryBuilder = QueryBuilderFuncFromContext(ctx)(conn)
 		reflector    = GetStructReflector(ctx)
 	)
-	return sqldb.ReadRowStructOr(ctx, conn, queryBuilder, reflector, defaultVal, pkValue, pkValues...)
+	return sqldb.ReadRowStructWithTableNameOr(ctx, conn, queryBuilder, reflector, defaultVal, pkValue, pkValues...)
+}
+
+// QueryRowAsMap queries a single row and returns the columns as map
+// using the column names as keys.
+func QueryRowAsMap[K ~string, V any](ctx context.Context, query string, args ...any) (m map[K]V, err error) {
+	var (
+		conn = Conn(ctx)
+	)
+	return sqldb.QueryRowAsMap[K, V](ctx, conn, conn, query, args...)
 }
 
 // QueryRowsAsSlice returns queried rows as slice of the generic type T
-// using the passed reflector to scan column values as struct fields.
+// using a reflector from the context to scan column values as struct fields.
 // QueryRowsAsSlice returns queried rows as slice of the generic type T.
 func QueryRowsAsSlice[T any](ctx context.Context, query string, args ...any) (rows []T, err error) {
 	var (
@@ -124,7 +124,8 @@ func QueryRowsAsStrings(ctx context.Context, query string, args ...any) (rows []
 }
 
 // QueryCallback calls the passed callback
-// with scanned values or a struct for every row.
+// with scanned values or a struct for every row
+// using a reflector from the context to scan column values as struct fields.
 //
 // If the callback function has a single struct or struct pointer argument,
 // then RowScanner.ScanStruct will be used per row,

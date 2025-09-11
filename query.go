@@ -33,9 +33,81 @@ func QueryValueOr[T any](ctx context.Context, conn Querier, reflector StructRefl
 	return val, err
 }
 
-// QueryRowMap queries a single row and returns the columns as map
+func QueryValueStmt[T any](ctx context.Context, conn Preparer, reflector StructReflector, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
+	stmt, err := conn.Prepare(ctx, query)
+	if err != nil {
+		err = fmt.Errorf("can't prepare query because: %w", err)
+		return nil, nil, WrapErrorWithQuery(err, query, nil, GetQueryFormatter(conn))
+	}
+
+	queryFunc = func(ctx context.Context, args ...any) (val T, err error) {
+		rows := stmt.Query(ctx, args...)
+		err = NewRow(rows, reflector, GetQueryFormatter(conn), query, args).Scan(&val)
+		return val, err
+	}
+	return queryFunc, stmt.Close, nil
+}
+
+// ReadRowStructWithTableName uses the passed pkValue+pkValues to query a table row
+// and scan it into a struct of type `*S` that must have tagged fields
+// with primary key flags to identify the primary key column names
+// for the passed pkValue+pkValues and a table name.
+func ReadRowStructWithTableName[S StructWithTableName](ctx context.Context, conn Querier, queryBuilder QueryBuilder, reflector StructReflector, pkValue any, pkValues ...any) (S, error) {
+	// Using explicit first pkValue value
+	// to not be able to compile without any value
+	pkValues = append([]any{pkValue}, pkValues...)
+	t := reflect.TypeFor[S]()
+	if t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	if t.Kind() != reflect.Struct {
+		return *new(S), fmt.Errorf("expected struct or pointer to struct, got %s", reflect.TypeFor[S]())
+	}
+	table, err := reflector.TableNameForStruct(t)
+	if err != nil {
+		return *new(S), err
+	}
+	table, err = queryBuilder.FormatTableName(table)
+	if err != nil {
+		return *new(S), err
+	}
+	pkColumns, err := PrimaryKeyColumnsOfStruct(reflector, t)
+	if err != nil {
+		return *new(S), err
+	}
+	if len(pkColumns) != len(pkValues) {
+		return *new(S), fmt.Errorf("got %d primary key values, but struct %s has %d primary key fields", len(pkValues), t, len(pkColumns))
+	}
+	for i, column := range pkColumns {
+		pkColumns[i], err = queryBuilder.FormatColumnName(column)
+		if err != nil {
+			return *new(S), err
+		}
+	}
+	query, err := queryBuilder.QueryRowWithPK(table, pkColumns)
+	if err != nil {
+		return *new(S), err
+	}
+	return QueryValue[S](ctx, conn, reflector, query, pkValues...)
+}
+
+// ReadRowStructWithTableNameOr uses the passed pkValue+pkValues to query a table row
+// and scan it into a struct of type S that must have tagged fields
+// with primary key flags to identify the primary key column names
+// for the passed pkValue+pkValues and a table name.
+// Returns nil as row and error if no row could be found with the
+// passed pkValue+pkValues.
+func ReadRowStructWithTableNameOr[S StructWithTableName](ctx context.Context, conn Querier, queryBuilder QueryBuilder, reflector StructReflector, defaultVal S, pkValue any, pkValues ...any) (S, error) {
+	row, err := ReadRowStructWithTableName[S](ctx, conn, queryBuilder, reflector, pkValue, pkValues...)
+	if errors.Is(err, sql.ErrNoRows) {
+		return defaultVal, nil
+	}
+	return row, err
+}
+
+// QueryRowAsMap queries a single row and returns the columns as map
 // using the column names as keys.
-func QueryRowMap[K ~string, V any](ctx context.Context, conn Querier, queryFmt QueryFormatter, query string, args ...any) (m map[K]V, err error) {
+func QueryRowAsMap[K ~string, V any](ctx context.Context, conn Querier, queryFmt QueryFormatter, query string, args ...any) (m map[K]V, err error) {
 	rows := conn.Query(ctx, query, args...)
 	defer func() {
 		err = errors.Join(err, rows.Close())
@@ -76,78 +148,6 @@ func QueryRowMap[K ~string, V any](ctx context.Context, conn Querier, queryFmt Q
 		m[K(column)] = vals[i]
 	}
 	return m, nil
-}
-
-func QueryValueStmt[T any](ctx context.Context, conn Preparer, reflector StructReflector, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
-	stmt, err := conn.Prepare(ctx, query)
-	if err != nil {
-		err = fmt.Errorf("can't prepare query because: %w", err)
-		return nil, nil, WrapErrorWithQuery(err, query, nil, GetQueryFormatter(conn))
-	}
-
-	queryFunc = func(ctx context.Context, args ...any) (val T, err error) {
-		rows := stmt.Query(ctx, args...)
-		err = NewRow(rows, reflector, GetQueryFormatter(conn), query, args).Scan(&val)
-		return val, err
-	}
-	return queryFunc, stmt.Close, nil
-}
-
-// ReadRowStruct uses the passed pkValue+pkValues to query a table row
-// and scan it into a struct of type `*S` that must have tagged fields
-// with primary key flags to identify the primary key column names
-// for the passed pkValue+pkValues and a table name.
-func ReadRowStruct[S StructWithTableName](ctx context.Context, conn Querier, queryBuilder QueryBuilder, reflector StructReflector, pkValue any, pkValues ...any) (S, error) {
-	// Using explicit first pkValue value
-	// to not be able to compile without any value
-	pkValues = append([]any{pkValue}, pkValues...)
-	t := reflect.TypeFor[S]()
-	if t.Kind() == reflect.Pointer {
-		t = t.Elem()
-	}
-	if t.Kind() != reflect.Struct {
-		return *new(S), fmt.Errorf("expected struct or pointer to struct, got %s", reflect.TypeFor[S]())
-	}
-	table, err := reflector.TableNameForStruct(t)
-	if err != nil {
-		return *new(S), err
-	}
-	table, err = queryBuilder.FormatTableName(table)
-	if err != nil {
-		return *new(S), err
-	}
-	pkColumns, err := PrimaryKeyColumnsOfStruct(reflector, t)
-	if err != nil {
-		return *new(S), err
-	}
-	if len(pkColumns) != len(pkValues) {
-		return *new(S), fmt.Errorf("got %d primary key values, but struct %s has %d primary key fields", len(pkValues), t, len(pkColumns))
-	}
-	for i, column := range pkColumns {
-		pkColumns[i], err = queryBuilder.FormatColumnName(column)
-		if err != nil {
-			return *new(S), err
-		}
-	}
-	query, err := queryBuilder.QueryRowWithPK(table, pkColumns)
-	if err != nil {
-		return *new(S), err
-	}
-	return QueryValue[S](ctx, conn, reflector, query, pkValues...)
-}
-
-// ReadRowStructOr uses the passed pkValue+pkValues to query a table row
-// and scan it into a struct of type S that must have tagged fields
-// with primary key flags to identify the primary key column names
-// for the passed pkValue+pkValues and a table name.
-// Returns nil as row and error if no row could be found with the
-// passed pkValue+pkValues.
-func ReadRowStructOr[S StructWithTableName](ctx context.Context, conn Querier, queryBuilder QueryBuilder, reflector StructReflector, defaultVal S, pkValue any, pkValues ...any) (S, error) {
-	row, err := ReadRowStruct[S](ctx, conn, queryBuilder, reflector, pkValue, pkValues...)
-	if errors.Is(err, sql.ErrNoRows) {
-		return defaultVal, nil
-	}
-	return row, err
 }
 
 // QueryRowsAsSlice returns queried rows as slice of the generic type T

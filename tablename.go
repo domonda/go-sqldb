@@ -8,14 +8,21 @@ import (
 // StructWithTableName is a marker interface for structs
 // that embed a TableName field to specify the table name.
 type StructWithTableName interface {
-	HasTableName()
+	HasTableName() // Interface marker method
 }
 
 // TableName implements the StructWithTableName marker interface
 var _ StructWithTableName = TableName{}
 
-// TableName is an empty struct that can be embedded in other structs
+// TableName is an empty struct that implements StructWithTableName
+// and is intended to be embedded in other structs
 // to specify the table name for the struct using a struct tag.
+//
+// Example:
+//
+//	type MyTable struct {
+//	    TableName `db:"my_table"`
+//	}
 type TableName struct{}
 
 // HasTableName implements the StructWithTableName interface
