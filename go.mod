@@ -1,11 +1,12 @@
 module github.com/domonda/go-sqldb
 
-go 1.23
+go 1.24.0
 
 require (
-	github.com/DataDog/go-sqllexer v0.1.6
-	github.com/domonda/go-types v0.0.0-20250725104804-d473d8b9dd16
-	github.com/stretchr/testify v1.10.0
+	github.com/DataDog/go-sqllexer v0.1.8
+	github.com/corazawaf/libinjection-go v0.2.2
+	github.com/domonda/go-types v0.0.0-20251013130956-d9f0fe9a7e07
+	github.com/stretchr/testify v1.11.1
 )
 
 require (
@@ -17,7 +18,7 @@ require (
 	github.com/invopop/jsonschema v0.13.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
-	github.com/mailru/easyjson v0.9.0 // indirect
+	github.com/mailru/easyjson v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
 	github.com/ungerik/go-reflection v0.0.0-20250602142243-03da83aecd0d // indirect
