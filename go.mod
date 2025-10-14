@@ -3,6 +3,7 @@ module github.com/domonda/go-sqldb
 go 1.23
 
 require (
+	github.com/corazawaf/libinjection-go v0.2.2
 	github.com/domonda/go-errs v0.0.0-20250603150208-71d6de0c48ea
 	github.com/domonda/go-types v0.0.0-20250711130302-a138ad20cd49
 	github.com/lib/pq v1.10.9
