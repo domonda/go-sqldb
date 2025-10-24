@@ -48,7 +48,7 @@ func IsNull(val any) bool {
 	}
 
 	switch v := reflect.ValueOf(val); v.Kind() {
-	case reflect.Ptr, reflect.Slice, reflect.Map:
+	case reflect.Pointer, reflect.Slice, reflect.Map:
 		return v.IsNil()
 	}
 

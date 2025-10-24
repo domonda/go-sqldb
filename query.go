@@ -284,7 +284,7 @@ func QueryCallback(ctx context.Context, conn Querier, reflector StructReflector,
 		if i > firstArg && isNonSQLScannerStruct(t) {
 			return fmt.Errorf("QueryCallback callback function argument %d has invalid argument type: %s", i, typ.In(i))
 		}
-		for t.Kind() == reflect.Ptr {
+		for t.Kind() == reflect.Pointer {
 			t = t.Elem()
 		}
 		switch t.Kind() {

@@ -18,7 +18,7 @@ func NewRowsFromStructs(rowStructs any, columnNamer StructReflector) *Rows {
 	if t.Kind() != reflect.Array && t.Kind() != reflect.Slice {
 		panic("rowStructs must be array or slice of structs, but is " + t.String())
 	}
-	if t.Elem().Kind() != reflect.Struct && !(t.Elem().Kind() == reflect.Ptr && t.Elem().Elem().Kind() == reflect.Struct) {
+	if t.Elem().Kind() != reflect.Struct && !(t.Elem().Kind() == reflect.Pointer && t.Elem().Elem().Kind() == reflect.Struct) {
 		panic("rowStructs element type must be struct or struct pointer, but is " + t.Elem().String())
 	}
 

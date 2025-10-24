@@ -11,7 +11,7 @@ type rowScanner interface {
 
 func scanStruct(row rowScanner, columns []string, reflector StructReflector, destStruct any) error {
 	v := reflect.ValueOf(destStruct)
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
 			return fmt.Errorf("scanStruct got nil pointer for %T", destStruct)
 		}
@@ -23,7 +23,7 @@ func scanStruct(row rowScanner, columns []string, reflector StructReflector, des
 		destStructPtr    reflect.Value
 		newStructPtr     reflect.Value
 	)
-	if v.Kind() == reflect.Ptr && v.IsNil() && v.CanSet() {
+	if v.Kind() == reflect.Pointer && v.IsNil() && v.CanSet() {
 		// Got a nil pointer that we can set with a newly allocated struct
 		setDestStructPtr = true
 		destStructPtr = v

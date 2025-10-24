@@ -24,7 +24,7 @@ func FormatValue(val any) (string, error) {
 
 	switch x := val.(type) {
 	case driver.Valuer:
-		if v.Kind() == reflect.Ptr && v.IsNil() {
+		if v.Kind() == reflect.Pointer && v.IsNil() {
 			// Assume nil pointer implementing driver.Valuer is NULL
 			// because if the method Value is implemented by value
 			// the nil pointer will still implement driver.Valuer
@@ -42,7 +42,7 @@ func FormatValue(val any) (string, error) {
 	}
 
 	switch v.Kind() {
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if v.IsNil() {
 			return "NULL", nil
 		}

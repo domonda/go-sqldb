@@ -57,11 +57,11 @@ func Update(ctx context.Context, conn Executor, queryBuilder QueryBuilder, table
 // to mark primary key column(s).
 func UpdateStruct(ctx context.Context, conn Executor, queryBuilder QueryBuilder, reflector StructReflector, table string, rowStruct any, options ...QueryOption) error {
 	v := reflect.ValueOf(rowStruct)
-	for v.Kind() == reflect.Ptr && !v.IsNil() {
+	for v.Kind() == reflect.Pointer && !v.IsNil() {
 		v = v.Elem()
 	}
 	switch {
-	case v.Kind() == reflect.Ptr && v.IsNil():
+	case v.Kind() == reflect.Pointer && v.IsNil():
 		return fmt.Errorf("UpdateStruct of table %s: can't insert nil", table)
 	case v.Kind() != reflect.Struct:
 		return fmt.Errorf("UpdateStruct of table %s: expected struct but got %T", table, rowStruct)

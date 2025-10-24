@@ -235,7 +235,7 @@ func reflectStructColumnPointers(structVal reflect.Value, namer StructReflector,
 
 func derefStruct(v reflect.Value) (reflect.Value, error) {
 	strct := v
-	for strct.Kind() == reflect.Ptr {
+	for strct.Kind() == reflect.Pointer {
 		if strct.IsNil() {
 			return reflect.Value{}, fmt.Errorf("nil pointer %s", v.Type())
 		}
@@ -251,7 +251,7 @@ func derefStruct(v reflect.Value) (reflect.Value, error) {
 // that does not implement the sql.Scanner interface,
 // or a pointer to a struct that does not implement the sql.Scanner interface.
 func isNonSQLScannerStruct(t reflect.Type) bool {
-	if t == typeOfTime || t.Kind() == reflect.Ptr && t.Elem() == typeOfTime {
+	if t == typeOfTime || t.Kind() == reflect.Pointer && t.Elem() == typeOfTime {
 		return false
 	}
 	// Struct that does not implement sql.Scanner
@@ -259,7 +259,7 @@ func isNonSQLScannerStruct(t reflect.Type) bool {
 		return true
 	}
 	// Pointer to struct that does not implement sql.Scanner
-	if t.Kind() == reflect.Ptr && t.Elem().Kind() == reflect.Struct && !t.Implements(typeOfSQLScanner) {
+	if t.Kind() == reflect.Pointer && t.Elem().Kind() == reflect.Struct && !t.Implements(typeOfSQLScanner) {
 		return true
 	}
 	return false
