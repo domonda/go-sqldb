@@ -210,16 +210,51 @@ var htmlTemplate = /*html*/ `<!DOCTYPE html>
 	<meta charset="utf-8">
 	<title>{{html .title}}</title>
 	<style>
-		*, *::before, *::after {
-			box-sizing: border-box;
+		:root {
+			--bg: #ffffff;
+			--text: #222222;
+			--link: #0a7ea4;
+			--link-visited: #6a4fb3;
+			--space: 1rem;
+		}
+		*, *::before, *::after { box-sizing: border-box; }
+		html { 
+			margin: 8px;
+			padding: 0;
+			color-scheme: light;
 		}
 		body {
-			color: #21353e;
-			font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+			margin: 0;
+			padding: 0;
+			background: var(--bg);
+			color: var(--text);
+			font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+			line-height: 1.6;
+			font-size: 16px;
+			-webkit-font-smoothing: antialiased;
+			text-rendering: optimizeLegibility;
 		}
-		pre {
-			background-color: #eee;
+		label { display: block; }
+		form { margin: 10px; }
+		form div { padding-bottom: 10px; }
+		p, ul, ol, blockquote, pre { margin: 0 0 var(--space); }
+		ul, ol { padding-left: 1.25rem; }
+		h1, h2, h3, h4, h5, h6 {
+			line-height: 1.2;
+			margin: 1.5rem 0 0.5rem;
 		}
+		a {
+			color: var(--link);
+			text-underline-offset: 0.15em;
+		}
+		a:visited { color: var(--link-visited); }
+		a:hover, a:focus { text-decoration: underline; }
+		:focus-visible {
+			outline: 3px solid #ffbf47; /* high-contrast focus */
+			outline-offset: 2px;
+		}
+		/* Code blocks */
+		pre { background-color: #eee; }
 		.monospace {
 			font-family: "Lucida Console", Monaco, monospace;
 		}
