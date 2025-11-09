@@ -12,7 +12,7 @@ import (
 // and github.com/go-sql-driver/mysql as driver implementation.
 // The connection is pinged with the passed context,
 // and only returned when there was no error from the ping.
-func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
+func New(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
@@ -29,7 +29,7 @@ func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 // The connection is pinged with the passed context,
 // and only returned when there was no error from the ping.
 // Errors are paniced.
-func MustNew(ctx context.Context, config *sqldb.Config) sqldb.Connection {
+func MustNew(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
 	conn, err := New(ctx, config)
 	if err != nil {
 		panic(err)

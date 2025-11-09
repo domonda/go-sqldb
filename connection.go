@@ -43,7 +43,7 @@ type Querier interface {
 type Connection interface {
 	// Config returns the configuration used
 	// to create this connection.
-	Config() *Config
+	Config() *ConnConfig
 
 	// Stats returns the sql.DBStats of this connection.
 	Stats() sql.DBStats

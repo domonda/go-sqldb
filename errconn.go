@@ -32,8 +32,8 @@ func (e ErrConn) Stats() sql.DBStats {
 	return sql.DBStats{}
 }
 
-func (e ErrConn) Config() *Config {
-	return &Config{
+func (e ErrConn) Config() *ConnConfig {
+	return &ConnConfig{
 		Driver:   "error",
 		Host:     "error",
 		Database: "error",

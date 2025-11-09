@@ -9,7 +9,7 @@ import (
 
 // NewGenericConn returns a generic Connection implementation
 // for an existing sql.DB connection.
-func NewGenericConn(db *sql.DB, config *Config, queryFmt QueryFormatter, defaultIsolationLevel sql.IsolationLevel) Connection {
+func NewGenericConn(db *sql.DB, config *ConnConfig, queryFmt QueryFormatter, defaultIsolationLevel sql.IsolationLevel) Connection {
 	return &genericConn{
 		QueryFormatter:        queryFmt,
 		db:                    db,
@@ -21,7 +21,7 @@ func NewGenericConn(db *sql.DB, config *Config, queryFmt QueryFormatter, default
 type genericConn struct {
 	QueryFormatter
 	db                    *sql.DB
-	config                *Config
+	config                *ConnConfig
 	defaultIsolationLevel sql.IsolationLevel
 }
 
@@ -38,7 +38,7 @@ func (conn *genericConn) Stats() sql.DBStats {
 	return conn.db.Stats()
 }
 
-func (conn *genericConn) Config() *Config {
+func (conn *genericConn) Config() *ConnConfig {
 	return conn.config
 }
 

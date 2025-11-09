@@ -7,17 +7,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParseConfigURL(t *testing.T) {
+func TestParseConnConfig(t *testing.T) {
 	tests := []struct {
 		uri                    string
 		wantURIWithoutPassword string
-		want                   *Config
+		want                   *ConnConfig
 		wantErr                bool
 	}{
 		{
 			uri:                    "postgres://user:password@localhost:5432/database?sslmode=disable",
 			wantURIWithoutPassword: "postgres://user@localhost:5432/database?sslmode=disable",
-			want: &Config{
+			want: &ConnConfig{
 				Driver:   "postgres",
 				Host:     "localhost",
 				Port:     5432,
@@ -30,7 +30,7 @@ func TestParseConfigURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.uri, func(t *testing.T) {
-			got, err := ParseConfig(tt.uri)
+			got, err := ParseConnConfig(tt.uri)
 			if tt.wantErr {
 				require.Error(t, err)
 				return

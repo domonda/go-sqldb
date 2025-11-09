@@ -32,8 +32,8 @@ func newTransaction(parent *connection, tx *sql.Tx, opts *sql.TxOptions, id uint
 func (conn *transaction) Ping(ctx context.Context, timeout time.Duration) error {
 	return conn.parent.Ping(ctx, timeout)
 }
-func (conn *transaction) Stats() sql.DBStats    { return conn.parent.Stats() }
-func (conn *transaction) Config() *sqldb.Config { return conn.parent.Config() }
+func (conn *transaction) Stats() sql.DBStats        { return conn.parent.Stats() }
+func (conn *transaction) Config() *sqldb.ConnConfig { return conn.parent.Config() }
 func (conn *transaction) FormatPlaceholder(paramIndex int) string {
 	return conn.parent.FormatPlaceholder(paramIndex)
 }

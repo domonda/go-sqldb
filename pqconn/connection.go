@@ -16,7 +16,7 @@ const Driver = "postgres"
 // and github.com/lib/pq as driver implementation.
 // The connection is pinged with the passed context
 // and only returned when there was no error from the ping.
-func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
+func New(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
@@ -53,7 +53,7 @@ func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 // The connection is pinged with the passed context,
 // and only returned when there was no error from the ping.
 // Errors are paniced.
-func MustNew(ctx context.Context, config *sqldb.Config) sqldb.Connection {
+func MustNew(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
 	conn, err := New(ctx, config)
 	if err != nil {
 		panic(err)
@@ -65,7 +65,7 @@ type connection struct {
 	QueryFormatter
 
 	db     *sql.DB
-	config *sqldb.Config
+	config *sqldb.ConnConfig
 }
 
 func (conn *connection) Ping(ctx context.Context, timeout time.Duration) error {
@@ -81,7 +81,7 @@ func (conn *connection) Stats() sql.DBStats {
 	return conn.db.Stats()
 }
 
-func (conn *connection) Config() *sqldb.Config {
+func (conn *connection) Config() *sqldb.ConnConfig {
 	return conn.config
 }
 

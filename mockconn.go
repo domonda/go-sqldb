@@ -48,7 +48,7 @@ type MockConn struct {
 
 	MockPing                 func(context.Context, time.Duration) error
 	MockStats                func() sql.DBStats
-	MockConfig               func() *Config
+	MockConfig               func() *ConnConfig
 	MockExec                 func(ctx context.Context, query string, args ...any) error
 	MockQuery                func(ctx context.Context, query string, args ...any) Rows
 	MockPrepare              func(ctx context.Context, query string) (Stmt, error)
@@ -134,9 +134,9 @@ func (c *MockConn) Stats() sql.DBStats {
 	return c.MockStats()
 }
 
-func (c *MockConn) Config() *Config {
+func (c *MockConn) Config() *ConnConfig {
 	if c.MockConfig == nil {
-		return &Config{Driver: "MockConn"}
+		return &ConnConfig{Driver: "MockConn"}
 	}
 	return c.MockConfig()
 }
