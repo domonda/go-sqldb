@@ -9,14 +9,14 @@ import (
 )
 
 // QueryRow queries a single row and returns a Row for the results.
-func QueryRow(ctx context.Context, conn Querier, reflector StructReflector, query string, args ...any) *Row {
-	rows := conn.Query(ctx, query, args...)
-	return NewRow(rows, reflector, GetQueryFormatter(conn), query, args)
+func QueryRow(ctx context.Context, c *ConnExt, query string, args ...any) *Row {
+	rows := c.Query(ctx, query, args...)
+	return NewRow(rows, c.StructReflector, c.QueryFormatter, query, args)
 }
 
 // QueryValue queries a single value mapped to the type T.
-func QueryValue[T any](ctx context.Context, conn Querier, reflector StructReflector, query string, args ...any) (val T, err error) {
-	err = QueryRow(ctx, conn, reflector, query, args...).Scan(&val)
+func QueryValue[T any](ctx context.Context, c *ConnExt, query string, args ...any) (val T, err error) {
+	err = QueryRow(ctx, c, query, args...).Scan(&val)
 	if err != nil {
 		return *new(T), err
 	}
@@ -25,24 +25,24 @@ func QueryValue[T any](ctx context.Context, conn Querier, reflector StructReflec
 
 // QueryValueOr queries a single value of type T
 // or returns the passed defaultVal in case of sql.ErrNoRows.
-func QueryValueOr[T any](ctx context.Context, conn Querier, reflector StructReflector, defaultVal T, query string, args ...any) (val T, err error) {
-	val, err = QueryValue[T](ctx, conn, reflector, query, args...)
+func QueryValueOr[T any](ctx context.Context, c *ConnExt, defaultVal T, query string, args ...any) (val T, err error) {
+	val, err = QueryValue[T](ctx, c, query, args...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return defaultVal, nil
 	}
 	return val, err
 }
 
-func QueryValueStmt[T any](ctx context.Context, conn Preparer, reflector StructReflector, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
-	stmt, err := conn.Prepare(ctx, query)
+func QueryValueStmt[T any](ctx context.Context, c *ConnExt, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
+	stmt, err := c.Prepare(ctx, query)
 	if err != nil {
 		err = fmt.Errorf("can't prepare query because: %w", err)
-		return nil, nil, WrapErrorWithQuery(err, query, nil, GetQueryFormatter(conn))
+		return nil, nil, WrapErrorWithQuery(err, query, nil, c.QueryFormatter)
 	}
 
 	queryFunc = func(ctx context.Context, args ...any) (val T, err error) {
 		rows := stmt.Query(ctx, args...)
-		err = NewRow(rows, reflector, GetQueryFormatter(conn), query, args).Scan(&val)
+		err = NewRow(rows, c.StructReflector, c.QueryFormatter, query, args).Scan(&val)
 		return val, err
 	}
 	return queryFunc, stmt.Close, nil
@@ -52,7 +52,7 @@ func QueryValueStmt[T any](ctx context.Context, conn Preparer, reflector StructR
 // and scan it into a struct of type `*S` that must have tagged fields
 // with primary key flags to identify the primary key column names
 // for the passed pkValue+pkValues and a table name.
-func ReadRowStructWithTableName[S StructWithTableName](ctx context.Context, conn Querier, queryBuilder QueryBuilder, reflector StructReflector, pkValue any, pkValues ...any) (S, error) {
+func ReadRowStructWithTableName[S StructWithTableName](ctx context.Context, c *ConnExt, pkValue any, pkValues ...any) (S, error) {
 	// Using explicit first pkValue value
 	// to not be able to compile without any value
 	pkValues = append([]any{pkValue}, pkValues...)
@@ -63,15 +63,15 @@ func ReadRowStructWithTableName[S StructWithTableName](ctx context.Context, conn
 	if t.Kind() != reflect.Struct {
 		return *new(S), fmt.Errorf("expected struct or pointer to struct, got %s", reflect.TypeFor[S]())
 	}
-	table, err := reflector.TableNameForStruct(t)
+	table, err := c.StructReflector.TableNameForStruct(t)
 	if err != nil {
 		return *new(S), err
 	}
-	table, err = queryBuilder.FormatTableName(table)
+	table, err = c.QueryFormatter.FormatTableName(table)
 	if err != nil {
 		return *new(S), err
 	}
-	pkColumns, err := PrimaryKeyColumnsOfStruct(reflector, t)
+	pkColumns, err := PrimaryKeyColumnsOfStruct(c.StructReflector, t)
 	if err != nil {
 		return *new(S), err
 	}
@@ -79,16 +79,16 @@ func ReadRowStructWithTableName[S StructWithTableName](ctx context.Context, conn
 		return *new(S), fmt.Errorf("got %d primary key values, but struct %s has %d primary key fields", len(pkValues), t, len(pkColumns))
 	}
 	for i, column := range pkColumns {
-		pkColumns[i], err = queryBuilder.FormatColumnName(column)
+		pkColumns[i], err = c.QueryFormatter.FormatColumnName(column)
 		if err != nil {
 			return *new(S), err
 		}
 	}
-	query, err := queryBuilder.QueryRowWithPK(table, pkColumns)
+	query, err := c.QueryBuilder.QueryRowWithPK(c.QueryFormatter, table, pkColumns)
 	if err != nil {
 		return *new(S), err
 	}
-	return QueryValue[S](ctx, conn, reflector, query, pkValues...)
+	return QueryValue[S](ctx, c, query, pkValues...)
 }
 
 // ReadRowStructWithTableNameOr uses the passed pkValue+pkValues to query a table row
@@ -97,8 +97,8 @@ func ReadRowStructWithTableName[S StructWithTableName](ctx context.Context, conn
 // for the passed pkValue+pkValues and a table name.
 // Returns nil as row and error if no row could be found with the
 // passed pkValue+pkValues.
-func ReadRowStructWithTableNameOr[S StructWithTableName](ctx context.Context, conn Querier, queryBuilder QueryBuilder, reflector StructReflector, defaultVal S, pkValue any, pkValues ...any) (S, error) {
-	row, err := ReadRowStructWithTableName[S](ctx, conn, queryBuilder, reflector, pkValue, pkValues...)
+func ReadRowStructWithTableNameOr[S StructWithTableName](ctx context.Context, c *ConnExt, defaultVal S, pkValue any, pkValues ...any) (S, error) {
+	row, err := ReadRowStructWithTableName[S](ctx, c, pkValue, pkValues...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return defaultVal, nil
 	}
@@ -107,12 +107,12 @@ func ReadRowStructWithTableNameOr[S StructWithTableName](ctx context.Context, co
 
 // QueryRowAsMap queries a single row and returns the columns as map
 // using the column names as keys.
-func QueryRowAsMap[K ~string, V any](ctx context.Context, conn Querier, queryFmt QueryFormatter, query string, args ...any) (m map[K]V, err error) {
-	rows := conn.Query(ctx, query, args...)
+func QueryRowAsMap[K ~string, V any](ctx context.Context, c *ConnExt, query string, args ...any) (m map[K]V, err error) {
+	rows := c.Query(ctx, query, args...)
 	defer func() {
 		err = errors.Join(err, rows.Close())
 		if err != nil {
-			err = WrapErrorWithQuery(err, query, args, queryFmt)
+			err = WrapErrorWithQuery(err, query, args, c.QueryFormatter)
 		}
 	}()
 
@@ -153,12 +153,12 @@ func QueryRowAsMap[K ~string, V any](ctx context.Context, conn Querier, queryFmt
 // QueryRowsAsSlice returns queried rows as slice of the generic type T
 // using the passed reflector to scan column values as struct fields.
 // QueryRowsAsSlice returns queried rows as slice of the generic type T.
-func QueryRowsAsSlice[T any](ctx context.Context, conn Querier, reflector StructReflector, query string, args ...any) (rows []T, err error) {
-	sqlRows := conn.Query(ctx, query, args...)
+func QueryRowsAsSlice[T any](ctx context.Context, c *ConnExt, query string, args ...any) (rows []T, err error) {
+	sqlRows := c.Query(ctx, query, args...)
 	defer func() {
 		err = errors.Join(err, sqlRows.Close())
 		if err != nil {
-			err = WrapErrorWithQuery(err, query, args, GetQueryFormatter(conn))
+			err = WrapErrorWithQuery(err, query, args, c.QueryFormatter)
 		}
 	}()
 
@@ -179,7 +179,7 @@ func QueryRowsAsSlice[T any](ctx context.Context, conn Querier, reflector Struct
 		}
 		rows = append(rows, *new(T))
 		if rowStructs {
-			err = scanStruct(sqlRows, columns, reflector, &rows[len(rows)-1])
+			err = scanStruct(sqlRows, columns, c.StructReflector, &rows[len(rows)-1])
 		} else {
 			err = sqlRows.Scan(&rows[len(rows)-1])
 		}
@@ -203,12 +203,12 @@ func QueryRowsAsSlice[T any](ctx context.Context, conn Querier, reflector Struct
 //
 // If the query result has no rows, then only the header row
 // and no error will be returned.
-func QueryRowsAsStrings(ctx context.Context, conn Querier, query string, args ...any) (rows [][]string, err error) {
-	sqlRows := conn.Query(ctx, query, args...)
+func QueryRowsAsStrings(ctx context.Context, c *ConnExt, query string, args ...any) (rows [][]string, err error) {
+	sqlRows := c.Query(ctx, query, args...)
 	defer func() {
 		err = errors.Join(err, sqlRows.Close())
 		if err != nil {
-			err = WrapErrorWithQuery(err, query, args, GetQueryFormatter(conn))
+			err = WrapErrorWithQuery(err, query, args, c.QueryFormatter)
 		}
 	}()
 
@@ -254,10 +254,10 @@ func QueryRowsAsStrings(ctx context.Context, conn Querier, query string, args ..
 // is returned immediately by this function without scanning further rows.
 //
 // In case of zero rows, no error will be returned.
-func QueryCallback(ctx context.Context, conn Querier, reflector StructReflector, callback any, query string, args ...any) (err error) {
+func QueryCallback(ctx context.Context, c *ConnExt, callback any, query string, args ...any) (err error) {
 	defer func() {
 		if err != nil {
-			err = WrapErrorWithQuery(err, query, args, GetQueryFormatter(conn))
+			err = WrapErrorWithQuery(err, query, args, c.QueryFormatter)
 		}
 	}()
 	val := reflect.ValueOf(callback)
@@ -299,7 +299,7 @@ func QueryCallback(ctx context.Context, conn Querier, reflector StructReflector,
 		return fmt.Errorf("QueryCallback callback function result must be of type error: %s", typ)
 	}
 
-	sqlRows := conn.Query(ctx, query, args...)
+	sqlRows := c.Query(ctx, query, args...)
 	defer sqlRows.Close()
 
 	columns, err := sqlRows.Columns()
@@ -326,7 +326,7 @@ func QueryCallback(ctx context.Context, conn Querier, reflector StructReflector,
 			scannedValPtrs[i] = reflect.New(typ.In(firstArg + i)).Interface()
 		}
 		if structArg {
-			err = scanStruct(sqlRows, columns, reflector, scannedValPtrs[0])
+			err = scanStruct(sqlRows, columns, c.StructReflector, scannedValPtrs[0])
 		} else {
 			err = sqlRows.Scan(scannedValPtrs...)
 		}

@@ -33,8 +33,7 @@ type QueryRecordings struct {
 // and a non zero value simulates a transaction.
 type MockConn struct {
 	// Configuration
-	QueryFormatter QueryFormatter // StdQueryFormatter{} is used if nil
-
+	QueryFormatter QueryFormatter     // StdQueryFormatter{} is used if nil
 	NormalizeQuery NormalizeQueryFunc // nil means no normalization
 	QueryLog       io.Writer          // nil means no writing of queries
 
@@ -95,27 +94,6 @@ func (c *MockConn) WithQueryResult(columns []string, rows [][]driver.Value, forQ
 	return cc
 }
 
-func (c *MockConn) FormatTableName(name string) (string, error) {
-	if c.QueryFormatter == nil {
-		return StdQueryFormatter{}.FormatTableName(name)
-	}
-	return c.QueryFormatter.FormatTableName(name)
-}
-
-func (c *MockConn) FormatColumnName(name string) (string, error) {
-	if c.QueryFormatter == nil {
-		return StdQueryFormatter{}.FormatColumnName(name)
-	}
-	return c.QueryFormatter.FormatColumnName(name)
-}
-
-func (c *MockConn) FormatPlaceholder(paramIndex int) string {
-	if c.QueryFormatter == nil {
-		return StdQueryFormatter{}.FormatPlaceholder(paramIndex)
-	}
-	return c.QueryFormatter.FormatPlaceholder(paramIndex)
-}
-
 func (*MockConn) FormatStringLiteral(str string) string {
 	return FormatSingleQuoteStringLiteral(str)
 }
@@ -134,14 +112,11 @@ func (c *MockConn) Stats() sql.DBStats {
 	return c.MockStats()
 }
 
-func (c *MockConn) Config() *ConnConfig {
-	if c.MockConfig == nil {
-		return &ConnConfig{Driver: "MockConn"}
-	}
-	return c.MockConfig()
-}
-
 func (c *MockConn) Exec(ctx context.Context, query string, args ...any) (err error) {
+	queryFormatter := c.QueryFormatter
+	if queryFormatter == nil {
+		queryFormatter = StdQueryFormatter{}
+	}
 	queryData, err := NewQueryData(query, args, c.NormalizeQuery)
 	if err != nil {
 		return err
@@ -155,7 +130,7 @@ func (c *MockConn) Exec(ctx context.Context, query string, args ...any) (err err
 				return err
 			}
 		}
-		_, err = fmt.Fprint(c.QueryLog, FormatQuery(c.QueryFormatter, query, args...), ";\n")
+		_, err = fmt.Fprint(c.QueryLog, FormatQuery(queryFormatter, query, args...), ";\n")
 		if err != nil {
 			return err
 		}
@@ -168,6 +143,10 @@ func (c *MockConn) Exec(ctx context.Context, query string, args ...any) (err err
 }
 
 func (c *MockConn) Query(ctx context.Context, query string, args ...any) Rows {
+	queryFormatter := c.QueryFormatter
+	if queryFormatter == nil {
+		queryFormatter = StdQueryFormatter{}
+	}
 	queryData, err := NewQueryData(query, args, c.NormalizeQuery)
 	if err != nil {
 		return NewErrRows(err)
@@ -182,14 +161,14 @@ func (c *MockConn) Query(ctx context.Context, query string, args ...any) Rows {
 				return NewErrRows(err)
 			}
 		}
-		_, err = fmt.Fprint(c.QueryLog, FormatQuery(c.QueryFormatter, query, args...), ";\n")
+		_, err = fmt.Fprint(c.QueryLog, FormatQuery(queryFormatter, query, args...), ";\n")
 		if err != nil {
 			return NewErrRows(err)
 		}
 	}
 
 	if c.MockQuery == nil {
-		mockRows := c.MockQueryResults[queryData.Format(c.QueryFormatter)]
+		mockRows := c.MockQueryResults[queryData.Format(queryFormatter)]
 		if mockRows == nil {
 			return NewErrRows(ctx.Err())
 		}

@@ -12,7 +12,7 @@ import (
 	"github.com/domonda/go-sqldb"
 )
 
-var noTransactionsCtxKey int
+var noTransactionsCtxKey byte
 
 func ContextWithoutTransactions(ctx context.Context) context.Context {
 	return context.WithValue(ctx, &noTransactionsCtxKey, struct{}{})
@@ -29,7 +29,7 @@ func IsTransaction(ctx context.Context) bool {
 	if IsContextWithoutTransactions(ctx) {
 		return false
 	}
-	return Conn(ctx).Transaction().Active()
+	return Conn(ctx).Connection.Transaction().Active()
 }
 
 // ValidateWithinTransaction returns [sqldb.ErrNotWithinTransaction]
@@ -38,7 +38,7 @@ func ValidateWithinTransaction(ctx context.Context) error {
 	if IsContextWithoutTransactions(ctx) {
 		return sqldb.ErrNotWithinTransaction
 	}
-	if !Conn(ctx).Transaction().Active() {
+	if !Conn(ctx).Connection.Transaction().Active() {
 		return sqldb.ErrNotWithinTransaction
 	}
 	return nil
@@ -50,7 +50,7 @@ func ValidateNotWithinTransaction(ctx context.Context) error {
 	if IsContextWithoutTransactions(ctx) {
 		return nil
 	}
-	if Conn(ctx).Transaction().Active() {
+	if Conn(ctx).Connection.Transaction().Active() {
 		return sqldb.ErrWithinTransaction
 	}
 	return nil
@@ -71,8 +71,9 @@ func IsolatedTransaction(ctx context.Context, txFunc func(context.Context) error
 	if IsContextWithoutTransactions(ctx) {
 		return txFunc(ctx)
 	}
-	return sqldb.IsolatedTransaction(ctx, Conn(ctx), nil, func(tx sqldb.Connection) error {
-		return txFunc(context.WithValue(ctx, &globalConnCtxKey, tx))
+	conn := Conn(ctx)
+	return sqldb.IsolatedTransaction(ctx, conn, nil, func(tx sqldb.Connection) error {
+		return txFunc(ContextWithConn(ctx, conn.WithConnection(tx)))
 	})
 }
 
@@ -90,7 +91,7 @@ func IsolatedTransactionResult[T any](ctx context.Context, txFunc func(context.C
 }
 
 // Transaction executes txFunc within a database transaction that is passed in to txFunc via the context.
-// Use `db.Conn(ctx)` to get the transaction connection within txFunc.
+// Use db.Conn(ctx) to get the transaction connection within txFunc.
 // Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx [sqldb.Connection].
 // and no parentConn.Begin, Commit, or Rollback calls will occour within this Transaction call.
@@ -100,8 +101,9 @@ func Transaction(ctx context.Context, txFunc func(context.Context) error) error 
 	if IsContextWithoutTransactions(ctx) {
 		return txFunc(ctx)
 	}
-	return sqldb.Transaction(ctx, Conn(ctx), nil, func(tx sqldb.Connection) error {
-		return txFunc(context.WithValue(ctx, &globalConnCtxKey, tx))
+	connExt := Conn(ctx)
+	return sqldb.Transaction(ctx, connExt, nil, func(tx sqldb.Connection) error {
+		return txFunc(ContextWithConn(ctx, connExt.WithConnection(tx)))
 	})
 }
 
@@ -215,8 +217,9 @@ func TransactionOpts(ctx context.Context, opts *sql.TxOptions, txFunc func(conte
 	if IsContextWithoutTransactions(ctx) {
 		return txFunc(ctx)
 	}
-	return sqldb.Transaction(ctx, Conn(ctx), opts, func(tx sqldb.Connection) error {
-		return txFunc(context.WithValue(ctx, &globalConnCtxKey, tx))
+	conn := Conn(ctx)
+	return sqldb.Transaction(ctx, conn, opts, func(tx sqldb.Connection) error {
+		return txFunc(ContextWithConn(ctx, conn.WithConnection(tx)))
 	})
 }
 
@@ -231,9 +234,10 @@ func TransactionReadOnly(ctx context.Context, txFunc func(context.Context) error
 	if IsContextWithoutTransactions(ctx) {
 		return txFunc(ctx)
 	}
+	conn := Conn(ctx)
 	opts := sql.TxOptions{ReadOnly: true}
-	return sqldb.Transaction(ctx, Conn(ctx), &opts, func(tx sqldb.Connection) error {
-		return txFunc(context.WithValue(ctx, &globalConnCtxKey, tx))
+	return sqldb.Transaction(ctx, conn, &opts, func(tx sqldb.Connection) error {
+		return txFunc(ContextWithConn(ctx, conn.WithConnection(tx)))
 	})
 }
 
@@ -253,7 +257,7 @@ func TransactionSavepoint(ctx context.Context, txFunc func(context.Context) erro
 		return txFunc(ctx)
 	}
 
-	conn := Conn(ctx)
+	conn := Conn(ctx).Connection
 	if !conn.Transaction().Active() {
 		// If not already in a transaction, then execute txFunc
 		// within a as transaction instead of using savepoints:

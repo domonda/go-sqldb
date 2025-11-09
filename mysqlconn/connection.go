@@ -8,11 +8,11 @@ import (
 	"github.com/domonda/go-sqldb"
 )
 
-// New creates a new sqldb.Connection using the passed sqldb.Config
+// Connect creates a new sqldb.Connection using the passed sqldb.Config
 // and github.com/go-sql-driver/mysql as driver implementation.
-// The connection is pinged with the passed context,
+// The connection is pinged with the passed context and only returned
 // and only returned when there was no error from the ping.
-func New(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
+func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
@@ -21,16 +21,16 @@ func New(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error
 	if err != nil {
 		return nil, err
 	}
-	return sqldb.NewGenericConn(db, config, sqldb.StdQueryFormatter{}, sql.LevelRepeatableRead), nil
+	return sqldb.NewGenericConn(db, config, sql.LevelRepeatableRead), nil
 }
 
-// MustNew creates a new sqldb.Connection using the passed sqldb.Config
+// MustConnect creates a new sqldb.Connection using the passed sqldb.Config
 // and github.com/go-sql-driver/mysql as driver implementation.
-// The connection is pinged with the passed context,
+// The connection is pinged with the passed context and only returned
 // and only returned when there was no error from the ping.
 // Errors are paniced.
-func MustNew(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
-	conn, err := New(ctx, config)
+func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
+	conn, err := Connect(ctx, config)
 	if err != nil {
 		panic(err)
 	}

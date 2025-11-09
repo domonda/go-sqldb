@@ -94,9 +94,8 @@ func ParseConnConfig(uri string) (*ConnConfig, error) {
 	return config, nil
 }
 
-// Validate returns ConnConfig.Err if it is not nil
-// or an error if the ConnConfig does not have
-// a Driver, Host, or Database.
+// Validate checks that the required ConnConfig fields are set
+// and returns an error if Driver, Host, or Database are missing.
 func (c *ConnConfig) Validate() error {
 	if c.Driver == "" {
 		return fmt.Errorf("missing sqldb.ConnConfig.Driver")

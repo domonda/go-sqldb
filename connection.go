@@ -23,28 +23,24 @@ func (ts TransactionState) Active() bool {
 	return ts.ID != 0
 }
 
-type Preparer interface {
-	// Prepare a statement for execution.
-	Prepare(ctx context.Context, query string) (Stmt, error)
-}
+// type Preparer interface {
+// 	// Prepare a statement for execution.
+// 	Prepare(ctx context.Context, query string) (Stmt, error)
+// }
 
-type Executor interface {
-	// Exec executes a query with optional args.
-	Exec(ctx context.Context, query string, args ...any) error
-}
+// type Executor interface {
+// 	// Exec executes a query with optional args.
+// 	Exec(ctx context.Context, query string, args ...any) error
+// }
 
-type Querier interface {
-	// Query queries rows with optional args.
-	// Any error will be returned by the Rows.Err method.
-	Query(ctx context.Context, query string, args ...any) Rows
-}
+// type Querier interface {
+// 	// Query queries rows with optional args.
+// 	// Any error will be returned by the Rows.Err method.
+// 	Query(ctx context.Context, query string, args ...any) Rows
+// }
 
 // Connection represents a database connection or transaction
 type Connection interface {
-	// Config returns the configuration used
-	// to create this connection.
-	Config() *ConnConfig
-
 	// Stats returns the sql.DBStats of this connection.
 	Stats() sql.DBStats
 
@@ -55,13 +51,15 @@ type Connection interface {
 	// to be considered.
 	Ping(ctx context.Context, timeout time.Duration) error
 
-	// QueryFormatter has methods for formatting parts
-	// of a query dependent on the database driver.
-	QueryFormatter
+	// Prepare a statement for execution.
+	Prepare(ctx context.Context, query string) (Stmt, error)
 
-	Preparer
-	Executor
-	Querier
+	// Exec executes a query with optional args.
+	Exec(ctx context.Context, query string, args ...any) error
+
+	// Query queries rows with optional args.
+	// Any error will be returned by the Rows.Err method.
+	Query(ctx context.Context, query string, args ...any) Rows
 
 	// DefaultIsolationLevel returns the isolation level of the database
 	// driver that is used when no isolation level

@@ -20,7 +20,6 @@ func NewErrConn(err error) ErrConn {
 // ErrConn is a dummy ListenerConnection
 // where all methods except Close return Err.
 type ErrConn struct {
-	StdQueryFormatter
 	Err error
 }
 
@@ -30,15 +29,6 @@ func (e ErrConn) Ping(context.Context, time.Duration) error {
 
 func (e ErrConn) Stats() sql.DBStats {
 	return sql.DBStats{}
-}
-
-func (e ErrConn) Config() *ConnConfig {
-	return &ConnConfig{
-		Driver:   "error",
-		Host:     "error",
-		Database: "error",
-		Extra:    map[string]string{"error": e.Err.Error()},
-	}
 }
 
 func (e ErrConn) Exec(ctx context.Context, query string, args ...any) error {

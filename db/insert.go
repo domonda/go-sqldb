@@ -8,22 +8,14 @@ import (
 
 // Insert a new row into table using the values.
 func Insert(ctx context.Context, table string, values sqldb.Values) error {
-	var (
-		conn         = Conn(ctx)
-		queryBuilder = QueryBuilderFuncFromContext(ctx)(conn)
-	)
-	return sqldb.Insert(ctx, conn, queryBuilder, table, values)
+	return sqldb.Insert(ctx, Conn(ctx), table, values)
 }
 
 // InsertUnique inserts a new row into table using the passed values
 // or does nothing if the onConflict statement applies.
 // Returns if a row was inserted.
 func InsertUnique(ctx context.Context, table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
-	var (
-		conn         = Conn(ctx)
-		queryBuilder = QueryBuilderFuncFromContext(ctx)(conn)
-	)
-	return sqldb.InsertUnique(ctx, conn, queryBuilder, table, values, onConflict)
+	return sqldb.InsertUnique(ctx, Conn(ctx), table, values, onConflict)
 }
 
 // // InsertReturning inserts a new row into table using values
@@ -45,21 +37,11 @@ func InsertUnique(ctx context.Context, table string, values sqldb.Values, onConf
 // InsertRowStruct inserts a new row into table.
 // Optional ColumnFilter can be passed to ignore mapped columns.
 func InsertRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, options ...sqldb.QueryOption) error {
-	var (
-		conn         = Conn(ctx)
-		queryBuilder = QueryBuilderFuncFromContext(ctx)(conn)
-		reflector    = GetStructReflector(ctx)
-	)
-	return sqldb.InsertRowStruct(ctx, conn, queryBuilder, reflector, rowStruct, options...)
+	return sqldb.InsertRowStruct(ctx, Conn(ctx), rowStruct, options...)
 }
 
 func InsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, options ...sqldb.QueryOption) (insertFunc func(ctx context.Context, rowStruct S) error, closeFunc func() error, err error) {
-	var (
-		conn         = Conn(ctx)
-		queryBuilder = QueryBuilderFuncFromContext(ctx)(conn)
-		reflector    = GetStructReflector(ctx)
-	)
-	return sqldb.InsertRowStructStmt[S](ctx, conn, queryBuilder, reflector, options...)
+	return sqldb.InsertRowStructStmt[S](ctx, Conn(ctx), options...)
 }
 
 // func InsertStructStmt[S StructWithTableName](ctx context.Context, query string) (stmtFunc func(ctx context.Context, rowStruct S) error, closeFunc func() error, err error) {
@@ -83,22 +65,12 @@ func InsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, optio
 // Does nothing if the onConflict statement applies
 // and returns true if a row was inserted.
 func InsertUniqueRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, onConflict string, options ...sqldb.QueryOption) (inserted bool, err error) {
-	var (
-		conn         = Conn(ctx)
-		queryBuilder = QueryBuilderFuncFromContext(ctx)(conn)
-		reflector    = GetStructReflector(ctx)
-	)
-	return sqldb.InsertUniqueRowStruct(ctx, conn, queryBuilder, reflector, rowStruct, onConflict, options...)
+	return sqldb.InsertUniqueRowStruct(ctx, Conn(ctx), rowStruct, onConflict, options...)
 }
 
 // InsertRowStructs inserts a slice structs
 // as new rows into table using the DefaultStructReflector.
 // Optional ColumnFilter can be passed to ignore mapped columns.
 func InsertRowStructs[S sqldb.StructWithTableName](ctx context.Context, rowStructs []S, options ...sqldb.QueryOption) error {
-	var (
-		conn         = Conn(ctx)
-		queryBuilder = QueryBuilderFuncFromContext(ctx)(conn)
-		reflector    = GetStructReflector(ctx)
-	)
-	return sqldb.InsertRowStructs(ctx, conn, queryBuilder, reflector, rowStructs, options...)
+	return sqldb.InsertRowStructs(ctx, Conn(ctx), rowStructs, options...)
 }

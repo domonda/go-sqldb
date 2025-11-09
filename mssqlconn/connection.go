@@ -12,7 +12,7 @@ import (
 
 const Driver = "sqlserver"
 
-func New(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
+func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
@@ -21,11 +21,11 @@ func New(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error
 	if err != nil {
 		return nil, err
 	}
-	return sqldb.NewGenericConn(db, config, QueryFormatter{}, sql.LevelReadCommitted), nil
+	return sqldb.NewGenericConn(db, config, sql.LevelReadCommitted), nil
 }
 
-func MustNew(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
-	conn, err := New(ctx, config)
+func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
+	conn, err := Connect(ctx, config)
 	if err != nil {
 		panic(err)
 	}

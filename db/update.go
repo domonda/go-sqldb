@@ -8,11 +8,7 @@ import (
 
 // Update table rows(s) with values using the where statement with passed in args starting at $1.
 func Update(ctx context.Context, table string, values sqldb.Values, where string, args ...any) error {
-	var (
-		conn         = Conn(ctx)
-		queryBuilder = QueryBuilderFuncFromContext(ctx)(conn)
-	)
-	return sqldb.Update(ctx, conn, queryBuilder, table, values, where, args...)
+	return sqldb.Update(ctx, Conn(ctx), table, values, where, args...)
 }
 
 // UpdateStruct updates a row in a table using the exported fields
@@ -22,10 +18,5 @@ func Update(ctx context.Context, table string, values sqldb.Values, where string
 // The struct must have at least one field with a `db` tag value having a ",pk" suffix
 // to mark primary key column(s).
 func UpdateStruct(ctx context.Context, table string, rowStruct any, options ...sqldb.QueryOption) error {
-	var (
-		conn         = Conn(ctx)
-		queryBuilder = QueryBuilderFuncFromContext(ctx)(conn)
-		reflector    = GetStructReflector(ctx)
-	)
-	return sqldb.UpdateStruct(ctx, conn, queryBuilder, reflector, table, rowStruct, options...)
+	return sqldb.UpdateStruct(ctx, Conn(ctx), table, rowStruct, options...)
 }

@@ -32,11 +32,6 @@ func (e *nonConnForTest) Stats() sql.DBStats {
 	return sql.DBStats{}
 }
 
-func (e *nonConnForTest) Config() *ConnConfig {
-	e.t.Fatal("Config() called on non-working connection for test. That call should have been mocked!")
-	return nil
-}
-
 func (e *nonConnForTest) Exec(ctx context.Context, query string, args ...any) error {
 	e.t.Fatal("Exec() called on non-working connection for test. That call should have been mocked!")
 	return nil

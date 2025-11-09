@@ -8,7 +8,6 @@ import (
 )
 
 type genericTx struct {
-	QueryFormatter
 	// The parent non-transaction connection is needed
 	// for Ping(), Stats(), Config(), and Begin().
 	parent *genericConn
@@ -19,19 +18,17 @@ type genericTx struct {
 
 func newGenericTx(parent *genericConn, tx *sql.Tx, opts *sql.TxOptions, id uint64) *genericTx {
 	return &genericTx{
-		QueryFormatter: parent.QueryFormatter,
-		parent:         parent,
-		tx:             tx,
-		opts:           opts,
-		id:             id,
+		parent: parent,
+		tx:     tx,
+		opts:   opts,
+		id:     id,
 	}
 }
 
 func (conn *genericTx) Ping(ctx context.Context, timeout time.Duration) error {
 	return conn.parent.Ping(ctx, timeout)
 }
-func (conn *genericTx) Stats() sql.DBStats  { return conn.parent.Stats() }
-func (conn *genericTx) Config() *ConnConfig { return conn.parent.Config() }
+func (conn *genericTx) Stats() sql.DBStats { return conn.parent.Stats() }
 
 func (conn *genericTx) Exec(ctx context.Context, query string, args ...any) error {
 	_, err := conn.tx.ExecContext(ctx, query, args...)

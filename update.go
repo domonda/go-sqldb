@@ -8,17 +8,17 @@ import (
 )
 
 // Update table rows(s) with values using the where statement with passed in args starting at $1.
-func Update(ctx context.Context, conn Executor, queryBuilder QueryBuilder, table string, values Values, where string, args ...any) error {
+func Update(ctx context.Context, c *ConnExt, table string, values Values, where string, args ...any) error {
 	if len(values) == 0 {
 		return fmt.Errorf("Update table %s: no values passed", table)
 	}
-	query, vals, err := queryBuilder.Update(table, values, where, args)
+	query, vals, err := c.QueryBuilder.Update(c.QueryFormatter, table, values, where, args)
 	if err != nil {
 		return fmt.Errorf("can't create UPDATE query because: %w", err)
 	}
-	err = conn.Exec(ctx, query, vals...)
+	err = c.Exec(ctx, query, vals...)
 	if err != nil {
-		return WrapErrorWithQuery(err, query, args, queryBuilder)
+		return WrapErrorWithQuery(err, query, args, c.QueryFormatter)
 	}
 	return nil
 }
@@ -55,7 +55,7 @@ func Update(ctx context.Context, conn Executor, queryBuilder QueryBuilder, table
 // matching any of the passed column names will be used.
 // The struct must have at least one field with a `db` tag value having a ",pk" suffix
 // to mark primary key column(s).
-func UpdateStruct(ctx context.Context, conn Executor, queryBuilder QueryBuilder, reflector StructReflector, table string, rowStruct any, options ...QueryOption) error {
+func UpdateStruct(ctx context.Context, c *ConnExt, table string, rowStruct any, options ...QueryOption) error {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Pointer && !v.IsNil() {
 		v = v.Elem()
@@ -67,7 +67,7 @@ func UpdateStruct(ctx context.Context, conn Executor, queryBuilder QueryBuilder,
 		return fmt.Errorf("UpdateStruct of table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, vals := ReflectStructColumnsAndValues(v, reflector, append(options, IgnoreReadOnly)...)
+	columns, vals := ReflectStructColumnsAndValues(v, c.StructReflector, append(options, IgnoreReadOnly)...)
 	hasPK := slices.ContainsFunc(columns, func(col ColumnInfo) bool {
 		return col.PrimaryKey
 	})
@@ -75,13 +75,13 @@ func UpdateStruct(ctx context.Context, conn Executor, queryBuilder QueryBuilder,
 		return fmt.Errorf("UpdateStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
 
-	query, err := queryBuilder.UpdateColumns(table, columns)
+	query, err := c.QueryBuilder.UpdateColumns(c.QueryFormatter, table, columns)
 	if err != nil {
 		return err
 	}
-	err = conn.Exec(ctx, query, vals...)
+	err = c.Exec(ctx, query, vals...)
 	if err != nil {
-		return WrapErrorWithQuery(err, query, vals, queryBuilder)
+		return WrapErrorWithQuery(err, query, vals, c.QueryFormatter)
 	}
 	return nil
 }

@@ -16,7 +16,7 @@ import (
 // so callbacks should offload long running or potentially blocking code to other go routines.
 // Panics from callbacks will be recovered and logged.
 func ListenOnChannel(ctx context.Context, channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) error {
-	conn, ok := Conn(ctx).(sqldb.ListenerConnection)
+	conn, ok := Conn(ctx).Connection.(sqldb.ListenerConnection)
 	if !ok {
 		return fmt.Errorf("notifications %w", errors.ErrUnsupported)
 	}
@@ -27,7 +27,7 @@ func ListenOnChannel(ctx context.Context, channel string, onNotify sqldb.OnNotif
 // An error is returned, when the channel was not listened to
 // or the listener connection is closed.
 func UnlistenChannel(ctx context.Context, channel string) error {
-	conn, ok := Conn(ctx).(sqldb.ListenerConnection)
+	conn, ok := Conn(ctx).Connection.(sqldb.ListenerConnection)
 	if !ok {
 		return fmt.Errorf("notifications %w", errors.ErrUnsupported)
 	}
@@ -36,7 +36,7 @@ func UnlistenChannel(ctx context.Context, channel string) error {
 
 // IsListeningOnChannel returns if a channel is listened to.
 func IsListeningOnChannel(ctx context.Context, channel string) bool {
-	conn, ok := Conn(ctx).(sqldb.ListenerConnection)
+	conn, ok := Conn(ctx).Connection.(sqldb.ListenerConnection)
 	if !ok {
 		return false
 	}

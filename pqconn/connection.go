@@ -12,11 +12,11 @@ import (
 
 const Driver = "postgres"
 
-// New creates a new sqldb.Connection using the passed sqldb.Config
+// Connect establishes a new sqldb.Connection using the passed sqldb.Config
 // and github.com/lib/pq as driver implementation.
-// The connection is pinged with the passed context
-// and only returned when there was no error from the ping.
-func New(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
+// The connection is pinged with the passed context and only returned
+// when there was no error from the ping.
+func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
@@ -48,13 +48,13 @@ func New(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error
 	}, nil
 }
 
-// MustNew creates a new sqldb.Connection using the passed sqldb.Config
+// MustConnect creates a new sqldb.Connection using the passed sqldb.Config
 // and github.com/lib/pq as driver implementation.
-// The connection is pinged with the passed context,
-// and only returned when there was no error from the ping.
+// The connection is pinged with the passed context and only returned
+// when there was no error from the ping.
 // Errors are paniced.
-func MustNew(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
-	conn, err := New(ctx, config)
+func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
+	conn, err := Connect(ctx, config)
 	if err != nil {
 		panic(err)
 	}
@@ -62,8 +62,6 @@ func MustNew(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
 }
 
 type connection struct {
-	QueryFormatter
-
 	db     *sql.DB
 	config *sqldb.ConnConfig
 }
@@ -79,10 +77,6 @@ func (conn *connection) Ping(ctx context.Context, timeout time.Duration) error {
 
 func (conn *connection) Stats() sql.DBStats {
 	return conn.db.Stats()
-}
-
-func (conn *connection) Config() *sqldb.ConnConfig {
-	return conn.config
 }
 
 func (conn *connection) Exec(ctx context.Context, query string, args ...any) error {

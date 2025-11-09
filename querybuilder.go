@@ -3,93 +3,57 @@ package sqldb
 import (
 	"fmt"
 	"strings"
-	"sync"
 )
 
-type QueryBuilder interface {
-	QueryFormatter
+var DefaultQueryBuilder QueryBuilder = StdQueryBuilder{}
 
-	QueryRowWithPK(table string, pkColumns []string) (query string, err error)
-	Insert(table string, columns []ColumnInfo) (query string, err error)
-	InsertUnique(table string, columns []ColumnInfo, onConflict string) (query string, err error)
-	Upsert(table string, columns []ColumnInfo) (query string, err error)
+type QueryBuilder interface {
+	QueryRowWithPK(formatter QueryFormatter, table string, pkColumns []string) (query string, err error)
+	Insert(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error)
+	InsertUnique(formatter QueryFormatter, table string, columns []ColumnInfo, onConflict string) (query string, err error)
+	Upsert(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error)
 	// Update updates a table rows with the passed values using the
 	// passed where clause. That where clause can contain placeholders
 	// starting at $1 for the passed whereArgs.
 	// It returns queryArgs to be used together with the returned query
 	// that combine the passed whereArgs with the passed values.
-	Update(table string, values Values, where string, whereArgs []any) (query string, queryArgs []any, err error)
-	UpdateColumns(table string, columns []ColumnInfo) (query string, err error)
+	Update(formatter QueryFormatter, table string, values Values, where string, whereArgs []any) (query string, queryArgs []any, err error)
+	UpdateColumns(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error)
 }
 
-type QueryBuilderFunc func(conn QueryFormatter) QueryBuilder
+type StdQueryBuilder struct{}
 
-var (
-	queryBuilderCache    = map[QueryFormatter]QueryBuilder{}
-	queryBuilderCacheMtx sync.Mutex
-)
-
-// DefaultQueryBuilder returns a QueryBuilder for the passed formatter.
-// It caches the QueryBuilder for the formatter and returns the cached
-// QueryBuilder if the formatter is the same.
-//
-// This is not only done to reduce allocations here, but also to
-// return the same QueryBuilder for the same formatter
-// because the QueryBuilder is used as a cache key elsewhere.
-func DefaultQueryBuilder(formatter QueryFormatter) QueryBuilder {
-	queryBuilderCacheMtx.Lock()
-	defer queryBuilderCacheMtx.Unlock()
-
-	b, ok := queryBuilderCache[formatter]
-	if !ok {
-		b = newDefaultQueryBuilder(formatter)
-		queryBuilderCache[formatter] = b
-	}
-	return b
-}
-
-type defaultQueryBuilder struct {
-	QueryFormatter
-}
-
-func newDefaultQueryBuilder(formatter QueryFormatter) QueryBuilder {
-	if formatter == nil {
-		formatter = StdQueryFormatter{}
-	}
-	return defaultQueryBuilder{formatter}
-}
-
-func (b defaultQueryBuilder) QueryRowWithPK(table string, pkColumns []string) (query string, err error) {
+func (StdQueryBuilder) QueryRowWithPK(formatter QueryFormatter, table string, pkColumns []string) (query string, err error) {
 	var q strings.Builder
-	table, err = b.FormatTableName(table)
+	table, err = formatter.FormatTableName(table)
 	if err != nil {
 		return "", err
 	}
-	pkCol, err := b.FormatColumnName(pkColumns[0])
+	pkCol, err := formatter.FormatColumnName(pkColumns[0])
 	if err != nil {
 		return "", err
 	}
-	fmt.Fprintf(&q, `SELECT * FROM %s WHERE %s = %s`, table, pkCol, b.FormatPlaceholder(0))
+	fmt.Fprintf(&q, `SELECT * FROM %s WHERE %s = %s`, table, pkCol, formatter.FormatPlaceholder(0))
 	for i := 1; i < len(pkColumns); i++ {
-		pkCol, err = b.FormatColumnName(pkColumns[i])
+		pkCol, err = formatter.FormatColumnName(pkColumns[i])
 		if err != nil {
 			return "", err
 		}
-		fmt.Fprintf(&q, ` AND %s = %s`, pkCol, b.FormatPlaceholder(i))
+		fmt.Fprintf(&q, ` AND %s = %s`, pkCol, formatter.FormatPlaceholder(i))
 	}
 	return q.String(), nil
 }
 
-func (b defaultQueryBuilder) Insert(table string, columns []ColumnInfo) (query string, err error) {
+func (StdQueryBuilder) Insert(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error) {
 	var q strings.Builder
-	table, err = b.FormatTableName(table)
+	table, err = formatter.FormatTableName(table)
 	if err != nil {
 		return "", err
 	}
 	fmt.Fprintf(&q, `INSERT INTO %s(`, table)
 	for i := range columns {
 		column := columns[i].Name
-		column, err = b.FormatColumnName(column)
+		column, err = formatter.FormatColumnName(column)
 		if err != nil {
 			return "", err
 		}
@@ -103,15 +67,15 @@ func (b defaultQueryBuilder) Insert(table string, columns []ColumnInfo) (query s
 		if i > 0 {
 			q.WriteByte(',')
 		}
-		q.WriteString(b.FormatPlaceholder(i))
+		q.WriteString(formatter.FormatPlaceholder(i))
 	}
 	q.WriteString(`)`)
 	return q.String(), nil
 }
 
-func (b defaultQueryBuilder) InsertUnique(table string, columns []ColumnInfo, onConflict string) (query string, err error) {
+func (b StdQueryBuilder) InsertUnique(formatter QueryFormatter, table string, columns []ColumnInfo, onConflict string) (query string, err error) {
 	var q strings.Builder
-	insert, err := b.Insert(table, columns)
+	insert, err := b.Insert(formatter, table, columns)
 	if err != nil {
 		return "", err
 	}
@@ -123,9 +87,9 @@ func (b defaultQueryBuilder) InsertUnique(table string, columns []ColumnInfo, on
 	return q.String(), nil
 }
 
-func (b defaultQueryBuilder) Upsert(table string, columns []ColumnInfo) (query string, err error) {
+func (b StdQueryBuilder) Upsert(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error) {
 	var q strings.Builder
-	insert, err := b.Insert(table, columns)
+	insert, err := b.Insert(formatter, table, columns)
 	if err != nil {
 		return "", err
 	}
@@ -141,7 +105,7 @@ func (b defaultQueryBuilder) Upsert(table string, columns []ColumnInfo) (query s
 		} else {
 			q.WriteByte(',')
 		}
-		columnName, err := b.FormatColumnName(columns[i].Name)
+		columnName, err := formatter.FormatColumnName(columns[i].Name)
 		if err != nil {
 			return "", err
 		}
@@ -158,18 +122,18 @@ func (b defaultQueryBuilder) Upsert(table string, columns []ColumnInfo) (query s
 		} else {
 			q.WriteByte(',')
 		}
-		columnName, err := b.FormatColumnName(columns[i].Name)
+		columnName, err := formatter.FormatColumnName(columns[i].Name)
 		if err != nil {
 			return "", err
 		}
-		fmt.Fprintf(&q, ` %s=%s`, columnName, b.FormatPlaceholder(i))
+		fmt.Fprintf(&q, ` %s=%s`, columnName, formatter.FormatPlaceholder(i))
 	}
 	return q.String(), nil
 }
 
-func (b defaultQueryBuilder) Update(table string, values Values, where string, whereArgs []any) (query string, queryArgs []any, err error) {
+func (StdQueryBuilder) Update(formatter QueryFormatter, table string, values Values, where string, whereArgs []any) (query string, queryArgs []any, err error) {
 	var q strings.Builder
-	table, err = b.FormatTableName(table)
+	table, err = formatter.FormatTableName(table)
 	if err != nil {
 		return "", nil, err
 	}
@@ -177,23 +141,23 @@ func (b defaultQueryBuilder) Update(table string, values Values, where string, w
 
 	columns, vals := values.SortedColumnsAndValues()
 	for i := range columns {
-		column, err := b.FormatColumnName(columns[i].Name)
+		column, err := formatter.FormatColumnName(columns[i].Name)
 		if err != nil {
 			return "", nil, err
 		}
 		if i > 0 {
 			q.WriteByte(',')
 		}
-		fmt.Fprintf(&q, ` %s=%s`, column, b.FormatPlaceholder(len(whereArgs)+i))
+		fmt.Fprintf(&q, ` %s=%s`, column, formatter.FormatPlaceholder(len(whereArgs)+i))
 	}
 	fmt.Fprintf(&q, ` WHERE %s`, where)
 
 	return q.String(), append(whereArgs, vals...), nil
 }
 
-func (b defaultQueryBuilder) UpdateColumns(table string, columns []ColumnInfo) (query string, err error) {
+func (StdQueryBuilder) UpdateColumns(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error) {
 	var q strings.Builder
-	table, err = b.FormatTableName(table)
+	table, err = formatter.FormatTableName(table)
 	if err != nil {
 		return "", err
 	}
@@ -210,11 +174,11 @@ func (b defaultQueryBuilder) UpdateColumns(table string, columns []ColumnInfo) (
 		} else {
 			q.WriteByte(',')
 		}
-		columnName, err := b.FormatColumnName(columns[i].Name)
+		columnName, err := formatter.FormatColumnName(columns[i].Name)
 		if err != nil {
 			return "", err
 		}
-		fmt.Fprintf(&q, ` %s=%s`, columnName, b.FormatPlaceholder(i))
+		fmt.Fprintf(&q, ` %s=%s`, columnName, formatter.FormatPlaceholder(i))
 	}
 
 	q.WriteString(` WHERE `)
@@ -229,11 +193,11 @@ func (b defaultQueryBuilder) UpdateColumns(table string, columns []ColumnInfo) (
 		} else {
 			q.WriteString(` AND `)
 		}
-		columnName, err := b.FormatColumnName(columns[i].Name)
+		columnName, err := formatter.FormatColumnName(columns[i].Name)
 		if err != nil {
 			return "", err
 		}
-		fmt.Fprintf(&q, `%s = %s`, columnName, b.FormatPlaceholder(i))
+		fmt.Fprintf(&q, `%s = %s`, columnName, formatter.FormatPlaceholder(i))
 	}
 
 	return q.String(), nil

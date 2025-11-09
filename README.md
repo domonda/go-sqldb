@@ -29,7 +29,7 @@ The connection is pinged with the passed context
 and only returned when there was no error from the ping:
 
 ```go
-config := &sqldb.Config{
+config := &sqldb.ConnConfig{
     Driver:   "postgres",
     Host:     "localhost",
     User:     "postgres",
@@ -37,36 +37,46 @@ config := &sqldb.Config{
     Extra:    map[string]string{"sslmode": "disable"},
 }
 
-fmt.Println("Connecting to:", config.ConnectURL())
+fmt.Println("Connecting to:", config.String())
 
-conn, err := pqconn.New(context.Background(), config)
+conn, err := pqconn.Connect(context.Background(), config)
 ```
 
 ### Struct field mapping
 
-Every new connection initially uses `DefaultStructFieldTagNaming`
+Every connection uses a `StructReflector` to map struct fields to database columns.
+The default reflector uses the `db` struct tag:
 
 ```go
-package sqldb
-
-// DefaultStructFieldTagNaming provides the default StructFieldTagNaming
-// using "db" as NameTag and IgnoreStructField as UntaggedNameFunc.
-// Implements StructFieldNamer.
-var DefaultStructFieldTagNaming = StructFieldTagNaming{
-	NameTag:          "db",
-	IgnoreName:       "-",
-	UntaggedNameFunc: IgnoreStructField,
+type User struct {
+    ID    uu.ID  `db:"id,primarykey"`
+    Email string `db:"email"`
+    Name  string `db:"name"`
+    // Field without tag or with tag "-" will be ignored
+    Internal string `db:"-"`
 }
 ```
 
-Use a different mapping:
+You can customize the struct reflector when creating a connection:
 
 ```go
-conn = conn.WithStructFieldNamer(sqldb.StructFieldTagNaming{
-    NameTag:          "col",
-    IgnoreName:       "_ignore_",
-    UntaggedNameFunc: sqldb.ToSnakeCase,
-})
+// Create a custom reflector
+reflector := &sqldb.TaggedStructReflector{
+    NameTag:          "col",           // Use "col" tag instead of "db"
+    Ignore:           "_ignore_",      // Ignore fields with this value
+    PrimaryKey:       "pk",
+    ReadOnly:         "readonly",
+    Default:          "default",
+    UntaggedNameFunc: sqldb.ToSnakeCase, // Convert untagged fields to snake_case
+}
+
+// Create ConnExt with custom reflector
+connExt := sqldb.NewConnExt(
+    conn,
+    reflector,
+    sqldb.StdQueryFormatter{},
+    sqldb.StdQueryBuilder{},
+)
 ```
 
 ### Exec SQL without reading rows

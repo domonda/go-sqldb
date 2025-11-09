@@ -9,12 +9,12 @@ import (
 // Prepare a statement for execution
 // with the given query string.
 func Prepare(ctx context.Context, query string) (sqldb.Stmt, error) {
-	conn := Conn(ctx)
-	stmt, err := conn.Prepare(ctx, query)
+	config := Conn(ctx)
+	stmt, err := config.Connection.Prepare(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-	return stmtWithErrWrapping{stmt, conn}, nil
+	return stmtWithErrWrapping{stmt, config.QueryFormatter}, nil
 }
 
 type stmtWithErrWrapping struct {
