@@ -7,13 +7,9 @@ import (
 )
 
 var (
-	globalConn = sqldb.ConnExt{
-		Connection:      sqldb.NewErrConn(sqldb.ErrNoDatabaseConnection),
-		StructReflector: sqldb.NewTaggedStructReflector(),
-		QueryFormatter:  sqldb.StdQueryFormatter{},
-		QueryBuilder:    sqldb.StdQueryBuilder{},
-	}
+	globalConn = sqldb.NewErrConnExt(sqldb.ErrNoDatabaseConnection)
 
+	// Unique memory address as context key for the connection context value
 	connCtxKey byte
 )
 
