@@ -22,6 +22,12 @@ type nonConnForTest struct {
 	txOpts *sql.TxOptions
 }
 
+func (e *nonConnForTest) Config() *ConnConfig {
+	return &ConnConfig{
+		Driver: "nonConnForTest",
+	}
+}
+
 func (e *nonConnForTest) Ping(ctx context.Context, timeout time.Duration) error {
 	e.t.Fatalf("Ping() called on non-working connection for test. That call should have been mocked!")
 	return nil

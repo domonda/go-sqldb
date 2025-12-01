@@ -91,6 +91,10 @@ type connection struct {
 	txID   uint64
 }
 
+func (c *connection) Config() *sqldb.ConnConfig {
+	return c.config
+}
+
 func (c *connection) Ping(ctx context.Context, timeout time.Duration) error {
 	if timeout > 0 {
 		var cancel func()
@@ -190,10 +194,6 @@ func (c *connection) Transaction() sqldb.TransactionState {
 		Opts: c.txOpts,
 		ID:   c.txID,
 	}
-}
-
-func (c *connection) Config() *sqldb.ConnConfig {
-	return c.config
 }
 
 func (c *connection) DefaultIsolationLevel() sql.IsolationLevel {

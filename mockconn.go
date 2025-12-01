@@ -45,9 +45,9 @@ type MockConn struct {
 	Recordings       QueryRecordings
 	MockQueryResults map[string]*MockRows
 
+	MockConfig               func() *ConnConfig
 	MockPing                 func(context.Context, time.Duration) error
 	MockStats                func() sql.DBStats
-	MockConfig               func() *ConnConfig
 	MockExec                 func(ctx context.Context, query string, args ...any) error
 	MockQuery                func(ctx context.Context, query string, args ...any) Rows
 	MockPrepare              func(ctx context.Context, query string) (Stmt, error)
@@ -96,6 +96,15 @@ func (c *MockConn) WithQueryResult(columns []string, rows [][]driver.Value, forQ
 
 func (*MockConn) FormatStringLiteral(str string) string {
 	return FormatSingleQuoteStringLiteral(str)
+}
+
+func (c *MockConn) Config() *ConnConfig {
+	if c.MockConfig == nil {
+		return &ConnConfig{
+			Driver: "MockConn",
+		}
+	}
+	return c.MockConfig()
 }
 
 func (c *MockConn) Ping(ctx context.Context, timeout time.Duration) error {

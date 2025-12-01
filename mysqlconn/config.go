@@ -4,8 +4,6 @@ import "github.com/go-sql-driver/mysql"
 
 const (
 	Driver = "mysql"
-
-	argFmt = "?"
 )
 
 type Config = mysql.Config

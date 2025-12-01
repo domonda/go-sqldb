@@ -25,9 +25,14 @@ func newGenericTx(parent *genericConn, tx *sql.Tx, opts *sql.TxOptions, id uint6
 	}
 }
 
+func (conn *genericTx) Config() *ConnConfig {
+	return conn.parent.config
+}
+
 func (conn *genericTx) Ping(ctx context.Context, timeout time.Duration) error {
 	return conn.parent.Ping(ctx, timeout)
 }
+
 func (conn *genericTx) Stats() sql.DBStats { return conn.parent.Stats() }
 
 func (conn *genericTx) Exec(ctx context.Context, query string, args ...any) error {

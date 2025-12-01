@@ -41,6 +41,9 @@ func (ts TransactionState) Active() bool {
 
 // Connection represents a database connection or transaction
 type Connection interface {
+	// Config returns the configuration used to establish this connection.
+	Config() *ConnConfig
+
 	// Stats returns the sql.DBStats of this connection.
 	Stats() sql.DBStats
 

@@ -38,6 +38,10 @@ type ErrConn struct {
 	Err error
 }
 
+func (e ErrConn) Config() *ConnConfig {
+	return &ConnConfig{Driver: "ErrConn"}
+}
+
 func (e ErrConn) Ping(context.Context, time.Duration) error {
 	return e.Err
 }

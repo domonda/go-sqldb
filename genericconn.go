@@ -23,6 +23,10 @@ type genericConn struct {
 	defaultIsolationLevel sql.IsolationLevel
 }
 
+func (conn *genericConn) Config() *ConnConfig {
+	return conn.config
+}
+
 func (conn *genericConn) Ping(ctx context.Context, timeout time.Duration) error {
 	if timeout > 0 {
 		var cancel func()

@@ -5,8 +5,9 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/domonda/go-sqldb"
 	"zombiezen.com/go/sqlite/sqlitex"
+
+	"github.com/domonda/go-sqldb"
 )
 
 type transaction struct {
@@ -14,6 +15,10 @@ type transaction struct {
 	txOpts   *sql.TxOptions
 	txID     uint64
 	isNested bool // Whether this is a nested transaction (savepoint)
+}
+
+func (conn *transaction) Config() *sqldb.ConnConfig {
+	return conn.parent.config
 }
 
 func (t *transaction) Ping(ctx context.Context, timeout time.Duration) error {
@@ -47,8 +52,8 @@ func (t *transaction) Query(ctx context.Context, query string, args ...any) sqld
 	}
 
 	return &rows{
-		stmt:              stmt,
-		conn:              t.parent.conn,
+		stmt:               stmt,
+		conn:               t.parent.conn,
 		shouldFinalizeStmt: true, // Transaction Query() owns the statement
 	}
 }
@@ -106,10 +111,6 @@ func (t *transaction) Rollback() error {
 		return sqlitex.ExecuteTransient(t.parent.conn, `ROLLBACK TO SAVEPOINT nested_tx`, nil)
 	}
 	return sqlitex.ExecuteTransient(t.parent.conn, `ROLLBACK`, nil)
-}
-
-func (t *transaction) Config() *sqldb.ConnConfig {
-	return t.parent.config
 }
 
 func (t *transaction) Close() error {

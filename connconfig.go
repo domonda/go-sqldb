@@ -1,6 +1,7 @@
 package sqldb
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"fmt"
@@ -111,15 +112,16 @@ func (c *ConnConfig) Validate() error {
 
 // URL returns a [*url.URL] with the connection parameters
 // for connecting to a database based on the ConnConfig.
+// If Host is empty, localhost is used.
 func (c *ConnConfig) URL() *url.URL {
 	extra := make(url.Values)
 	for key, val := range c.Extra {
 		extra.Add(key, val)
 	}
 	u := &url.URL{
-		Scheme:   c.Driver,
-		Host:     c.Host,
-		Path:     "/" + c.Database,
+		Scheme:   cmp.Or(c.Driver, "UNKNOWN_DRIVER"),
+		Host:     cmp.Or(c.Host, "localhost"),
+		Path:     c.Database,
 		RawQuery: extra.Encode(),
 	}
 	if c.Port != 0 {
@@ -146,6 +148,9 @@ func (c *ConnConfig) URL() *url.URL {
 //
 // See also [ParseConnConfig]
 func (c *ConnConfig) String() string {
+	if c.Driver != "" && c.Host == "" && c.Database == "" {
+		return c.Driver
+	}
 	uri := c.URL()
 	uri.User = url.User(c.User)
 	return uri.String()

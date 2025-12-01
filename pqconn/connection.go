@@ -78,6 +78,10 @@ type connection struct {
 	config *sqldb.ConnConfig
 }
 
+func (conn *connection) Config() *sqldb.ConnConfig {
+	return conn.config
+}
+
 func (conn *connection) Ping(ctx context.Context, timeout time.Duration) error {
 	if timeout > 0 {
 		var cancel func()

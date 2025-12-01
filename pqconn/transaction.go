@@ -27,6 +27,10 @@ func newTransaction(parent *connection, tx *sql.Tx, opts *sql.TxOptions, id uint
 	}
 }
 
+func (conn *transaction) Config() *sqldb.ConnConfig {
+	return conn.parent.config
+}
+
 func (conn *transaction) Ping(ctx context.Context, timeout time.Duration) error {
 	return conn.parent.Ping(ctx, timeout)
 }
