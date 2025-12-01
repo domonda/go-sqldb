@@ -72,6 +72,18 @@ func MustConnect(config *sqldb.ConnConfig) sqldb.Connection {
 	return conn
 }
 
+// NewConnExt creates a new sqldb.ConnExt with SQLite-specific components.
+// It combines the passed connection and struct reflector with SQLite
+// specific QueryFormatter and QueryBuilder.
+func NewConnExt(conn sqldb.Connection, structReflector sqldb.StructReflector) *sqldb.ConnExt {
+	return sqldb.NewConnExt(
+		conn,
+		structReflector,
+		sqldb.StdQueryFormatter{},
+		sqldb.StdQueryBuilder{},
+	)
+}
+
 type connection struct {
 	conn   *sqlite.Conn
 	config *sqldb.ConnConfig

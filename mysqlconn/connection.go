@@ -36,3 +36,15 @@ func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection
 	}
 	return conn
 }
+
+// NewConnExt creates a new sqldb.ConnExt with MySQL-specific components.
+// It combines the passed connection and struct reflector with MySQL
+// specific QueryFormatter and QueryBuilder.
+func NewConnExt(conn sqldb.Connection, structReflector sqldb.StructReflector) *sqldb.ConnExt {
+	return sqldb.NewConnExt(
+		conn,
+		structReflector,
+		sqldb.StdQueryFormatter{},
+		sqldb.StdQueryBuilder{},
+	)
+}
