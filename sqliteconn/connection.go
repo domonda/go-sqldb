@@ -72,6 +72,25 @@ func MustConnect(config *sqldb.ConnConfig) sqldb.Connection {
 	return conn
 }
 
+// ConnectExt establishes a new sqldb.ConnExt using the passed config and structReflector.
+// It wraps Connect and returns an extended connection with SQLite-specific components.
+func ConnectExt(config *sqldb.ConnConfig, structReflector sqldb.StructReflector) (*sqldb.ConnExt, error) {
+	conn, err := Connect(config)
+	if err != nil {
+		return nil, err
+	}
+	return NewConnExt(conn, structReflector), nil
+}
+
+// MustConnectExt is like ConnectExt but panics on error.
+func MustConnectExt(config *sqldb.ConnConfig, structReflector sqldb.StructReflector) *sqldb.ConnExt {
+	connExt, err := ConnectExt(config, structReflector)
+	if err != nil {
+		panic(err)
+	}
+	return connExt
+}
+
 // NewConnExt creates a new sqldb.ConnExt with SQLite-specific components.
 // It combines the passed connection and struct reflector with SQLite
 // specific QueryFormatter and QueryBuilder.

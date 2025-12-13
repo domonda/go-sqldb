@@ -48,6 +48,16 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, e
 	}, nil
 }
 
+// ConnectExt establishes a new sqldb.ConnExt using the passed config and structReflector.
+// It wraps Connect and returns an extended connection with PostgreSQL-specific components.
+func ConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) (*sqldb.ConnExt, error) {
+	conn, err := Connect(ctx, config)
+	if err != nil {
+		return nil, err
+	}
+	return NewConnExt(conn, structReflector), nil
+}
+
 // MustConnect creates a new sqldb.Connection using the passed sqldb.Config
 // and github.com/lib/pq as driver implementation.
 // The connection is pinged with the passed context and only returned
@@ -59,6 +69,15 @@ func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection
 		panic(err)
 	}
 	return conn
+}
+
+// MustConnectExt is like ConnectExt but panics on error.
+func MustConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) *sqldb.ConnExt {
+	connExt, err := ConnectExt(ctx, config, structReflector)
+	if err != nil {
+		panic(err)
+	}
+	return connExt
 }
 
 // NewConnExt creates a new sqldb.ConnExt with PostgreSQL-specific components.

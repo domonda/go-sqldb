@@ -24,12 +24,32 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, e
 	return sqldb.NewGenericConn(db, config, sql.LevelReadCommitted), nil
 }
 
+// MustConnect is like Connect but panics on error.
 func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
 	conn, err := Connect(ctx, config)
 	if err != nil {
 		panic(err)
 	}
 	return conn
+}
+
+// ConnectExt establishes a new sqldb.ConnExt using the passed config and structReflector.
+// It wraps Connect and returns an extended connection with MSSQL-specific components.
+func ConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) (*sqldb.ConnExt, error) {
+	conn, err := Connect(ctx, config)
+	if err != nil {
+		return nil, err
+	}
+	return NewConnExt(conn, structReflector), nil
+}
+
+// MustConnectExt is like ConnectExt but panics on error.
+func MustConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) *sqldb.ConnExt {
+	connExt, err := ConnectExt(ctx, config, structReflector)
+	if err != nil {
+		panic(err)
+	}
+	return connExt
 }
 
 // NewConnExt creates a new sqldb.ConnExt with MSSQL-specific components.
