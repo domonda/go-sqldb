@@ -3,7 +3,7 @@ name: go-sqldb-pqconn-test
 services:
   postgres:
     image: postgres:18.1-alpine
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_USER: testuser
       POSTGRES_PASSWORD: testpassword
