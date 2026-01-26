@@ -203,6 +203,21 @@ func TransactionReadOnly(ctx context.Context, txFunc func(context.Context) error
 	})
 }
 
+// TransactionReadOnlyResult executes txFunc within a read-only database transaction and returns the result of txFunc.
+// Use db.Conn(ctx) to get the transaction connection within txFunc.
+// TransactionReadOnlyResult returns all errors from txFunc or transaction commit errors happening after txFunc.
+// If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
+// and no parentConn.Begin, Commit, or Rollback calls will occour within this TransactionReadOnlyResult call.
+// Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
+// Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
+func TransactionReadOnlyResult[T any](ctx context.Context, txFunc func(context.Context) (T, error)) (result T, err error) {
+	err = TransactionReadOnly(ctx, func(ctx context.Context) error {
+		result, err = txFunc(ctx)
+		return err
+	})
+	return result, err
+}
+
 // TransactionSavepoint executes txFunc within a database transaction or uses savepoints for rollback.
 // If the passed context already has a database transaction connection,
 // then a savepoint with a random name is created before the execution of txFunc.
