@@ -335,7 +335,7 @@ func QueryCallback(ctx context.Context, c *ConnExt, callback any, query string, 
 		}
 
 		// Then do callback using reflection
-		for i := firstArg; i < len(args); i++ {
+		for i := firstArg; i < typ.NumIn(); i++ {
 			callbackArgs[i] = reflect.ValueOf(scannedValPtrs[i-firstArg]).Elem()
 		}
 		res := val.Call(callbackArgs)
