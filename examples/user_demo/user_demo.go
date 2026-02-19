@@ -150,7 +150,7 @@ func main() {
 			http.Error(response, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		response.Write([]byte("OK"))
+		_, _ = response.Write([]byte("OK"))
 	})
 
 }

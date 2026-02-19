@@ -18,7 +18,6 @@ var (
 	typeOfDriverValuer = reflect.TypeFor[driver.Valuer]()
 	typeOfTime         = reflect.TypeFor[time.Time]()
 	typeOfByte         = reflect.TypeFor[byte]()
-	typeOfByteSlice    = reflect.TypeFor[[]byte]()
 )
 
 // ForEachRowCallFunc will call the passed callback with scanned values or a struct for every row.
