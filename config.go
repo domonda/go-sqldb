@@ -15,7 +15,7 @@ type Config struct {
 	Host     string            `json:"host"`
 	Port     uint16            `json:"port,omitempty"`
 	User     string            `json:"user,omitempty"`
-	Password string            `json:"password,omitempty"`
+	Password string            `json:"password,omitempty"` // #nosec G117
 	Database string            `json:"database"`
 	Extra    map[string]string `json:"misc,omitempty"`
 
