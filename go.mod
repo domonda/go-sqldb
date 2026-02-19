@@ -13,8 +13,8 @@ require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/domonda/go-errs v0.0.0-20251015071040-2e5474724d88 // indirect
-	github.com/domonda/go-pretty v0.0.0-20251015070800-44d406a6d055 // indirect
+	github.com/domonda/go-errs v1.0.0 // indirect
+	github.com/domonda/go-pretty v1.0.0 // indirect
 	github.com/invopop/jsonschema v0.13.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/mailru/easyjson v0.9.1 // indirect

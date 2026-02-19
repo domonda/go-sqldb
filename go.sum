@@ -9,10 +9,10 @@ github.com/corazawaf/libinjection-go v0.2.2/go.mod h1:OP4TM7xdJ2skyXqNX1AN1wN5nN
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/domonda/go-errs v0.0.0-20251015071040-2e5474724d88 h1:311b55tIHS1BxQI65337WlbLrcByLJxI4Hd2eaygK/E=
-github.com/domonda/go-errs v0.0.0-20251015071040-2e5474724d88/go.mod h1:67/+8UwghnkaEjky+lPbMBpLxmmrxxI3GCw8/fidGP0=
-github.com/domonda/go-pretty v0.0.0-20251015070800-44d406a6d055 h1:xeQN7Z+bBTz5mHlGj9CK/WbCPShUaTVxcTY++rOsYvc=
-github.com/domonda/go-pretty v0.0.0-20251015070800-44d406a6d055/go.mod h1:3QkM8UJdyJMeKZiIo7hYzSkQBpRS3k0gOHw4ysyEIB4=
+github.com/domonda/go-errs v1.0.0 h1:sVuSamm65RrYu1naLRBDb59x4SDSt/ZZOz4TWDfYk0Y=
+github.com/domonda/go-errs v1.0.0/go.mod h1:zt5V57wkHr3YNuCGemVABL/OUa0zFbixzr5CXiKYp6w=
+github.com/domonda/go-pretty v1.0.0 h1:58OcAmEgcYEOuMQRXtC0jAndPKqHfV3TVZUttWKnRc4=
+github.com/domonda/go-pretty v1.0.0/go.mod h1:O05JaeEezfZ2ian+t10+JrAZFKadSIsqWdukNtOPEzI=
 github.com/domonda/go-types v0.0.0-20251108113343-9bda55002c13 h1:WUISrPfvi1tMhzVvk2Z8oAZeZmlo067fED25/y8A6XU=
 github.com/domonda/go-types v0.0.0-20251108113343-9bda55002c13/go.mod h1:MokEBiRzB3XKQ19o7zGhUiiLEJ1clXo6PkEiA0j917o=
 github.com/invopop/jsonschema v0.13.0 h1:KvpoAJWEjR3uD9Kbm2HWJmqsEaHt8lBUpd0qHcIi21E=

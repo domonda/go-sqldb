@@ -7,16 +7,16 @@ replace github.com/domonda/go-sqldb => ..
 require github.com/domonda/go-sqldb v0.0.0-00010101000000-000000000000 // replaced
 
 require (
-	github.com/domonda/go-types v0.0.0-20251013130956-d9f0fe9a7e07
+	github.com/domonda/go-types v0.0.0-20251108113343-9bda55002c13
 	github.com/lib/pq v1.10.9
 )
 
 require (
-	github.com/DataDog/go-sqllexer v0.1.8 // indirect
+	github.com/DataDog/go-sqllexer v0.1.9 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/corazawaf/libinjection-go v0.2.2 // indirect
-	github.com/domonda/go-pretty v0.0.0-20250602142956-1b467adc6387 // indirect
+	github.com/domonda/go-pretty v1.0.0 // indirect
 	github.com/invopop/jsonschema v0.13.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mailru/easyjson v0.9.1 // indirect
