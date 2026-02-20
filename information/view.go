@@ -1,11 +1,14 @@
 package information
 
 type View struct {
-	CatalogName                String `db:"catalog_name"`
-	SchemaName                 String `db:"schema_name"`
-	SchemaOwner                String `db:"schema_owner"`
-	DefaultCharacterSetCatalog String `db:"default_character_set_catalog"`
-	DefaultCharacterSetSchema  String `db:"default_character_set_schema"`
-	DefaultCharacterSetName    String `db:"default_character_set_name"`
-	SqlPath                    String `db:"sql_path"`
+	TableCatalog             String `db:"table_catalog"`
+	TableSchema              String `db:"table_schema"`
+	TableName                String `db:"table_name"`
+	ViewDefinition           String `db:"view_definition"`
+	CheckOption              String `db:"check_option"`
+	IsUpdatable              YesNo  `db:"is_updatable"`
+	IsInsertableInto         YesNo  `db:"is_insertable_into"`
+	IsTriggerUpdatable       YesNo  `db:"is_trigger_updatable"`
+	IsTriggerDeletable       YesNo  `db:"is_trigger_deletable"`
+	IsTriggerInsertableInto  YesNo  `db:"is_trigger_insertable_into"`
 }
