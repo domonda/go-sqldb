@@ -76,9 +76,74 @@
 
 ## Testing
 
-- [ ] **Test all `db/` package functions** — Only 7.4% coverage; 6 test files exist but many gaps
-- [ ] **pqconn integration tests** — `pqconn/test/` has docker-compose setup but `TestDatabase` is a stub with no assertions
-- [x] **Fix `TestQueryCallback_InvalidVariadic`** — Fixed: updated assertion from "varidic" to "variadic"
+### Critical — Core Logic With Zero Tests
+
+- [ ] **querybuilder.go** — `StdQueryBuilder` has zero tests for all 6 SQL-generating methods: `QueryRowWithPK`, `Insert`, `InsertUnique`, `Upsert`, `Update`, `UpdateColumns`
+- [ ] **reflectstruct.go** — All 6 exported `Reflect*` functions untested: `PrimaryKeyColumnsOfStruct`, `ReflectStructColumnsAndValues`, `ReflectStructColumnsFieldIndicesAndValues`, `ReflectStructValues`, `ReflectStructColumns`, `ReflectStructColumnPointers`. Note: `scanstruct_test.go` exists but is entirely commented out
+- [ ] **scan.go** — `ScanDriverValue` untested; wide type-switching function covering bool, float64, int64, string, []byte, time.Time
+- [ ] **row.go** — `Row.Scan` (struct-detection logic), `Row.ScanValues`, `Row.ScanStrings` all untested
+
+### High Priority — Important Public API
+
+- [ ] **queryformatter.go** — `StdQueryFormatter` methods untested: `FormatTableName`, `FormatColumnName`, `FormatPlaceholder`, `FormatStringLiteral`
+- [ ] **pqconn/errors.go** — All 16 error-predicate functions untested (`IsUniqueViolation`, `IsForeignKeyViolation`, `IsSerializationFailure`, etc.). Can be tested with synthetic `*pq.Error` values
+- [ ] **connconfig.go** — `ConnConfig.Validate()` untested; `ParseConnConfig` has only one happy-path test case
+- [ ] **queryoption.go** — `IgnoreColumns`, `OnlyColumns`, `IgnoreStructFields`, `OnlyStructFields`, `QueryOptionsIgnoreColumn` all untested
+- [ ] **format.go** — `QuoteLiteral` untested (backslash `E'...'` path); `FormatQuery` only tests numbered placeholders, not uniform (`?`)
+- [ ] **nullable.go** — `Nullable[T].Scan`, `Nullable[T].Value`, `IsNullable` untested
+- [ ] **debug.go** — `TxOptionsString` (4-branch function), `FprintTable` (unicode-aware padding) untested
+
+### Root `sqldb` Package — Untested Functions
+
+- [ ] `Insert`, `InsertUnique`, `InsertUniqueRowStruct`, `InsertRowStructs`
+- [ ] `Update`, `UpdateStruct`
+- [ ] `UpsertStruct`, `UpsertStructStmt`, `UpsertStructs`
+- [ ] `QueryRow`, `QueryValue`, `QueryValueOr`, `QueryValueStmt`, `ReadRowStructWithTableName`, `QueryRowAsMap`, `QueryRowsAsSlice`
+- [ ] `Exec`, `ExecStmt`
+- [ ] `Transaction`, `IsolatedTransaction`
+- [ ] `ConnExt.WithConnection`, `TransactionExt`, `TransactionResult`
+- [ ] `AnyValue.Scan`, `AnyValue.Value`
+
+### `db/` Package — Untested Functions
+
+- [ ] `Update`, `UpdateStruct`
+- [ ] `UpsertStruct`, `UpsertStructs`
+- [ ] `InsertUnique`, `InsertUniqueRowStruct`, `InsertRowStructStmt`, `InsertRowStructs`
+- [ ] `QueryRow`, `QueryValueStmt`, `ReadRowStructWithTableName`, `ReadRowStructWithTableNameOr`, `QueryRowAsMap`, `QueryRowsAsSlice`
+- [ ] `Exec`, `ExecStmt`
+- [ ] `ValidateWithinTransaction`, `ValidateNotWithinTransaction`, `IsTransaction`
+- [ ] `IsolatedTransaction`, `OptionalTransaction`, `TransactionReadOnly`, `TransactionSavepoint`, `TransactionResult`
+- [ ] `ContextWithoutTransactions`, `IsContextWithoutTransactions`
+- [ ] `ListenOnChannel`, `UnlistenChannel`, `IsListeningOnChannel`
+- [ ] `ReplaceErrNoRows`, `IsOtherThanErrNoRows`
+- [ ] `SetConn`, `Conn`, `Close`
+
+### `pqconn/` Package
+
+- [ ] **Error predicates** — All 16 `Is*` functions need unit tests with synthetic `*pq.Error` values
+- [ ] **pqconn/test** — `TestDatabase` is a stub with no assertions
+- [ ] `QueryFormatter.FormatPlaceholder` — Panic on negative index untested
+- [ ] `QueryFormatter.FormatStringLiteral`, `NewTypeMapper`
+- [ ] `Connect` — Driver validation path untested
+
+### `mysqlconn/` Package — Zero Tests
+
+- [ ] Entire package has no test files: `Connect`, `MustConnect`, `ConnectExt`, `NewConfig`
+- [ ] `validateColumnName` — Internal function with MySQL-specific regex, never tested
+
+### `mssqlconn/` Package — Zero Tests
+
+- [ ] Entire package has no test files: `Connect`, `MustConnect`, `ConnectExt`
+- [ ] `QueryFormatter.FormatTableName`, `FormatColumnName`, `FormatPlaceholder` (`@p1` style) untested
+
+### `sqliteconn/` Package — Gaps
+
+- [ ] `IsDatabaseLocked` error predicate untested
+- [ ] Nested savepoint transactions not tested (related to hardcoded `nested_tx` name bug)
+
+### `information/` Package — Gaps
+
+- [ ] `GetTableRowsWithPrimaryKey` — Queries multiple tables by PK; `sql.ErrNoRows` skip path untested
 
 ## Missing Features
 
