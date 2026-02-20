@@ -32,7 +32,9 @@ type User struct {
 }
 
 func main() {
-	config := &sqldb.Config{
+	ctx := context.Background()
+
+	config := &sqldb.ConnConfig{
 		Driver:   "postgres",
 		Host:     "localhost",
 		User:     "postgres",
@@ -42,65 +44,55 @@ func main() {
 
 	fmt.Println("Connecting to:", config)
 
-	conn, err := pqconn.New(context.Background(), config)
+	conn, err := pqconn.ConnectExt(ctx, config, sqldb.NewTaggedStructReflector())
 	if err != nil {
 		panic(err)
 	}
 
-	conn = conn.WithStructFieldMapper(&sqldb.TaggedStructReflector{
+	// Or use a custom struct reflector
+	conn, err = pqconn.ConnectExt(ctx, config, &sqldb.TaggedStructReflector{
 		NameTag:          "col",
 		Ignore:           "ignore",
 		UntaggedNameFunc: sqldb.ToSnakeCase,
 	})
-
-	var users []User
-	err = conn.QueryRows(`select * from public.user`).ScanStructSlice(&users)
 	if err != nil {
 		panic(err)
 	}
 
-	var userEmails []string
-	err = conn.QueryRows(`select email from public.user`).ScanSlice(&userEmails)
+	// Query all users as struct slice
+	users, err := sqldb.QueryRowsAsSlice[User](ctx, conn, `select * from public.user`)
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println(users)
 
-	err = conn.QueryRows(`select name, email from public.user`).ForEachRow(
-		func(row sqldb.RowScanner) error {
-			var name, email string
-			err := row.Scan(&name, &email)
-			if err != nil {
-				return err
-			}
-			_, err = fmt.Printf("%q <%s>\n", name, email)
-			return err
-		},
-	)
+	// Query single column as slice
+	userEmails, err := sqldb.QueryRowsAsSlice[string](ctx, conn, `select email from public.user`)
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println(userEmails)
 
-	err = conn.QueryRows(`select name, email from public.user`).ForEachRowCall(
+	// Callback with scanned values for each row
+	err = sqldb.QueryCallback(ctx, conn,
 		func(name, email string) {
 			fmt.Printf("%q <%s>\n", name, email)
 		},
+		`select name, email from public.user`,
 	)
 	if err != nil {
 		panic(err)
 	}
 
+	// Insert a struct with table name from struct tag
 	newUser := &User{ /* ... */ }
-	err = db.InsertRowStruct(ctx, newUser)
+	err = sqldb.InsertRowStruct(ctx, conn, newUser)
 	if err != nil {
 		panic(err)
 	}
 
-	err = conn.InsertStruct("public.user", newUser, sqldb.IgnoreNullOrZeroDefault)
-	if err != nil {
-		panic(err)
-	}
-
-	err = conn.InsertStruct(sqldb.Values{
+	// Insert with values map
+	err = sqldb.Insert(ctx, conn, "public.user", sqldb.Values{
 		"name":  "Erik Unger",
 		"email": "erik@domonda.com",
 	})
@@ -108,36 +100,40 @@ func main() {
 		panic(err)
 	}
 
-	err = conn.UpsertStruct("public.user", newUser, sqldb.IgnoreColumns("created_at"))
+	// Upsert a struct
+	err = sqldb.UpsertStruct(ctx, conn, newUser, sqldb.IgnoreColumns("created_at"))
 	if err != nil {
 		panic(err)
 	}
 
+	// Transaction with ConnExt
 	txOpts := &sql.TxOptions{Isolation: sql.LevelWriteCommitted}
 
-	err = sqldb.Transaction(conn, txOpts, func(tx sqldb.Connection) error {
-		err := tx.Exec("...")
+	err = sqldb.TransactionExt(ctx, conn, txOpts, func(tx *sqldb.ConnExt) error {
+		err := tx.Exec(ctx, "...")
 		if err != nil {
 			return err
 		}
-		return tx.Exec("...")
+		return tx.Exec(ctx, "...")
 	})
 	if err != nil {
 		panic(err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	// Use context with timeout
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	err = conn.WithContext(ctx).Exec("...")
+	err = conn.Exec(ctxTimeout, "...")
 	if err != nil {
 		panic(err)
 	}
 
+	// HTTP handler using request context
 	_ = http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		err := conn.WithContext(request.Context()).Exec("...")
+		err := conn.Exec(request.Context(), "...")
 		if err != nil {
-			http.Error(response, err.Error(), http.StatusInternalServerError)
+			http.Error(response, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		response.Write([]byte("OK"))
@@ -173,7 +169,7 @@ func GetUserOrNil(ctx context.Context, userID uu.ID) (user *User, err error) {
 	err = db.QueryRow(ctx,
 		`select * from public.user where id = $1`,
 		userID,
-	).ScanStruct(&user)
+	).Scan(&user)
 	if err != nil {
 		return nil, db.ReplaceErrNoRows(err, nil)
 	}
