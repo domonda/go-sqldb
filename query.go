@@ -152,7 +152,6 @@ func QueryRowAsMap[K ~string, V any](ctx context.Context, c *ConnExt, query stri
 
 // QueryRowsAsSlice returns queried rows as slice of the generic type T
 // using the passed reflector to scan column values as struct fields.
-// QueryRowsAsSlice returns queried rows as slice of the generic type T.
 func QueryRowsAsSlice[T any](ctx context.Context, c *ConnExt, query string, args ...any) (rows []T, err error) {
 	sqlRows := c.Query(ctx, query, args...)
 	defer func() {
@@ -266,7 +265,7 @@ func QueryCallback(ctx context.Context, c *ConnExt, callback any, query string, 
 		return fmt.Errorf("QueryCallback expected callback function, got %s", typ)
 	}
 	if typ.IsVariadic() {
-		return fmt.Errorf("QueryCallback callback function must not be varidic: %s", typ)
+		return fmt.Errorf("QueryCallback callback function must not be variadic: %s", typ)
 	}
 	if typ.NumIn() == 0 || (typ.NumIn() == 1 && typ.In(0) == typeOfContext) {
 		return fmt.Errorf("QueryCallback callback function has no arguments: %s", typ)

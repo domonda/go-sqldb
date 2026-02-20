@@ -53,7 +53,7 @@ func MustConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflect
 }
 
 // NewConnExt creates a new sqldb.ConnExt with MSSQL-specific components.
-// It combines the passed connection and struct reflector with MySQL
+// It combines the passed connection and struct reflector with MSSQL
 // specific QueryFormatter and QueryBuilder.
 func NewConnExt(conn sqldb.Connection, structReflector sqldb.StructReflector) *sqldb.ConnExt {
 	return sqldb.NewConnExt(

@@ -9,7 +9,7 @@ import (
 )
 
 // StructReflector is used to map struct type fields to column names
-// and indicate special column properies via flags.
+// and indicate special column properties via flags.
 type StructReflector interface {
 	// TableNameForStruct returns the table name for a struct type
 	TableNameForStruct(t reflect.Type) (table string, err error)
@@ -116,5 +116,5 @@ func IgnoreStructField(string) string { return "" }
 // by lower casing everything and inserting '_'
 // before every new upper case character in s.
 // Whitespace, symbol, and punctuation characters
-// will be replace by '_'.
+// will be replaced by '_'.
 var ToSnakeCase = strutil.ToSnakeCase

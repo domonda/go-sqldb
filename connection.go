@@ -79,7 +79,7 @@ type Connection interface {
 	// The passed id and opts will be returned from the transaction's
 	// Connection.Transaction method as TransactionState.
 	// Implementations should use the function NextTransactionID
-	// to aquire a new ID in a threadsafe way.
+	// to acquire a new ID in a threadsafe way.
 	Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (Connection, error)
 
 	// Commit the current transaction.

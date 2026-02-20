@@ -18,11 +18,11 @@ type QueryRecordings struct {
 }
 
 // MockConn implements the ListenerConnection interface
-// with mock fuctions for testing.
+// with mock functions for testing.
 //
 // Methods where the corresponding mock function is nil
 // return sane defaults and no errors,
-// exept for methods with a context argument
+// except for methods with a context argument
 // where the context error is returned.
 //
 // If QueryFormatter is nil, StdQueryFormatter is used.

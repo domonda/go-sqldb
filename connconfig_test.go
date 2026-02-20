@@ -37,8 +37,8 @@ func TestParseConnConfig(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.Equal(t, tt.want, got)
-			assert.Equal(t, tt.uri, got.URL().String(), "convertig back to URI should match original")
-			assert.Equal(t, tt.wantURIWithoutPassword, got.String(), "convertig back to URI without password")
+			assert.Equal(t, tt.uri, got.URL().String(), "converting back to URI should match original")
+			assert.Equal(t, tt.wantURIWithoutPassword, got.String(), "converting back to URI without password")
 		})
 	}
 }

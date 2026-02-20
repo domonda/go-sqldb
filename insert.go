@@ -158,7 +158,7 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, c *ConnExt,
 // 	return stmtFunc, stmt.Close, nil
 // }
 
-// InsertUniqueRowStruct inserts a new row with unique private key.
+// InsertUniqueRowStruct inserts a new row with unique primary key.
 // Optional ColumnFilter can be passed to ignore mapped columns.
 // Does nothing if the onConflict statement applies
 // and returns true if a row was inserted.

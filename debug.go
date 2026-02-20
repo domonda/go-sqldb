@@ -33,7 +33,7 @@ func DebugPrintConn(ctx context.Context, conn Connection, args ...any) {
 }
 
 // TxOptionsString returns a string representing the
-// passed TxOptions wich will be empty for the default options.
+// passed TxOptions which will be empty for the default options.
 func TxOptionsString(opts *sql.TxOptions) string {
 	switch {
 	case opts == nil:

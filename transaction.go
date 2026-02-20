@@ -22,11 +22,11 @@ func NextTransactionID() uint64 {
 // Transaction executes txFunc within a database transaction that is passed in to txFunc as tx Connection.
 // Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx Connection
-// and no parentConn.Begin, Commit, or Rollback calls will occour within this Transaction call.
+// and no parentConn.Begin, Commit, or Rollback calls will occur within this Transaction call.
 // An error is returned, if the requested transaction options passed via opts
 // are stricter than the options of the parent transaction.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
-// Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
+// Recovered panics are re-panicked and rollback errors after a panic are logged with ErrLogger.
 func Transaction(ctx context.Context, parentConn Connection, opts *sql.TxOptions, txFunc func(tx Connection) error) error {
 	if tx := parentConn.Transaction(); tx.Active() {
 		// Don't start a new transaction if the parent is already a transaction
@@ -43,7 +43,7 @@ func Transaction(ctx context.Context, parentConn Connection, opts *sql.TxOptions
 // IsolatedTransaction returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, a brand new transaction will begin on the parent's connection.
 // Errors and panics from txFunc will rollback the transaction.
-// Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
+// Recovered panics are re-panicked and rollback errors after a panic are logged with ErrLogger.
 func IsolatedTransaction(ctx context.Context, parentConn Connection, opts *sql.TxOptions, txFunc func(tx Connection) error) (err error) {
 	id := NextTransactionID()
 	tx, e := parentConn.Begin(ctx, id, opts)
@@ -108,7 +108,7 @@ func CheckTxOptionsCompatibility(parent, child *sql.TxOptions, defaultIsolation 
 		return errors.New("parent transaction is read-only but child is not")
 	}
 	if parentIsolation < childIsolation {
-		return fmt.Errorf("parent transaction isolation level '%s' is less strict child level '%s'", parentIsolation, childIsolation)
+		return fmt.Errorf("parent transaction isolation level '%s' is less strict than child level '%s'", parentIsolation, childIsolation)
 	}
 	return nil
 }

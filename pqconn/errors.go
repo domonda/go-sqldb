@@ -156,7 +156,7 @@ func IsRaisedException(err error) bool {
 }
 
 // GetRaisedException returns the message
-// of an PL/pgSQL exception or and empty string
+// of a PL/pgSQL exception or an empty string
 // if the error is nil or not an exception.
 func GetRaisedException(err error) string {
 	var e *pq.Error

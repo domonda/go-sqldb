@@ -62,7 +62,7 @@ func ConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector s
 // and github.com/lib/pq as driver implementation.
 // The connection is pinged with the passed context and only returned
 // when there was no error from the ping.
-// Errors are paniced.
+// Errors are panicked.
 func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
 	conn, err := Connect(ctx, config)
 	if err != nil {

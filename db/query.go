@@ -69,7 +69,6 @@ func QueryRowAsMap[K ~string, V any](ctx context.Context, query string, args ...
 
 // QueryRowsAsSlice returns queried rows as slice of the generic type T
 // using a reflector from the context to scan column values as struct fields.
-// QueryRowsAsSlice returns queried rows as slice of the generic type T.
 func QueryRowsAsSlice[T any](ctx context.Context, query string, args ...any) (rows []T, err error) {
 	return sqldb.QueryRowsAsSlice[T](ctx, Conn(ctx), query, args...)
 }

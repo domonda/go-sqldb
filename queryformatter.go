@@ -12,7 +12,7 @@ var DefaultQueryFormatter QueryFormatter = StdQueryFormatter{}
 // QueryFormatter has methods for formatting parts
 // of a query dependent on the database driver.
 type QueryFormatter interface {
-	// FormatTableName formats the name of a name or view
+	// FormatTableName formats the name of a table or view
 	// using quotes or escape characters if necessary.
 	FormatTableName(name string) (string, error)
 
@@ -33,7 +33,7 @@ type StdQueryFormatter struct {
 	// PlaceholderPosPrefix is prefixed before
 	// the one based placeholder position number in queries.
 	// If empty, the default placeholder `?` is used
-	// witout a position number is used.
+	// without a position number.
 	//
 	// Positional placeholder formats for different databases:
 	//   MySQL: ?

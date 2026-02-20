@@ -226,7 +226,7 @@ func NewTypeMapper() *db.StagedTypeMapper {
 			reflect.Uint8:   "smallint",
 			reflect.Uint16:  "integer",
 			reflect.Uint32:  "bigint",
-			reflect.Uint64:  "bigint", // 64 unsinged integer does not fit completely into signed bigint
+			reflect.Uint64:  "bigint", // 64 unsigned integer does not fit completely into signed bigint
 			reflect.Float32: "float4",
 			reflect.Float64: "float8",
 			reflect.String:  "text",

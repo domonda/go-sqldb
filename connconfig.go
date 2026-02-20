@@ -143,8 +143,6 @@ func (c *ConnConfig) URL() *url.URL {
 //   - MaxOpenConns
 //   - MaxIdleConns
 //   - ConnMaxLifetime
-//   - DefaultIsolationLevel
-//   - Err
 //
 // See also [ParseConnConfig]
 func (c *ConnConfig) String() string {

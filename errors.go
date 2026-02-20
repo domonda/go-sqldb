@@ -27,7 +27,7 @@ func IsOtherThanErrNoRows(err error) bool {
 //
 // Example:
 //
-//	const ErrUserNotFound impl.sentinelError = "user not found"
+//	const ErrUserNotFound sentinelError = "user not found"
 type sentinelError string
 
 func (s sentinelError) Error() string {
@@ -45,7 +45,7 @@ const (
 	ErrWithinTransaction sentinelError = "within a transaction"
 
 	// ErrNotWithinTransaction is returned by methods
-	// that are are only allowed within DB transactions
+	// that are only allowed within DB transactions
 	// when the DB connection is not a transaction.
 	ErrNotWithinTransaction sentinelError = "not within a transaction"
 
@@ -161,7 +161,7 @@ func (e ErrExclusionViolation) Unwrap() error {
 	return ErrIntegrityConstraintViolation{Constraint: e.Constraint}
 }
 
-// WrapErrorWithQuery wraps an errors with a formatted query
+// WrapErrorWithQuery wraps an error with a formatted query
 // if the error was not already wrapped with a query.
 // If the passed error is nil, then nil will be returned.
 func WrapErrorWithQuery(err error, query string, args []any, queryFmt QueryFormatter) error {

@@ -24,7 +24,7 @@ func (n *Nullable[T]) Scan(value any) error {
 	return nil
 }
 
-// Value implements the driver sql/driver.Valuer interface.
+// Value implements the sql/driver.Valuer interface.
 func (n Nullable[T]) Value() (driver.Value, error) {
 	if !n.Valid {
 		return nil, nil

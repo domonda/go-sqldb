@@ -62,7 +62,7 @@ func UpdateStruct(ctx context.Context, c *ConnExt, table string, rowStruct any, 
 	}
 	switch {
 	case v.Kind() == reflect.Pointer && v.IsNil():
-		return fmt.Errorf("UpdateStruct of table %s: can't insert nil", table)
+		return fmt.Errorf("UpdateStruct of table %s: can't update nil", table)
 	case v.Kind() != reflect.Struct:
 		return fmt.Errorf("UpdateStruct of table %s: expected struct but got %T", table, rowStruct)
 	}

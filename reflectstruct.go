@@ -116,16 +116,16 @@ func ReflectStructValues(structVal reflect.Value, reflector StructReflector, opt
 	return values
 }
 
-func ReflectStructColumns(structType reflect.Type, reflctor StructReflector, options ...QueryOption) (columns []ColumnInfo) {
+func ReflectStructColumns(structType reflect.Type, reflector StructReflector, options ...QueryOption) (columns []ColumnInfo) {
 	for i := 0; i < structType.NumField(); i++ {
 		structField := structType.Field(i)
-		column, use := reflctor.MapStructField(structField)
+		column, use := reflector.MapStructField(structField)
 		if !use {
 			continue
 		}
 
 		if column.IsEmbeddedField() {
-			columnsEmbed := ReflectStructColumns(structField.Type, reflctor, options...)
+			columnsEmbed := ReflectStructColumns(structField.Type, reflector, options...)
 			columns = append(columns, columnsEmbed...)
 			continue
 		}
@@ -139,17 +139,17 @@ func ReflectStructColumns(structType reflect.Type, reflctor StructReflector, opt
 	return columns
 }
 
-func ReflectStructColumnsAndFields(structVal reflect.Value, reflctor StructReflector, options ...QueryOption) (columns []ColumnInfo, fields []reflect.Type) {
+func ReflectStructColumnsAndFields(structVal reflect.Value, reflector StructReflector, options ...QueryOption) (columns []ColumnInfo, fields []reflect.Type) {
 	for i := 0; i < structVal.NumField(); i++ {
 		structField := structVal.Type().Field(i)
-		column, use := reflctor.MapStructField(structField)
+		column, use := reflector.MapStructField(structField)
 		if !use {
 			continue
 		}
 		fieldValue := structVal.Field(i)
 
 		if column.IsEmbeddedField() {
-			columnsEmbed, fieldsEmbed := ReflectStructColumnsAndFields(fieldValue, reflctor, options...)
+			columnsEmbed, fieldsEmbed := ReflectStructColumnsAndFields(fieldValue, reflector, options...)
 			columns = append(columns, columnsEmbed...)
 			fields = append(fields, fieldsEmbed...)
 			continue

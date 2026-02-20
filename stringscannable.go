@@ -9,7 +9,7 @@ import "fmt"
 // all other types are converted with fmt.Sprint(src).
 type StringScannable string
 
-// Scan implements implements the sql.Scanner interface
+// Scan implements the sql.Scanner interface
 // and converts all scanned values to string.
 // Byte slices will be interpreted as strings,
 // nil (SQL NULL) will be converted to an empty string,

@@ -56,7 +56,7 @@ func TestMain(m *testing.M) {
 
 	err = dropSchemaTables()
 	if err != nil {
-		log.Fatalf("Failed drop all user data before tests: %v", err)
+		log.Fatalf("Failed to drop all user data before tests: %v", err)
 	}
 
 	code := m.Run()
