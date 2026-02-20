@@ -4,9 +4,9 @@
 
 ### Moderate
 
-- [ ] **sqliteconn/transaction.go:87,103,111** — Nested savepoints all use hardcoded name `nested_tx`; multi-level nesting releases/rolls back wrong savepoint
-- [ ] **sqliteconn/connection.go** — `ctx context.Context` accepted but never used in `Exec`, `Query`, `Prepare`, `Begin`; context cancellation silently ignored
-- [ ] **cmd/sqldb-dump/sqldb-dump.go** — Won't compile: uses `sqldb.Config` (should be `ConnConfig`) and `pqconn.New` (should be `Connect`)
+- [x] **sqliteconn/transaction.go:87,103,111** — Nested savepoints all use hardcoded name `nested_tx`; multi-level nesting releases/rolls back wrong savepoint — Fixed: savepoint names now derived from transaction ID (`sp_{id}`)
+- [x] **sqliteconn/connection.go** — `ctx context.Context` accepted but never used in `Exec`, `Query`, `Prepare`, `Begin`; context cancellation silently ignored — Fixed: added `ctx.Err()` checks before operations in both connection and transaction
+- [x] **cmd/sqldb-dump/sqldb-dump.go** — Won't compile as part of workspace — Fixed: code already uses correct API types, added module to `go.work`
 
 ## Dead Code
 
@@ -151,16 +151,3 @@
   ```
 - [ ] **Struct reflection cache** — Only insert query caching exists (`insert.go:58`). No broader caching of `StructReflector` results for repeated struct types (see commit `090e73d1`)
 
-## Missing Godoc (Exported Symbols) — Done
-
-- [x] `ConnExt`, `NewConnExt`, `TransactionExt`, `TransactionResult`
-- [x] `TransactionState`, `TransactionState.Active()`
-- [x] `Stmt` interface, `NewStmt`, `NewUnpreparedStmt`
-- [x] `TableNameForStruct`, `ColumnInfo`
-- [x] `StdQueryBuilder` and all its methods
-- [x] `Nullable[T]`, `IsNullable`
-- [ ] `AnyValue`, `StringScannable`
-- [x] `db.ContextWithoutTransactions`, `db.IsContextWithoutTransactions`
-- [x] `db.QueryValueStmt`, `db.InsertRowStructStmt`
-- [x] `db.UpsertStruct`, `db.UpsertStructStmt`, `db.UpsertStructs`
-- [x] Most `information/` structs (`Schema`, `View`, `Column`, `Domain`, `CheckConstraints`, `PrimaryKeyColumn`)

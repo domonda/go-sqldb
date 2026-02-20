@@ -3,6 +3,7 @@ package sqliteconn
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"zombiezen.com/go/sqlite/sqlitex"
@@ -11,10 +12,10 @@ import (
 )
 
 type transaction struct {
-	parent   *connection
-	txOpts   *sql.TxOptions
-	txID     uint64
-	isNested bool // Whether this is a nested transaction (savepoint)
+	parent        *connection
+	txOpts        *sql.TxOptions
+	txID          uint64
+	savepointName string // Non-empty for nested transactions (savepoints)
 }
 
 func (conn *transaction) Config() *sqldb.ConnConfig {
@@ -30,6 +31,9 @@ func (t *transaction) Stats() sql.DBStats {
 }
 
 func (t *transaction) Exec(ctx context.Context, query string, args ...any) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	err := sqlitex.Execute(t.parent.conn, query, &sqlitex.ExecOptions{
 		Args: args,
 	})
@@ -40,6 +44,9 @@ func (t *transaction) Exec(ctx context.Context, query string, args ...any) error
 }
 
 func (t *transaction) Query(ctx context.Context, query string, args ...any) sqldb.Rows {
+	if err := ctx.Err(); err != nil {
+		return sqldb.NewErrRows(err)
+	}
 	stmt, err := t.parent.conn.Prepare(query)
 	if err != nil {
 		return sqldb.NewErrRows(wrapKnownErrors(err))
@@ -59,6 +66,9 @@ func (t *transaction) Query(ctx context.Context, query string, args ...any) sqld
 }
 
 func (t *transaction) Prepare(ctx context.Context, query string) (sqldb.Stmt, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	stmt, err := t.parent.conn.Prepare(query)
 	if err != nil {
 		return nil, wrapKnownErrors(err)
@@ -83,32 +93,33 @@ func (t *transaction) Transaction() sqldb.TransactionState {
 }
 
 func (t *transaction) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
-	// Nested transaction (savepoint)
-	err := sqlitex.ExecuteTransient(t.parent.conn, `SAVEPOINT nested_tx`, nil)
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	// Nested transaction using a savepoint with a unique name derived from the transaction ID
+	name := fmt.Sprintf("sp_%d", id)
+	err := sqlitex.ExecuteTransient(t.parent.conn, `SAVEPOINT `+name, nil)
 	if err != nil {
 		return nil, wrapKnownErrors(err)
 	}
-
 	return &transaction{
-		parent:   t.parent,
-		txOpts:   opts,
-		txID:     id,
-		isNested: true, // Mark as nested transaction
+		parent:        t.parent,
+		txOpts:        opts,
+		txID:          id,
+		savepointName: name,
 	}, nil
 }
 
 func (t *transaction) Commit() error {
-	// For nested transactions, use RELEASE SAVEPOINT instead of COMMIT
-	if t.isNested {
-		return sqlitex.ExecuteTransient(t.parent.conn, `RELEASE SAVEPOINT nested_tx`, nil)
+	if t.savepointName != "" {
+		return sqlitex.ExecuteTransient(t.parent.conn, `RELEASE SAVEPOINT `+t.savepointName, nil)
 	}
 	return sqlitex.ExecuteTransient(t.parent.conn, `COMMIT`, nil)
 }
 
 func (t *transaction) Rollback() error {
-	// For nested transactions, use ROLLBACK TO SAVEPOINT instead of ROLLBACK
-	if t.isNested {
-		return sqlitex.ExecuteTransient(t.parent.conn, `ROLLBACK TO SAVEPOINT nested_tx`, nil)
+	if t.savepointName != "" {
+		return sqlitex.ExecuteTransient(t.parent.conn, `ROLLBACK TO SAVEPOINT `+t.savepointName, nil)
 	}
 	return sqlitex.ExecuteTransient(t.parent.conn, `ROLLBACK`, nil)
 }

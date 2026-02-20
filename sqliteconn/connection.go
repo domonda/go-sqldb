@@ -134,6 +134,9 @@ func (c *connection) Stats() sql.DBStats {
 }
 
 func (c *connection) Exec(ctx context.Context, query string, args ...any) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	err := sqlitex.Execute(c.conn, query, &sqlitex.ExecOptions{
 		Args: args,
 	})
@@ -144,6 +147,9 @@ func (c *connection) Exec(ctx context.Context, query string, args ...any) error 
 }
 
 func (c *connection) Query(ctx context.Context, query string, args ...any) sqldb.Rows {
+	if err := ctx.Err(); err != nil {
+		return sqldb.NewErrRows(err)
+	}
 	stmt, err := c.conn.Prepare(query)
 	if err != nil {
 		return sqldb.NewErrRows(wrapKnownErrors(err))
@@ -163,6 +169,9 @@ func (c *connection) Query(ctx context.Context, query string, args ...any) sqldb
 }
 
 func (c *connection) Prepare(ctx context.Context, query string) (sqldb.Stmt, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	stmt, err := c.conn.Prepare(query)
 	if err != nil {
 		return nil, wrapKnownErrors(err)
@@ -176,6 +185,9 @@ func (c *connection) Prepare(ctx context.Context, query string) (sqldb.Stmt, err
 }
 
 func (c *connection) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	// Start a transaction
 	immediate := false
 	if opts != nil && opts.Isolation >= sql.LevelReadCommitted {
