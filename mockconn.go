@@ -115,7 +115,7 @@ func (c *MockConn) Ping(ctx context.Context, timeout time.Duration) error {
 }
 
 func (c *MockConn) Stats() sql.DBStats {
-	if c.MockPing == nil {
+	if c.MockStats == nil {
 		return sql.DBStats{}
 	}
 	return c.MockStats()
@@ -288,10 +288,10 @@ func (c *MockConn) Rollback() error {
 		}
 	}
 
-	if c.MockCommit == nil {
+	if c.MockRollback == nil {
 		return nil
 	}
-	return c.MockCommit()
+	return c.MockRollback()
 }
 
 func (c *MockConn) ListenOnChannel(channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error {

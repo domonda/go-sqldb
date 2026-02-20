@@ -26,7 +26,7 @@ func (y *YesNo) Scan(value any) error {
 		case "YES":
 			*y = true
 		case "NO":
-			*y = true
+			*y = false
 		default:
 			return fmt.Errorf("can't scan SQL value %q as YesNo", value)
 		}
