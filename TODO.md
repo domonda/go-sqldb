@@ -107,11 +107,11 @@
 
 ### `pqconn/` Package
 
-- [ ] **Error predicates** — All 16 `Is*` functions need unit tests with synthetic `*pq.Error` values
+- [x] **Error predicates** — All 16 `Is*` functions need unit tests with synthetic `*pq.Error` values
 - [ ] **pqconn/test** — `TestDatabase` is a stub with no assertions
-- [ ] `QueryFormatter.FormatPlaceholder` — Panic on negative index untested
-- [ ] `QueryFormatter.FormatStringLiteral`, `NewTypeMapper`
-- [ ] `Connect` — Driver validation path untested
+- [x] `QueryFormatter.FormatPlaceholder` — Panic on negative index untested
+- [x] `QueryFormatter.FormatStringLiteral`, `NewTypeMapper`
+- [x] `Connect` — Driver validation path untested
 
 ### `mysqlconn/` Package — Zero Tests
 
