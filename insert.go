@@ -205,17 +205,17 @@ func InsertRowStructs[S StructWithTableName](ctx context.Context, c *ConnExt, ro
 	case 1:
 		return InsertRowStruct(ctx, c, rowStructs[0], options...)
 	}
-	return Transaction(ctx, c, nil, func(tx Connection) (e error) {
-		insert, done, err := InsertRowStructStmt[S](ctx, c, options...)
-		if err != nil {
-			return err
+	return TransactionExt(ctx, c, nil, func(tx *ConnExt) (err error) {
+		insertFunc, done, stmtErr := InsertRowStructStmt[S](ctx, tx, options...)
+		if stmtErr != nil {
+			return stmtErr
 		}
 		defer func() {
-			e = errors.Join(e, done())
+			err = errors.Join(err, done())
 		}()
 
 		for _, rowStruct := range rowStructs {
-			err = insert(ctx, rowStruct)
+			err = insertFunc(ctx, rowStruct)
 			if err != nil {
 				return err
 			}

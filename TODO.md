@@ -4,11 +4,7 @@
 
 ### Critical
 
-- [x] **mockconn.go:291** — `Rollback()` called `MockCommit` instead of `MockRollback`
-- [x] **mockconn.go:118** — `Stats()` guarded on `MockPing` instead of `MockStats`
-- [x] **information/types.go:29** — `YesNo.Scan` set `true` for `"NO"` (now sets `false`)
 - [ ] **information/view.go** — `View` struct is copy-paste of `Schema`; fields map to `information_schema.schemata`, not `information_schema.views`
-- [ ] **insert.go:200-225** — `InsertRowStructs` uses outer connection `c`, not the transaction `tx`; prepared statement runs outside the transaction. Same bug in `upsert.go:98` (`UpsertStructs`)
 - [ ] **scan.go:67** — `ScanDriverValue` calls `reflect.ValueOf(destPtr).SetBool(src)` on pointer instead of dereferenced value; will panic at runtime. Should be `dest.SetBool(src)`
 - [ ] **debug.go:26** — `conn.Query(...).Scan(&t)` called without `Next()` first, rows never closed
 

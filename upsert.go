@@ -95,13 +95,13 @@ func UpsertStructs[S StructWithTableName](ctx context.Context, c *ConnExt, rowSt
 	case 1:
 		return UpsertStruct(ctx, c, rowStructs[0], options...)
 	}
-	return Transaction(ctx, c, nil, func(tx Connection) (e error) {
-		upsertFunc, closeFunc, err := UpsertStructStmt[S](ctx, c, options...)
-		if err != nil {
-			return err
+	return TransactionExt(ctx, c, nil, func(tx *ConnExt) (err error) {
+		upsertFunc, closeFunc, stmtErr := UpsertStructStmt[S](ctx, tx, options...)
+		if stmtErr != nil {
+			return stmtErr
 		}
 		defer func() {
-			e = errors.Join(e, closeFunc())
+			err = errors.Join(err, closeFunc())
 		}()
 
 		for _, rowStruct := range rowStructs {
