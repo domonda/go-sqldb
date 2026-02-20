@@ -72,13 +72,13 @@
 
 ### High Priority — Important Public API
 
-- [ ] **queryformatter.go** — `StdQueryFormatter` methods untested: `FormatTableName`, `FormatColumnName`, `FormatPlaceholder`, `FormatStringLiteral`
-- [ ] **pqconn/errors.go** — All 16 error-predicate functions untested (`IsUniqueViolation`, `IsForeignKeyViolation`, `IsSerializationFailure`, etc.). Can be tested with synthetic `*pq.Error` values
-- [ ] **connconfig.go** — `ConnConfig.Validate()` untested; `ParseConnConfig` has only one happy-path test case
-- [ ] **queryoption.go** — `IgnoreColumns`, `OnlyColumns`, `IgnoreStructFields`, `OnlyStructFields`, `QueryOptionsIgnoreColumn` all untested
-- [ ] **format.go** — `QuoteLiteral` untested (backslash `E'...'` path); `FormatQuery` only tests numbered placeholders, not uniform (`?`)
-- [ ] **nullable.go** — `Nullable[T].Scan`, `Nullable[T].Value`, `IsNullable` untested
-- [ ] **debug.go** — `TxOptionsString` (4-branch function), `FprintTable` (unicode-aware padding) untested
+- [x] **queryformatter.go** — `StdQueryFormatter` methods untested: `FormatTableName`, `FormatColumnName`, `FormatPlaceholder`, `FormatStringLiteral`
+- [x] **pqconn/errors.go** — All 16 error-predicate functions untested (`IsUniqueViolation`, `IsForeignKeyViolation`, `IsSerializationFailure`, etc.). Can be tested with synthetic `*pq.Error` values
+- [x] **connconfig.go** — `ConnConfig.Validate()` untested; `ParseConnConfig` has only one happy-path test case
+- [x] **queryoption.go** — `IgnoreColumns`, `OnlyColumns`, `IgnoreStructFields`, `OnlyStructFields`, `QueryOptionsIgnoreColumn` all untested
+- [x] **format.go** — `QuoteLiteral` untested (backslash `E'...'` path); `FormatQuery` only tests numbered placeholders, not uniform (`?`)
+- [x] **nullable.go** — `Nullable[T].Scan`, `Nullable[T].Value`, `IsNullable` untested
+- [x] **debug.go** — `TxOptionsString` (4-branch function), `FprintTable` (unicode-aware padding) untested
 
 ### Root `sqldb` Package — Untested Functions
 
