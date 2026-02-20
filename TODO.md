@@ -2,12 +2,6 @@
 
 ## Bugs
 
-### Moderate
-
-- [x] **sqliteconn/transaction.go:87,103,111** — Nested savepoints all use hardcoded name `nested_tx`; multi-level nesting releases/rolls back wrong savepoint — Fixed: savepoint names now derived from transaction ID (`sp_{id}`)
-- [x] **sqliteconn/connection.go** — `ctx context.Context` accepted but never used in `Exec`, `Query`, `Prepare`, `Begin`; context cancellation silently ignored — Fixed: added `ctx.Err()` checks before operations in both connection and transaction
-- [x] **cmd/sqldb-dump/sqldb-dump.go** — Won't compile as part of workspace — Fixed: code already uses correct API types, added module to `go.work`
-
 ## Dead Code
 
 - [ ] **_mockconn/** — Entire package mostly commented out, won't compile, underscore prefix hides from `go build`. Decide: restore or delete
@@ -67,19 +61,14 @@
 - [ ] **sqliteconn** — No `driver.Valuer`/`sql.Scanner` support in argument binding or result scanning
 - [ ] **sqliteconn/README.md** — Examples show `Connect(ctx, config)` but actual signature is `Connect(config)`
 
-## Other
-
-- [x] **db/upsert.go:9** — `UpsertStruct` godoc is `// UpsertStruct TODO` — Fixed: added proper godoc
-- [ ] **information/primarykeys.go:149,153** — HTTP handler returns actual `err.Error()` as 500 response
-
 ## Testing
 
 ### Critical — Core Logic With Zero Tests
 
-- [ ] **querybuilder.go** — `StdQueryBuilder` has zero tests for all 6 SQL-generating methods: `QueryRowWithPK`, `Insert`, `InsertUnique`, `Upsert`, `Update`, `UpdateColumns`
-- [ ] **reflectstruct.go** — All 6 exported `Reflect*` functions untested: `PrimaryKeyColumnsOfStruct`, `ReflectStructColumnsAndValues`, `ReflectStructColumnsFieldIndicesAndValues`, `ReflectStructValues`, `ReflectStructColumns`, `ReflectStructColumnPointers`. Note: `scanstruct_test.go` exists but is entirely commented out
-- [ ] **scan.go** — `ScanDriverValue` untested; wide type-switching function covering bool, float64, int64, string, []byte, time.Time
-- [ ] **row.go** — `Row.Scan` (struct-detection logic), `Row.ScanValues`, `Row.ScanStrings` all untested
+- [x] **querybuilder.go** — `StdQueryBuilder` has zero tests for all 6 SQL-generating methods: `QueryRowWithPK`, `Insert`, `InsertUnique`, `Upsert`, `Update`, `UpdateColumns`
+- [x] **scan.go** — `ScanDriverValue` untested; wide type-switching function covering bool, float64, int64, string, []byte, time.Time
+- [x] **row.go** — `Row.Scan` (struct-detection logic), `Row.ScanValues`, `Row.ScanStrings` all untested
+- [x] **reflectstruct.go** — All 6 exported `Reflect*` functions untested: `PrimaryKeyColumnsOfStruct`, `ReflectStructColumnsAndValues`, `ReflectStructColumnsFieldIndicesAndValues`, `ReflectStructValues`, `ReflectStructColumns`, `ReflectStructColumnPointers`. Note: `scanstruct_test.go` exists but is entirely commented out
 
 ### High Priority — Important Public API
 
