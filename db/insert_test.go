@@ -76,6 +76,122 @@ func TestInsertRowStruct(t *testing.T) {
 	}
 }
 
+func TestInsertRowStruct_CacheWithoutOptions(t *testing.T) {
+	// Use a unique struct type so the global cache doesn't
+	// interfere with other tests or get influenced by them.
+	type CacheTestStruct struct {
+		sqldb.TableName `db:"cache_table"`
+		ID              int    `db:"id"`
+		Name            string `db:"name"`
+		Extra           string `db:"extra"`
+	}
+
+	mock := sqldb.NewMockConn("$", nil, nil)
+	config := sqldb.NewConnExt(
+		mock,
+		sqldb.NewTaggedStructReflector(),
+		sqldb.NewQueryFormatter("$"),
+		sqldb.StdQueryBuilder{},
+	)
+	ctx := ContextWithConn(context.Background(), config)
+
+	// First call populates the cache
+	err := InsertRowStruct(ctx, &CacheTestStruct{ID: 1, Name: "first", Extra: "a"})
+	require.NoError(t, err)
+
+	// Second call should use the cached query with same columns
+	err = InsertRowStruct(ctx, &CacheTestStruct{ID: 2, Name: "second", Extra: "b"})
+	require.NoError(t, err)
+
+	require.Len(t, mock.Recordings.Execs, 2)
+	// Both calls must produce the same query
+	require.Equal(t, mock.Recordings.Execs[0].Query, mock.Recordings.Execs[1].Query)
+	// But different args
+	require.Equal(t, []any{1, "first", "a"}, mock.Recordings.Execs[0].Args)
+	require.Equal(t, []any{2, "second", "b"}, mock.Recordings.Execs[1].Args)
+}
+
+func TestInsertRowStruct_CacheBypassedWithOptions(t *testing.T) {
+	// Use a unique struct type so the global cache doesn't
+	// interfere with other tests or get influenced by them.
+	type OptionsCacheTestStruct struct {
+		sqldb.TableName `db:"options_cache_table"`
+		ID              int    `db:"id"`
+		Name            string `db:"name"`
+		Extra           string `db:"extra"`
+	}
+
+	mock := sqldb.NewMockConn("$", nil, nil)
+	config := sqldb.NewConnExt(
+		mock,
+		sqldb.NewTaggedStructReflector(),
+		sqldb.NewQueryFormatter("$"),
+		sqldb.StdQueryBuilder{},
+	)
+	ctx := ContextWithConn(context.Background(), config)
+
+	// First call without options — all columns
+	err := InsertRowStruct(ctx, &OptionsCacheTestStruct{ID: 1, Name: "first", Extra: "a"})
+	require.NoError(t, err)
+
+	// Second call with IgnoreColumns("extra") — should produce a different query
+	err = InsertRowStruct(ctx, &OptionsCacheTestStruct{ID: 2, Name: "second"}, sqldb.IgnoreColumns("extra"))
+	require.NoError(t, err)
+
+	require.Len(t, mock.Recordings.Execs, 2)
+	// First query has all 3 columns
+	require.Equal(t,
+		"INSERT INTO options_cache_table(id,name,extra) VALUES($1,$2,$3)",
+		mock.Recordings.Execs[0].Query,
+	)
+	// Second query has only 2 columns because "extra" was ignored
+	require.Equal(t,
+		"INSERT INTO options_cache_table(id,name) VALUES($1,$2)",
+		mock.Recordings.Execs[1].Query,
+	)
+}
+
+func TestInsertRowStruct_CacheNotPollutedByOptions(t *testing.T) {
+	// Use a unique struct type so the global cache doesn't
+	// interfere with other tests or get influenced by them.
+	type PollutionTestStruct struct {
+		sqldb.TableName `db:"pollution_table"`
+		ID              int    `db:"id"`
+		Name            string `db:"name"`
+		Extra           string `db:"extra"`
+	}
+
+	mock := sqldb.NewMockConn("$", nil, nil)
+	config := sqldb.NewConnExt(
+		mock,
+		sqldb.NewTaggedStructReflector(),
+		sqldb.NewQueryFormatter("$"),
+		sqldb.StdQueryBuilder{},
+	)
+	ctx := ContextWithConn(context.Background(), config)
+
+	// First call WITH options — should NOT populate the cache
+	err := InsertRowStruct(ctx, &PollutionTestStruct{ID: 1, Name: "first"}, sqldb.IgnoreColumns("extra"))
+	require.NoError(t, err)
+
+	// Second call WITHOUT options — should generate query with all columns,
+	// not reuse the filtered query from the first call
+	err = InsertRowStruct(ctx, &PollutionTestStruct{ID: 2, Name: "second", Extra: "b"})
+	require.NoError(t, err)
+
+	require.Len(t, mock.Recordings.Execs, 2)
+	// First query has 2 columns (extra was ignored)
+	require.Equal(t,
+		"INSERT INTO pollution_table(id,name) VALUES($1,$2)",
+		mock.Recordings.Execs[0].Query,
+	)
+	// Second query has all 3 columns — cache was not polluted
+	require.Equal(t,
+		"INSERT INTO pollution_table(id,name,extra) VALUES($1,$2,$3)",
+		mock.Recordings.Execs[1].Query,
+	)
+}
+
 func TestInsert(t *testing.T) {
 	timestamp := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 	tests := []struct {
