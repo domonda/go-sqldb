@@ -1,11 +1,11 @@
 module github.com/domonda/go-sqldb
 
-go 1.24.0
+go 1.24.6
 
 require (
 	github.com/DataDog/go-sqllexer v0.1.9
-	github.com/corazawaf/libinjection-go v0.2.2
-	github.com/domonda/go-types v0.0.0-20251108113343-9bda55002c13
+	github.com/corazawaf/libinjection-go v0.2.3
+	github.com/domonda/go-types v0.0.0-20260220135934-fbc645f0b26b
 	github.com/stretchr/testify v1.11.1
 )
 
