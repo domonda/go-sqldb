@@ -23,10 +23,16 @@ func DebugPrintConn(ctx context.Context, conn Connection, args ...any) {
 		}
 	}
 	var t time.Time
-	err := conn.Query(ctx, "SELECT CURRENT_TIMESTAMP").Scan(&t)
-	if err == nil {
-		args = append(args, "CURRENT_TIMESTAMP:", t)
-	} else {
+	rows := conn.Query(ctx, "SELECT CURRENT_TIMESTAMP")
+	defer rows.Close()
+	if rows.Next() {
+		err := rows.Scan(&t)
+		if err == nil {
+			args = append(args, "CURRENT_TIMESTAMP:", t)
+		} else {
+			args = append(args, "ERROR:", err)
+		}
+	} else if err := rows.Err(); err != nil {
 		args = append(args, "ERROR:", err)
 	}
 	fmt.Fprintln(os.Stderr, args...)

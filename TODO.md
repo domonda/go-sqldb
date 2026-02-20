@@ -4,9 +4,8 @@
 
 ### Critical
 
-- [x] **information/view.go** — `View` struct was copy-paste of `Schema`; now maps to `information_schema.views`
-- [ ] **scan.go:67** — `ScanDriverValue` calls `reflect.ValueOf(destPtr).SetBool(src)` on pointer instead of dereferenced value; will panic at runtime. Should be `dest.SetBool(src)`
-- [ ] **debug.go:26** — `conn.Query(...).Scan(&t)` called without `Next()` first, rows never closed
+- [x] **scan.go:67** — `ScanDriverValue` used `reflect.ValueOf(destPtr).SetBool(src)` instead of `dest.SetBool(src)`
+- [x] **debug.go:26** — `conn.Query(...).Scan(&t)` called without `Next()` first, rows never closed
 
 ### Moderate
 

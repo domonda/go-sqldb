@@ -64,7 +64,7 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 
 	case bool:
 		if dest.Kind() == reflect.Bool {
-			reflect.ValueOf(destPtr).SetBool(src)
+			dest.SetBool(src)
 			return nil
 		}
 
