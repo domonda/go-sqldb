@@ -11,19 +11,21 @@ import (
 )
 
 func main() {
-	config := &sqldb.Config{
+	config := &sqldb.ConnConfig{
 		Driver: "postgres",
 		Host:   "localhost",
 		User:   "postgres",
 		Extra:  map[string]string{"sslmode": "disable"},
 	}
 
-	conn, err := pqconn.New(context.Background(), config)
+	ctx := context.Background()
+
+	conn, err := pqconn.ConnectExt(ctx, config, sqldb.NewTaggedStructReflector())
 	if err != nil {
 		panic(err)
 	}
 
-	ctx := db.ContextWithConn(context.Background(), conn)
+	ctx = db.ContextWithConn(ctx, conn)
 
 	tables, err := information.GetAllTables(ctx)
 	if err != nil {
