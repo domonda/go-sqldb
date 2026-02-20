@@ -14,10 +14,15 @@ import (
 
 var noTransactionsCtxKey byte
 
+// ContextWithoutTransactions returns a context that signals
+// to [IsTransaction] and related functions that no transaction
+// should be used, even if the connection is within a transaction.
 func ContextWithoutTransactions(ctx context.Context) context.Context {
 	return context.WithValue(ctx, &noTransactionsCtxKey, struct{}{})
 }
 
+// IsContextWithoutTransactions returns true if the context
+// was created with [ContextWithoutTransactions].
 func IsContextWithoutTransactions(ctx context.Context) bool {
 	return ctx.Value(&noTransactionsCtxKey) != nil
 }

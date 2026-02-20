@@ -28,6 +28,8 @@ type TableName struct{}
 // HasTableName implements the StructWithTableName interface
 func (TableName) HasTableName() {}
 
+// TableNameForStruct returns the table name for a struct type
+// by looking for an embedded [TableName] field with the given tagKey.
 func TableNameForStruct(t reflect.Type, tagKey string) (table string, err error) {
 	structType := t
 	for structType.Kind() == reflect.Pointer {

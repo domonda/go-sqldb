@@ -21,8 +21,11 @@ type QueryBuilder interface {
 	UpdateColumns(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error)
 }
 
+// StdQueryBuilder is the default [QueryBuilder] implementation
+// that generates standard SQL queries.
 type StdQueryBuilder struct{}
 
+// QueryRowWithPK builds a SELECT * query filtered by primary key columns.
 func (StdQueryBuilder) QueryRowWithPK(formatter QueryFormatter, table string, pkColumns []string) (query string, err error) {
 	var q strings.Builder
 	table, err = formatter.FormatTableName(table)
@@ -44,6 +47,7 @@ func (StdQueryBuilder) QueryRowWithPK(formatter QueryFormatter, table string, pk
 	return q.String(), nil
 }
 
+// Insert builds an INSERT INTO query for the given table and columns.
 func (StdQueryBuilder) Insert(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error) {
 	var q strings.Builder
 	table, err = formatter.FormatTableName(table)
@@ -73,6 +77,8 @@ func (StdQueryBuilder) Insert(formatter QueryFormatter, table string, columns []
 	return q.String(), nil
 }
 
+// InsertUnique builds an INSERT query with ON CONFLICT DO NOTHING.
+// The onConflict string specifies the conflict target columns.
 func (b StdQueryBuilder) InsertUnique(formatter QueryFormatter, table string, columns []ColumnInfo, onConflict string) (query string, err error) {
 	var q strings.Builder
 	insert, err := b.Insert(formatter, table, columns)
@@ -87,6 +93,9 @@ func (b StdQueryBuilder) InsertUnique(formatter QueryFormatter, table string, co
 	return q.String(), nil
 }
 
+// Upsert builds an INSERT ... ON CONFLICT DO UPDATE SET query.
+// Primary key columns are used as the conflict target,
+// non-primary key columns are updated on conflict.
 func (b StdQueryBuilder) Upsert(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error) {
 	var q strings.Builder
 	insert, err := b.Insert(formatter, table, columns)
@@ -131,6 +140,9 @@ func (b StdQueryBuilder) Upsert(formatter QueryFormatter, table string, columns 
 	return q.String(), nil
 }
 
+// Update builds an UPDATE SET ... WHERE query.
+// The where clause uses placeholders starting at $1 for whereArgs.
+// The returned queryArgs combine whereArgs with the values.
 func (StdQueryBuilder) Update(formatter QueryFormatter, table string, values Values, where string, whereArgs []any) (query string, queryArgs []any, err error) {
 	var q strings.Builder
 	table, err = formatter.FormatTableName(table)
@@ -155,6 +167,8 @@ func (StdQueryBuilder) Update(formatter QueryFormatter, table string, values Val
 	return q.String(), append(whereArgs, vals...), nil
 }
 
+// UpdateColumns builds an UPDATE SET ... WHERE query using column metadata.
+// Primary key columns form the WHERE clause, non-primary key columns are SET.
 func (StdQueryBuilder) UpdateColumns(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error) {
 	var q strings.Builder
 	table, err = formatter.FormatTableName(table)

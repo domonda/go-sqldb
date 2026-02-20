@@ -8,8 +8,9 @@ import (
 	"slices"
 )
 
-// UpsertStruct TODO
-// If inserting conflicts on the primary key column(s), then an update is performed.
+// UpsertStruct inserts a new row or updates an existing one
+// if inserting conflicts on the primary key column(s).
+// The struct must have at least one field tagged as primary key.
 func UpsertStruct(ctx context.Context, c *ConnExt, rowStruct StructWithTableName, options ...QueryOption) error {
 	v, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
@@ -43,6 +44,9 @@ func UpsertStruct(ctx context.Context, c *ConnExt, rowStruct StructWithTableName
 	return nil
 }
 
+// UpsertStructStmt prepares a statement for upserting rows of type S.
+// Returns an upsert function to upsert individual rows and a done function
+// that must be called when done to close the prepared statement.
 func UpsertStructStmt[S StructWithTableName](ctx context.Context, c *ConnExt, options ...QueryOption) (upsert func(ctx context.Context, rowStruct S) error, done func() error, err error) {
 	structType := reflect.TypeFor[S]()
 	table, err := c.StructReflector.TableNameForStruct(structType)
@@ -88,6 +92,8 @@ func UpsertStructStmt[S StructWithTableName](ctx context.Context, c *ConnExt, op
 	return upsert, stmt.Close, nil
 }
 
+// UpsertStructs upserts a slice of structs within a transaction
+// using a prepared statement for efficiency.
 func UpsertStructs[S StructWithTableName](ctx context.Context, c *ConnExt, rowStructs []S, options ...QueryOption) error {
 	switch len(rowStructs) {
 	case 0:

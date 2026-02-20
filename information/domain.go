@@ -1,5 +1,6 @@
 package information
 
+// Domain maps a row from information_schema.domains.
 type Domain struct {
 	DomainCatalog          String `db:"domain_catalog"`
 	DomainSchema           String `db:"domain_schema"`

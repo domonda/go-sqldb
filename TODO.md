@@ -4,8 +4,6 @@
 
 ### Moderate
 
-- [x] **insert.go:58-61** — Query cache now skipped when caller-provided `QueryOption` parameters are passed
-- [x] **update.go:22** — Error wrapping now uses `vals` (all query args) instead of `args` (WHERE args only)
 - [ ] **sqliteconn/transaction.go:87,103,111** — Nested savepoints all use hardcoded name `nested_tx`; multi-level nesting releases/rolls back wrong savepoint
 - [ ] **sqliteconn/connection.go** — `ctx context.Context` accepted but never used in `Exec`, `Query`, `Prepare`, `Begin`; context cancellation silently ignored
 - [ ] **cmd/sqldb-dump/sqldb-dump.go** — Won't compile: uses `sqldb.Config` (should be `ConnConfig`) and `pqconn.New` (should be `Connect`)
@@ -71,7 +69,7 @@
 
 ## Other
 
-- [ ] **db/upsert.go:9** — `UpsertStruct` godoc is `// UpsertStruct TODO`
+- [x] **db/upsert.go:9** — `UpsertStruct` godoc is `// UpsertStruct TODO` — Fixed: added proper godoc
 - [ ] **information/primarykeys.go:149,153** — HTTP handler returns actual `err.Error()` as 500 response
 
 ## Testing
@@ -153,16 +151,16 @@
   ```
 - [ ] **Struct reflection cache** — Only insert query caching exists (`insert.go:58`). No broader caching of `StructReflector` results for repeated struct types (see commit `090e73d1`)
 
-## Missing Godoc (Exported Symbols)
+## Missing Godoc (Exported Symbols) — Done
 
-- [ ] `ConnExt`, `NewConnExt`, `TransactionExt`, `TransactionResult`
-- [ ] `TransactionState`, `TransactionState.Active()`
-- [ ] `Stmt` interface, `NewStmt`, `NewUnpreparedStmt`
-- [ ] `TableNameForStruct`, `ColumnInfo`
-- [ ] `StdQueryBuilder` and all its methods
-- [ ] `Nullable[T]`, `IsNullable`
+- [x] `ConnExt`, `NewConnExt`, `TransactionExt`, `TransactionResult`
+- [x] `TransactionState`, `TransactionState.Active()`
+- [x] `Stmt` interface, `NewStmt`, `NewUnpreparedStmt`
+- [x] `TableNameForStruct`, `ColumnInfo`
+- [x] `StdQueryBuilder` and all its methods
+- [x] `Nullable[T]`, `IsNullable`
 - [ ] `AnyValue`, `StringScannable`
-- [ ] `db.ContextWithoutTransactions`, `db.IsContextWithoutTransactions`
-- [ ] `db.QueryValueStmt`, `db.InsertRowStructStmt`
-- [ ] `db.UpsertStruct`, `db.UpsertStructStmt`, `db.UpsertStructs`
-- [ ] Most `information/` structs (`Schema`, `View`, `Column`, `Domain`, `CheckConstraints`, `PrimaryKeyColumn`)
+- [x] `db.ContextWithoutTransactions`, `db.IsContextWithoutTransactions`
+- [x] `db.QueryValueStmt`, `db.InsertRowStructStmt`
+- [x] `db.UpsertStruct`, `db.UpsertStructStmt`, `db.UpsertStructs`
+- [x] Most `information/` structs (`Schema`, `View`, `Column`, `Domain`, `CheckConstraints`, `PrimaryKeyColumn`)

@@ -1,5 +1,6 @@
 package information
 
+// View maps a row from information_schema.views.
 type View struct {
 	TableCatalog             String `db:"table_catalog"`
 	TableSchema              String `db:"table_schema"`

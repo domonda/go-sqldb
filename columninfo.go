@@ -1,5 +1,7 @@
 package sqldb
 
+// ColumnInfo holds metadata about a database column
+// as mapped from a Go struct field.
 type ColumnInfo struct {
 	Name       string
 	PrimaryKey bool

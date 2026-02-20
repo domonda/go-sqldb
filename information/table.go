@@ -7,6 +7,7 @@ import (
 	"github.com/domonda/go-sqldb/db"
 )
 
+// Table maps a row from information_schema.tables.
 type Table struct {
 	TableCatalog              String `db:"table_catalog"`
 	TableSchema               String `db:"table_schema"`

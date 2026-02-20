@@ -7,6 +7,7 @@ import (
 	"github.com/domonda/go-sqldb/db"
 )
 
+// Column maps a row from information_schema.columns.
 type Column struct {
 	TableCatalog           String `db:"table_catalog"`
 	TableSchema            String `db:"table_schema"`
@@ -54,6 +55,7 @@ type Column struct {
 	IsUpdatable            YesNo  `db:"is_updatable"`
 }
 
+// KeyColumnUsage maps a row from information_schema.key_column_usage.
 type KeyColumnUsage struct {
 	ConstraintCatalog          String `db:"constraint_catalog"`
 	ConstraintSchema           String `db:"constraint_schema"`

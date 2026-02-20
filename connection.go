@@ -14,11 +14,14 @@ type (
 	OnUnlistenFunc func(channel string)
 )
 
+// TransactionState holds the state of a database transaction.
+// A zero value TransactionState means no active transaction.
 type TransactionState struct {
 	ID   uint64
 	Opts *sql.TxOptions
 }
 
+// Active returns true if there is an active transaction (ID != 0).
 func (ts TransactionState) Active() bool {
 	return ts.ID != 0
 }

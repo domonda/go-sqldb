@@ -16,6 +16,8 @@ import (
 	"github.com/domonda/go-types/uu"
 )
 
+// PrimaryKeyColumn holds information about a primary key column
+// including whether it is also a foreign key.
 type PrimaryKeyColumn struct {
 	Table      string `db:"table"`
 	Column     string `db:"column"`

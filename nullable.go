@@ -5,6 +5,9 @@ import (
 	"reflect"
 )
 
+// Nullable wraps a value of type T that may be NULL in SQL.
+// Valid is true when Val holds a non-NULL scanned value.
+// Implements [sql.Scanner] and [driver.Valuer].
 type Nullable[T any] struct {
 	Val   T
 	Valid bool
@@ -74,6 +77,8 @@ func IsNullOrZero(val any) bool {
 	return reflect.ValueOf(val).IsZero()
 }
 
+// IsNullable returns true if the zero value of t
+// would be interpreted as SQL NULL by [IsNull].
 func IsNullable(t reflect.Type) bool {
 	return IsNull(reflect.Zero(t).Interface())
 }

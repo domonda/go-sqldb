@@ -39,6 +39,9 @@ func QueryValueOr[T any](ctx context.Context, defaultVal T, query string, args .
 	return sqldb.QueryValueOr(ctx, Conn(ctx), defaultVal, query, args...)
 }
 
+// QueryValueStmt prepares a statement that queries a single value of type T.
+// Returns a queryFunc to execute the query with different args each time
+// and a closeStmt function that must be called when done.
 func QueryValueStmt[T any](ctx context.Context, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
 	return sqldb.QueryValueStmt[T](ctx, Conn(ctx), query)
 }
