@@ -1,78 +1,118 @@
-# TODO - Unfinished Work in go-sqldb
+# go-sqldb TODO for v1.0
 
-## Major TODOs from README.md
+## Bugs
 
-- [ ] Test all pkg db functions
-- [ ] pkg information completion
-- [ ] Test pqconn with dockerized Postgres
-- [ ] Cache struct types (see commit 090e73d1d9db8534d2950dd7236d7ebe192cd512)
-- [ ] Std SQL driver for mocks
-- [ ] Smooth out listener for Postgres
-- [ ] SQLite integration https://github.com/zombiezen/go-sqlite
-- [ ] Bartch insert
-```go
-  func BatchInsert[T any](ctx context.Context, table string, items []T, 
-  batchSize int) error
-```
+### Critical
 
-## Code-Level TODOs and Missing Implementations
+- [ ] **mockconn.go:291** — `Rollback()` calls `MockCommit` instead of `MockRollback`
+- [ ] **mockconn.go:118** — `Stats()` guards on `MockPing` instead of `MockStats`
+- [ ] **information/types.go:29** — `YesNo.Scan` sets `true` for `"NO"` (should be `false`)
+- [ ] **information/view.go** — `View` struct is copy-paste of `Schema`; fields map to `information_schema.schemata`, not `information_schema.views`
+- [ ] **insert.go:200-225** — `InsertRowStructs` uses outer connection `c`, not the transaction `tx`; prepared statement runs outside the transaction. Same bug in `upsert.go:98` (`UpsertStructs`)
+- [ ] **scan.go:67** — `ScanDriverValue` calls `reflect.ValueOf(destPtr).SetBool(src)` on pointer instead of dereferenced value; will panic at runtime. Should be `dest.SetBool(src)`
+- [ ] **debug.go:26** — `conn.Query(...).Scan(&t)` called without `Next()` first, rows never closed
 
-### Performance Optimizations
+### Moderate
 
-- [ ] **db/insert.go:203** - `InsertRowStructs` missing optimized batch insert (currently processes one-by-one in transaction)
-- [ ] **db/insert.go:76** - Commented code for RETURNING clause needs error wrapping
-- [ ] **pqconn/arrays.go:128** - Array element scanning needs type conversion improvement for different element types
+- [ ] **insert.go:58-61** — Query cache ignores `QueryOption` parameters; first call's options determine cached query for all subsequent calls with different options
+- [ ] **update.go:22** — Error wrapping uses `args` (WHERE args only) instead of `vals` (all query args)
+- [ ] **sqliteconn/transaction.go:87,103,111** — Nested savepoints all use hardcoded name `nested_tx`; multi-level nesting releases/rolls back wrong savepoint
+- [ ] **sqliteconn/connection.go** — `ctx context.Context` accepted but never used in `Exec`, `Query`, `Prepare`, `Begin`; context cancellation silently ignored
+- [ ] **cmd/sqldb-dump/sqldb-dump.go** — Won't compile: uses `sqldb.Config` (should be `ConnConfig`) and `pqconn.New` (should be `Connect`)
 
-### Function Implementations
+## Dead Code
 
-- [ ] **db/insert.go:152** - Complete commented out `InsertStructStmt` function with TODO placeholder
-- [ ] **mssqlconn/queryformatter.go:11** - Allow spaces and other characters with backtick escaping
+- [ ] **_mockconn/** — Entire package mostly commented out, won't compile, underscore prefix hides from `go build`. Decide: restore or delete
+- [ ] **db/foreachrow.go** — Entire file commented out
+- [ ] **db/multirowscanner.go** — Entire file commented out
+- [ ] **db/scanresult.go** — Entire file commented out
+- [ ] **scanstruct_test.go** — Entire test commented out
+- [ ] **pqconn/arrays.go:61-131** — Large block of commented-out code
+- [ ] **db/insert.go:21-35,47-61** — Commented-out functions
+- [ ] **mysqlconn/mysql.go** — `validateColumnName` and `columnNameRegex` defined but never called
 
-### API Design Questions
+## API Design for v1.0
 
-- [ ] **db/scanresult.go:3** - Consider moving ScanResult to RowScanner interface
-- [ ] **db/multirowscanner.go:15,97** - Resolve API design questions about single vs multi-column scanning
-- [ ] **db/reflectstruct.go:168** - Clean up Connection implementation detail
+### Naming Inconsistencies
 
-## Missing Patterns
+- [ ] **"RowStruct" vs "Struct"** — Insert uses `InsertRowStruct`, `InsertRowStructs`; Update/Upsert use `UpdateStruct`, `UpsertStruct`. Pick one convention
+- [ ] **"Read" vs "Query"** — `QueryRow`, `QueryValue`, `QueryRowsAsSlice` use "Query" prefix; `ReadRowStructWithTableName` uses "Read". Same abstraction level, different prefix
+- [ ] **`ReadRowStructWithTableName`** — 29 chars. The `StructWithTableName` constraint already enforces table name. Could be `ReadRow[S]`
+- [ ] **Stmt close parameter names** — `closeStmt`, `closeFunc`, `done` across different Stmt-returning functions
 
-### 1. Batch Operations
-- Current `InsertRowStructs` processes items individually in a transaction
-- Need optimized batch INSERT statements that combine multiple structs
-- Consider maxArgs parameter limitations
+### Missing Symmetry
 
-### 2. RETURNING Clause Support
-- Commented implementation exists in insert.go:76
-- Need proper error wrapping for query execution
-- Should integrate with existing query building patterns
+- [ ] **No `UpdateRowStruct`** matching `InsertRowStruct`/`UpsertStruct` — `UpdateStruct` takes `(table string, rowStruct any)` while Insert/Upsert take `StructWithTableName` and derive the table
+- [ ] **No `Delete`/`DeleteRowStruct`** — Insert, Update, Upsert exist but Delete is missing from CRUD family
 
-### 3. Error Handling Standardization
-- Some query error wrapping is incomplete
-- Need consistent pattern across all database operations
+### Coupling
 
-### 4. Type Conversion Enhancement
-- Array scanning needs improvement for different element types
-- String-to-type conversion challenges in pqconn/arrays.go:128
+- [ ] **pqconn imports db** — `pqconn/queryformatter.go` imports `db` for `db.StagedTypeMapper` in `NewTypeMapper()`. Driver should not depend on the high-level convenience layer. Move `StagedTypeMapper`/`TypeMapper` to root `sqldb` package
+- [ ] **information imports db** — Could accept `*sqldb.ConnExt` directly instead of requiring global connection pattern
+- [ ] **ConnExt bundles 3 orthogonal concerns** — Connection (I/O) + StructReflector (Go reflection) + QueryFormatter/QueryBuilder (SQL text). Functions that only need one still carry all three
 
-## Key Areas for Completion
+### Patterns
 
-### High Priority
-1. **Performance Optimization**: Implement batch insert operations
-2. **Testing**: Comprehensive test coverage for db package functions
-3. **Configuration**: Rethink and improve Config structure
+- [ ] **Stmt functions return `(workFunc, closeFunc, error)` triple** — Inconsistent naming, easy to misuse. Consider returning a struct or `Stmt` value
+- [ ] **Two parallel APIs (root `sqldb` vs `db`)** — Every function exists twice. `db` is a thin forwarding layer that must stay in sync
+- [ ] **`QueryCallback` uses runtime reflection on `any`** — Could use generics for compile-time safety
+- [ ] **Global mutable insert cache** (insert.go:58-61) — Grows without bound, invisible to callers, key doesn't account for `QueryOption`
+- [ ] **`anyvalue.go` receiver named `any`** — Shadows the builtin
 
-### Medium Priority
-4. **Database Support**: Complete SQLite integration
-5. **Error Handling**: Standardize query error wrapping patterns
-6. **API Consistency**: Resolve design questions in multirowscanner
+### Driver Feature Parity
 
-### Low Priority
-7. **Code Organization**: Move ScanResult and clean up implementation details
-8. **Features**: Enhanced array type support and RETURNING clause functionality
+| Feature                           | pqconn | mysqlconn | mssqlconn | sqliteconn |
+| --------------------------------- | ------ | --------- | --------- | ---------- |
+| Custom error wrapping             | Yes    | No        | No        | Yes        |
+| Identifier escaping               | Yes    | No        | No        | No         |
+| `Connect` takes `context.Context` | Yes    | Yes       | Yes       | **No**     |
+| `driver.Valuer`/`sql.Scanner`     | Yes    | Yes       | Yes       | **No**     |
+| LISTEN/NOTIFY                     | Yes    | N/A       | N/A       | N/A        |
+| Drop schema queries               | Yes    | No        | No        | No         |
+| README                            | Yes    | No        | No        | Yes        |
+| Package doc comment               | No     | No        | No        | Yes        |
 
-## Implementation Notes
+- [ ] **mssqlconn/queryformatter.go:11** — TODO says "backticks" but MSSQL uses `[brackets]`
+- [ ] **mssqlconn** — No identifier escaping; reserved words as table/column names will fail
+- [ ] **mssqlconn** — `FormatTableName` doesn't support schema-qualified names (`dbo.table`)
+- [ ] **sqliteconn** — `Connect` missing `context.Context` parameter (all other drivers have it)
+- [ ] **sqliteconn** — No `driver.Valuer`/`sql.Scanner` support in argument binding or result scanning
+- [ ] **sqliteconn/README.md** — Examples show `Connect(ctx, config)` but actual signature is `Connect(config)`
 
-- The UpsertStruct function (db/upsert.go:14) is marked "TODO" but appears fully implemented
-- Mock connection patterns are well established in _mockconn/ package
-- Go workspace structure supports multiple database drivers effectively
-- Context-based connection management pattern is consistently implemented
+## Other
+
+- [ ] **logger.go:18** — Log prefix `"sqldb"` has no trailing separator; logs render as `sqldb2024/01/01` instead of `sqldb: 2024/01/01`
+- [ ] **format.go:15** — Time format uses `Z07:00:00`; standard Go uses `Z07:00`. Extra `:00` produces `+01:00:00` instead of `+01:00`
+- [ ] **connconfig.go:23** — JSON tag `json:"misc,omitempty"` but field is named `Extra`
+- [ ] **pqconn/queryformatter.go:16-17** — Inconsistent suffix: `tableNameRegexp` vs `columnNameRegex`
+- [ ] **transaction_test.go:54-61** — Test case `"ReadOnly, ReadOnly"` has `parent: nil`; duplicates `"nil, ReadOnly"` case
+- [ ] **db/upsert.go:9** — `UpsertStruct` godoc is `// UpsertStruct TODO`
+- [ ] **information/primarykeys.go:149,153** — HTTP handler returns actual `err.Error()` as 500 response
+
+## Testing
+
+- [ ] **Test all `db/` package functions** — Only 7.4% coverage; 6 test files exist but many gaps
+- [ ] **pqconn integration tests** — `pqconn/test/` has docker-compose setup but `TestDatabase` is a stub with no assertions
+- [ ] **Fix `TestQueryCallback_InvalidVariadic`** — Currently failing due to old error message string in assertion (was "varidic", now "variadic")
+
+## Missing Features
+
+- [ ] **Batch insert** — `InsertRowStructs` processes rows one-by-one in a transaction with a prepared statement. Need optimized multi-row INSERT:
+  ```go
+  func BatchInsert[T any](ctx context.Context, table string, items []T, batchSize int) error
+  ```
+- [ ] **Struct reflection cache** — Only insert query caching exists (`insert.go:58`). No broader caching of `StructReflector` results for repeated struct types (see commit `090e73d1`)
+
+## Missing Godoc (Exported Symbols)
+
+- [ ] `ConnExt`, `NewConnExt`, `TransactionExt`, `TransactionResult`
+- [ ] `TransactionState`, `TransactionState.Active()`
+- [ ] `Stmt` interface, `NewStmt`, `NewUnpreparedStmt`
+- [ ] `TableNameForStruct`, `ColumnInfo`
+- [ ] `StdQueryBuilder` and all its methods
+- [ ] `Nullable[T]`, `IsNullable`
+- [ ] `AnyValue`, `StringScannable`
+- [ ] `db.ContextWithoutTransactions`, `db.IsContextWithoutTransactions`
+- [ ] `db.QueryValueStmt`, `db.InsertRowStructStmt`
+- [ ] `db.UpsertStruct`, `db.UpsertStructStmt`, `db.UpsertStructs`
+- [ ] Most `information/` structs (`Schema`, `View`, `Column`, `Domain`, `CheckConstraints`, `PrimaryKeyColumn`)
