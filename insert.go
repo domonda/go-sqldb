@@ -70,26 +70,38 @@ func InsertRowStruct(ctx context.Context, c *ConnExt, rowStruct StructWithTableN
 	structType := structVal.Type()
 
 	var vals []any
-	insertRowStructQueryCacheMtx.RLock()
-	cached, ok := insertRowStructQueryCache[structType][c.StructReflector][c.QueryBuilder]
-	insertRowStructQueryCacheMtx.RUnlock()
-	if ok {
-		vals = make([]any, len(cached.structFieldIndices))
-		for i, fieldIndex := range cached.structFieldIndices {
-			vals[i] = structVal.FieldByIndex(fieldIndex).Interface()
+	// Only use the cache when no caller-provided options are passed
+	// because options (like ColumnFilter) change which columns are included
+	// and the cache key does not account for them.
+	useCache := len(options) == 0
+	if useCache {
+		insertRowStructQueryCacheMtx.RLock()
+		cached, ok := insertRowStructQueryCache[structType][c.StructReflector][c.QueryBuilder]
+		insertRowStructQueryCacheMtx.RUnlock()
+		if ok {
+			vals = make([]any, len(cached.structFieldIndices))
+			for i, fieldIndex := range cached.structFieldIndices {
+				vals[i] = structVal.FieldByIndex(fieldIndex).Interface()
+			}
+			err = c.Exec(ctx, cached.query, vals...)
+			if err != nil {
+				return WrapErrorWithQuery(err, cached.query, vals, c.QueryFormatter)
+			}
+			return nil
 		}
-	} else {
-		var columns []ColumnInfo
-		columns, cached.structFieldIndices, vals = ReflectStructColumnsFieldIndicesAndValues(structVal, c.StructReflector, append(options, IgnoreReadOnly)...)
-		table, err := c.StructReflector.TableNameForStruct(structType)
-		if err != nil {
-			return err
-		}
-		cached.query, err = c.QueryBuilder.Insert(c.QueryFormatter, table, columns)
-		if err != nil {
-			return fmt.Errorf("can't create INSERT query because: %w", err)
-		}
-
+	}
+	var cached queryCache
+	var columns []ColumnInfo
+	columns, cached.structFieldIndices, vals = ReflectStructColumnsFieldIndicesAndValues(structVal, c.StructReflector, append(options, IgnoreReadOnly)...)
+	table, err := c.StructReflector.TableNameForStruct(structType)
+	if err != nil {
+		return err
+	}
+	cached.query, err = c.QueryBuilder.Insert(c.QueryFormatter, table, columns)
+	if err != nil {
+		return fmt.Errorf("can't create INSERT query because: %w", err)
+	}
+	if useCache {
 		insertRowStructQueryCacheMtx.Lock()
 		if _, ok := insertRowStructQueryCache[structType]; !ok {
 			insertRowStructQueryCache[structType] = make(map[StructReflector]map[QueryBuilder]queryCache)

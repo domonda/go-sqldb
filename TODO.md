@@ -2,15 +2,10 @@
 
 ## Bugs
 
-### Critical
-
-- [x] **scan.go:67** — `ScanDriverValue` used `reflect.ValueOf(destPtr).SetBool(src)` instead of `dest.SetBool(src)`
-- [x] **debug.go:26** — `conn.Query(...).Scan(&t)` called without `Next()` first, rows never closed
-
 ### Moderate
 
-- [ ] **insert.go:58-61** — Query cache ignores `QueryOption` parameters; first call's options determine cached query for all subsequent calls with different options
-- [ ] **update.go:22** — Error wrapping uses `args` (WHERE args only) instead of `vals` (all query args)
+- [x] **insert.go:58-61** — Query cache now skipped when caller-provided `QueryOption` parameters are passed
+- [x] **update.go:22** — Error wrapping now uses `vals` (all query args) instead of `args` (WHERE args only)
 - [ ] **sqliteconn/transaction.go:87,103,111** — Nested savepoints all use hardcoded name `nested_tx`; multi-level nesting releases/rolls back wrong savepoint
 - [ ] **sqliteconn/connection.go** — `ctx context.Context` accepted but never used in `Exec`, `Query`, `Prepare`, `Begin`; context cancellation silently ignored
 - [ ] **cmd/sqldb-dump/sqldb-dump.go** — Won't compile: uses `sqldb.Config` (should be `ConnConfig`) and `pqconn.New` (should be `Connect`)

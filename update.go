@@ -18,7 +18,7 @@ func Update(ctx context.Context, c *ConnExt, table string, values Values, where 
 	}
 	err = c.Exec(ctx, query, vals...)
 	if err != nil {
-		return WrapErrorWithQuery(err, query, args, c.QueryFormatter)
+		return WrapErrorWithQuery(err, query, vals, c.QueryFormatter)
 	}
 	return nil
 }
