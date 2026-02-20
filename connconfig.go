@@ -20,7 +20,7 @@ type ConnConfig struct {
 	User     string            `json:"user,omitempty"`
 	Password string            `json:"password,omitempty"`
 	Database string            `json:"database"`
-	Extra    map[string]string `json:"misc,omitempty"`
+	Extra    map[string]string `json:"extra,omitempty"`
 
 	// ReadOnly sets the database connection to read-only mode
 	// if supported by the database connection.

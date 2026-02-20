@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	tableNameRegexp = regexp.MustCompile(`^([a-zA-Z_][a-zA-Z0-9_]{0,62}\.)?[a-zA-Z_][a-zA-Z0-9_]{0,62}$`)
-	columnNameRegex = regexp.MustCompile(`^[a-zA-Z_][0-9a-zA-Z_]{0,58}$`)
+	tableNameRegexp  = regexp.MustCompile(`^([a-zA-Z_][a-zA-Z0-9_]{0,62}\.)?[a-zA-Z_][a-zA-Z0-9_]{0,62}$`)
+	columnNameRegexp = regexp.MustCompile(`^[a-zA-Z_][0-9a-zA-Z_]{0,58}$`)
 
 	reservedWords = map[string]struct{}{
 		// Reserved key words
@@ -193,7 +193,7 @@ func (QueryFormatter) FormatTableName(name string) (string, error) {
 }
 
 func (QueryFormatter) FormatColumnName(name string) (string, error) {
-	if !columnNameRegex.MatchString(name) {
+	if !columnNameRegexp.MatchString(name) {
 		return "", fmt.Errorf("invalid column name %q", name)
 	}
 	return EscapeIdentifier(name), nil

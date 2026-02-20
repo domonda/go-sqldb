@@ -81,11 +81,6 @@
 
 ## Other
 
-- [ ] **logger.go:18** — Log prefix `"sqldb"` has no trailing separator; logs render as `sqldb2024/01/01` instead of `sqldb: 2024/01/01`
-- [ ] **format.go:15** — Time format uses `Z07:00:00`; standard Go uses `Z07:00`. Extra `:00` produces `+01:00:00` instead of `+01:00`
-- [ ] **connconfig.go:23** — JSON tag `json:"misc,omitempty"` but field is named `Extra`
-- [ ] **pqconn/queryformatter.go:16-17** — Inconsistent suffix: `tableNameRegexp` vs `columnNameRegex`
-- [ ] **transaction_test.go:54-61** — Test case `"ReadOnly, ReadOnly"` has `parent: nil`; duplicates `"nil, ReadOnly"` case
 - [ ] **db/upsert.go:9** — `UpsertStruct` godoc is `// UpsertStruct TODO`
 - [ ] **information/primarykeys.go:149,153** — HTTP handler returns actual `err.Error()` as 500 response
 
@@ -93,7 +88,7 @@
 
 - [ ] **Test all `db/` package functions** — Only 7.4% coverage; 6 test files exist but many gaps
 - [ ] **pqconn integration tests** — `pqconn/test/` has docker-compose setup but `TestDatabase` is a stub with no assertions
-- [ ] **Fix `TestQueryCallback_InvalidVariadic`** — Currently failing due to old error message string in assertion (was "varidic", now "variadic")
+- [x] **Fix `TestQueryCallback_InvalidVariadic`** — Fixed: updated assertion from "varidic" to "variadic"
 
 ## Missing Features
 

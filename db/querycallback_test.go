@@ -198,7 +198,7 @@ func TestQueryCallback_InvalidVariadic(t *testing.T) {
 
 	err := QueryCallback(ctx, func(args ...string) {}, query)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "varidic")
+	assert.Contains(t, err.Error(), "variadic")
 }
 
 func TestQueryCallback_InvalidNoArgs(t *testing.T) {

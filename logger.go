@@ -15,4 +15,4 @@ type Logger interface {
 // ErrLogger will be used to log errors
 // that could not be returned by
 // any of the package functions directly.
-var ErrLogger Logger = log.New(os.Stderr, "sqldb", log.LstdFlags)
+var ErrLogger Logger = log.New(os.Stderr, "sqldb: ", log.LstdFlags)

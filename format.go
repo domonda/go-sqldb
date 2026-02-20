@@ -12,7 +12,7 @@ import (
 	"unicode/utf8"
 )
 
-const timeFormat = "'2006-01-02 15:04:05.999999Z07:00'"
+const timeFormat = "'2006-01-02 15:04:05.999999Z07:00:00'"
 
 // FormatValue formats a value for debugging or logging SQL statements.
 func FormatValue(val any) (string, error) {

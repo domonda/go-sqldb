@@ -54,7 +54,7 @@ func TestCheckTxOptionsCompatibility(t *testing.T) {
 		{
 			name: "ReadOnly, ReadOnly",
 			args: args{
-				parent: nil,
+				parent: &sql.TxOptions{ReadOnly: true},
 				child:  &sql.TxOptions{ReadOnly: true},
 			},
 			wantErr: false,
