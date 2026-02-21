@@ -69,20 +69,9 @@
 
 ## Testing
 
-### Root `sqldb` Package — Untested Functions
-
-- [x] `Insert`, `InsertUnique`, `InsertUniqueRowStruct`, `InsertRowStructs`
-- [x] `Update`, `UpdateStruct`
-- [x] `UpsertStruct`, `UpsertStructStmt`, `UpsertStructs`
-- [x] `QueryRow`, `QueryValue`, `QueryValueOr`, `QueryValueStmt`, `ReadRowStructWithTableName`, `QueryRowAsMap`, `QueryRowsAsSlice`
-- [x] `Exec`, `ExecStmt`
-- [x] `Transaction`, `IsolatedTransaction`
-- [x] `ConnExt.WithConnection`, `TransactionExt`, `TransactionResult`
-- [x] `AnyValue.Scan`, `AnyValue.Value`
-
 ### `db/` Package — Untested Functions
 
-- [ ] `Update`, `UpdateStruct`
+- [x] `Update`, `UpdateStruct`
 - [ ] `UpsertStruct`, `UpsertStructs`
 - [ ] `InsertUnique`, `InsertUniqueRowStruct`, `InsertRowStructStmt`, `InsertRowStructs`
 - [ ] `QueryRow`, `QueryValueStmt`, `ReadRowStructWithTableName`, `ReadRowStructWithTableNameOr`, `QueryRowAsMap`, `QueryRowsAsSlice`
