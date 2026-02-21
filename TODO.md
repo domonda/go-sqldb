@@ -69,28 +69,14 @@
 
 ## Testing
 
-### `db/` Package — Untested Functions
-
-- [x] `Update`, `UpdateStruct`
-- [x] `UpsertStruct`, `UpsertStructs`
-- [x] `InsertUnique`, `InsertUniqueRowStruct`, `InsertRowStructStmt`, `InsertRowStructs`
-- [x] `QueryRow`, `QueryValueStmt`, `ReadRowStructWithTableName`, `ReadRowStructWithTableNameOr`, `QueryRowAsMap`, `QueryRowsAsSlice`
-- [x] `Exec`, `ExecStmt`
-- [x] `ValidateWithinTransaction`, `ValidateNotWithinTransaction`, `IsTransaction`
-- [x] `IsolatedTransaction`, `OptionalTransaction`, `TransactionReadOnly`, `TransactionSavepoint`, `TransactionResult`
-- [x] `ContextWithoutTransactions`, `IsContextWithoutTransactions`
-- [x] `ListenOnChannel`, `UnlistenChannel`, `IsListeningOnChannel`
-- [x] `ReplaceErrNoRows`, `IsOtherThanErrNoRows`
-- [x] `SetConn`, `Conn`, `Close`
-
 ### `pqconn/` Package
 
 - [ ] **pqconn/test** — `TestDatabase` is a stub with no assertions
 
 ### `mysqlconn/` Package — Zero Tests
 
-- [ ] Entire package has no test files: `Connect`, `MustConnect`, `ConnectExt`, `NewConfig`
-- [ ] `validateColumnName` — Internal function with MySQL-specific regex, never tested
+- [x] Entire package has no test files: `Connect`, `MustConnect`, `ConnectExt`, `NewConfig`
+- [x] `validateColumnName` — Internal function with MySQL-specific regex, never tested
 
 ### `mssqlconn/` Package — Zero Tests
 

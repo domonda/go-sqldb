@@ -12,3 +12,4 @@
 *.out
 
 pqconn/test/postgres-data
+mysqlconn/test/mariadb-data

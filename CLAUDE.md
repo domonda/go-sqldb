@@ -8,8 +8,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Run tests for specific module**: `go test ./...` in the module directory
 - **Build all modules**: `go build ./...`
 - **Get dependencies**: `go mod tidy` (run in each module directory as needed)
-- **Start test database**: `docker compose -f pqconn/test/docker-compose.yml up -d` (PostgreSQL 17 on port 5433)
-- **Reset test database**: `./pqconn/test/reset-postgres-data.sh` (required after changing PostgreSQL version in docker-compose.yml)
+- **Start test database (PostgreSQL)**: `docker compose -f pqconn/test/docker-compose.yml up -d` (PostgreSQL 17 on port 5433)
+- **Reset test database (PostgreSQL)**: `./pqconn/test/reset-postgres-data.sh` (required after changing PostgreSQL version in docker-compose.yml)
+- **Start test database (MariaDB)**: `docker compose -f mysqlconn/test/docker-compose.yml up -d` (MariaDB 11.7 on port 3307)
+- **Reset test database (MariaDB)**: `./mysqlconn/test/reset-mariadb-data.sh` (required after changing MariaDB version in docker-compose.yml)
 
 ## Go Workspace Structure
 
@@ -118,6 +120,8 @@ func MyValueFromContext(ctx context.Context) string {
 - Mock connections available in `_mockconn/` package
 - PostgreSQL integration tests use dockerized PostgreSQL 17 on port 5433 (see `pqconn/test/docker-compose.yml`)
 - Run `./pqconn/test/reset-postgres-data.sh` after changing the PostgreSQL version
+- MariaDB integration tests use dockerized MariaDB 11.7 on port 3307 (see `mysqlconn/test/docker-compose.yml`)
+- Run `./mysqlconn/test/reset-mariadb-data.sh` after changing the MariaDB version
 - Use `db.ContextWithNonConnectionForTest()` for testing without real database
 - Helper functions in `db/testhelper.go`
 - Do **not** use `os.Exit(m.Run())` in `TestMain` — just call `m.Run()` directly

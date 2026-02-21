@@ -94,7 +94,7 @@ func TestTransactionResult(t *testing.T) {
 			queryCount++
 			return NewMockRows([]string{"count"}, [][]driver.Value{{int64(42)}})
 		}
-		result, err := TransactionResult[int64](t.Context(), ext, nil, func(tx *ConnExt) (int64, error) {
+		result, err := TransactionResult(t.Context(), ext, nil, func(tx *ConnExt) (int64, error) {
 			return QueryValue[int64](t.Context(), tx, "SELECT count(*) FROM users")
 		})
 		if err != nil {
@@ -119,7 +119,7 @@ func TestTransactionResult(t *testing.T) {
 			return nil
 		}
 		txErr := errors.New("tx error")
-		result, err := TransactionResult[string](t.Context(), ext, nil, func(tx *ConnExt) (string, error) {
+		result, err := TransactionResult(t.Context(), ext, nil, func(tx *ConnExt) (string, error) {
 			return "", txErr
 		})
 		if !errors.Is(err, txErr) {
