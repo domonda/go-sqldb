@@ -201,7 +201,7 @@ func TestQueryValueStmt(t *testing.T) {
 	})
 }
 
-func TestReadRowStructWithTableName(t *testing.T) {
+func TestQueryRowStructWithTableName(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		conn, ext := newTestConnExt()
 		var queryCount int
@@ -216,7 +216,7 @@ func TestReadRowStructWithTableName(t *testing.T) {
 				[][]driver.Value{{int64(1), "Alice", true}},
 			)
 		}
-		row, err := ReadRowStructWithTableName[reflectTestStruct](t.Context(), ext, int64(1))
+		row, err := QueryRowStructWithTableName[reflectTestStruct](t.Context(), ext, int64(1))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -242,7 +242,7 @@ func TestReadRowStructWithTableName(t *testing.T) {
 	t.Run("pk count mismatch", func(t *testing.T) {
 		_, ext := newTestConnExt()
 		// reflectTestStruct has 1 PK but we pass 2 values
-		_, err := ReadRowStructWithTableName[reflectTestStruct](t.Context(), ext, 1, 2)
+		_, err := QueryRowStructWithTableName[reflectTestStruct](t.Context(), ext, 1, 2)
 		if err == nil {
 			t.Error("expected error for PK count mismatch")
 		}
@@ -255,7 +255,7 @@ func TestReadRowStructWithTableName(t *testing.T) {
 			queryCount++
 			return NewMockRows([]string{"id", "name", "active"}, nil)
 		}
-		_, err := ReadRowStructWithTableName[reflectTestStruct](t.Context(), ext, int64(999))
+		_, err := QueryRowStructWithTableName[reflectTestStruct](t.Context(), ext, int64(999))
 		if !errors.Is(err, sql.ErrNoRows) {
 			t.Errorf("expected sql.ErrNoRows, got: %v", err)
 		}

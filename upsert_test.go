@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-func TestUpsertStruct(t *testing.T) {
+func TestUpsertRowStruct(t *testing.T) {
 	wantQuery := "INSERT INTO test_table(id,name,active) VALUES($1,$2,$3) ON CONFLICT(id) DO UPDATE SET name=$2, active=$3"
 
 	t.Run("success", func(t *testing.T) {
@@ -21,7 +21,7 @@ func TestUpsertStruct(t *testing.T) {
 			return nil
 		}
 		row := reflectTestStruct{ID: 1, Name: "Alice", Active: true}
-		err := UpsertStruct(t.Context(), ext, row)
+		err := UpsertRowStruct(t.Context(), ext, row)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -40,7 +40,7 @@ func TestUpsertStruct(t *testing.T) {
 			TableName `db:"no_pk_table"`
 			Name      string `db:"name"`
 		}
-		err := UpsertStruct(t.Context(), ext, noPKRow{Name: "test"})
+		err := UpsertRowStruct(t.Context(), ext, noPKRow{Name: "test"})
 		if err == nil {
 			t.Error("expected error for struct without primary key")
 		}
@@ -55,7 +55,7 @@ func TestUpsertStruct(t *testing.T) {
 			return testErr
 		}
 		row := reflectTestStruct{ID: 1, Name: "Alice"}
-		err := UpsertStruct(t.Context(), ext, row)
+		err := UpsertRowStruct(t.Context(), ext, row)
 		if !errors.Is(err, testErr) {
 			t.Errorf("expected error wrapping %v, got: %v", testErr, err)
 		}
@@ -65,7 +65,7 @@ func TestUpsertStruct(t *testing.T) {
 	})
 }
 
-func TestUpsertStructStmt(t *testing.T) {
+func TestUpsertRowStructStmt(t *testing.T) {
 	wantQuery := "INSERT INTO test_table(id,name,active) VALUES($1,$2,$3) ON CONFLICT(id) DO UPDATE SET name=$2, active=$3"
 
 	t.Run("success", func(t *testing.T) {
@@ -77,7 +77,7 @@ func TestUpsertStructStmt(t *testing.T) {
 			gotQuery = query
 			return nil
 		}
-		upsertFunc, closeStmt, err := UpsertStructStmt[reflectTestStruct](t.Context(), ext)
+		upsertFunc, closeStmt, err := UpsertRowStructStmt[reflectTestStruct](t.Context(), ext)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -105,17 +105,17 @@ func TestUpsertStructStmt(t *testing.T) {
 			TableName `db:"no_pk_table"`
 			Name      string `db:"name"`
 		}
-		_, _, err := UpsertStructStmt[noPKRow](t.Context(), ext)
+		_, _, err := UpsertRowStructStmt[noPKRow](t.Context(), ext)
 		if err == nil {
 			t.Error("expected error for struct without primary key")
 		}
 	})
 }
 
-func TestUpsertStructs(t *testing.T) {
+func TestUpsertRowStructs(t *testing.T) {
 	t.Run("empty slice", func(t *testing.T) {
 		_, ext := newTestConnExt()
-		err := UpsertStructs[reflectTestStruct](t.Context(), ext, nil)
+		err := UpsertRowStructs[reflectTestStruct](t.Context(), ext, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -133,7 +133,7 @@ func TestUpsertStructs(t *testing.T) {
 			return nil
 		}
 		items := []reflectTestStruct{{ID: 1, Name: "Alice", Active: true}}
-		err := UpsertStructs(t.Context(), ext, items)
+		err := UpsertRowStructs(t.Context(), ext, items)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -160,7 +160,7 @@ func TestUpsertStructs(t *testing.T) {
 			{ID: 1, Name: "Alice", Active: true},
 			{ID: 2, Name: "Bob", Active: false},
 		}
-		err := UpsertStructs(t.Context(), ext, items)
+		err := UpsertRowStructs(t.Context(), ext, items)
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -58,7 +58,7 @@ func TestUpdate(t *testing.T) {
 	})
 }
 
-func TestUpdateStruct(t *testing.T) {
+func TestUpdateRowStruct(t *testing.T) {
 	wantQuery := "UPDATE test_table SET name=$2, active=$3 WHERE id = $1"
 
 	t.Run("success", func(t *testing.T) {
@@ -73,7 +73,7 @@ func TestUpdateStruct(t *testing.T) {
 			return nil
 		}
 		row := reflectTestStruct{ID: 1, Name: "Alice", Active: true}
-		err := UpdateStruct(t.Context(), ext, "test_table", row)
+		err := UpdateRowStruct(t.Context(), ext, "test_table", row)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -98,7 +98,7 @@ func TestUpdateStruct(t *testing.T) {
 			return nil
 		}
 		row := &reflectTestStruct{ID: 2, Name: "Bob", Active: false}
-		err := UpdateStruct(t.Context(), ext, "test_table", row)
+		err := UpdateRowStruct(t.Context(), ext, "test_table", row)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -113,7 +113,7 @@ func TestUpdateStruct(t *testing.T) {
 
 	t.Run("nil struct error", func(t *testing.T) {
 		_, ext := newTestConnExt()
-		err := UpdateStruct(t.Context(), ext, "test_table", (*reflectTestStruct)(nil))
+		err := UpdateRowStruct(t.Context(), ext, "test_table", (*reflectTestStruct)(nil))
 		if err == nil {
 			t.Error("expected error for nil struct")
 		}
@@ -121,7 +121,7 @@ func TestUpdateStruct(t *testing.T) {
 
 	t.Run("non-struct error", func(t *testing.T) {
 		_, ext := newTestConnExt()
-		err := UpdateStruct(t.Context(), ext, "test_table", "not a struct")
+		err := UpdateRowStruct(t.Context(), ext, "test_table", "not a struct")
 		if err == nil {
 			t.Error("expected error for non-struct")
 		}
@@ -132,7 +132,7 @@ func TestUpdateStruct(t *testing.T) {
 		type noPK struct {
 			Name string `db:"name"`
 		}
-		err := UpdateStruct(t.Context(), ext, "test_table", noPK{Name: "test"})
+		err := UpdateRowStruct(t.Context(), ext, "test_table", noPK{Name: "test"})
 		if err == nil {
 			t.Error("expected error for struct without primary key")
 		}
@@ -147,7 +147,7 @@ func TestUpdateStruct(t *testing.T) {
 			return testErr
 		}
 		row := reflectTestStruct{ID: 1, Name: "Alice"}
-		err := UpdateStruct(t.Context(), ext, "test_table", row)
+		err := UpdateRowStruct(t.Context(), ext, "test_table", row)
 		if !errors.Is(err, testErr) {
 			t.Errorf("expected error wrapping %v, got: %v", testErr, err)
 		}

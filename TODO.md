@@ -21,16 +21,9 @@
 
 ## API Design for v1.0
 
-### Naming Inconsistencies
-
-- [ ] **"RowStruct" vs "Struct"** — Insert uses `InsertRowStruct`, `InsertRowStructs`; Update/Upsert use `UpdateStruct`, `UpsertStruct`. Pick one convention
-- [ ] **"Read" vs "Query"** — `QueryRow`, `QueryValue`, `QueryRowsAsSlice` use "Query" prefix; `ReadRowStructWithTableName` uses "Read". Same abstraction level, different prefix
-- [ ] **`ReadRowStructWithTableName`** — 29 chars. The `StructWithTableName` constraint already enforces table name. Could be `ReadRow[S]`
-- [x] **Stmt close parameter names** — `closeStmt`, `closeFunc`, `done` across different Stmt-returning functions
-
 ### Missing Symmetry
 
-- [ ] **No `UpdateRowStruct`** matching `InsertRowStruct`/`UpsertStruct` — `UpdateStruct` takes `(table string, rowStruct any)` while Insert/Upsert take `StructWithTableName` and derive the table
+- [ ] **No `UpdateRowStruct`** matching `InsertRowStruct`/`UpsertRowStruct` — `UpdateRowStruct` takes `(table string, rowStruct any)` while Insert/Upsert take `StructWithTableName` and derive the table
 - [ ] **No `Delete`/`DeleteRowStruct`** — Insert, Update, Upsert exist but Delete is missing from CRUD family
 
 ### Coupling

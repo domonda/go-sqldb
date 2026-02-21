@@ -49,22 +49,22 @@ func Update(ctx context.Context, c *ConnExt, table string, values Values, where 
 // 	return conn.QueryRows(query, vals...)
 // }
 
-// UpdateStruct updates a row in a table using the exported fields
+// UpdateRowStruct updates a row in a table using the exported fields
 // of rowStruct which have a `db` tag that is not "-".
 // If restrictToColumns are provided, then only struct fields with a `db` tag
 // matching any of the passed column names will be used.
 // The struct must have at least one field with a `db` tag value having a ",pk" suffix
 // to mark primary key column(s).
-func UpdateStruct(ctx context.Context, c *ConnExt, table string, rowStruct any, options ...QueryOption) error {
+func UpdateRowStruct(ctx context.Context, c *ConnExt, table string, rowStruct any, options ...QueryOption) error {
 	v := reflect.ValueOf(rowStruct)
 	for v.Kind() == reflect.Pointer && !v.IsNil() {
 		v = v.Elem()
 	}
 	switch {
 	case v.Kind() == reflect.Pointer && v.IsNil():
-		return fmt.Errorf("UpdateStruct of table %s: can't update nil", table)
+		return fmt.Errorf("UpdateRowStruct of table %s: can't update nil", table)
 	case v.Kind() != reflect.Struct:
-		return fmt.Errorf("UpdateStruct of table %s: expected struct but got %T", table, rowStruct)
+		return fmt.Errorf("UpdateRowStruct of table %s: expected struct but got %T", table, rowStruct)
 	}
 
 	columns, vals := ReflectStructColumnsAndValues(v, c.StructReflector, append(options, IgnoreReadOnly)...)
@@ -72,7 +72,7 @@ func UpdateStruct(ctx context.Context, c *ConnExt, table string, rowStruct any, 
 		return col.PrimaryKey
 	})
 	if !hasPK {
-		return fmt.Errorf("UpdateStruct of table %s: %s has no mapped primary key field", table, v.Type())
+		return fmt.Errorf("UpdateRowStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
 
 	query, err := c.QueryBuilder.UpdateColumns(c.QueryFormatter, table, columns)

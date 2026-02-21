@@ -101,7 +101,7 @@ func main() {
 	}
 
 	// Upsert a struct
-	err = sqldb.UpsertStruct(ctx, conn, newUser, sqldb.IgnoreColumns("created_at"))
+	err = sqldb.UpsertRowStruct(ctx, conn, newUser, sqldb.IgnoreColumns("created_at"))
 	if err != nil {
 		panic(err)
 	}

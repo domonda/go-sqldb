@@ -200,7 +200,7 @@ func TestUpdateReturningQuery(t *testing.T) {
 	assert.Equal(t, expected, queryOutput.String())
 }
 
-func TestUpdateStructQuery(t *testing.T) {
+func TestUpdateRowStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
 	naming := &sqldb.TaggedStructReflector{
 		NameTag:          "db",
@@ -216,24 +216,24 @@ func TestUpdateStructQuery(t *testing.T) {
 	row := new(testRow)
 
 	expected := `UPDATE public.table SET "int"=?2, "bool"=?3, "str"=?4, "str_ptr"=?5, "nil_ptr"=?6, "untagged_field"=?7, "created_at"=?8, "bools"=?9 WHERE "id"=?1`
-	err := db.UpdateStruct(ctx, "public.table", row)
+	err := db.UpdateRowStruct(ctx, "public.table", row)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 
 	queryOutput.Reset()
 	expected = `UPDATE public.table SET "bool"=?2, "str"=?3, "created_at"=?4 WHERE "id"=?1`
-	err = db.UpdateStruct(ctx, "public.table", row, sqldb.OnlyColumns("id", "bool", "str", "created_at"))
+	err = db.UpdateRowStruct(ctx, "public.table", row, sqldb.OnlyColumns("id", "bool", "str", "created_at"))
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 
 	queryOutput.Reset()
 	expected = `UPDATE public.table SET "int"=?2, "bool"=?3, "str_ptr"=?4, "nil_ptr"=?5, "created_at"=?6 WHERE "id"=?1`
-	err = db.UpdateStruct(ctx, "public.table", row, sqldb.IgnoreColumns("untagged_field", "str", "bools"))
+	err = db.UpdateRowStruct(ctx, "public.table", row, sqldb.IgnoreColumns("untagged_field", "str", "bools"))
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 }
 
-func TestUpsertStructQuery(t *testing.T) {
+func TestUpsertRowStructQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
 	naming := &sqldb.TaggedStructReflector{
 		NameTag:          "db",
@@ -250,7 +250,7 @@ func TestUpsertStructQuery(t *testing.T) {
 	expected := `INSERT INTO public.table("id","int","bool","str","str_ptr","nil_ptr","untagged_field","created_at","bools") VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9)` +
 		` ON CONFLICT("id") DO UPDATE SET "int"=?2, "bool"=?3, "str"=?4, "str_ptr"=?5, "nil_ptr"=?6, "untagged_field"=?7, "created_at"=?8, "bools"=?9`
 
-	err := db.UpsertStruct(ctx, "public.table", row)
+	err := db.UpsertRowStruct(ctx, "public.table", row)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 }
@@ -263,7 +263,7 @@ type multiPrimaryKeyRow struct {
 	CreatedAt time.Time `db:"created_at"`
 }
 
-func TestUpsertStructMultiPKQuery(t *testing.T) {
+func TestUpsertRowStructMultiPKQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
 	naming := &sqldb.TaggedStructReflector{
 		NameTag:          "db",
@@ -279,12 +279,12 @@ func TestUpsertStructMultiPKQuery(t *testing.T) {
 	row := new(multiPrimaryKeyRow)
 	expected := `INSERT INTO public.multi_pk("first_id","second_id","third_id","created_at") VALUES(?1,?2,?3,?4) ON CONFLICT("first_id","second_id","third_id") DO UPDATE SET "created_at"=?4`
 
-	err := db.UpsertStruct(ctx, "public.multi_pk", row)
+	err := db.UpsertRowStruct(ctx, "public.multi_pk", row)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 }
 
-func TestUpdateStructMultiPKQuery(t *testing.T) {
+func TestUpdateRowStructMultiPKQuery(t *testing.T) {
 	queryOutput := bytes.NewBuffer(nil)
 	naming := &sqldb.TaggedStructReflector{
 		NameTag:          "db",
@@ -300,7 +300,7 @@ func TestUpdateStructMultiPKQuery(t *testing.T) {
 	row := new(multiPrimaryKeyRow)
 	expected := `UPDATE public.multi_pk SET "created_at"=?4 WHERE "first_id"=?1 AND "second_id"=?2 AND "third_id"=?3`
 
-	err := db.UpdateStruct(ctx, "public.multi_pk", row)
+	err := db.UpdateRowStruct(ctx, "public.multi_pk", row)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, queryOutput.String())
 }

@@ -48,11 +48,11 @@ func QueryValueStmt[T any](ctx context.Context, c *ConnExt, query string) (query
 	return queryFunc, stmt.Close, nil
 }
 
-// ReadRowStructWithTableName uses the passed pkValue+pkValues to query a table row
+// QueryRowStructWithTableName uses the passed pkValue+pkValues to query a table row
 // and scan it into a struct of type `*S` that must have tagged fields
 // with primary key flags to identify the primary key column names
 // for the passed pkValue+pkValues and a table name.
-func ReadRowStructWithTableName[S StructWithTableName](ctx context.Context, c *ConnExt, pkValue any, pkValues ...any) (S, error) {
+func QueryRowStructWithTableName[S StructWithTableName](ctx context.Context, c *ConnExt, pkValue any, pkValues ...any) (S, error) {
 	// Using explicit first pkValue value
 	// to not be able to compile without any value
 	pkValues = append([]any{pkValue}, pkValues...)
@@ -91,14 +91,14 @@ func ReadRowStructWithTableName[S StructWithTableName](ctx context.Context, c *C
 	return QueryValue[S](ctx, c, query, pkValues...)
 }
 
-// ReadRowStructWithTableNameOr uses the passed pkValue+pkValues to query a table row
+// QueryRowStructWithTableNameOr uses the passed pkValue+pkValues to query a table row
 // and scan it into a struct of type S that must have tagged fields
 // with primary key flags to identify the primary key column names
 // for the passed pkValue+pkValues and a table name.
 // Returns nil as row and error if no row could be found with the
 // passed pkValue+pkValues.
-func ReadRowStructWithTableNameOr[S StructWithTableName](ctx context.Context, c *ConnExt, defaultVal S, pkValue any, pkValues ...any) (S, error) {
-	row, err := ReadRowStructWithTableName[S](ctx, c, pkValue, pkValues...)
+func QueryRowStructWithTableNameOr[S StructWithTableName](ctx context.Context, c *ConnExt, defaultVal S, pkValue any, pkValues ...any) (S, error) {
+	row, err := QueryRowStructWithTableName[S](ctx, c, pkValue, pkValues...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return defaultVal, nil
 	}

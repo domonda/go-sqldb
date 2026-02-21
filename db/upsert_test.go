@@ -8,7 +8,7 @@ import (
 	"github.com/domonda/go-sqldb/db"
 )
 
-func ExampleUpsertStructStmt() {
+func ExampleUpsertRowStructStmt() {
 	type User struct {
 		sqldb.TableName `db:"public.user"`
 		ID              int64  `db:"id,primarykey"`
@@ -31,7 +31,7 @@ func ExampleUpsertStructStmt() {
 	ctx := db.ContextWithConn(context.Background(), config)
 
 	err := db.Transaction(ctx, func(ctx context.Context) error {
-		upsert, closeStmt, err := db.UpsertStructStmt[User](ctx)
+		upsert, closeStmt, err := db.UpsertRowStructStmt[User](ctx)
 		if err != nil {
 			return err
 		}

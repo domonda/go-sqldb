@@ -8,10 +8,10 @@ import (
 	"slices"
 )
 
-// UpsertStruct inserts a new row or updates an existing one
+// UpsertRowStruct inserts a new row or updates an existing one
 // if inserting conflicts on the primary key column(s).
 // The struct must have at least one field tagged as primary key.
-func UpsertStruct(ctx context.Context, c *ConnExt, rowStruct StructWithTableName, options ...QueryOption) error {
+func UpsertRowStruct(ctx context.Context, c *ConnExt, rowStruct StructWithTableName, options ...QueryOption) error {
 	v, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return err
@@ -30,12 +30,12 @@ func UpsertStruct(ctx context.Context, c *ConnExt, rowStruct StructWithTableName
 		return col.PrimaryKey
 	})
 	if !hasPK {
-		return fmt.Errorf("UpsertStruct of table %s: %s has no mapped primary key field", table, v.Type())
+		return fmt.Errorf("UpsertRowStruct of table %s: %s has no mapped primary key field", table, v.Type())
 	}
 
 	query, err := c.QueryBuilder.Upsert(c.QueryFormatter, table, columns)
 	if err != nil {
-		return fmt.Errorf("UpsertStruct of table %s: can't create UPSERT query because: %w", table, err)
+		return fmt.Errorf("UpsertRowStruct of table %s: can't create UPSERT query because: %w", table, err)
 	}
 	err = c.Exec(ctx, query, vals...)
 	if err != nil {
@@ -44,10 +44,10 @@ func UpsertStruct(ctx context.Context, c *ConnExt, rowStruct StructWithTableName
 	return nil
 }
 
-// UpsertStructStmt prepares a statement for upserting rows of type S.
+// UpsertRowStructStmt prepares a statement for upserting rows of type S.
 // Returns an upsert function to upsert individual rows and a closeStmt
 // function that must be called when done to close the prepared statement.
-func UpsertStructStmt[S StructWithTableName](ctx context.Context, c *ConnExt, options ...QueryOption) (upsert func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
+func UpsertRowStructStmt[S StructWithTableName](ctx context.Context, c *ConnExt, options ...QueryOption) (upsert func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
 	structType := reflect.TypeFor[S]()
 	table, err := c.StructReflector.TableNameForStruct(structType)
 	if err != nil {
@@ -64,17 +64,17 @@ func UpsertStructStmt[S StructWithTableName](ctx context.Context, c *ConnExt, op
 		return col.PrimaryKey
 	})
 	if !hasPK {
-		return nil, nil, fmt.Errorf("UpsertStructStmt of table %s: %s has no mapped primary key field", table, structType)
+		return nil, nil, fmt.Errorf("UpsertRowStructStmt of table %s: %s has no mapped primary key field", table, structType)
 	}
 
 	query, err := c.QueryBuilder.Upsert(c.QueryFormatter, table, columns)
 	if err != nil {
-		return nil, nil, fmt.Errorf("UpsertStructStmt of table %s: can't create UPSERT query because: %w", table, err)
+		return nil, nil, fmt.Errorf("UpsertRowStructStmt of table %s: can't create UPSERT query because: %w", table, err)
 	}
 
 	stmt, err := c.Prepare(ctx, query)
 	if err != nil {
-		return nil, nil, fmt.Errorf("UpsertStructStmt of table %s: can't prepare UPSERT statement because: %w", table, err)
+		return nil, nil, fmt.Errorf("UpsertRowStructStmt of table %s: can't prepare UPSERT statement because: %w", table, err)
 	}
 
 	upsert = func(ctx context.Context, rowStruct S) error {
@@ -92,17 +92,17 @@ func UpsertStructStmt[S StructWithTableName](ctx context.Context, c *ConnExt, op
 	return upsert, stmt.Close, nil
 }
 
-// UpsertStructs upserts a slice of structs within a transaction
+// UpsertRowStructs upserts a slice of structs within a transaction
 // using a prepared statement for efficiency.
-func UpsertStructs[S StructWithTableName](ctx context.Context, c *ConnExt, rowStructs []S, options ...QueryOption) error {
+func UpsertRowStructs[S StructWithTableName](ctx context.Context, c *ConnExt, rowStructs []S, options ...QueryOption) error {
 	switch len(rowStructs) {
 	case 0:
 		return nil
 	case 1:
-		return UpsertStruct(ctx, c, rowStructs[0], options...)
+		return UpsertRowStruct(ctx, c, rowStructs[0], options...)
 	}
 	return TransactionExt(ctx, c, nil, func(tx *ConnExt) (err error) {
-		upsertFunc, closeStmt, stmtErr := UpsertStructStmt[S](ctx, tx, options...)
+		upsertFunc, closeStmt, stmtErr := UpsertRowStructStmt[S](ctx, tx, options...)
 		if stmtErr != nil {
 			return stmtErr
 		}

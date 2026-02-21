@@ -81,7 +81,7 @@ func TestUpdate(t *testing.T) {
 	})
 }
 
-func TestUpdateStruct(t *testing.T) {
+func TestUpdateRowStruct(t *testing.T) {
 	type UserRow struct {
 		ID     int    `db:"id,primarykey"`
 		Name   string `db:"name"`
@@ -102,7 +102,7 @@ func TestUpdateStruct(t *testing.T) {
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
 
-		err := UpdateStruct(ctx, "users", UserRow{ID: 1, Name: "Alice", Active: true})
+		err := UpdateRowStruct(ctx, "users", UserRow{ID: 1, Name: "Alice", Active: true})
 		require.NoError(t, err)
 		require.Equal(t, 1, execCount, "MockExec call count")
 		// Columns in struct field order: id(PK), name, active
@@ -125,7 +125,7 @@ func TestUpdateStruct(t *testing.T) {
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
 
-		err := UpdateStruct(ctx, "users", &UserRow{ID: 2, Name: "Bob", Active: false})
+		err := UpdateRowStruct(ctx, "users", &UserRow{ID: 2, Name: "Bob", Active: false})
 		require.NoError(t, err)
 		require.Equal(t, 1, execCount, "MockExec call count")
 		require.Equal(t, "UPDATE users SET name=$2, active=$3 WHERE id = $1", gotQuery)
@@ -146,7 +146,7 @@ func TestUpdateStruct(t *testing.T) {
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
 
-		err := UpdateStruct(ctx, "users", UserRow{ID: 1, Name: "Alice", Active: true}, sqldb.IgnoreColumns("active"))
+		err := UpdateRowStruct(ctx, "users", UserRow{ID: 1, Name: "Alice", Active: true}, sqldb.IgnoreColumns("active"))
 		require.NoError(t, err)
 		require.Equal(t, 1, execCount, "MockExec call count")
 		require.Equal(t, "UPDATE users SET name=$2 WHERE id = $1", gotQuery)
@@ -158,7 +158,7 @@ func TestUpdateStruct(t *testing.T) {
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
 
-		err := UpdateStruct(ctx, "users", (*UserRow)(nil))
+		err := UpdateRowStruct(ctx, "users", (*UserRow)(nil))
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "can't update nil")
 	})
@@ -168,7 +168,7 @@ func TestUpdateStruct(t *testing.T) {
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
 
-		err := UpdateStruct(ctx, "users", "not a struct")
+		err := UpdateRowStruct(ctx, "users", "not a struct")
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "expected struct")
 	})
@@ -181,7 +181,7 @@ func TestUpdateStruct(t *testing.T) {
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
 
-		err := UpdateStruct(ctx, "users", NoPKRow{Name: "test"})
+		err := UpdateRowStruct(ctx, "users", NoPKRow{Name: "test"})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "no mapped primary key")
 	})
@@ -197,7 +197,7 @@ func TestUpdateStruct(t *testing.T) {
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
 
-		err := UpdateStruct(ctx, "users", UserRow{ID: 1, Name: "Alice"})
+		err := UpdateRowStruct(ctx, "users", UserRow{ID: 1, Name: "Alice"})
 		require.ErrorIs(t, err, testErr)
 		require.Equal(t, 1, execCount, "MockExec call count")
 	})

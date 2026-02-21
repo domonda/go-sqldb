@@ -46,22 +46,22 @@ func QueryValueStmt[T any](ctx context.Context, query string) (queryFunc func(ct
 	return sqldb.QueryValueStmt[T](ctx, Conn(ctx), query)
 }
 
-// ReadRowStructWithTableName uses the passed pkValue+pkValues to query a table row
+// QueryRowStructWithTableName uses the passed pkValue+pkValues to query a table row
 // and scan it into a struct of type `*S` that must have tagged fields
 // with primary key flags to identify the primary key column names
 // for the passed pkValue+pkValues and a table name.
-func ReadRowStructWithTableName[S sqldb.StructWithTableName](ctx context.Context, pkValue any, pkValues ...any) (S, error) {
-	return sqldb.ReadRowStructWithTableName[S](ctx, Conn(ctx), pkValue, pkValues...)
+func QueryRowStructWithTableName[S sqldb.StructWithTableName](ctx context.Context, pkValue any, pkValues ...any) (S, error) {
+	return sqldb.QueryRowStructWithTableName[S](ctx, Conn(ctx), pkValue, pkValues...)
 }
 
-// ReadRowStructWithTableNameOr uses the passed pkValue+pkValues to query a table row
+// QueryRowStructWithTableNameOr uses the passed pkValue+pkValues to query a table row
 // and scan it into a struct of type S that must have tagged fields
 // with primary key flags to identify the primary key column names
 // for the passed pkValue+pkValues and a table name.
 // Returns nil as row and error if no row could be found with the
 // passed pkValue+pkValues.
-func ReadRowStructWithTableNameOr[S sqldb.StructWithTableName](ctx context.Context, defaultVal S, pkValue any, pkValues ...any) (S, error) {
-	return sqldb.ReadRowStructWithTableNameOr(ctx, Conn(ctx), defaultVal, pkValue, pkValues...)
+func QueryRowStructWithTableNameOr[S sqldb.StructWithTableName](ctx context.Context, defaultVal S, pkValue any, pkValues ...any) (S, error) {
+	return sqldb.QueryRowStructWithTableNameOr(ctx, Conn(ctx), defaultVal, pkValue, pkValues...)
 }
 
 // QueryRowAsMap queries a single row and returns the columns as map
