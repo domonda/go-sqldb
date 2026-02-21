@@ -11,7 +11,7 @@ import (
 )
 
 func TestErrorWrapping(t *testing.T) {
-	ctx := context.Background()
+	ctx := t.Context()
 	conn := testConnection(t)
 	t.Cleanup(func() { conn.Close() })
 

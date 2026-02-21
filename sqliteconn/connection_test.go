@@ -416,7 +416,7 @@ func TestConnection_ContextCancellation(t *testing.T) {
 	})
 
 	t.Run("timeout context", func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Nanosecond)
+		ctx, cancel := context.WithTimeout(t.Context(), 1*time.Nanosecond)
 		defer cancel()
 		time.Sleep(10 * time.Millisecond) // Ensure timeout
 

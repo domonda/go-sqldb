@@ -1,7 +1,6 @@
 package db
 
 import (
-	"context"
 	"database/sql"
 	"database/sql/driver"
 	"testing"
@@ -28,7 +27,7 @@ func TestQueryValue(t *testing.T) {
 			777,                // args
 		)
 	config := sqldb.NewConnExt(conn, sqldb.NewTaggedStructReflector(), sqldb.StdQueryFormatter{}, sqldb.StdQueryBuilder{})
-	ctx := ContextWithConn(context.Background(), config)
+	ctx := ContextWithConn(t.Context(), config)
 
 	// id 666 has a row with the value true
 	value, err := QueryValue[bool](ctx, query, 666)
@@ -56,7 +55,7 @@ func TestQueryValueOr(t *testing.T) {
 			777,                // args
 		)
 	config := sqldb.NewConnExt(conn, sqldb.NewTaggedStructReflector(), sqldb.StdQueryFormatter{}, sqldb.StdQueryBuilder{})
-	ctx := ContextWithConn(context.Background(), config)
+	ctx := ContextWithConn(t.Context(), config)
 
 	// id 666 has a row with the value true
 	value, err := QueryValueOr(ctx, false, query, 666)
@@ -116,7 +115,7 @@ func TestQueryStrings(t *testing.T) {
 			1,
 		)
 	config := sqldb.NewConnExt(conn, sqldb.NewTaggedStructReflector(), sqldb.StdQueryFormatter{}, sqldb.StdQueryBuilder{})
-	ctx := ContextWithConn(context.Background(), config)
+	ctx := ContextWithConn(t.Context(), config)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotRows, err := QueryRowsAsStrings(ctx, tt.query, tt.args...)

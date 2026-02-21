@@ -1,7 +1,6 @@
 package pqconn
 
 import (
-	"context"
 	"reflect"
 	"testing"
 	"time"
@@ -159,7 +158,7 @@ func TestConnect_InvalidDriver(t *testing.T) {
 		Port:     5432,
 		Database: "testdb",
 	}
-	_, err := Connect(context.Background(), config)
+	_, err := Connect(t.Context(), config)
 	if err == nil {
 		t.Fatal("expected error for invalid driver")
 	}

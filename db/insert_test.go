@@ -1,7 +1,6 @@
 package db
 
 import (
-	"context"
 	"database/sql"
 	"os"
 	"testing"
@@ -64,7 +63,7 @@ func TestInsertRowStruct(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := ContextWithConn(context.Background(), tt.config)
+			ctx := ContextWithConn(t.Context(), tt.config)
 			err := InsertRowStruct(ctx, tt.rowStruct, tt.options...)
 			if tt.wantErr {
 				require.Error(t, err, "error from InsertStruct")
@@ -93,7 +92,7 @@ func TestInsertRowStruct_CacheWithoutOptions(t *testing.T) {
 		sqldb.NewQueryFormatter("$"),
 		sqldb.StdQueryBuilder{},
 	)
-	ctx := ContextWithConn(context.Background(), config)
+	ctx := ContextWithConn(t.Context(), config)
 
 	// First call populates the cache
 	err := InsertRowStruct(ctx, &CacheTestStruct{ID: 1, Name: "first", Extra: "a"})
@@ -128,7 +127,7 @@ func TestInsertRowStruct_CacheBypassedWithOptions(t *testing.T) {
 		sqldb.NewQueryFormatter("$"),
 		sqldb.StdQueryBuilder{},
 	)
-	ctx := ContextWithConn(context.Background(), config)
+	ctx := ContextWithConn(t.Context(), config)
 
 	// First call without options — all columns
 	err := InsertRowStruct(ctx, &OptionsCacheTestStruct{ID: 1, Name: "first", Extra: "a"})
@@ -168,7 +167,7 @@ func TestInsertRowStruct_CacheNotPollutedByOptions(t *testing.T) {
 		sqldb.NewQueryFormatter("$"),
 		sqldb.StdQueryBuilder{},
 	)
-	ctx := ContextWithConn(context.Background(), config)
+	ctx := ContextWithConn(t.Context(), config)
 
 	// First call WITH options — should NOT populate the cache
 	err := InsertRowStruct(ctx, &PollutionTestStruct{ID: 1, Name: "first"}, sqldb.IgnoreColumns("extra"))
@@ -244,7 +243,7 @@ func TestInsert(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := ContextWithConn(context.Background(), tt.config)
+			ctx := ContextWithConn(t.Context(), tt.config)
 			err := Insert(ctx, tt.table, tt.values)
 			if tt.wantErr {
 				require.Error(t, err, "error from Insert")

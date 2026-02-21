@@ -1,6 +1,12 @@
 # go-sqldb TODO for v1.0
 
-## Bugs
+## Missing Features
+
+- [ ] **Batch insert** — `InsertRowStructs` processes rows one-by-one in a transaction with a prepared statement. Need optimized multi-row INSERT:
+  ```go
+  func BatchInsert[T any](ctx context.Context, table string, items []T, batchSize int) error
+  ```
+- [ ] **Struct reflection cache** — Only insert query caching exists (`insert.go:58`). No broader caching of `StructReflector` results for repeated struct types (see commit `090e73d1`)
 
 ## Dead Code
 
@@ -63,33 +69,16 @@
 
 ## Testing
 
-### Critical — Core Logic With Zero Tests
-
-- [x] **querybuilder.go** — `StdQueryBuilder` has zero tests for all 6 SQL-generating methods: `QueryRowWithPK`, `Insert`, `InsertUnique`, `Upsert`, `Update`, `UpdateColumns`
-- [x] **scan.go** — `ScanDriverValue` untested; wide type-switching function covering bool, float64, int64, string, []byte, time.Time
-- [x] **row.go** — `Row.Scan` (struct-detection logic), `Row.ScanValues`, `Row.ScanStrings` all untested
-- [x] **reflectstruct.go** — All 6 exported `Reflect*` functions untested: `PrimaryKeyColumnsOfStruct`, `ReflectStructColumnsAndValues`, `ReflectStructColumnsFieldIndicesAndValues`, `ReflectStructValues`, `ReflectStructColumns`, `ReflectStructColumnPointers`. Note: `scanstruct_test.go` exists but is entirely commented out
-
-### High Priority — Important Public API
-
-- [x] **queryformatter.go** — `StdQueryFormatter` methods untested: `FormatTableName`, `FormatColumnName`, `FormatPlaceholder`, `FormatStringLiteral`
-- [x] **pqconn/errors.go** — All 16 error-predicate functions untested (`IsUniqueViolation`, `IsForeignKeyViolation`, `IsSerializationFailure`, etc.). Can be tested with synthetic `*pq.Error` values
-- [x] **connconfig.go** — `ConnConfig.Validate()` untested; `ParseConnConfig` has only one happy-path test case
-- [x] **queryoption.go** — `IgnoreColumns`, `OnlyColumns`, `IgnoreStructFields`, `OnlyStructFields`, `QueryOptionsIgnoreColumn` all untested
-- [x] **format.go** — `QuoteLiteral` untested (backslash `E'...'` path); `FormatQuery` only tests numbered placeholders, not uniform (`?`)
-- [x] **nullable.go** — `Nullable[T].Scan`, `Nullable[T].Value`, `IsNullable` untested
-- [x] **debug.go** — `TxOptionsString` (4-branch function), `FprintTable` (unicode-aware padding) untested
-
 ### Root `sqldb` Package — Untested Functions
 
-- [ ] `Insert`, `InsertUnique`, `InsertUniqueRowStruct`, `InsertRowStructs`
-- [ ] `Update`, `UpdateStruct`
-- [ ] `UpsertStruct`, `UpsertStructStmt`, `UpsertStructs`
-- [ ] `QueryRow`, `QueryValue`, `QueryValueOr`, `QueryValueStmt`, `ReadRowStructWithTableName`, `QueryRowAsMap`, `QueryRowsAsSlice`
-- [ ] `Exec`, `ExecStmt`
-- [ ] `Transaction`, `IsolatedTransaction`
-- [ ] `ConnExt.WithConnection`, `TransactionExt`, `TransactionResult`
-- [ ] `AnyValue.Scan`, `AnyValue.Value`
+- [x] `Insert`, `InsertUnique`, `InsertUniqueRowStruct`, `InsertRowStructs`
+- [x] `Update`, `UpdateStruct`
+- [x] `UpsertStruct`, `UpsertStructStmt`, `UpsertStructs`
+- [x] `QueryRow`, `QueryValue`, `QueryValueOr`, `QueryValueStmt`, `ReadRowStructWithTableName`, `QueryRowAsMap`, `QueryRowsAsSlice`
+- [x] `Exec`, `ExecStmt`
+- [x] `Transaction`, `IsolatedTransaction`
+- [x] `ConnExt.WithConnection`, `TransactionExt`, `TransactionResult`
+- [x] `AnyValue.Scan`, `AnyValue.Value`
 
 ### `db/` Package — Untested Functions
 
@@ -107,11 +96,7 @@
 
 ### `pqconn/` Package
 
-- [x] **Error predicates** — All 16 `Is*` functions need unit tests with synthetic `*pq.Error` values
 - [ ] **pqconn/test** — `TestDatabase` is a stub with no assertions
-- [x] `QueryFormatter.FormatPlaceholder` — Panic on negative index untested
-- [x] `QueryFormatter.FormatStringLiteral`, `NewTypeMapper`
-- [x] `Connect` — Driver validation path untested
 
 ### `mysqlconn/` Package — Zero Tests
 
@@ -131,12 +116,4 @@
 ### `information/` Package — Gaps
 
 - [ ] `GetTableRowsWithPrimaryKey` — Queries multiple tables by PK; `sql.ErrNoRows` skip path untested
-
-## Missing Features
-
-- [ ] **Batch insert** — `InsertRowStructs` processes rows one-by-one in a transaction with a prepared statement. Need optimized multi-row INSERT:
-  ```go
-  func BatchInsert[T any](ctx context.Context, table string, items []T, batchSize int) error
-  ```
-- [ ] **Struct reflection cache** — Only insert query caching exists (`insert.go:58`). No broader caching of `StructReflector` results for repeated struct types (see commit `090e73d1`)
 

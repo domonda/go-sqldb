@@ -12,9 +12,9 @@ import (
 	"github.com/domonda/go-sqldb"
 )
 
-func setupQueryCallbackCtx(conn *sqldb.MockConn) context.Context {
+func setupQueryCallbackCtx(t *testing.T, conn *sqldb.MockConn) context.Context {
 	config := sqldb.NewConnExt(conn, sqldb.NewTaggedStructReflector(), sqldb.StdQueryFormatter{}, sqldb.StdQueryBuilder{})
-	return ContextWithConn(context.Background(), config)
+	return ContextWithConn(t.Context(), config)
 }
 
 func TestQueryCallback_ScalarSingle(t *testing.T) {
@@ -25,7 +25,7 @@ func TestQueryCallback_ScalarSingle(t *testing.T) {
 			[][]driver.Value{{"Alice"}, {"Bob"}, {"Charlie"}},
 			query,
 		)
-	ctx := setupQueryCallbackCtx(conn)
+	ctx := setupQueryCallbackCtx(t, conn)
 
 	var names []string
 	err := QueryCallback(ctx,
@@ -47,7 +47,7 @@ func TestQueryCallback_ScalarMultiColumn(t *testing.T) {
 			},
 			query,
 		)
-	ctx := setupQueryCallbackCtx(conn)
+	ctx := setupQueryCallbackCtx(t, conn)
 
 	type entry struct {
 		name string
@@ -79,7 +79,7 @@ func TestQueryCallback_WithQueryArgs(t *testing.T) {
 			"org-1",  // $1
 			"string", // $2
 		)
-	ctx := setupQueryCallbackCtx(conn)
+	ctx := setupQueryCallbackCtx(t, conn)
 
 	got := make(map[string]string)
 	err := QueryCallback(ctx,
@@ -100,7 +100,7 @@ func TestQueryCallback_WithContext(t *testing.T) {
 			[][]driver.Value{{int64(1)}, {int64(2)}},
 			query,
 		)
-	ctx := setupQueryCallbackCtx(conn)
+	ctx := setupQueryCallbackCtx(t, conn)
 
 	var ids []int64
 	err := QueryCallback(ctx,
@@ -122,7 +122,7 @@ func TestQueryCallback_WithErrorReturn(t *testing.T) {
 			[][]driver.Value{{"Alice"}, {"STOP"}, {"Charlie"}},
 			query,
 		)
-	ctx := setupQueryCallbackCtx(conn)
+	ctx := setupQueryCallbackCtx(t, conn)
 
 	stopErr := errors.New("stop iteration")
 	var names []string
@@ -148,7 +148,7 @@ func TestQueryCallback_WithContextAndErrorReturn(t *testing.T) {
 			[][]driver.Value{{int64(10)}, {int64(20)}},
 			query,
 		)
-	ctx := setupQueryCallbackCtx(conn)
+	ctx := setupQueryCallbackCtx(t, conn)
 
 	var sum int64
 	err := QueryCallback(ctx,
@@ -170,7 +170,7 @@ func TestQueryCallback_ZeroRows(t *testing.T) {
 			[][]driver.Value{},
 			query,
 		)
-	ctx := setupQueryCallbackCtx(conn)
+	ctx := setupQueryCallbackCtx(t, conn)
 
 	called := false
 	err := QueryCallback(ctx,
@@ -184,7 +184,7 @@ func TestQueryCallback_ZeroRows(t *testing.T) {
 func TestQueryCallback_InvalidNotFunc(t *testing.T) {
 	query := /*sql*/ `SELECT 1`
 	conn := sqldb.NewMockConn("$", nil, nil)
-	ctx := setupQueryCallbackCtx(conn)
+	ctx := setupQueryCallbackCtx(t, conn)
 
 	err := QueryCallback(ctx, "not a function", query)
 	require.Error(t, err)
@@ -194,7 +194,7 @@ func TestQueryCallback_InvalidNotFunc(t *testing.T) {
 func TestQueryCallback_InvalidVariadic(t *testing.T) {
 	query := /*sql*/ `SELECT 1`
 	conn := sqldb.NewMockConn("$", nil, nil)
-	ctx := setupQueryCallbackCtx(conn)
+	ctx := setupQueryCallbackCtx(t, conn)
 
 	err := QueryCallback(ctx, func(args ...string) {}, query)
 	require.Error(t, err)
@@ -204,7 +204,7 @@ func TestQueryCallback_InvalidVariadic(t *testing.T) {
 func TestQueryCallback_InvalidNoArgs(t *testing.T) {
 	query := /*sql*/ `SELECT 1`
 	conn := sqldb.NewMockConn("$", nil, nil)
-	ctx := setupQueryCallbackCtx(conn)
+	ctx := setupQueryCallbackCtx(t, conn)
 
 	err := QueryCallback(ctx, func() {}, query)
 	require.Error(t, err)
@@ -214,7 +214,7 @@ func TestQueryCallback_InvalidNoArgs(t *testing.T) {
 func TestQueryCallback_InvalidOnlyContext(t *testing.T) {
 	query := /*sql*/ `SELECT 1`
 	conn := sqldb.NewMockConn("$", nil, nil)
-	ctx := setupQueryCallbackCtx(conn)
+	ctx := setupQueryCallbackCtx(t, conn)
 
 	err := QueryCallback(ctx, func(ctx context.Context) {}, query)
 	require.Error(t, err)
@@ -224,7 +224,7 @@ func TestQueryCallback_InvalidOnlyContext(t *testing.T) {
 func TestQueryCallback_InvalidMultipleResults(t *testing.T) {
 	query := /*sql*/ `SELECT 1`
 	conn := sqldb.NewMockConn("$", nil, nil)
-	ctx := setupQueryCallbackCtx(conn)
+	ctx := setupQueryCallbackCtx(t, conn)
 
 	err := QueryCallback(ctx, func(v int64) (int64, error) { return v, nil }, query)
 	require.Error(t, err)
@@ -234,7 +234,7 @@ func TestQueryCallback_InvalidMultipleResults(t *testing.T) {
 func TestQueryCallback_InvalidNonErrorResult(t *testing.T) {
 	query := /*sql*/ `SELECT 1`
 	conn := sqldb.NewMockConn("$", nil, nil)
-	ctx := setupQueryCallbackCtx(conn)
+	ctx := setupQueryCallbackCtx(t, conn)
 
 	err := QueryCallback(ctx, func(v int64) string { return "" }, query)
 	require.Error(t, err)
@@ -244,7 +244,7 @@ func TestQueryCallback_InvalidNonErrorResult(t *testing.T) {
 func TestQueryCallback_InvalidChanArg(t *testing.T) {
 	query := /*sql*/ `SELECT 1`
 	conn := sqldb.NewMockConn("$", nil, nil)
-	ctx := setupQueryCallbackCtx(conn)
+	ctx := setupQueryCallbackCtx(t, conn)
 
 	err := QueryCallback(ctx, func(ch chan int) {}, query)
 	require.Error(t, err)
@@ -254,7 +254,7 @@ func TestQueryCallback_InvalidChanArg(t *testing.T) {
 func TestQueryCallback_InvalidFuncArg(t *testing.T) {
 	query := /*sql*/ `SELECT 1`
 	conn := sqldb.NewMockConn("$", nil, nil)
-	ctx := setupQueryCallbackCtx(conn)
+	ctx := setupQueryCallbackCtx(t, conn)
 
 	err := QueryCallback(ctx, func(fn func()) {}, query)
 	require.Error(t, err)
@@ -269,7 +269,7 @@ func TestQueryCallback_ColumnCountMismatch(t *testing.T) {
 			[][]driver.Value{{"Alice", int64(30)}},
 			query,
 		)
-	ctx := setupQueryCallbackCtx(conn)
+	ctx := setupQueryCallbackCtx(t, conn)
 
 	// Callback takes 1 arg but query returns 2 columns
 	err := QueryCallback(ctx,
@@ -295,7 +295,7 @@ func TestQueryCallback_ManyQueryArgsFewerCallbackArgs(t *testing.T) {
 			"greeting",   // $3
 			"hello",      // $4
 		)
-	ctx := setupQueryCallbackCtx(conn)
+	ctx := setupQueryCallbackCtx(t, conn)
 
 	var gotName, gotValue string
 	err := QueryCallback(ctx,
