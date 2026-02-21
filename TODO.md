@@ -73,16 +73,6 @@
 
 - [ ] **pqconn/test** — `TestDatabase` is a stub with no assertions
 
-### `mssqlconn/` Package
-
-- [x] Entire package has no test files: `Connect`, `MustConnect`, `ConnectExt`
-- [x] `QueryFormatter.FormatTableName`, `FormatColumnName`, `FormatPlaceholder` (`@p1` style) untested
-
-### `sqliteconn/` Package — Gaps
-
-- [ ] `IsDatabaseLocked` error predicate untested
-- [ ] Nested savepoint transactions not tested
-
 ### `information/` Package — Gaps
 
 - [ ] `GetTableRowsWithPrimaryKey` — Queries multiple tables by PK; `sql.ErrNoRows` skip path untested

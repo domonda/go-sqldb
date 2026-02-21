@@ -2,6 +2,8 @@ package sqliteconn
 
 import (
 	"context"
+	"database/sql"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -119,6 +121,57 @@ func TestIsConstraintViolation_NilError(t *testing.T) {
 	assert.False(t, IsCheckViolation(nil))
 	assert.False(t, IsForeignKeyViolation(nil))
 	assert.False(t, IsDatabaseLocked(nil))
+}
+
+func TestIsDatabaseLocked(t *testing.T) {
+	// Use a file-based database so two connections can access it
+	dbPath := filepath.Join(t.TempDir(), "locked.db")
+
+	config := &sqldb.ConnConfig{
+		Driver:   "sqlite",
+		Host:     "localhost",
+		Database: dbPath,
+	}
+
+	// Open two connections to the same file
+	conn1, err := Connect(config)
+	require.NoError(t, err)
+	t.Cleanup(func() { conn1.Close() })
+
+	conn2, err := Connect(config)
+	require.NoError(t, err)
+	t.Cleanup(func() { conn2.Close() })
+
+	// Ensure conn2 returns SQLITE_BUSY immediately instead of waiting
+	err = conn2.Exec(t.Context(), `PRAGMA busy_timeout = 0`)
+	require.NoError(t, err)
+
+	// Create a table using connection 1
+	err = conn1.Exec(t.Context(), `CREATE TABLE locktest (id INTEGER PRIMARY KEY, val TEXT)`)
+	require.NoError(t, err)
+
+	// Connection 1: begin an IMMEDIATE transaction to acquire the write lock
+	tx1, err := conn1.Begin(t.Context(), 1, &sql.TxOptions{Isolation: sql.LevelSerializable})
+	require.NoError(t, err)
+
+	err = tx1.Exec(t.Context(), `INSERT INTO locktest (id, val) VALUES (?, ?)`, 1, "from_conn1")
+	require.NoError(t, err)
+
+	// Connection 2: try to write while connection 1 holds the write lock
+	err = conn2.Exec(t.Context(), `INSERT INTO locktest (id, val) VALUES (?, ?)`, 2, "from_conn2")
+	require.Error(t, err)
+	assert.True(t, IsDatabaseLocked(err), "expected database locked error, got: %v", err)
+
+	// Verify IsDatabaseLocked returns false for non-lock errors
+	assert.False(t, IsDatabaseLocked(nil))
+
+	// Commit connection 1 transaction
+	err = tx1.Commit()
+	require.NoError(t, err)
+
+	// Now connection 2 should be able to write
+	err = conn2.Exec(t.Context(), `INSERT INTO locktest (id, val) VALUES (?, ?)`, 2, "from_conn2")
+	assert.NoError(t, err)
 }
 
 func TestReadOnlyError(t *testing.T) {

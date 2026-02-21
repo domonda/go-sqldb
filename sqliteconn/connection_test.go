@@ -163,6 +163,79 @@ func TestConnection_Query(t *testing.T) {
 	})
 }
 
+func TestConnection_Update(t *testing.T) {
+	conn := testConnection(t)
+	t.Cleanup(func() { conn.Close() })
+	setupTestTable(t, conn)
+
+	t.Run("update single row", func(t *testing.T) {
+		err := conn.Exec(t.Context(), `UPDATE users SET name = ? WHERE email = ?`, "Alice Updated", "alice@example.com")
+		require.NoError(t, err)
+
+		// Verify the update
+		rows := conn.Query(t.Context(), `SELECT name FROM users WHERE email = ?`, "alice@example.com")
+		t.Cleanup(func() { rows.Close() })
+		require.True(t, rows.Next())
+		var name string
+		require.NoError(t, rows.Scan(&name))
+		assert.Equal(t, "Alice Updated", name)
+	})
+
+	t.Run("update multiple rows", func(t *testing.T) {
+		err := conn.Exec(t.Context(), `UPDATE users SET name = ? WHERE name != ?`, "Same Name", "Alice Updated")
+		require.NoError(t, err)
+
+		// Verify all non-Alice rows have been updated
+		rows := conn.Query(t.Context(), `SELECT COUNT(*) FROM users WHERE name = ?`, "Same Name")
+		t.Cleanup(func() { rows.Close() })
+		require.True(t, rows.Next())
+		var count int
+		require.NoError(t, rows.Scan(&count))
+		assert.Equal(t, 2, count)
+	})
+
+	t.Run("update no matching rows", func(t *testing.T) {
+		err := conn.Exec(t.Context(), `UPDATE users SET name = ? WHERE email = ?`, "Nobody", "nonexistent@example.com")
+		assert.NoError(t, err, "updating zero rows should not error")
+	})
+}
+
+func TestConnection_Delete(t *testing.T) {
+	conn := testConnection(t)
+	t.Cleanup(func() { conn.Close() })
+	setupTestTable(t, conn)
+
+	t.Run("delete single row", func(t *testing.T) {
+		err := conn.Exec(t.Context(), `DELETE FROM users WHERE email = ?`, "alice@example.com")
+		require.NoError(t, err)
+
+		// Verify deleted
+		rows := conn.Query(t.Context(), `SELECT COUNT(*) FROM users WHERE email = ?`, "alice@example.com")
+		t.Cleanup(func() { rows.Close() })
+		require.True(t, rows.Next())
+		var count int
+		require.NoError(t, rows.Scan(&count))
+		assert.Equal(t, 0, count)
+	})
+
+	t.Run("delete no matching rows", func(t *testing.T) {
+		err := conn.Exec(t.Context(), `DELETE FROM users WHERE email = ?`, "nonexistent@example.com")
+		assert.NoError(t, err, "deleting zero rows should not error")
+	})
+
+	t.Run("delete all rows", func(t *testing.T) {
+		err := conn.Exec(t.Context(), `DELETE FROM users`)
+		require.NoError(t, err)
+
+		rows := conn.Query(t.Context(), `SELECT COUNT(*) FROM users`)
+		t.Cleanup(func() { rows.Close() })
+		require.True(t, rows.Next())
+		var count int
+		require.NoError(t, rows.Scan(&count))
+		assert.Equal(t, 0, count)
+	})
+}
+
 func TestConnection_Prepare(t *testing.T) {
 	conn := testConnection(t)
 	t.Cleanup(func() { conn.Close() })
