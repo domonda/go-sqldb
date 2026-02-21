@@ -124,6 +124,9 @@ func scanColumn(stmt *sqlite.Stmt, col int, dest any) error {
 		case *[]byte:
 			*d = nil
 		default:
+			if scanner, ok := dest.(sql.Scanner); ok {
+				return scanner.Scan(nil)
+			}
 			return fmt.Errorf("cannot scan NULL into %T", dest)
 		}
 		return nil
@@ -168,6 +171,9 @@ func scanColumn(stmt *sqlite.Stmt, col int, dest any) error {
 			d.Bool = val != 0
 			d.Valid = true
 		default:
+			if scanner, ok := dest.(sql.Scanner); ok {
+				return scanner.Scan(val)
+			}
 			return fmt.Errorf("cannot scan INTEGER into %T", dest)
 		}
 
@@ -184,6 +190,9 @@ func scanColumn(stmt *sqlite.Stmt, col int, dest any) error {
 			d.Float64 = val
 			d.Valid = true
 		default:
+			if scanner, ok := dest.(sql.Scanner); ok {
+				return scanner.Scan(val)
+			}
 			return fmt.Errorf("cannot scan FLOAT into %T", dest)
 		}
 
@@ -200,6 +209,9 @@ func scanColumn(stmt *sqlite.Stmt, col int, dest any) error {
 			d.String = val
 			d.Valid = true
 		default:
+			if scanner, ok := dest.(sql.Scanner); ok {
+				return scanner.Scan(val)
+			}
 			return fmt.Errorf("cannot scan TEXT into %T", dest)
 		}
 
@@ -217,6 +229,9 @@ func scanColumn(stmt *sqlite.Stmt, col int, dest any) error {
 		case *interface{}:
 			*d = buf
 		default:
+			if scanner, ok := dest.(sql.Scanner); ok {
+				return scanner.Scan(buf)
+			}
 			return fmt.Errorf("cannot scan BLOB into %T", dest)
 		}
 

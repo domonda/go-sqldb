@@ -134,11 +134,11 @@ func TestIsDatabaseLocked(t *testing.T) {
 	}
 
 	// Open two connections to the same file
-	conn1, err := Connect(config)
+	conn1, err := Connect(t.Context(), config)
 	require.NoError(t, err)
 	t.Cleanup(func() { conn1.Close() })
 
-	conn2, err := Connect(config)
+	conn2, err := Connect(t.Context(), config)
 	require.NoError(t, err)
 	t.Cleanup(func() { conn2.Close() })
 
@@ -183,7 +183,7 @@ func TestReadOnlyError(t *testing.T) {
 		ReadOnly: true,
 	}
 
-	conn, err := Connect(config)
+	conn, err := Connect(t.Context(), config)
 	require.NoError(t, err)
 	t.Cleanup(func() { conn.Close() })
 

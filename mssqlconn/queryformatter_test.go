@@ -7,71 +7,104 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestEscapeIdentifier(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"users", "users"},
+		{"my_table", "my_table"},
+		{"order", "[order]"},           // reserved word
+		{"select", "[select]"},         // reserved word
+		{"MyTable", "[MyTable]"},       // uppercase
+		{"My Table", "[My Table]"},     // space
+		{"col]name", "[col]]name]"},    // contains ]
+		{"dbo", "dbo"},                 // not reserved
+		{"int", "[int]"},               // reserved data type
+		{"timestamp", "[timestamp]"},   // reserved data type
+	}
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			assert.Equal(t, tt.expected, EscapeIdentifier(tt.input))
+		})
+	}
+}
+
 func TestFormatTableName(t *testing.T) {
 	var f QueryFormatter
 
-	validNames := []string{
-		"users",
-		"_table",
-		"$table",
-		"Table123",
-		"a",
-		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", // 64 chars
-		"1table",
-		"tbl_$123",
+	tests := []struct {
+		name     string
+		expected string
+	}{
+		{"users", "users"},
+		{"_table", "_table"},
+		{"Table123", "[Table123]"},
+		{"a", "a"},
+		{"tbl_123", "tbl_123"},
+		{"order", "[order]"},
+		{"My Table", "[My Table]"},
+		{"dbo.users", "dbo.users"},
+		{"dbo.order", "dbo.[order]"},
+		{"DBO.Users", "[DBO].[Users]"},
+		{"My Schema.My Table", "[My Schema].[My Table]"},
 	}
-	for _, name := range validNames {
-		result, err := f.FormatTableName(name)
-		require.NoErrorf(t, err, "expected %q to be valid", name)
-		assert.Equal(t, name, result)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := f.FormatTableName(tt.name)
+			require.NoErrorf(t, err, "expected %q to be valid", tt.name)
+			assert.Equal(t, tt.expected, result)
+		})
 	}
 
 	invalidNames := []string{
 		"",
-		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", // 65 chars
-		"table-name",
-		"table name",
-		"table.name",
-		"table`name",
-		"table@name",
+		".table",    // starts with dot
+		"1table",    // starts with digit
+		"dbo.1col",  // part starts with digit
 	}
 	for _, name := range invalidNames {
-		_, err := f.FormatTableName(name)
-		assert.Errorf(t, err, "expected %q to be invalid", name)
+		t.Run("invalid_"+name, func(t *testing.T) {
+			_, err := f.FormatTableName(name)
+			assert.Errorf(t, err, "expected %q to be invalid", name)
+		})
 	}
 }
 
 func TestFormatColumnName(t *testing.T) {
 	var f QueryFormatter
 
-	validNames := []string{
-		"col",
-		"_col",
-		"$col",
-		"Col123",
-		"a",
-		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", // 64 chars
-		"1col",
-		"col_$123",
+	tests := []struct {
+		name     string
+		expected string
+	}{
+		{"col", "col"},
+		{"_col", "_col"},
+		{"Col123", "[Col123]"},
+		{"a", "a"},
+		{"col_123", "col_123"},
+		{"order", "[order]"},
+		{"My Column", "[My Column]"},
 	}
-	for _, name := range validNames {
-		result, err := f.FormatColumnName(name)
-		require.NoErrorf(t, err, "expected %q to be valid", name)
-		assert.Equal(t, name, result)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, err := f.FormatColumnName(tt.name)
+			require.NoErrorf(t, err, "expected %q to be valid", tt.name)
+			assert.Equal(t, tt.expected, result)
+		})
 	}
 
 	invalidNames := []string{
 		"",
-		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", // 65 chars
-		"col-name",
-		"col name",
-		"col.name",
-		"col`name",
-		"col@name",
+		"1col",       // starts with digit
+		"$col",       // starts with $
+		"col.name",   // contains dot
 	}
 	for _, name := range invalidNames {
-		_, err := f.FormatColumnName(name)
-		assert.Errorf(t, err, "expected %q to be invalid", name)
+		t.Run("invalid_"+name, func(t *testing.T) {
+			_, err := f.FormatColumnName(name)
+			assert.Errorf(t, err, "expected %q to be invalid", name)
+		})
 	}
 }
 

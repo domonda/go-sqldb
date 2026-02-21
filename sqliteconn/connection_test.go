@@ -3,6 +3,8 @@ package sqliteconn
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
+	"fmt"
 	"testing"
 	"time"
 
@@ -20,7 +22,7 @@ func TestConnect(t *testing.T) {
 			Database: ":memory:",
 		}
 
-		conn, err := Connect(config)
+		conn, err := Connect(t.Context(), config)
 		require.NoError(t, err)
 		require.NotNil(t, conn)
 		t.Cleanup(func() { conn.Close() })
@@ -37,7 +39,7 @@ func TestConnect(t *testing.T) {
 			Database: ":memory:",
 		}
 
-		conn, err := Connect(config)
+		conn, err := Connect(t.Context(), config)
 		assert.Error(t, err)
 		assert.Nil(t, conn)
 		assert.Contains(t, err.Error(), "invalid driver")
@@ -51,7 +53,7 @@ func TestConnect(t *testing.T) {
 			ReadOnly: true,
 		}
 
-		conn, err := Connect(config)
+		conn, err := Connect(t.Context(), config)
 		require.NoError(t, err)
 		require.NotNil(t, conn)
 		t.Cleanup(func() { conn.Close() })
@@ -67,7 +69,7 @@ func TestMustConnect(t *testing.T) {
 			Database: ":memory:",
 		}
 
-		conn := MustConnect(config)
+		conn := MustConnect(t.Context(), config)
 		require.NotNil(t, conn)
 		t.Cleanup(func() { conn.Close() })
 	})
@@ -80,7 +82,7 @@ func TestMustConnect(t *testing.T) {
 		}
 
 		assert.Panics(t, func() {
-			MustConnect(config)
+			MustConnect(t.Context(), config)
 		})
 	})
 }
@@ -501,6 +503,78 @@ func TestConnection_ContextCancellation(t *testing.T) {
 	})
 }
 
+// customTextType is a test type implementing driver.Valuer and sql.Scanner
+// for testing custom type support in bindArgs and scanColumn.
+type customTextType struct {
+	data string
+}
+
+func (c customTextType) Value() (driver.Value, error) {
+	if c.data == "" {
+		return nil, nil
+	}
+	return c.data, nil
+}
+
+func (c *customTextType) Scan(src any) error {
+	if src == nil {
+		c.data = ""
+		return nil
+	}
+	switch v := src.(type) {
+	case string:
+		c.data = v
+	case []byte:
+		c.data = string(v)
+	default:
+		return fmt.Errorf("customTextType.Scan: unsupported type %T", src)
+	}
+	return nil
+}
+
+func TestDriverValuerAndSQLScanner(t *testing.T) {
+	conn := testConnection(t)
+	t.Cleanup(func() { conn.Close() })
+
+	err := conn.Exec(t.Context(), `
+		CREATE TABLE custom_types (
+			id INTEGER PRIMARY KEY,
+			val TEXT
+		)
+	`)
+	require.NoError(t, err)
+
+	t.Run("insert and query custom type", func(t *testing.T) {
+		input := customTextType{data: "hello world"}
+		err := conn.Exec(t.Context(), `INSERT INTO custom_types (id, val) VALUES (?, ?)`, 1, input)
+		require.NoError(t, err)
+
+		rows := conn.Query(t.Context(), `SELECT val FROM custom_types WHERE id = ?`, 1)
+		t.Cleanup(func() { rows.Close() })
+
+		require.True(t, rows.Next())
+		var output customTextType
+		err = rows.Scan(&output)
+		require.NoError(t, err)
+		assert.Equal(t, "hello world", output.data)
+	})
+
+	t.Run("insert nil via Valuer", func(t *testing.T) {
+		input := customTextType{data: ""}
+		err := conn.Exec(t.Context(), `INSERT INTO custom_types (id, val) VALUES (?, ?)`, 2, input)
+		require.NoError(t, err)
+
+		rows := conn.Query(t.Context(), `SELECT val FROM custom_types WHERE id = ?`, 2)
+		t.Cleanup(func() { rows.Close() })
+
+		require.True(t, rows.Next())
+		var output customTextType
+		err = rows.Scan(&output)
+		require.NoError(t, err)
+		assert.Equal(t, "", output.data)
+	})
+}
+
 // Helper functions
 
 func testConnection(t *testing.T) sqldb.Connection {
@@ -510,7 +584,7 @@ func testConnection(t *testing.T) sqldb.Connection {
 		Host:     "localhost", // SQLite doesn't use host, but ConnConfig requires it
 		Database: ":memory:",
 	}
-	conn, err := Connect(config)
+	conn, err := Connect(t.Context(), config)
 	require.NoError(t, err)
 	require.NotNil(t, conn)
 	return conn

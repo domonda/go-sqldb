@@ -34,8 +34,12 @@ func (t *transaction) Exec(ctx context.Context, query string, args ...any) error
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	err := sqlitex.Execute(t.parent.conn, query, &sqlitex.ExecOptions{
-		Args: args,
+	resolved, err := resolveDriverValueArgs(args)
+	if err != nil {
+		return err
+	}
+	err = sqlitex.Execute(t.parent.conn, query, &sqlitex.ExecOptions{
+		Args: resolved,
 	})
 	if err != nil {
 		return wrapKnownErrors(err)

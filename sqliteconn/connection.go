@@ -3,6 +3,7 @@ package sqliteconn
 import (
 	"context"
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"time"
 
@@ -16,7 +17,10 @@ const Driver = "sqlite"
 
 // Connect establishes a new sqldb.Connection using the passed sqldb.ConnConfig
 // and zombiezen.com/go/sqlite as the underlying SQLite implementation.
-func Connect(config *sqldb.ConnConfig) (sqldb.Connection, error) {
+func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
@@ -64,8 +68,8 @@ func Connect(config *sqldb.ConnConfig) (sqldb.Connection, error) {
 // MustConnect creates a new sqldb.Connection using the passed sqldb.ConnConfig
 // and zombiezen.com/go/sqlite as the underlying implementation.
 // Errors are panicked.
-func MustConnect(config *sqldb.ConnConfig) sqldb.Connection {
-	conn, err := Connect(config)
+func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
+	conn, err := Connect(ctx, config)
 	if err != nil {
 		panic(err)
 	}
@@ -74,8 +78,8 @@ func MustConnect(config *sqldb.ConnConfig) sqldb.Connection {
 
 // ConnectExt establishes a new sqldb.ConnExt using the passed config and structReflector.
 // It wraps Connect and returns an extended connection with SQLite-specific components.
-func ConnectExt(config *sqldb.ConnConfig, structReflector sqldb.StructReflector) (*sqldb.ConnExt, error) {
-	conn, err := Connect(config)
+func ConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) (*sqldb.ConnExt, error) {
+	conn, err := Connect(ctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -83,8 +87,8 @@ func ConnectExt(config *sqldb.ConnConfig, structReflector sqldb.StructReflector)
 }
 
 // MustConnectExt is like ConnectExt but panics on error.
-func MustConnectExt(config *sqldb.ConnConfig, structReflector sqldb.StructReflector) *sqldb.ConnExt {
-	connExt, err := ConnectExt(config, structReflector)
+func MustConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) *sqldb.ConnExt {
+	connExt, err := ConnectExt(ctx, config, structReflector)
 	if err != nil {
 		panic(err)
 	}
@@ -137,8 +141,12 @@ func (c *connection) Exec(ctx context.Context, query string, args ...any) error 
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	err := sqlitex.Execute(c.conn, query, &sqlitex.ExecOptions{
-		Args: args,
+	resolved, err := resolveDriverValueArgs(args)
+	if err != nil {
+		return err
+	}
+	err = sqlitex.Execute(c.conn, query, &sqlitex.ExecOptions{
+		Args: resolved,
 	})
 	if err != nil {
 		return wrapKnownErrors(err)
@@ -278,8 +286,60 @@ func bindArgs(stmt *sqlite.Stmt, args []any) error {
 		case []byte:
 			stmt.BindBytes(pos, v)
 		default:
+			if valuer, ok := arg.(driver.Valuer); ok {
+				val, err := valuer.Value()
+				if err != nil {
+					return fmt.Errorf("driver.Valuer error at position %d: %w", pos, err)
+				}
+				return bindDriverValue(stmt, pos, val)
+			}
 			return fmt.Errorf("unsupported argument type at position %d: %T", pos, arg)
 		}
+	}
+	return nil
+}
+
+// resolveDriverValueArgs resolves any driver.Valuer arguments to their
+// underlying driver.Value so they can be passed to sqlitex.Execute.
+func resolveDriverValueArgs(args []any) ([]any, error) {
+	resolved := make([]any, len(args))
+	for i, arg := range args {
+		if valuer, ok := arg.(driver.Valuer); ok {
+			val, err := valuer.Value()
+			if err != nil {
+				return nil, fmt.Errorf("driver.Valuer error at position %d: %w", i+1, err)
+			}
+			resolved[i] = val
+		} else {
+			resolved[i] = arg
+		}
+	}
+	return resolved, nil
+}
+
+// bindDriverValue binds a driver.Value to a prepared statement position.
+func bindDriverValue(stmt *sqlite.Stmt, pos int, val driver.Value) error {
+	switch v := val.(type) {
+	case nil:
+		stmt.BindNull(pos)
+	case int64:
+		stmt.BindInt64(pos, v)
+	case float64:
+		stmt.BindFloat(pos, v)
+	case bool:
+		if v {
+			stmt.BindInt64(pos, 1)
+		} else {
+			stmt.BindInt64(pos, 0)
+		}
+	case string:
+		stmt.BindText(pos, v)
+	case []byte:
+		stmt.BindBytes(pos, v)
+	case time.Time:
+		stmt.BindText(pos, v.Format(time.RFC3339Nano))
+	default:
+		return fmt.Errorf("unsupported driver.Value type at position %d: %T", pos, val)
 	}
 	return nil
 }

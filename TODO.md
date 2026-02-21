@@ -60,20 +60,9 @@
 | README                            | Yes    | No        | No        | Yes        |
 | Package doc comment               | No     | No        | No        | Yes        |
 
-- [ ] **mssqlconn/queryformatter.go:11** — TODO says "backticks" but MSSQL uses `[brackets]`
-- [ ] **mssqlconn** — No identifier escaping; reserved words as table/column names will fail
-- [ ] **mssqlconn** — `FormatTableName` doesn't support schema-qualified names (`dbo.table`)
-- [ ] **sqliteconn** — `Connect` missing `context.Context` parameter (all other drivers have it)
-- [ ] **sqliteconn** — No `driver.Valuer`/`sql.Scanner` support in argument binding or result scanning
-- [ ] **sqliteconn/README.md** — Examples show `Connect(ctx, config)` but actual signature is `Connect(config)`
 
 ## Testing
 
 ### `pqconn/` Package
 
 - [ ] **pqconn/test** — `TestDatabase` is a stub with no assertions
-
-### `information/` Package — Gaps
-
-- [x] `GetTableRowsWithPrimaryKey` — Queries multiple tables by PK; `sql.ErrNoRows` skip path untested
-
