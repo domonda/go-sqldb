@@ -2,7 +2,7 @@ name: go-sqldb-pqconn-test
 
 services:
   postgres:
-    image: postgres:18.1-alpine
+    image: postgres:17.7-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: testuser
@@ -14,5 +14,16 @@ services:
       - "5433:5432"
     volumes:
       - ./postgres-data:/var/lib/postgresql/data
-
-# TODO: fsync=off, full_page_writes=off, work_mem, shared_buffers=512MB ?
+    # Performance settings for testing only (unsafe for production)
+    command:
+      - postgres
+      - -c
+      - fsync=off
+      - -c
+      - full_page_writes=off
+      - -c
+      - synchronous_commit=off
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - work_mem=64MB

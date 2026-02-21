@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
 	"testing"
 
@@ -21,10 +20,6 @@ const (
 
 func dockerComposeUp() error {
 	return exec.Command("docker", "compose", "up", "-d").Run()
-}
-
-func dockerComposeDown() error {
-	return exec.Command("docker", "compose", "down").Run()
 }
 
 func dropSchemaTables() error {
@@ -59,14 +54,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Failed to drop all user data before tests: %v", err)
 	}
 
-	code := m.Run()
-
-	err = dockerComposeDown()
-	if err != nil {
-		log.Fatalf("Failed to stop Docker Compose: %v", err)
-	}
-
-	os.Exit(code)
+	m.Run()
 }
 
 func TestDatabase(t *testing.T) {

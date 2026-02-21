@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Run tests for specific module**: `go test ./...` in the module directory
 - **Build all modules**: `go build ./...`
 - **Get dependencies**: `go mod tidy` (run in each module directory as needed)
+- **Start test database**: `docker compose -f pqconn/test/docker-compose.yml up -d` (PostgreSQL 17 on port 5433)
+- **Reset test database**: `./pqconn/test/reset-postgres-data.sh` (required after changing PostgreSQL version in docker-compose.yml)
 
 ## Go Workspace Structure
 
@@ -33,6 +35,24 @@ This repository uses Go workspaces with multiple modules:
 2. **Struct-to-SQL Mapping**: Automatic mapping between Go structs and database rows using reflection
 3. **Transaction Callbacks**: Execute transactions in callback functions that can be nested
 4. **Flexible Query Interface**: Support for both raw SQL and struct-based operations
+
+### Context Key Convention
+
+Use unexported empty struct types as context keys, with no separate variable.
+The type name is the key name, and `keyName{}` is used directly as the value:
+
+```go
+type myCtxKey struct{}
+
+func ContextWithMyValue(ctx context.Context, val string) context.Context {
+    return context.WithValue(ctx, myCtxKey{}, val)
+}
+
+func MyValueFromContext(ctx context.Context) string {
+    val, _ := ctx.Value(myCtxKey{}).(string)
+    return val
+}
+```
 
 ### Important Packages
 
@@ -96,9 +116,11 @@ This repository uses Go workspaces with multiple modules:
 - Import `github.com/stretchr/testify/assert` for assertions where the test should continue even if the condition is not met
 - Always use `go clean` after `go build` to not leave binaries behind
 - Mock connections available in `_mockconn/` package
-- PostgreSQL integration tests use Docker (see `pqconn/test/`)
+- PostgreSQL integration tests use dockerized PostgreSQL 17 on port 5433 (see `pqconn/test/docker-compose.yml`)
+- Run `./pqconn/test/reset-postgres-data.sh` after changing the PostgreSQL version
 - Use `db.ContextWithNonConnectionForTest()` for testing without real database
 - Helper functions in `db/testhelper.go`
+- Do **not** use `os.Exit(m.Run())` in `TestMain` — just call `m.Run()` directly
 
 ### Commit Message Guidelines
 Follow conventional commits format: `<type>(<scope>): <subject>`

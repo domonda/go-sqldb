@@ -72,16 +72,16 @@
 ### `db/` Package — Untested Functions
 
 - [x] `Update`, `UpdateStruct`
-- [ ] `UpsertStruct`, `UpsertStructs`
-- [ ] `InsertUnique`, `InsertUniqueRowStruct`, `InsertRowStructStmt`, `InsertRowStructs`
-- [ ] `QueryRow`, `QueryValueStmt`, `ReadRowStructWithTableName`, `ReadRowStructWithTableNameOr`, `QueryRowAsMap`, `QueryRowsAsSlice`
-- [ ] `Exec`, `ExecStmt`
-- [ ] `ValidateWithinTransaction`, `ValidateNotWithinTransaction`, `IsTransaction`
-- [ ] `IsolatedTransaction`, `OptionalTransaction`, `TransactionReadOnly`, `TransactionSavepoint`, `TransactionResult`
-- [ ] `ContextWithoutTransactions`, `IsContextWithoutTransactions`
-- [ ] `ListenOnChannel`, `UnlistenChannel`, `IsListeningOnChannel`
-- [ ] `ReplaceErrNoRows`, `IsOtherThanErrNoRows`
-- [ ] `SetConn`, `Conn`, `Close`
+- [x] `UpsertStruct`, `UpsertStructs`
+- [x] `InsertUnique`, `InsertUniqueRowStruct`, `InsertRowStructStmt`, `InsertRowStructs`
+- [x] `QueryRow`, `QueryValueStmt`, `ReadRowStructWithTableName`, `ReadRowStructWithTableNameOr`, `QueryRowAsMap`, `QueryRowsAsSlice`
+- [x] `Exec`, `ExecStmt`
+- [x] `ValidateWithinTransaction`, `ValidateNotWithinTransaction`, `IsTransaction`
+- [x] `IsolatedTransaction`, `OptionalTransaction`, `TransactionReadOnly`, `TransactionSavepoint`, `TransactionResult`
+- [x] `ContextWithoutTransactions`, `IsContextWithoutTransactions`
+- [x] `ListenOnChannel`, `UnlistenChannel`, `IsListeningOnChannel`
+- [x] `ReplaceErrNoRows`, `IsOtherThanErrNoRows`
+- [x] `SetConn`, `Conn`, `Close`
 
 ### `pqconn/` Package
 
@@ -100,7 +100,7 @@
 ### `sqliteconn/` Package — Gaps
 
 - [ ] `IsDatabaseLocked` error predicate untested
-- [ ] Nested savepoint transactions not tested (related to hardcoded `nested_tx` name bug)
+- [ ] Nested savepoint transactions not tested
 
 ### `information/` Package — Gaps
 

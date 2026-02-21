@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/db"
@@ -39,7 +40,16 @@ func TestMain(m *testing.M) {
 		Database: dbName,
 		Extra:    map[string]string{"sslmode": "disable"},
 	}
-	connExt, err := pqconn.ConnectExt(ctx, config, sqldb.NewTaggedStructReflector())
+	// Retry connecting because docker compose up -d returns
+	// before PostgreSQL is ready to accept connections
+	var connExt *sqldb.ConnExt
+	for range 30 {
+		connExt, err = pqconn.ConnectExt(ctx, config, sqldb.NewTaggedStructReflector())
+		if err == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
@@ -64,7 +74,7 @@ func TestMain(m *testing.M) {
 
 	testCtx = db.ContextWithConn(ctx, connExt)
 
-	code := m.Run()
+	m.Run()
 
 	// Cleanup
 	cleanupErr := connExt.Exec(ctx, /*sql*/ `
@@ -74,8 +84,6 @@ func TestMain(m *testing.M) {
 	if cleanupErr != nil {
 		fmt.Fprintf(os.Stderr, "Failed to drop test tables: %v\n", cleanupErr)
 	}
-
-	os.Exit(code)
 }
 
 func TestTableExists(t *testing.T) {

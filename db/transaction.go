@@ -2,29 +2,28 @@ package db
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 
 	"github.com/domonda/go-sqldb"
 )
 
-var noTransactionsCtxKey byte
+type noTransactionsCtxKey struct{}
 
 // ContextWithoutTransactions returns a context that signals
 // to [IsTransaction] and related functions that no transaction
 // should be used, even if the connection is within a transaction.
 func ContextWithoutTransactions(ctx context.Context) context.Context {
-	return context.WithValue(ctx, &noTransactionsCtxKey, struct{}{})
+	return context.WithValue(ctx, noTransactionsCtxKey{}, struct{}{})
 }
 
 // IsContextWithoutTransactions returns true if the context
 // was created with [ContextWithoutTransactions].
 func IsContextWithoutTransactions(ctx context.Context) bool {
-	return ctx.Value(&noTransactionsCtxKey) != nil
+	return ctx.Value(noTransactionsCtxKey{}) != nil
 }
 
 // IsTransaction indicates if the connection from the context,
@@ -191,14 +190,14 @@ func SerializedTransaction(ctx context.Context, txFunc func(context.Context) err
 
 	// Pass nested serialized transactions through
 	if IsTransaction(ctx) {
-		if ctx.Value(&serializedTransactionCtxKey) == nil {
+		if ctx.Value(serializedTransactionCtxKey{}) == nil {
 			return errors.New("SerializedTransaction called from within a non-serialized transaction")
 		}
 		return txFunc(ctx)
 	}
 
 	// Add value to context to check for nested serialized transactions
-	ctx = context.WithValue(ctx, &serializedTransactionCtxKey, struct{}{})
+	ctx = context.WithValue(ctx, serializedTransactionCtxKey{}, struct{}{})
 
 	opts := sql.TxOptions{Isolation: sql.LevelSerializable}
 	for i := 0; i < SerializedTransactionRetries; i++ {
@@ -263,7 +262,8 @@ func TransactionReadOnlyResult[T any](ctx context.Context, txFunc func(context.C
 
 // TransactionSavepoint executes txFunc within a database transaction or uses savepoints for rollback.
 // If the passed context already has a database transaction connection,
-// then a savepoint with a random name is created before the execution of txFunc.
+// then a uniquely named savepoint (sp1, sp2, ...) is created before the execution of txFunc.
+// A custom savepoint naming function can be injected via [ContextWithSavepointFunc].
 // If txFunc returns an error, then the transaction is rolled back to the savepoint
 // but the transaction from the context is not rolled back.
 // If the passed context does not have a database transaction connection,
@@ -280,20 +280,16 @@ func TransactionSavepoint(ctx context.Context, txFunc func(context.Context) erro
 	conn := Conn(ctx).Connection
 	if !conn.Transaction().Active() {
 		// If not already in a transaction, then execute txFunc
-		// within a as transaction instead of using savepoints:
+		// within a transaction instead of using savepoints:
 		return Transaction(ctx, txFunc)
 	}
 
-	savepoint, err := randomSavepoint()
-	if err != nil {
-		return err
-	}
-	err = conn.Exec(ctx, "savepoint "+savepoint)
-	if err != nil {
+	savepoint := nextSavepoint(ctx)
+	if err := conn.Exec(ctx, "savepoint "+savepoint); err != nil {
 		return err
 	}
 
-	err = txFunc(ctx)
+	err := txFunc(ctx)
 	if err != nil {
 		e := conn.Exec(ctx, "rollback to "+savepoint)
 		if e != nil && !errors.Is(e, sql.ErrTxDone) {
@@ -306,11 +302,25 @@ func TransactionSavepoint(ctx context.Context, txFunc func(context.Context) erro
 	return conn.Exec(ctx, "release savepoint "+savepoint)
 }
 
-func randomSavepoint() (string, error) {
-	b := make([]byte, 8)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
+type savepointFuncCtxKey struct{}
+
+// ContextWithSavepointFunc returns a context with a custom function
+// for generating savepoint names used by [TransactionSavepoint].
+// This is useful for testing to inject deterministic savepoint names.
+func ContextWithSavepointFunc(ctx context.Context, savepointFunc func() string) context.Context {
+	return context.WithValue(ctx, savepointFuncCtxKey{}, savepointFunc)
+}
+
+// savepointCounter is an atomic counter used to generate
+// unique savepoint names (sp1, sp2, ...) in a threadsafe way.
+var savepointCounter atomic.Uint64
+
+// nextSavepoint returns the next savepoint name.
+// If the context has a custom savepoint function set via
+// [ContextWithSavepointFunc], it is used instead of the global atomic counter.
+func nextSavepoint(ctx context.Context) string {
+	if fn, _ := ctx.Value(savepointFuncCtxKey{}).(func() string); fn != nil {
+		return fn()
 	}
-	return "SP" + hex.EncodeToString(b), nil
+	return fmt.Sprintf("sp%d", savepointCounter.Add(1))
 }

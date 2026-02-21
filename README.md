@@ -259,11 +259,33 @@ err = db.SerializedTransaction(ctx, func(context.Context) error { ... })
 
 `TransactionSavepoint` executes `txFunc` within a database transaction or uses savepoints for rollback.
 If the passed context already has a database transaction connection,
-then a savepoint with a random name is created before the execution of `txFunc`.
+then a uniquely named savepoint (sp1, sp2, ...) is created before the execution of `txFunc`.
 If `txFunc` returns an error, then the transaction is rolled back to the savepoint
 but the transaction from the context is not rolled back.
 If the passed context does not have a database transaction connection,
 then `Transaction(ctx, txFunc)` is called without savepoints.
 ```go
 err = db.TransactionSavepoint(ctx, func(context.Context) error { ... })
+```
+
+## Testing
+
+Integration tests use a dockerized PostgreSQL 17 instance on port 5433 (to avoid conflicts with a local PostgreSQL on the default port 5432).
+
+Start the test database:
+```bash
+docker compose -f pqconn/test/docker-compose.yml up -d
+```
+
+Run all tests:
+```bash
+./test-workspace.sh
+```
+
+### Changing the PostgreSQL version
+
+After changing the PostgreSQL image version in `pqconn/test/docker-compose.yml`, the data directory must be reset because PostgreSQL data files are not compatible across major versions:
+
+```bash
+./pqconn/test/reset-postgres-data.sh
 ```

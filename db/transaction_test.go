@@ -17,7 +17,7 @@ func TestSerializedTransaction(t *testing.T) {
 		if !IsTransaction(ctx) {
 			panic("not in transaction")
 		}
-		if ctx.Value(&serializedTransactionCtxKey) == nil {
+		if ctx.Value(serializedTransactionCtxKey{}) == nil {
 			panic("no SerializedTransaction")
 		}
 		return nil
@@ -27,7 +27,7 @@ func TestSerializedTransaction(t *testing.T) {
 		if !IsTransaction(ctx) {
 			panic("not in transaction")
 		}
-		if ctx.Value(&serializedTransactionCtxKey) == nil {
+		if ctx.Value(serializedTransactionCtxKey{}) == nil {
 			panic("no SerializedTransaction")
 		}
 		return errors.New("expected error")
@@ -71,7 +71,7 @@ func TestTransaction(t *testing.T) {
 		if !IsTransaction(ctx) {
 			panic("not in transaction")
 		}
-		if ctx.Value(&serializedTransactionCtxKey) != nil {
+		if ctx.Value(serializedTransactionCtxKey{}) != nil {
 			panic("SerializedTransaction")
 		}
 		return nil
@@ -81,7 +81,7 @@ func TestTransaction(t *testing.T) {
 		if !IsTransaction(ctx) {
 			panic("not in transaction")
 		}
-		if ctx.Value(&serializedTransactionCtxKey) != nil {
+		if ctx.Value(serializedTransactionCtxKey{}) != nil {
 			panic("SerializedTransaction")
 		}
 		return errors.New("expected error")

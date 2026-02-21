@@ -1,9 +1,7 @@
 package db
 
-var (
-	// Number of retries used for a SerializedTransaction
-	// before it fails
-	SerializedTransactionRetries = 10
+type serializedTransactionCtxKey struct{}
 
-	serializedTransactionCtxKey byte
-)
+// Number of retries used for a SerializedTransaction
+// before it fails.
+var SerializedTransactionRetries = 10
