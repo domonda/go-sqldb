@@ -75,5 +75,5 @@
 
 ### `information/` Package — Gaps
 
-- [ ] `GetTableRowsWithPrimaryKey` — Queries multiple tables by PK; `sql.ErrNoRows` skip path untested
+- [x] `GetTableRowsWithPrimaryKey` — Queries multiple tables by PK; `sql.ErrNoRows` skip path untested
 

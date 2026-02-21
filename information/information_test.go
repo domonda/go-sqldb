@@ -220,6 +220,69 @@ func TestGetPrimaryKeyColumns(t *testing.T) {
 	}
 }
 
+func TestGetTableRowsWithPrimaryKey(t *testing.T) {
+	// Insert a row into the parent table only
+	err := db.Conn(testCtx).Exec(testCtx, /*sql*/ `
+		DELETE FROM information_test_child;
+		DELETE FROM information_test;
+		INSERT INTO information_test (id, name, value) VALUES (42, 'test-row', 'test-value');
+	`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		db.Conn(testCtx).Exec(testCtx, /*sql*/ `DELETE FROM information_test_child; DELETE FROM information_test`)
+	})
+
+	// PK columns for both tables — information_test_child has no row with id=42
+	pkCols := []PrimaryKeyColumn{
+		{Table: "public.information_test", Column: "id", Type: "integer"},
+		{Table: "public.information_test_child", Column: "id", Type: "integer"},
+	}
+
+	t.Run("matching row in one table, no rows in other", func(t *testing.T) {
+		// pk=42 exists in information_test but not in information_test_child
+		// The function should skip information_test_child (sql.ErrNoRows / len < 2 path)
+		tableRows, err := GetTableRowsWithPrimaryKey(testCtx, pkCols, 42)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(tableRows) != 1 {
+			t.Fatalf("expected 1 table row, got %d", len(tableRows))
+		}
+		if tableRows[0].Table != "public.information_test" {
+			t.Errorf("expected table public.information_test, got %q", tableRows[0].Table)
+		}
+		if len(tableRows[0].Header) == 0 {
+			t.Error("expected non-empty header")
+		}
+		if len(tableRows[0].Row) == 0 {
+			t.Error("expected non-empty row")
+		}
+	})
+
+	t.Run("no matching rows in any table", func(t *testing.T) {
+		// pk=999 doesn't exist in any table — all tables should be skipped
+		tableRows, err := GetTableRowsWithPrimaryKey(testCtx, pkCols, 999)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(tableRows) != 0 {
+			t.Errorf("expected 0 table rows, got %d", len(tableRows))
+		}
+	})
+
+	t.Run("empty pk columns slice", func(t *testing.T) {
+		tableRows, err := GetTableRowsWithPrimaryKey(testCtx, nil, 42)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if tableRows != nil {
+			t.Errorf("expected nil result, got %v", tableRows)
+		}
+	})
+}
+
 func TestGetPrimaryKeyColumnsOfType(t *testing.T) {
 	cols, err := GetPrimaryKeyColumnsOfType(testCtx, "integer")
 	if err != nil {
