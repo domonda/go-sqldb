@@ -31,11 +31,11 @@ func ExampleUpsertStructStmt() {
 	ctx := db.ContextWithConn(context.Background(), config)
 
 	err := db.Transaction(ctx, func(ctx context.Context) error {
-		upsert, done, err := db.UpsertStructStmt[User](ctx)
+		upsert, closeStmt, err := db.UpsertStructStmt[User](ctx)
 		if err != nil {
 			return err
 		}
-		defer done()
+		defer closeStmt()
 
 		for _, user := range users {
 			err = upsert(ctx, user)

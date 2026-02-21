@@ -250,11 +250,11 @@ func TestInsertRowStructStmt(t *testing.T) {
 			gotQuery = query
 			return nil
 		}
-		insertFunc, closeFunc, err := InsertRowStructStmt[reflectTestStruct](t.Context(), ext)
+		insertFunc, closeStmt, err := InsertRowStructStmt[reflectTestStruct](t.Context(), ext)
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer closeFunc()
+		defer closeStmt()
 
 		err = insertFunc(t.Context(), reflectTestStruct{ID: 1, Name: "Alice", Active: true})
 		if err != nil {

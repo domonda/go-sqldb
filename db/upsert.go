@@ -13,8 +13,8 @@ func UpsertStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, opti
 }
 
 // UpsertStructStmt prepares a statement for upserting rows of type S.
-// Returns an upsert function and a done function that must be called when done.
-func UpsertStructStmt[S sqldb.StructWithTableName](ctx context.Context, options ...sqldb.QueryOption) (upsert func(ctx context.Context, rowStruct S) error, done func() error, err error) {
+// Returns an upsert function and a closeStmt function that must be called when done.
+func UpsertStructStmt[S sqldb.StructWithTableName](ctx context.Context, options ...sqldb.QueryOption) (upsert func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
 	return sqldb.UpsertStructStmt[S](ctx, Conn(ctx), options...)
 }
 

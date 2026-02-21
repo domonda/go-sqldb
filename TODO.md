@@ -26,7 +26,7 @@
 - [ ] **"RowStruct" vs "Struct"** — Insert uses `InsertRowStruct`, `InsertRowStructs`; Update/Upsert use `UpdateStruct`, `UpsertStruct`. Pick one convention
 - [ ] **"Read" vs "Query"** — `QueryRow`, `QueryValue`, `QueryRowsAsSlice` use "Query" prefix; `ReadRowStructWithTableName` uses "Read". Same abstraction level, different prefix
 - [ ] **`ReadRowStructWithTableName`** — 29 chars. The `StructWithTableName` constraint already enforces table name. Could be `ReadRow[S]`
-- [ ] **Stmt close parameter names** — `closeStmt`, `closeFunc`, `done` across different Stmt-returning functions
+- [x] **Stmt close parameter names** — `closeStmt`, `closeFunc`, `done` across different Stmt-returning functions
 
 ### Missing Symmetry
 

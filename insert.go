@@ -120,7 +120,7 @@ func InsertRowStruct(ctx context.Context, c *ConnExt, rowStruct StructWithTableN
 	return nil
 }
 
-func InsertRowStructStmt[S StructWithTableName](ctx context.Context, c *ConnExt, options ...QueryOption) (insertFunc func(ctx context.Context, rowStruct S) error, closeFunc func() error, err error) {
+func InsertRowStructStmt[S StructWithTableName](ctx context.Context, c *ConnExt, options ...QueryOption) (insertFunc func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
 	structType := reflect.TypeFor[S]()
 	table, err := c.StructReflector.TableNameForStruct(structType)
 	if err != nil {
@@ -218,12 +218,12 @@ func InsertRowStructs[S StructWithTableName](ctx context.Context, c *ConnExt, ro
 		return InsertRowStruct(ctx, c, rowStructs[0], options...)
 	}
 	return TransactionExt(ctx, c, nil, func(tx *ConnExt) (err error) {
-		insertFunc, done, stmtErr := InsertRowStructStmt[S](ctx, tx, options...)
+		insertFunc, closeStmt, stmtErr := InsertRowStructStmt[S](ctx, tx, options...)
 		if stmtErr != nil {
 			return stmtErr
 		}
 		defer func() {
-			err = errors.Join(err, done())
+			err = errors.Join(err, closeStmt())
 		}()
 
 		for _, rowStruct := range rowStructs {

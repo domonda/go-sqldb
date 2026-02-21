@@ -141,9 +141,9 @@ func TestInsertRowStructStmt(t *testing.T) {
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
 
-		insertFunc, closeFunc, err := InsertRowStructStmt[ItemRow](ctx)
+		insertFunc, closeStmt, err := InsertRowStructStmt[ItemRow](ctx)
 		require.NoError(t, err)
-		defer closeFunc()
+		defer closeStmt()
 
 		err = insertFunc(t.Context(), ItemRow{ID: 1, Name: "Item1"})
 		require.NoError(t, err)

@@ -45,9 +45,9 @@ func UpsertStruct(ctx context.Context, c *ConnExt, rowStruct StructWithTableName
 }
 
 // UpsertStructStmt prepares a statement for upserting rows of type S.
-// Returns an upsert function to upsert individual rows and a done function
-// that must be called when done to close the prepared statement.
-func UpsertStructStmt[S StructWithTableName](ctx context.Context, c *ConnExt, options ...QueryOption) (upsert func(ctx context.Context, rowStruct S) error, done func() error, err error) {
+// Returns an upsert function to upsert individual rows and a closeStmt
+// function that must be called when done to close the prepared statement.
+func UpsertStructStmt[S StructWithTableName](ctx context.Context, c *ConnExt, options ...QueryOption) (upsert func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
 	structType := reflect.TypeFor[S]()
 	table, err := c.StructReflector.TableNameForStruct(structType)
 	if err != nil {
@@ -102,12 +102,12 @@ func UpsertStructs[S StructWithTableName](ctx context.Context, c *ConnExt, rowSt
 		return UpsertStruct(ctx, c, rowStructs[0], options...)
 	}
 	return TransactionExt(ctx, c, nil, func(tx *ConnExt) (err error) {
-		upsertFunc, closeFunc, stmtErr := UpsertStructStmt[S](ctx, tx, options...)
+		upsertFunc, closeStmt, stmtErr := UpsertStructStmt[S](ctx, tx, options...)
 		if stmtErr != nil {
 			return stmtErr
 		}
 		defer func() {
-			err = errors.Join(err, closeFunc())
+			err = errors.Join(err, closeStmt())
 		}()
 
 		for _, rowStruct := range rowStructs {

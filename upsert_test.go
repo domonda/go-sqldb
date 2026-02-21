@@ -77,11 +77,11 @@ func TestUpsertStructStmt(t *testing.T) {
 			gotQuery = query
 			return nil
 		}
-		upsertFunc, doneFunc, err := UpsertStructStmt[reflectTestStruct](t.Context(), ext)
+		upsertFunc, closeStmt, err := UpsertStructStmt[reflectTestStruct](t.Context(), ext)
 		if err != nil {
 			t.Fatal(err)
 		}
-		defer doneFunc()
+		defer closeStmt()
 
 		err = upsertFunc(t.Context(), reflectTestStruct{ID: 1, Name: "Alice", Active: true})
 		if err != nil {

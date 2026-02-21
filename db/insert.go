@@ -41,9 +41,9 @@ func InsertRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, o
 }
 
 // InsertRowStructStmt prepares a statement for inserting rows of type S.
-// Returns an insertFunc to insert individual rows and a closeFunc
-// that must be called when done.
-func InsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, options ...sqldb.QueryOption) (insertFunc func(ctx context.Context, rowStruct S) error, closeFunc func() error, err error) {
+// Returns an insertFunc to insert individual rows and a closeStmt
+// function that must be called when done.
+func InsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, options ...sqldb.QueryOption) (insertFunc func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
 	return sqldb.InsertRowStructStmt[S](ctx, Conn(ctx), options...)
 }
 
