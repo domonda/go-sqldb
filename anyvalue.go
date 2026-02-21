@@ -36,35 +36,35 @@ type AnyValue struct {
 }
 
 // Scan implements the database/sql.Scanner interface.
-func (any *AnyValue) Scan(val any) error {
+func (a *AnyValue) Scan(val any) error {
 	if b, ok := val.([]byte); ok {
 		// Copy bytes because they won't be valid after this method call
-		any.Val = append([]byte(nil), b...)
+		a.Val = append([]byte(nil), b...)
 	} else {
-		any.Val = val
+		a.Val = val
 	}
 	return nil
 }
 
 // Value implements the driver database/sql/driver.Valuer interface.
-func (any AnyValue) Value() (driver.Value, error) {
-	return any.Val, nil
+func (a AnyValue) Value() (driver.Value, error) {
+	return a.Val, nil
 }
 
 // String returns the value formatted as string using fmt.Sprint
 // except when it's of type []byte and valid UTF-8,
 // then it is directly converted into a string.
-func (any AnyValue) String() string {
-	if b, ok := any.Val.([]byte); ok && utf8.Valid(b) {
+func (a AnyValue) String() string {
+	if b, ok := a.Val.([]byte); ok && utf8.Valid(b) {
 		return string(b)
 	}
-	return fmt.Sprint(any.Val)
+	return fmt.Sprint(a.Val)
 }
 
 // GoString returns a Go representation of the wrapped value.
-func (any AnyValue) GoString() string {
-	if b, ok := any.Val.([]byte); ok && utf8.Valid(b) {
+func (a AnyValue) GoString() string {
+	if b, ok := a.Val.([]byte); ok && utf8.Valid(b) {
 		return fmt.Sprintf("[]byte(%q)", b)
 	}
-	return fmt.Sprintf("%#v", any.Val)
+	return fmt.Sprintf("%#v", a.Val)
 }

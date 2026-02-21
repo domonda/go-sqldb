@@ -38,7 +38,7 @@
 - [ ] **Two parallel APIs (root `sqldb` vs `db`)** — Every function exists twice. `db` is a thin forwarding layer that must stay in sync
 - [ ] **`QueryCallback` uses runtime reflection on `any`** — Could use generics for compile-time safety
 - [ ] **Global mutable insert cache** (insert.go:58-61) — Grows without bound, invisible to callers, key doesn't account for `QueryOption`
-- [ ] **`anyvalue.go` receiver named `any`** — Shadows the builtin
+- [x] **`anyvalue.go` receiver named `any`** — Shadows the builtin
 
 ### Driver Feature Parity
 
