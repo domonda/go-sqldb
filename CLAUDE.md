@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Run tests for all modules**: `./test-workspace.sh` - This runs tests across all Go workspace modules (main, mssqlconn, mysqlconn, pqconn)
 - **Run tests for specific module**: `go test ./...` in the module directory
-- **Build all modules**: `go build ./...` 
+- **Build all modules**: `go build ./...`
 - **Get dependencies**: `go mod tidy` (run in each module directory as needed)
 
 ## Go Workspace Structure
@@ -41,38 +41,80 @@ This repository uses Go workspaces with multiple modules:
 - `information/`: Database schema introspection
 - `_mockconn/`: Mock implementations for testing
 
-## Code Conventions
+## Go (golang) Rules
 
-### SQL Queries
-- Write SQL string literals with backticks and prefix with `/*sql*/` comment
+### General Rules
+- Use `any` instead of `interface{}`
+- Write SQL string literals with backticks and prefix with `/*sql*/`. In case of a multi-line SQL string, begin the string literal in the next line.
+- Write HTML string literals with backticks and prefix with `/*html*/`. In case of a multi-line HTML string, begin the string literal in the next line.
+- Instead of `for i := 0; i < count; i++ {` use `for i := range count {`
+
+### File Naming Rules
+- Use `_test.go` suffix for source files that contain tests
+- **NEVER** use underscores `_` or dashes `-` in general Go source file names
+
+### Error Handling
+- Use `errs.New` from `github.com/domonda/go-errs` instead of `errors.New`
+- Use `errs.Errorf` from `github.com/domonda/go-errs` instead of `fmt.Errorf`
+- Use `errs.Errorf` instead of `errs.Wrap` or `errors.Wrap`
+- **NEVER** use the exact functions `errs.Wrap` or `errors.Wrap`
+- Every exported function returning an error should have error result named `err`
+- Add error wrapping defer call: `defer errs.WrapWithFuncParams(&err, arg0, arg1, ...)`
+- Ensure empty line between error wrapping and function body
+
+### SQL Rules
+- Write SQL string literals with backticks and prefix with `/*sql*/`
 - Use numbered parameters (`$1`, `$2`) for PostgreSQL driver
+- Avoid SQL code duplication, find existing functions first
+- Database lookup functions use `Get`, `Is`, or `Has` prefixes
+- Use nullable Go types instead of pointers for NULL columns
 
-### Error Handling  
-- Use `github.com/domonda/go-errs` instead of standard `errors` package
-- Use `errs.New()` instead of `errors.New()`
-- Use `errs.Errorf()` instead of `fmt.Errorf()`
-
-### UUID Types
-- Use `github.com/domonda/go-types/uu` package for UUIDs
+### UUID Rules
+- Use `github.com/domonda/go-types/uu` package for UUIDs instead of `github.com/google/uuid`
 - Single UUID: `uu.ID`
 - UUID slice: `uu.IDSlice` (not `[]uu.ID`)
 - Zero values: `uu.IDNil` for `uu.ID`, `uu.IDNull` for `uu.NullableID`, `nil` for `uu.IDSlice`
+- Use `ID` suffix instead of `UUID` in naming
 
-### General Go Rules
-- Use `any` instead of `interface{}`
-- In HTTP handlers, use `http.Request.Context()` for context
-- Never return actual error strings as HTTP 500 responses - use abstract descriptions
+### Data Validation Rules
+- Use `Validate()` method for data validation, `Valid()` for boolean results
+- Use `IsNull()` and `IsNotNull()` methods for nullable value checks
+- Prefer types from `github.com/domonda/go-types` when appropriate
 
 ### Struct Field Mapping
 - Default tag: `db:"column_name"`
 - Primary key: `db:"id,pk"`
 - Ignore field: `db:"-"`
 
-## Testing
+### Building Rules
+- Remove build artefacts after testing
+
+### Testing
+- Use `t.Context()` instead of `context.Background()` in tests
+- Use `github.com/stretchr/testify` for tests
+- Import `github.com/stretchr/testify/require` for required conditions
+- Import `github.com/stretchr/testify/assert` for assertions where the test should continue even if the condition is not met
+- Always use `go clean` after `go build` to not leave binaries behind
 - Mock connections available in `_mockconn/` package
 - PostgreSQL integration tests use Docker (see `pqconn/test/`)
 - Use `db.ContextWithNonConnectionForTest()` for testing without real database
 - Helper functions in `db/testhelper.go`
+
+### Commit Message Guidelines
+Follow conventional commits format: `<type>(<scope>): <subject>`
+
+Types: `build`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `style`, `test`
+
+- Use imperative, present tense: "change" not "changed"
+- Don't capitalize first letter
+- No period at the end if single line
+- Keep subject line under 100 characters
+- Qualify names in Go code with the package name
+
+**Important**: Don't create commits without asking first!
+
+### Markdown Rules
+- Pad all markdown tables
 
 ## Common Usage Patterns
 
@@ -100,5 +142,8 @@ err := db.InsertStruct(ctx, "table_name", &structInstance)
 err := db.UpsertStruct(ctx, "table_name", &structInstance)
 
 // Query into struct
-user, err := db.QueryRowValue[User](ctx, /*sql*/ `SELECT * FROM users WHERE id = $1`, id)
+user, err := db.QueryRowValue[User](ctx, 
+    /*sql*/ `SELECT * FROM users WHERE id = $1`,
+    id, // $1
+)
 ```
