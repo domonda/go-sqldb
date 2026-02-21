@@ -12,6 +12,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Reset test database (PostgreSQL)**: `./pqconn/test/reset-postgres-data.sh` (required after changing PostgreSQL version in docker-compose.yml)
 - **Start test database (MariaDB)**: `docker compose -f mysqlconn/test/docker-compose.yml up -d` (MariaDB 11.7 on port 3307)
 - **Reset test database (MariaDB)**: `./mysqlconn/test/reset-mariadb-data.sh` (required after changing MariaDB version in docker-compose.yml)
+- **Start test database (SQL Server)**: `docker compose -f mssqlconn/test/docker-compose.yml up -d` (SQL Server 2022 on port 1434)
+- **Reset test database (SQL Server)**: `./mssqlconn/test/reset-mssql-data.sh` (required after changing SQL Server version in docker-compose.yml)
 
 ## Go Workspace Structure
 
@@ -122,6 +124,8 @@ func MyValueFromContext(ctx context.Context) string {
 - Run `./pqconn/test/reset-postgres-data.sh` after changing the PostgreSQL version
 - MariaDB integration tests use dockerized MariaDB 11.7 on port 3307 (see `mysqlconn/test/docker-compose.yml`)
 - Run `./mysqlconn/test/reset-mariadb-data.sh` after changing the MariaDB version
+- SQL Server integration tests use dockerized SQL Server 2022 on port 1434 (see `mssqlconn/test/docker-compose.yml`)
+- Run `./mssqlconn/test/reset-mssql-data.sh` after changing the SQL Server version
 - Use `db.ContextWithNonConnectionForTest()` for testing without real database
 - Helper functions in `db/testhelper.go`
 - Do **not** use `os.Exit(m.Run())` in `TestMain` — just call `m.Run()` directly

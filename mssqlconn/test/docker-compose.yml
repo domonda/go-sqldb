@@ -1,0 +1,17 @@
+name: go-sqldb-mssqlconn-test
+
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "TestPass123!"
+      SA_PASSWORD: "TestPass123!"
+      MSSQL_PID: Developer
+    ports:
+      # Use 1434 as the host port to avoid conflicts with
+      # a local SQL Server using the default port 1433
+      - "1434:1433"
+    volumes:
+      - ./mssql-data:/var/opt/mssql

@@ -13,3 +13,4 @@
 
 pqconn/test/postgres-data
 mysqlconn/test/mariadb-data
+mssqlconn/test/mssql-data

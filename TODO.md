@@ -73,15 +73,10 @@
 
 - [ ] **pqconn/test** — `TestDatabase` is a stub with no assertions
 
-### `mysqlconn/` Package — Zero Tests
+### `mssqlconn/` Package
 
-- [x] Entire package has no test files: `Connect`, `MustConnect`, `ConnectExt`, `NewConfig`
-- [x] `validateColumnName` — Internal function with MySQL-specific regex, never tested
-
-### `mssqlconn/` Package — Zero Tests
-
-- [ ] Entire package has no test files: `Connect`, `MustConnect`, `ConnectExt`
-- [ ] `QueryFormatter.FormatTableName`, `FormatColumnName`, `FormatPlaceholder` (`@p1` style) untested
+- [x] Entire package has no test files: `Connect`, `MustConnect`, `ConnectExt`
+- [x] `QueryFormatter.FormatTableName`, `FormatColumnName`, `FormatPlaceholder` (`@p1` style) untested
 
 ### `sqliteconn/` Package — Gaps
 
