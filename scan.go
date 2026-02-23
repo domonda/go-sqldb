@@ -12,7 +12,7 @@ import (
 // ScanDriverValue scans a driver.Value into destPtr.
 func ScanDriverValue(destPtr any, value driver.Value) error {
 	if destPtr == nil {
-		return errors.New("can't scan nil destPtr")
+		return errors.New("unable to scan nil destPtr")
 	}
 
 	if destScanner, ok := destPtr.(sql.Scanner); ok {
@@ -21,7 +21,7 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 
 	dest := reflect.ValueOf(destPtr)
 	if dest.Kind() != reflect.Pointer {
-		return fmt.Errorf("can't scan non-pointer %s", dest.Type())
+		return fmt.Errorf("unable to scan non-pointer %s", dest.Type())
 	}
 	dest = dest.Elem()
 
@@ -42,6 +42,9 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 			dest.SetInt(src)
 			return nil
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			if src < 0 {
+				return fmt.Errorf("unable to scan negative int64 value %d into %s", src, dest.Type())
+			}
 			dest.SetUint(uint64(src))
 			return nil
 		case reflect.Float32, reflect.Float64:
@@ -106,5 +109,5 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 		}
 	}
 
-	return fmt.Errorf("can't scan %#v as %T", value, destPtr)
+	return fmt.Errorf("unable to scan %#v as %T", value, destPtr)
 }

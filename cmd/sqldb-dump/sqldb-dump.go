@@ -32,5 +32,8 @@ func main() {
 		panic(err)
 	}
 
-	pretty.Println(tables, "  ")
+	_, err = pretty.Println(tables, "  ")
+	if err != nil {
+		panic(err)
+	}
 }

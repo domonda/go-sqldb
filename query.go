@@ -36,7 +36,7 @@ func QueryValueOr[T any](ctx context.Context, c *ConnExt, defaultVal T, query st
 func QueryValueStmt[T any](ctx context.Context, c *ConnExt, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
 	stmt, err := c.Prepare(ctx, query)
 	if err != nil {
-		err = fmt.Errorf("can't prepare query because: %w", err)
+		err = fmt.Errorf("failed to prepare query: %w", err)
 		return nil, nil, WrapErrorWithQuery(err, query, nil, c.QueryFormatter)
 	}
 

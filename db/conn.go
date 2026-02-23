@@ -14,7 +14,7 @@ var globalConn = sqldb.NewErrConnExt(sqldb.ErrNoDatabaseConnection)
 // if there is no other connection in the context passed to [Conn].
 func SetConn(c *sqldb.ConnExt) {
 	if c == nil {
-		panic("can't set nil sqldb.ConnExt") // Prefer to panic early
+		panic("unable to set nil sqldb.ConnExt") // Prefer to panic early
 	}
 	globalConn = *c
 }

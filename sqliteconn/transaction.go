@@ -3,6 +3,7 @@ package sqliteconn
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -58,8 +59,7 @@ func (t *transaction) Query(ctx context.Context, query string, args ...any) sqld
 
 	// Bind arguments
 	if err := bindArgs(stmt, args); err != nil {
-		stmt.Finalize()
-		return sqldb.NewErrRows(wrapKnownErrors(err))
+		return sqldb.NewErrRows(errors.Join(wrapKnownErrors(err), stmt.Finalize()))
 	}
 
 	return &rows{

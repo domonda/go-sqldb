@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
+	"strconv"
 	"testing"
 	"time"
 
@@ -16,13 +18,29 @@ import (
 	"github.com/domonda/go-sqldb/mysqlconn"
 )
 
-const (
-	mysqlUser     = "testuser"
-	mysqlPassword = "testpassword"
-	mysqlHost     = "localhost"
-	mysqlPort     = 3307
-	dbName        = "testdb"
+var (
+	mysqlUser     = envOrDefault("MYSQL_USER", "testuser")
+	mysqlPassword = envOrDefault("MYSQL_PASSWORD", "testpassword")
+	mysqlHost     = envOrDefault("MYSQL_HOST", "localhost")
+	mysqlPort     = envOrDefaultInt("MYSQL_PORT", 3307)
+	dbName        = envOrDefault("MYSQL_DB", "testdb")
 )
+
+func envOrDefault(key, defaultVal string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return defaultVal
+}
+
+func envOrDefaultInt(key string, defaultVal int) int {
+	if v := os.Getenv(key); v != "" {
+		if i, err := strconv.Atoi(v); err == nil {
+			return i
+		}
+	}
+	return defaultVal
+}
 
 func testConfig() *sqldb.ConnConfig {
 	return &sqldb.ConnConfig{
@@ -95,12 +113,14 @@ func waitForMariaDB() error {
 }
 
 func TestMain(m *testing.M) {
-	err := dockerComposeUp()
-	if err != nil {
-		log.Fatalf("Failed to start Docker Compose: %v", err)
+	if os.Getenv("CI") == "" {
+		err := dockerComposeUp()
+		if err != nil {
+			log.Fatalf("Failed to start Docker Compose: %v", err)
+		}
 	}
 
-	err = waitForMariaDB()
+	err := waitForMariaDB()
 	if err != nil {
 		log.Fatalf("Failed waiting for MariaDB: %v", err)
 	}

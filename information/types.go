@@ -28,11 +28,11 @@ func (y *YesNo) Scan(value any) error {
 		case "NO":
 			*y = false
 		default:
-			return fmt.Errorf("can't scan SQL value %q as YesNo", value)
+			return fmt.Errorf("unable to scan SQL value %q as YesNo", value)
 		}
 
 	default:
-		return fmt.Errorf("can't scan SQL value of type %T as YesNo", value)
+		return fmt.Errorf("unable to scan SQL value of type %T as YesNo", value)
 	}
 	return nil
 }
@@ -50,7 +50,7 @@ func (y *String) Scan(value any) error {
 	case []byte:
 		*y = String(value)
 	default:
-		return fmt.Errorf("can't scan SQL value of type %T as String", value)
+		return fmt.Errorf("unable to scan SQL value of type %T as String", value)
 	}
 	return nil
 }

@@ -4,7 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"zombiezen.com/go/sqlite"
@@ -39,23 +41,20 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, e
 
 	// Enable foreign keys for SQLite (disabled by default)
 	if err := sqlitex.ExecuteTransient(conn, `PRAGMA foreign_keys = ON`, nil); err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
+		return nil, errors.Join(fmt.Errorf("failed to enable foreign keys: %w", err), conn.Close())
 	}
 
 	// Enable WAL mode for better concurrency (unless read-only)
 	if !config.ReadOnly {
 		if err := sqlitex.ExecuteTransient(conn, `PRAGMA journal_mode = WAL`, nil); err != nil {
-			conn.Close()
-			return nil, fmt.Errorf("failed to enable WAL mode: %w", err)
+			return nil, errors.Join(fmt.Errorf("failed to enable WAL mode: %w", err), conn.Close())
 		}
 	}
 
 	if config.ReadOnly {
 		// Set connection to read-only mode
 		if err := sqlitex.ExecuteTransient(conn, `PRAGMA query_only = ON`, nil); err != nil {
-			conn.Close()
-			return nil, fmt.Errorf("failed to set read-only mode: %w", err)
+			return nil, errors.Join(fmt.Errorf("failed to set read-only mode: %w", err), conn.Close())
 		}
 	}
 
@@ -165,8 +164,7 @@ func (c *connection) Query(ctx context.Context, query string, args ...any) sqldb
 
 	// Bind arguments
 	if err := bindArgs(stmt, args); err != nil {
-		stmt.Finalize()
-		return sqldb.NewErrRows(wrapKnownErrors(err))
+		return sqldb.NewErrRows(errors.Join(wrapKnownErrors(err), stmt.Finalize()))
 	}
 
 	return &rows{
@@ -262,6 +260,9 @@ func bindArgs(stmt *sqlite.Stmt, args []any) error {
 		case int64:
 			stmt.BindInt64(pos, v)
 		case uint:
+			if v > math.MaxInt64 {
+				return fmt.Errorf("integer overflow: uint value %d exceeds int64 range at position %d", v, pos)
+			}
 			stmt.BindInt64(pos, int64(v))
 		case uint8:
 			stmt.BindInt64(pos, int64(v))
@@ -270,6 +271,9 @@ func bindArgs(stmt *sqlite.Stmt, args []any) error {
 		case uint32:
 			stmt.BindInt64(pos, int64(v))
 		case uint64:
+			if v > math.MaxInt64 {
+				return fmt.Errorf("integer overflow: uint64 value %d exceeds int64 range at position %d", v, pos)
+			}
 			stmt.BindInt64(pos, int64(v))
 		case float32:
 			stmt.BindFloat(pos, float64(v))

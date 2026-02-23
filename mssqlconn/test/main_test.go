@@ -4,7 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
+	"strconv"
 	"testing"
 	"time"
 
@@ -16,13 +18,29 @@ import (
 	"github.com/domonda/go-sqldb/mssqlconn"
 )
 
-const (
-	mssqlUser     = "sa"
-	mssqlPassword = "TestPass123!"
-	mssqlHost     = "localhost"
-	mssqlPort     = 1434
-	dbName        = "testdb"
+var (
+	mssqlUser     = envOrDefault("MSSQL_USER", "sa")
+	mssqlPassword = envOrDefault("MSSQL_PASSWORD", "TestPass123!")
+	mssqlHost     = envOrDefault("MSSQL_HOST", "localhost")
+	mssqlPort     = envOrDefaultInt("MSSQL_PORT", 1434)
+	dbName        = envOrDefault("MSSQL_DB", "testdb")
 )
+
+func envOrDefault(key, defaultVal string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return defaultVal
+}
+
+func envOrDefaultInt(key string, defaultVal int) int {
+	if v := os.Getenv(key); v != "" {
+		if i, err := strconv.Atoi(v); err == nil {
+			return i
+		}
+	}
+	return defaultVal
+}
 
 func testConfig() *sqldb.ConnConfig {
 	return &sqldb.ConnConfig{
@@ -98,12 +116,14 @@ func dropAllTables() error {
 }
 
 func TestMain(m *testing.M) {
-	err := dockerComposeUp()
-	if err != nil {
-		log.Fatalf("Failed to start Docker Compose: %v", err)
+	if os.Getenv("CI") == "" {
+		err := dockerComposeUp()
+		if err != nil {
+			log.Fatalf("Failed to start Docker Compose: %v", err)
+		}
 	}
 
-	err = waitForMSSQL()
+	err := waitForMSSQL()
 	if err != nil {
 		log.Fatalf("Failed waiting for SQL Server: %v", err)
 	}

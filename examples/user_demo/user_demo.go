@@ -136,7 +136,7 @@ func main() {
 			http.Error(response, "internal server error", http.StatusInternalServerError)
 			return
 		}
-		response.Write([]byte("OK"))
+		_, _ = response.Write([]byte("OK"))
 	})
 
 	// Full example with db package

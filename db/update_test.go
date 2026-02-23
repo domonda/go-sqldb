@@ -160,7 +160,7 @@ func TestUpdateRowStruct(t *testing.T) {
 
 		err := UpdateRowStruct(ctx, "users", (*UserRow)(nil))
 		require.Error(t, err)
-		require.Contains(t, err.Error(), "can't update nil")
+		require.Contains(t, err.Error(), "unable to update nil")
 	})
 
 	t.Run("non-struct error", func(t *testing.T) {

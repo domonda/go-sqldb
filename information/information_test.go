@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"strconv"
 	"testing"
 	"time"
 
@@ -14,27 +15,45 @@ import (
 	"github.com/domonda/go-sqldb/pqconn"
 )
 
-const (
-	postgresUser     = "testuser"
-	postgresPassword = "testpassword"
-	postgresHost     = "localhost"
-	postgresPort     = "5433"
-	dbName           = "testdb"
+var (
+	postgresUser     = envOrDefault("POSTGRES_USER", "testuser")
+	postgresPassword = envOrDefault("POSTGRES_PASSWORD", "testpassword")
+	postgresHost     = envOrDefault("POSTGRES_HOST", "localhost")
+	postgresPort     = envOrDefaultInt("POSTGRES_PORT", 5433)
+	dbName           = envOrDefault("POSTGRES_DB", "testdb")
 )
+
+func envOrDefault(key, defaultVal string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return defaultVal
+}
+
+func envOrDefaultInt(key string, defaultVal int) int {
+	if v := os.Getenv(key); v != "" {
+		if i, err := strconv.Atoi(v); err == nil {
+			return i
+		}
+	}
+	return defaultVal
+}
 
 var testCtx context.Context
 
 func TestMain(m *testing.M) {
-	err := exec.Command("docker", "compose", "-f", "../pqconn/test/docker-compose.yml", "up", "-d").Run()
-	if err != nil {
-		log.Fatalf("Failed to start Docker Compose: %v", err)
+	if os.Getenv("CI") == "" {
+		err := exec.Command("docker", "compose", "-f", "../pqconn/test/docker-compose.yml", "up", "-d").Run()
+		if err != nil {
+			log.Fatalf("Failed to start Docker Compose: %v", err)
+		}
 	}
 
 	ctx := context.Background()
 	config := &sqldb.ConnConfig{
 		Driver:   pqconn.Driver,
 		Host:     postgresHost,
-		Port:     5433,
+		Port:     uint16(postgresPort),
 		User:     postgresUser,
 		Password: postgresPassword,
 		Database: dbName,
@@ -42,7 +61,10 @@ func TestMain(m *testing.M) {
 	}
 	// Retry connecting because docker compose up -d returns
 	// before PostgreSQL is ready to accept connections
-	var connExt *sqldb.ConnExt
+	var (
+		connExt *sqldb.ConnExt
+		err     error
+	)
 	for range 30 {
 		connExt, err = pqconn.ConnectExt(ctx, config, sqldb.NewTaggedStructReflector())
 		if err == nil {

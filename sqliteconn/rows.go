@@ -3,16 +3,17 @@ package sqliteconn
 import (
 	"database/sql"
 	"fmt"
+	"math"
 
 	"zombiezen.com/go/sqlite"
 )
 
 type rows struct {
-	stmt              *sqlite.Stmt
-	conn              *sqlite.Conn
-	hasRow            bool
-	err               error
-	closed            bool
+	stmt               *sqlite.Stmt
+	conn               *sqlite.Conn
+	hasRow             bool
+	err                error
+	closed             bool
 	shouldFinalizeStmt bool // Whether this rows object should finalize the statement
 }
 
@@ -93,7 +94,7 @@ func scanColumn(stmt *sqlite.Stmt, col int, dest any) error {
 	case sqlite.TypeNull:
 		// Handle NULL values
 		switch d := dest.(type) {
-		case *interface{}:
+		case *any:
 			*d = nil
 		case *sql.NullString:
 			d.Valid = false
@@ -135,36 +136,69 @@ func scanColumn(stmt *sqlite.Stmt, col int, dest any) error {
 		val := stmt.ColumnInt64(col)
 		switch d := dest.(type) {
 		case *int:
+			if val < math.MinInt || val > math.MaxInt {
+				return fmt.Errorf("integer overflow: %d does not fit in int", val)
+			}
 			*d = int(val)
 		case *int8:
+			if val < math.MinInt8 || val > math.MaxInt8 {
+				return fmt.Errorf("integer overflow: %d does not fit in int8", val)
+			}
 			*d = int8(val)
 		case *int16:
+			if val < math.MinInt16 || val > math.MaxInt16 {
+				return fmt.Errorf("integer overflow: %d does not fit in int16", val)
+			}
 			*d = int16(val)
 		case *int32:
+			if val < math.MinInt32 || val > math.MaxInt32 {
+				return fmt.Errorf("integer overflow: %d does not fit in int32", val)
+			}
 			*d = int32(val)
 		case *int64:
 			*d = val
 		case *uint:
+			if val < 0 {
+				return fmt.Errorf("integer overflow: %d does not fit in uint", val)
+			}
 			*d = uint(val)
 		case *uint8:
+			if val < 0 || val > math.MaxUint8 {
+				return fmt.Errorf("integer overflow: %d does not fit in uint8", val)
+			}
 			*d = uint8(val)
 		case *uint16:
+			if val < 0 || val > math.MaxUint16 {
+				return fmt.Errorf("integer overflow: %d does not fit in uint16", val)
+			}
 			*d = uint16(val)
 		case *uint32:
+			if val < 0 || val > math.MaxUint32 {
+				return fmt.Errorf("integer overflow: %d does not fit in uint32", val)
+			}
 			*d = uint32(val)
 		case *uint64:
+			if val < 0 {
+				return fmt.Errorf("integer overflow: %d does not fit in uint64", val)
+			}
 			*d = uint64(val)
 		case *bool:
 			*d = val != 0
-		case *interface{}:
+		case *any:
 			*d = val
 		case *sql.NullInt64:
 			d.Int64 = val
 			d.Valid = true
 		case *sql.NullInt32:
+			if val < math.MinInt32 || val > math.MaxInt32 {
+				return fmt.Errorf("integer overflow: %d does not fit in int32", val)
+			}
 			d.Int32 = int32(val)
 			d.Valid = true
 		case *sql.NullInt16:
+			if val < math.MinInt16 || val > math.MaxInt16 {
+				return fmt.Errorf("integer overflow: %d does not fit in int16", val)
+			}
 			d.Int16 = int16(val)
 			d.Valid = true
 		case *sql.NullBool:
@@ -184,7 +218,7 @@ func scanColumn(stmt *sqlite.Stmt, col int, dest any) error {
 			*d = float32(val)
 		case *float64:
 			*d = val
-		case *interface{}:
+		case *any:
 			*d = val
 		case *sql.NullFloat64:
 			d.Float64 = val
@@ -203,7 +237,7 @@ func scanColumn(stmt *sqlite.Stmt, col int, dest any) error {
 			*d = val
 		case *[]byte:
 			*d = []byte(val)
-		case *interface{}:
+		case *any:
 			*d = val
 		case *sql.NullString:
 			d.String = val
@@ -226,7 +260,7 @@ func scanColumn(stmt *sqlite.Stmt, col int, dest any) error {
 			*d = buf
 		case *string:
 			*d = string(buf)
-		case *interface{}:
+		case *any:
 			*d = buf
 		default:
 			if scanner, ok := dest.(sql.Scanner); ok {

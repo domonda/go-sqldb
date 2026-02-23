@@ -14,7 +14,7 @@ func Update(ctx context.Context, c *ConnExt, table string, values Values, where 
 	}
 	query, vals, err := c.QueryBuilder.Update(c.QueryFormatter, table, values, where, args)
 	if err != nil {
-		return fmt.Errorf("can't create UPDATE query because: %w", err)
+		return fmt.Errorf("failed to create UPDATE query: %w", err)
 	}
 	err = c.Exec(ctx, query, vals...)
 	if err != nil {
@@ -62,7 +62,7 @@ func UpdateRowStruct(ctx context.Context, c *ConnExt, table string, rowStruct an
 	}
 	switch {
 	case v.Kind() == reflect.Pointer && v.IsNil():
-		return fmt.Errorf("UpdateRowStruct of table %s: can't update nil", table)
+		return fmt.Errorf("UpdateRowStruct of table %s: unable to update nil", table)
 	case v.Kind() != reflect.Struct:
 		return fmt.Errorf("UpdateRowStruct of table %s: expected struct but got %T", table, rowStruct)
 	}

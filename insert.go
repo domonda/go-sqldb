@@ -17,7 +17,7 @@ func Insert(ctx context.Context, c *ConnExt, table string, values Values) error 
 	cols, vals := values.SortedColumnsAndValues()
 	query, err := c.QueryBuilder.Insert(c.QueryFormatter, table, cols)
 	if err != nil {
-		return fmt.Errorf("can't create INSERT query because: %w", err)
+		return fmt.Errorf("failed to create INSERT query: %w", err)
 	}
 	err = c.Exec(ctx, query, vals...)
 	if err != nil {
@@ -37,7 +37,7 @@ func InsertUnique(ctx context.Context, c *ConnExt, table string, values Values, 
 	cols, vals := values.SortedColumnsAndValues()
 	query, err := c.QueryBuilder.InsertUnique(c.QueryFormatter, table, cols, onConflict)
 	if err != nil {
-		return false, fmt.Errorf("can't create INSERT query because: %w", err)
+		return false, fmt.Errorf("failed to create INSERT query: %w", err)
 	}
 
 	rows := c.Query(ctx, query, vals...)
@@ -99,7 +99,7 @@ func InsertRowStruct(ctx context.Context, c *ConnExt, rowStruct StructWithTableN
 	}
 	cached.query, err = c.QueryBuilder.Insert(c.QueryFormatter, table, columns)
 	if err != nil {
-		return fmt.Errorf("can't create INSERT query because: %w", err)
+		return fmt.Errorf("failed to create INSERT query: %w", err)
 	}
 	if useCache {
 		insertRowStructQueryCacheMtx.Lock()
@@ -131,12 +131,12 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, c *ConnExt,
 
 	query, err := c.QueryBuilder.Insert(c.QueryFormatter, table, columns)
 	if err != nil {
-		return nil, nil, fmt.Errorf("can't create INSERT query because: %w", err)
+		return nil, nil, fmt.Errorf("failed to create INSERT query: %w", err)
 	}
 
 	stmt, err := c.Prepare(ctx, query)
 	if err != nil {
-		return nil, nil, fmt.Errorf("can't prepare INSERT query because: %w", err)
+		return nil, nil, fmt.Errorf("failed to prepare INSERT query: %w", err)
 	}
 
 	insertFunc = func(ctx context.Context, rowStruct S) error {
@@ -193,7 +193,7 @@ func InsertUniqueRowStruct(ctx context.Context, c *ConnExt, rowStruct StructWith
 
 	query, err := c.QueryBuilder.InsertUnique(c.QueryFormatter, table, columns, onConflict)
 	if err != nil {
-		return false, fmt.Errorf("can't create INSERT query because: %w", err)
+		return false, fmt.Errorf("failed to create INSERT query: %w", err)
 	}
 
 	rows := c.Query(ctx, query, vals...)

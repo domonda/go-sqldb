@@ -35,7 +35,7 @@ func UpsertRowStruct(ctx context.Context, c *ConnExt, rowStruct StructWithTableN
 
 	query, err := c.QueryBuilder.Upsert(c.QueryFormatter, table, columns)
 	if err != nil {
-		return fmt.Errorf("UpsertRowStruct of table %s: can't create UPSERT query because: %w", table, err)
+		return fmt.Errorf("UpsertRowStruct of table %s: failed to create UPSERT query: %w", table, err)
 	}
 	err = c.Exec(ctx, query, vals...)
 	if err != nil {
@@ -69,12 +69,12 @@ func UpsertRowStructStmt[S StructWithTableName](ctx context.Context, c *ConnExt,
 
 	query, err := c.QueryBuilder.Upsert(c.QueryFormatter, table, columns)
 	if err != nil {
-		return nil, nil, fmt.Errorf("UpsertRowStructStmt of table %s: can't create UPSERT query because: %w", table, err)
+		return nil, nil, fmt.Errorf("UpsertRowStructStmt of table %s: failed to create UPSERT query: %w", table, err)
 	}
 
 	stmt, err := c.Prepare(ctx, query)
 	if err != nil {
-		return nil, nil, fmt.Errorf("UpsertRowStructStmt of table %s: can't prepare UPSERT statement because: %w", table, err)
+		return nil, nil, fmt.Errorf("UpsertRowStructStmt of table %s: failed to prepare UPSERT statement: %w", table, err)
 	}
 
 	upsert = func(ctx context.Context, rowStruct S) error {

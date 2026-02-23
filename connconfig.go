@@ -18,7 +18,7 @@ type ConnConfig struct {
 	Host     string            `json:"host"`
 	Port     uint16            `json:"port,omitempty"`
 	User     string            `json:"user,omitempty"`
-	Password string            `json:"password,omitempty"`
+	Password string            `json:"password,omitempty"` //#nosec G117 -- config struct, not a hardcoded secret
 	Database string            `json:"database"`
 	Extra    map[string]string `json:"extra,omitempty"`
 

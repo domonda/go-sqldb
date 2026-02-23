@@ -54,7 +54,7 @@ func (r *Row) Scan(dest ...any) error {
 		}
 		err := convertAssign(dest[i], src)
 		if err != nil {
-			return fmt.Errorf("can't scan value %d because: %w", i, err)
+			return fmt.Errorf("unable to scan value %d: %w", i, err)
 		}
 	}
 	return nil
