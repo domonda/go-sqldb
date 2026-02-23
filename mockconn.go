@@ -12,6 +12,9 @@ import (
 	"time"
 )
 
+// MockConn implements ListenerConnection
+var _ ListenerConnection = new(MockConn)
+
 type QueryRecordings struct {
 	Execs   []QueryData
 	Queries []QueryData
@@ -60,9 +63,6 @@ type MockConn struct {
 	MockIsListeningOnChannel func(channel string) bool
 	MockClose                func() error
 }
-
-// MockConn implements ListenerConnection
-var _ ListenerConnection = new(MockConn)
 
 func NewMockConn(placeholderPosPrefix string, normalizeQuery NormalizeQueryFunc, queryLog io.Writer) *MockConn {
 	return &MockConn{

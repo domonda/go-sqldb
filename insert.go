@@ -8,66 +8,66 @@ import (
 	"strings"
 )
 
-// Insert a new row into table using the values.
-func Insert(ctx context.Context, c *ConnExt, table string, values Values) error {
+// Insert inserts a new row into the table using the passed values.
+func Insert(ctx context.Context, conn *ConnExt, table string, values Values) error {
 	if len(values) == 0 {
 		return fmt.Errorf("Insert into table %s: no values", table)
 	}
 	cols, vals := values.SortedColumnsAndValues()
-	query, err := c.QueryBuilder.Insert(c.QueryFormatter, table, cols)
+	query, err := conn.QueryBuilder.Insert(conn.QueryFormatter, table, cols)
 	if err != nil {
 		return fmt.Errorf("failed to create INSERT query: %w", err)
 	}
-	err = c.Exec(ctx, query, vals...)
+	err = conn.Exec(ctx, query, vals...)
 	if err != nil {
-		return WrapErrorWithQuery(err, query, vals, c.QueryFormatter)
+		return WrapErrorWithQuery(err, query, vals, conn.QueryFormatter)
 	}
 	return nil
 }
 
-// InsertReturning inserts a new row into table using values
-// and returns values from the inserted row listed in returning.
-func InsertReturning(ctx context.Context, c *ConnExt, table string, values Values, returning string) *Row {
+// InsertReturning inserts a new row into the table using values
+// and returns a Row for scanning the columns listed in the returning clause.
+func InsertReturning(ctx context.Context, conn *ConnExt, table string, values Values, returning string) *Row {
 	if len(values) == 0 {
-		return NewRow(NewErrRows(fmt.Errorf("InsertReturning into table %s: no values", table)), c.StructReflector, c.QueryFormatter, "", nil)
+		return NewRow(NewErrRows(fmt.Errorf("InsertReturning into table %s: no values", table)), conn.StructReflector, conn.QueryFormatter, "", nil)
 	}
 	cols, vals := values.SortedColumnsAndValues()
-	query, err := c.QueryBuilder.Insert(c.QueryFormatter, table, cols)
+	query, err := conn.QueryBuilder.Insert(conn.QueryFormatter, table, cols)
 	if err != nil {
-		return NewRow(NewErrRows(fmt.Errorf("failed to create INSERT query: %w", err)), c.StructReflector, c.QueryFormatter, "", nil)
+		return NewRow(NewErrRows(fmt.Errorf("failed to create INSERT query: %w", err)), conn.StructReflector, conn.QueryFormatter, "", nil)
 	}
 	query += " RETURNING " + returning
-	rows := c.Query(ctx, query, vals...)
-	return NewRow(rows, c.StructReflector, c.QueryFormatter, query, vals)
+	rows := conn.Query(ctx, query, vals...)
+	return NewRow(rows, conn.StructReflector, conn.QueryFormatter, query, vals)
 }
 
-// InsertUnique inserts a new row into table using the passed values
+// InsertUnique inserts a new row into the table using the passed values
 // or does nothing if the onConflict statement applies.
-// Returns if a row was inserted.
-func InsertUnique(ctx context.Context, c *ConnExt, table string, values Values, onConflict string) (inserted bool, err error) {
+// Returns true if a row was inserted.
+func InsertUnique(ctx context.Context, conn *ConnExt, table string, values Values, onConflict string) (inserted bool, err error) {
 	if len(values) == 0 {
 		return false, fmt.Errorf("InsertUnique into table %s: no values", table)
 	}
 
 	cols, vals := values.SortedColumnsAndValues()
-	query, err := c.QueryBuilder.InsertUnique(c.QueryFormatter, table, cols, onConflict)
+	query, err := conn.QueryBuilder.InsertUnique(conn.QueryFormatter, table, cols, onConflict)
 	if err != nil {
 		return false, fmt.Errorf("failed to create INSERT query: %w", err)
 	}
 
-	rows := c.Query(ctx, query, vals...)
+	rows := conn.Query(ctx, query, vals...)
 	defer rows.Close()
 	if err = rows.Err(); err != nil {
-		return false, WrapErrorWithQuery(err, query, vals, c.QueryFormatter)
+		return false, WrapErrorWithQuery(err, query, vals, conn.QueryFormatter)
 	}
 	// If there is a row returned, then a row was inserted.
 	// The content of the returned row is not relevant.
 	return rows.Next(), nil
 }
 
-// InsertRowStruct inserts a new row into table.
-// Optional ColumnFilter can be passed to ignore mapped columns.
-func InsertRowStruct(ctx context.Context, c *ConnExt, rowStruct StructWithTableName, options ...QueryOption) error {
+// InsertRowStruct inserts a new row into the table derived from the struct's TableName tag.
+// Optional QueryOption can be passed to ignore mapped columns.
+func InsertRowStruct(ctx context.Context, conn *ConnExt, rowStruct StructWithTableName, options ...QueryOption) error {
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return err
@@ -81,28 +81,28 @@ func InsertRowStruct(ctx context.Context, c *ConnExt, rowStruct StructWithTableN
 	useCache := len(options) == 0
 	if useCache {
 		insertRowStructQueryCacheMtx.RLock()
-		cached, ok := insertRowStructQueryCache[structType][c.StructReflector][c.QueryBuilder]
+		cached, ok := insertRowStructQueryCache[structType][conn.StructReflector][conn.QueryBuilder]
 		insertRowStructQueryCacheMtx.RUnlock()
 		if ok {
 			vals = make([]any, len(cached.structFieldIndices))
 			for i, fieldIndex := range cached.structFieldIndices {
 				vals[i] = structVal.FieldByIndex(fieldIndex).Interface()
 			}
-			err = c.Exec(ctx, cached.query, vals...)
+			err = conn.Exec(ctx, cached.query, vals...)
 			if err != nil {
-				return WrapErrorWithQuery(err, cached.query, vals, c.QueryFormatter)
+				return WrapErrorWithQuery(err, cached.query, vals, conn.QueryFormatter)
 			}
 			return nil
 		}
 	}
 	var cached queryCache
 	var columns []ColumnInfo
-	columns, cached.structFieldIndices, vals = ReflectStructColumnsFieldIndicesAndValues(structVal, c.StructReflector, append(options, IgnoreReadOnly)...)
-	table, err := c.StructReflector.TableNameForStruct(structType)
+	columns, cached.structFieldIndices, vals = ReflectStructColumnsFieldIndicesAndValues(structVal, conn.StructReflector, append(options, IgnoreReadOnly)...)
+	table, err := conn.StructReflector.TableNameForStruct(structType)
 	if err != nil {
 		return err
 	}
-	cached.query, err = c.QueryBuilder.Insert(c.QueryFormatter, table, columns)
+	cached.query, err = conn.QueryBuilder.Insert(conn.QueryFormatter, table, columns)
 	if err != nil {
 		return fmt.Errorf("failed to create INSERT query: %w", err)
 	}
@@ -111,35 +111,38 @@ func InsertRowStruct(ctx context.Context, c *ConnExt, rowStruct StructWithTableN
 		if _, ok := insertRowStructQueryCache[structType]; !ok {
 			insertRowStructQueryCache[structType] = make(map[StructReflector]map[QueryBuilder]queryCache)
 		}
-		if _, ok := insertRowStructQueryCache[structType][c.StructReflector]; !ok {
-			insertRowStructQueryCache[structType][c.StructReflector] = make(map[QueryBuilder]queryCache)
+		if _, ok := insertRowStructQueryCache[structType][conn.StructReflector]; !ok {
+			insertRowStructQueryCache[structType][conn.StructReflector] = make(map[QueryBuilder]queryCache)
 		}
-		insertRowStructQueryCache[structType][c.StructReflector][c.QueryBuilder] = cached
+		insertRowStructQueryCache[structType][conn.StructReflector][conn.QueryBuilder] = cached
 		insertRowStructQueryCacheMtx.Unlock()
 	}
 
-	err = c.Exec(ctx, cached.query, vals...)
+	err = conn.Exec(ctx, cached.query, vals...)
 	if err != nil {
-		return WrapErrorWithQuery(err, cached.query, vals, c.QueryFormatter)
+		return WrapErrorWithQuery(err, cached.query, vals, conn.QueryFormatter)
 	}
 	return nil
 }
 
-func InsertRowStructStmt[S StructWithTableName](ctx context.Context, c *ConnExt, options ...QueryOption) (insertFunc func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
+// InsertRowStructStmt prepares an INSERT statement for the struct type S
+// and returns a function that executes the insert for each row struct.
+// The returned closeStmt function must be called to release the prepared statement.
+func InsertRowStructStmt[S StructWithTableName](ctx context.Context, conn *ConnExt, options ...QueryOption) (insertFunc func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
 	structType := reflect.TypeFor[S]()
-	table, err := c.StructReflector.TableNameForStruct(structType)
+	table, err := conn.StructReflector.TableNameForStruct(structType)
 	if err != nil {
 		return nil, nil, err
 	}
 	options = append(options, IgnoreReadOnly)
-	columns := ReflectStructColumns(structType, c.StructReflector, options...)
+	columns := ReflectStructColumns(structType, conn.StructReflector, options...)
 
-	query, err := c.QueryBuilder.Insert(c.QueryFormatter, table, columns)
+	query, err := conn.QueryBuilder.Insert(conn.QueryFormatter, table, columns)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create INSERT query: %w", err)
 	}
 
-	stmt, err := c.Prepare(ctx, query)
+	stmt, err := conn.Prepare(ctx, query)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to prepare INSERT query: %w", err)
 	}
@@ -149,10 +152,10 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, c *ConnExt,
 		if err != nil {
 			return err
 		}
-		vals := ReflectStructValues(strct, c.StructReflector, options...)
+		vals := ReflectStructValues(strct, conn.StructReflector, options...)
 		err = stmt.Exec(ctx, vals...)
 		if err != nil {
-			return WrapErrorWithQuery(err, query, vals, c.QueryFormatter)
+			return WrapErrorWithQuery(err, query, vals, conn.QueryFormatter)
 		}
 		return nil
 	}
@@ -175,54 +178,54 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, c *ConnExt,
 // 	return stmtFunc, stmt.Close, nil
 // }
 
-// InsertUniqueRowStruct inserts a new row with unique primary key.
-// Optional ColumnFilter can be passed to ignore mapped columns.
-// Does nothing if the onConflict statement applies
-// and returns true if a row was inserted.
-func InsertUniqueRowStruct(ctx context.Context, c *ConnExt, rowStruct StructWithTableName, onConflict string, options ...QueryOption) (inserted bool, err error) {
+// InsertUniqueRowStruct inserts a new row derived from the struct's fields,
+// or does nothing if the onConflict statement applies.
+// Optional QueryOption can be passed to ignore mapped columns.
+// Returns true if a row was inserted.
+func InsertUniqueRowStruct(ctx context.Context, conn *ConnExt, rowStruct StructWithTableName, onConflict string, options ...QueryOption) (inserted bool, err error) {
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return false, err
 	}
 
-	table, err := c.StructReflector.TableNameForStruct(structVal.Type())
+	table, err := conn.StructReflector.TableNameForStruct(structVal.Type())
 	if err != nil {
 		return false, err
 	}
 
-	columns, vals := ReflectStructColumnsAndValues(structVal, c.StructReflector, append(options, IgnoreReadOnly)...)
+	columns, vals := ReflectStructColumnsAndValues(structVal, conn.StructReflector, append(options, IgnoreReadOnly)...)
 
 	if strings.HasPrefix(onConflict, "(") && strings.HasSuffix(onConflict, ")") {
 		onConflict = onConflict[1 : len(onConflict)-1]
 	}
 
-	query, err := c.QueryBuilder.InsertUnique(c.QueryFormatter, table, columns, onConflict)
+	query, err := conn.QueryBuilder.InsertUnique(conn.QueryFormatter, table, columns, onConflict)
 	if err != nil {
 		return false, fmt.Errorf("failed to create INSERT query: %w", err)
 	}
 
-	rows := c.Query(ctx, query, vals...)
+	rows := conn.Query(ctx, query, vals...)
 	defer rows.Close()
 	if err = rows.Err(); err != nil {
-		return false, WrapErrorWithQuery(err, query, vals, c.QueryFormatter)
+		return false, WrapErrorWithQuery(err, query, vals, conn.QueryFormatter)
 	}
 	// If there is a row returned, then a row was inserted.
 	// The content of the returned row is not relevant.
 	return rows.Next(), nil
 }
 
-// InsertRowStructs inserts a slice structs
-// as new rows into table using the DefaultStructReflector.
-// Optional ColumnFilter can be passed to ignore mapped columns.
-func InsertRowStructs[S StructWithTableName](ctx context.Context, c *ConnExt, rowStructs []S, options ...QueryOption) error {
+// InsertRowStructs inserts a slice of structs as new rows into
+// the table derived from the struct's TableName tag.
+// Optional QueryOption can be passed to ignore mapped columns.
+func InsertRowStructs[S StructWithTableName](ctx context.Context, conn *ConnExt, rowStructs []S, options ...QueryOption) error {
 	// TODO optimized version that combines multiple structs in one query depending or maxArgs
 	switch len(rowStructs) {
 	case 0:
 		return nil
 	case 1:
-		return InsertRowStruct(ctx, c, rowStructs[0], options...)
+		return InsertRowStruct(ctx, conn, rowStructs[0], options...)
 	}
-	return TransactionExt(ctx, c, nil, func(tx *ConnExt) (err error) {
+	return TransactionExt(ctx, conn, nil, func(tx *ConnExt) (err error) {
 		insertFunc, closeStmt, stmtErr := InsertRowStructStmt[S](ctx, tx, options...)
 		if stmtErr != nil {
 			return stmtErr
