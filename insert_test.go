@@ -59,6 +59,73 @@ func TestInsert(t *testing.T) {
 	})
 }
 
+func TestInsertReturning(t *testing.T) {
+	t.Run("scan single value", func(t *testing.T) {
+		conn, ext := newTestConnExt()
+		var gotQuery string
+		var gotArgs []any
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			gotQuery = query
+			gotArgs = args
+			return NewMockRows([]string{"id"}, [][]driver.Value{{int64(42)}})
+		}
+		var id int64
+		err := InsertReturning(t.Context(), ext, "users", Values{"name": "Alice", "age": 30}, "id").Scan(&id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if id != 42 {
+			t.Errorf("id = %d, want 42", id)
+		}
+		wantQuery := "INSERT INTO users(age,name) VALUES($1,$2) RETURNING id"
+		if gotQuery != wantQuery {
+			t.Errorf("query = %q, want %q", gotQuery, wantQuery)
+		}
+		assertArgs(t, gotArgs, []any{30, "Alice"})
+	})
+
+	t.Run("scan multiple values", func(t *testing.T) {
+		conn, ext := newTestConnExt()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows([]string{"id", "created_at"}, [][]driver.Value{{int64(1), "2025-01-01T00:00:00Z"}})
+		}
+		var id int64
+		var createdAt string
+		err := InsertReturning(t.Context(), ext, "users", Values{"name": "Bob"}, "id, created_at").Scan(&id, &createdAt)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if id != 1 {
+			t.Errorf("id = %d, want 1", id)
+		}
+		if createdAt != "2025-01-01T00:00:00Z" {
+			t.Errorf("createdAt = %q, want %q", createdAt, "2025-01-01T00:00:00Z")
+		}
+	})
+
+	t.Run("empty values error", func(t *testing.T) {
+		_, ext := newTestConnExt()
+		var id int64
+		err := InsertReturning(t.Context(), ext, "users", Values{}, "id").Scan(&id)
+		if err == nil {
+			t.Error("expected error for empty values")
+		}
+	})
+
+	t.Run("query error", func(t *testing.T) {
+		conn, ext := newTestConnExt()
+		queryErr := errors.New("insert failed")
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewErrRows(queryErr)
+		}
+		var id int64
+		err := InsertReturning(t.Context(), ext, "users", Values{"name": "Alice"}, "id").Scan(&id)
+		if !errors.Is(err, queryErr) {
+			t.Errorf("expected error wrapping %v, got: %v", queryErr, err)
+		}
+	})
+}
+
 func TestInsertUnique(t *testing.T) {
 	t.Run("inserted", func(t *testing.T) {
 		conn, ext := newTestConnExt()

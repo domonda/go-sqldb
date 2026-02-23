@@ -26,6 +26,22 @@ func Insert(ctx context.Context, c *ConnExt, table string, values Values) error 
 	return nil
 }
 
+// InsertReturning inserts a new row into table using values
+// and returns values from the inserted row listed in returning.
+func InsertReturning(ctx context.Context, c *ConnExt, table string, values Values, returning string) *Row {
+	if len(values) == 0 {
+		return NewRow(NewErrRows(fmt.Errorf("InsertReturning into table %s: no values", table)), c.StructReflector, c.QueryFormatter, "", nil)
+	}
+	cols, vals := values.SortedColumnsAndValues()
+	query, err := c.QueryBuilder.Insert(c.QueryFormatter, table, cols)
+	if err != nil {
+		return NewRow(NewErrRows(fmt.Errorf("failed to create INSERT query: %w", err)), c.StructReflector, c.QueryFormatter, "", nil)
+	}
+	query += " RETURNING " + returning
+	rows := c.Query(ctx, query, vals...)
+	return NewRow(rows, c.StructReflector, c.QueryFormatter, query, vals)
+}
+
 // InsertUnique inserts a new row into table using the passed values
 // or does nothing if the onConflict statement applies.
 // Returns if a row was inserted.
