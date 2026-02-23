@@ -51,11 +51,13 @@ func QueryValueStmt[T any](ctx context.Context, conn *ConnExt, query string) (qu
 	return queryFunc, stmt.Close, nil
 }
 
-// QueryRowStructWithTableName uses the passed pkValue+pkValues to query a table row
-// and scan it into a struct of type `*S` that must have tagged fields
-// with primary key flags to identify the primary key column names
-// for the passed pkValue+pkValues and a table name.
-func QueryRowStructWithTableName[S StructWithTableName](ctx context.Context, conn *ConnExt, pkValue any, pkValues ...any) (S, error) {
+// QueryRowStruct queries a table row by primary key and scans it into a struct of type S.
+// The table name is derived from the `db` struct tag of an embedded sqldb.TableName field
+// (e.g., sqldb.TableName `db:"my_table"`).
+// Primary key columns are identified by fields with the "primarykey" option
+// in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
+// The number of pkValue+pkValues must match the number of primary key columns.
+func QueryRowStruct[S StructWithTableName](ctx context.Context, conn *ConnExt, pkValue any, pkValues ...any) (S, error) {
 	// Using explicit first pkValue value
 	// to not be able to compile without any value
 	pkValues = append([]any{pkValue}, pkValues...)
@@ -94,14 +96,15 @@ func QueryRowStructWithTableName[S StructWithTableName](ctx context.Context, con
 	return QueryValue[S](ctx, conn, query, pkValues...)
 }
 
-// QueryRowStructWithTableNameOr uses the passed pkValue+pkValues to query a table row
-// and scan it into a struct of type S that must have tagged fields
-// with primary key flags to identify the primary key column names
-// for the passed pkValue+pkValues and a table name.
-// Returns nil as row and error if no row could be found with the
-// passed pkValue+pkValues.
-func QueryRowStructWithTableNameOr[S StructWithTableName](ctx context.Context, conn *ConnExt, defaultVal S, pkValue any, pkValues ...any) (S, error) {
-	row, err := QueryRowStructWithTableName[S](ctx, conn, pkValue, pkValues...)
+// QueryRowStructOr queries a table row by primary key and scans it into a struct of type S.
+// Returns defaultVal and no error if no row was found.
+// The table name is derived from the `db` struct tag of an embedded sqldb.TableName field
+// (e.g., sqldb.TableName `db:"my_table"`).
+// Primary key columns are identified by fields with the "primarykey" option
+// in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
+// The number of pkValue+pkValues must match the number of primary key columns.
+func QueryRowStructOr[S StructWithTableName](ctx context.Context, conn *ConnExt, defaultVal S, pkValue any, pkValues ...any) (S, error) {
+	row, err := QueryRowStruct[S](ctx, conn, pkValue, pkValues...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return defaultVal, nil
 	}

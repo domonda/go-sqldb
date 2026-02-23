@@ -88,7 +88,7 @@ func TestQueryValueStmt_DB(t *testing.T) {
 	})
 }
 
-func TestQueryRowStructWithTableName_DB(t *testing.T) {
+func TestQueryRowStruct_DB(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		mock := sqldb.NewMockConn("$", nil, nil)
 		var queryCount int
@@ -106,7 +106,7 @@ func TestQueryRowStructWithTableName_DB(t *testing.T) {
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
 
-		row, err := QueryRowStructWithTableName[testUserRow](ctx, int64(1))
+		row, err := QueryRowStruct[testUserRow](ctx, int64(1))
 		require.NoError(t, err)
 		require.Equal(t, int64(1), row.ID)
 		require.Equal(t, "Alice", row.Name)
@@ -126,13 +126,13 @@ func TestQueryRowStructWithTableName_DB(t *testing.T) {
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
 
-		_, err := QueryRowStructWithTableName[testUserRow](ctx, int64(999))
+		_, err := QueryRowStruct[testUserRow](ctx, int64(999))
 		require.ErrorIs(t, err, sql.ErrNoRows)
 		require.Equal(t, 1, queryCount, "MockQuery call count")
 	})
 }
 
-func TestQueryRowStructWithTableNameOr_DB(t *testing.T) {
+func TestQueryRowStructOr_DB(t *testing.T) {
 	t.Run("found", func(t *testing.T) {
 		mock := sqldb.NewMockConn("$", nil, nil)
 		var queryCount int
@@ -147,7 +147,7 @@ func TestQueryRowStructWithTableNameOr_DB(t *testing.T) {
 		ctx := ContextWithConn(t.Context(), config)
 
 		defaultVal := testUserRow{ID: 0, Name: "default"}
-		row, err := QueryRowStructWithTableNameOr(ctx, defaultVal, int64(1))
+		row, err := QueryRowStructOr(ctx, defaultVal, int64(1))
 		require.NoError(t, err)
 		require.Equal(t, int64(1), row.ID)
 		require.Equal(t, "Alice", row.Name)
@@ -165,7 +165,7 @@ func TestQueryRowStructWithTableNameOr_DB(t *testing.T) {
 		ctx := ContextWithConn(t.Context(), config)
 
 		defaultVal := testUserRow{ID: 0, Name: "default"}
-		row, err := QueryRowStructWithTableNameOr(ctx, defaultVal, int64(999))
+		row, err := QueryRowStructOr(ctx, defaultVal, int64(999))
 		require.NoError(t, err)
 		require.Equal(t, defaultVal, row)
 		require.Equal(t, 1, queryCount, "MockQuery call count")

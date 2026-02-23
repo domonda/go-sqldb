@@ -23,12 +23,12 @@ CREATE TABLE IF NOT EXISTS test_arrays (
 type testArraysRow struct {
 	sqldb.TableName `db:"test_arrays"`
 
-	ID         uu.ID        `db:"id,primarykey"`
-	IntArray   []int64      `db:"int_array"`
-	TextArray  []string     `db:"text_array"`
-	FloatArray []float64    `db:"float_array"`
-	BoolArray  []bool       `db:"bool_array"`
-	UUIDArray  uu.IDSlice   `db:"uuid_array"`
+	ID         uu.ID      `db:"id,primarykey"`
+	IntArray   []int64    `db:"int_array"`
+	TextArray  []string   `db:"text_array"`
+	FloatArray []float64  `db:"float_array"`
+	BoolArray  []bool     `db:"bool_array"`
+	UUIDArray  uu.IDSlice `db:"uuid_array"`
 }
 
 func testConnExt(t *testing.T) *sqldb.ConnExt {
@@ -61,7 +61,7 @@ func testConnExt(t *testing.T) *sqldb.ConnExt {
 		t.Fatalf("Failed to create test_arrays table: %v", err)
 	}
 	t.Cleanup(func() {
-		connExt.Exec(ctx, /*sql*/ `DROP TABLE IF EXISTS test_arrays`)
+		connExt.Exec(ctx /*sql*/, `DROP TABLE IF EXISTS test_arrays`)
 	})
 
 	return connExt
@@ -209,9 +209,9 @@ func TestArrayStructQueryRowByPK(t *testing.T) {
 		t.Fatalf("InsertRowStruct: %v", err)
 	}
 
-	got, err := sqldb.QueryRowStructWithTableName[testArraysRow](ctx, c, input.ID)
+	got, err := sqldb.QueryRowStruct[testArraysRow](ctx, c, input.ID)
 	if err != nil {
-		t.Fatalf("QueryRowStructWithTableName: %v", err)
+		t.Fatalf("QueryRowStruct: %v", err)
 	}
 
 	assertInt64Slice(t, "IntArray", got.IntArray, []int64{42})
