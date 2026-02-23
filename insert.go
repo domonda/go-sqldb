@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-	"sync"
 )
 
 // Insert a new row into table using the values.
@@ -65,16 +64,6 @@ func InsertUnique(ctx context.Context, c *ConnExt, table string, values Values, 
 	// The content of the returned row is not relevant.
 	return rows.Next(), nil
 }
-
-type queryCache struct {
-	query              string
-	structFieldIndices [][]int
-}
-
-var (
-	insertRowStructQueryCache    = make(map[reflect.Type]map[StructReflector]map[QueryBuilder]queryCache)
-	insertRowStructQueryCacheMtx sync.RWMutex
-)
 
 // InsertRowStruct inserts a new row into table.
 // Optional ColumnFilter can be passed to ignore mapped columns.

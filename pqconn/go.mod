@@ -16,6 +16,7 @@ require (
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/corazawaf/libinjection-go v0.2.3 // indirect
+	github.com/domonda/go-errs v1.0.0 // indirect
 	github.com/domonda/go-pretty v1.0.0 // indirect
 	github.com/invopop/jsonschema v0.13.0 // indirect
 	github.com/kr/text v0.2.0 // indirect

@@ -79,6 +79,10 @@ connExt := sqldb.NewConnExt(
 )
 ```
 
+### Slice and array column handling
+
+Slice and array column handling (like PostgreSQL arrays) is handled transparently by vendor connection implementations, not the base `sqldb` package. For example, the `pqconn` driver automatically wraps Go slices and arrays with `pq.Array()` for both query arguments (input) and row scanning (output), so you can use native Go slices in structs mapped to PostgreSQL array columns without any manual conversion.
+
 ### Exec SQL without reading rows
 
 ```go

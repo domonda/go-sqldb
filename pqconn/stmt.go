@@ -24,11 +24,11 @@ func (s stmt) Exec(ctx context.Context, args ...any) error {
 
 func (s stmt) Query(ctx context.Context, args ...any) sqldb.Rows {
 	wrapArrayArgs(args)
-	rows, err := s.std.QueryContext(ctx, args...)
+	sqlRows, err := s.std.QueryContext(ctx, args...)
 	if err != nil {
 		return sqldb.NewErrRows(wrapKnownErrors(err))
 	}
-	return rows
+	return rows{sqlRows}
 }
 
 func (s stmt) Close() error {

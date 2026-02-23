@@ -47,11 +47,11 @@ func (conn *transaction) Exec(ctx context.Context, query string, args ...any) er
 
 func (conn *transaction) Query(ctx context.Context, query string, args ...any) sqldb.Rows {
 	wrapArrayArgs(args)
-	rows, err := conn.tx.QueryContext(ctx, query, args...)
+	sqlRows, err := conn.tx.QueryContext(ctx, query, args...)
 	if err != nil {
 		return sqldb.NewErrRows(wrapKnownErrors(err))
 	}
-	return rows
+	return rows{sqlRows}
 }
 
 func (conn *transaction) Prepare(ctx context.Context, query string) (sqldb.Stmt, error) {

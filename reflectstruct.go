@@ -9,7 +9,7 @@ import (
 )
 
 func PrimaryKeyColumnsOfStruct(reflector StructReflector, t reflect.Type) (columns []string, err error) {
-	for i := 0; i < t.NumField(); i++ {
+	for i := range t.NumField() {
 		field := t.Field(i)
 		column, ok := reflector.MapStructField(field)
 		if !ok {
@@ -33,7 +33,7 @@ func PrimaryKeyColumnsOfStruct(reflector StructReflector, t reflect.Type) (colum
 }
 
 func ReflectStructColumnsAndValues(structVal reflect.Value, reflector StructReflector, options ...QueryOption) (columns []ColumnInfo, values []any) {
-	for i := 0; i < structVal.NumField(); i++ {
+	for i := range structVal.NumField() {
 		structField := structVal.Type().Field(i)
 		column, use := reflector.MapStructField(structField)
 		if !use {
@@ -60,7 +60,7 @@ func ReflectStructColumnsAndValues(structVal reflect.Value, reflector StructRefl
 }
 
 func ReflectStructColumnsFieldIndicesAndValues(structVal reflect.Value, reflector StructReflector, options ...QueryOption) (columns []ColumnInfo, indices [][]int, values []any) {
-	for i := 0; i < structVal.NumField(); i++ {
+	for i := range structVal.NumField() {
 		structField := structVal.Type().Field(i)
 		column, use := reflector.MapStructField(structField)
 		if !use {
@@ -92,7 +92,7 @@ func ReflectStructColumnsFieldIndicesAndValues(structVal reflect.Value, reflecto
 }
 
 func ReflectStructValues(structVal reflect.Value, reflector StructReflector, options ...QueryOption) (values []any) {
-	for i := 0; i < structVal.NumField(); i++ {
+	for i := range structVal.NumField() {
 		structField := structVal.Type().Field(i)
 		column, use := reflector.MapStructField(structField)
 		if !use {
@@ -117,7 +117,7 @@ func ReflectStructValues(structVal reflect.Value, reflector StructReflector, opt
 }
 
 func ReflectStructColumns(structType reflect.Type, reflector StructReflector, options ...QueryOption) (columns []ColumnInfo) {
-	for i := 0; i < structType.NumField(); i++ {
+	for i := range structType.NumField() {
 		structField := structType.Field(i)
 		column, use := reflector.MapStructField(structField)
 		if !use {
@@ -140,7 +140,7 @@ func ReflectStructColumns(structType reflect.Type, reflector StructReflector, op
 }
 
 func ReflectStructColumnsAndFields(structVal reflect.Value, reflector StructReflector, options ...QueryOption) (columns []ColumnInfo, fields []reflect.Type) {
-	for i := 0; i < structVal.NumField(); i++ {
+	for i := range structVal.NumField() {
 		structField := structVal.Type().Field(i)
 		column, use := reflector.MapStructField(structField)
 		if !use {
@@ -195,7 +195,7 @@ func ReflectStructColumnPointers(structVal reflect.Value, namer StructReflector,
 
 func reflectStructColumnPointers(structVal reflect.Value, namer StructReflector, columns []string, pointers []any) error {
 	structType := structVal.Type()
-	for i := 0; i < structType.NumField(); i++ {
+	for i := range structType.NumField() {
 		field := structType.Field(i)
 		column, use := namer.MapStructField(field)
 		if !use {
@@ -220,15 +220,7 @@ func reflectStructColumnPointers(structVal reflect.Value, namer StructReflector,
 			return fmt.Errorf("duplicate mapped column %s onto field %s of struct %s", column.Name, field.Name, structType)
 		}
 
-		pointer := fieldValue.Addr().Interface()
-		// TODO this should be a Connection implementation detail
-		// // If field is a slice or array that does not implement sql.Scanner
-		// // and it's not a string scannable []byte type underneath
-		// // then wrap it with WrapForArray to make it scannable
-		// if NeedsArrayWrappingForScanning(fieldValue) {
-		// 	pointer = WrapArray(pointer)
-		// }
-		pointers[colIndex] = pointer
+		pointers[colIndex] = fieldValue.Addr().Interface()
 	}
 	return nil
 }

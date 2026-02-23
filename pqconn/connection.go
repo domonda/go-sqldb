@@ -125,11 +125,11 @@ func (conn *connection) Exec(ctx context.Context, query string, args ...any) err
 
 func (conn *connection) Query(ctx context.Context, query string, args ...any) sqldb.Rows {
 	wrapArrayArgs(args)
-	rows, err := conn.db.QueryContext(ctx, query, args...)
+	sqlRows, err := conn.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return sqldb.NewErrRows(wrapKnownErrors(err))
 	}
-	return rows
+	return rows{sqlRows}
 }
 
 func (conn *connection) Prepare(ctx context.Context, query string) (sqldb.Stmt, error) {

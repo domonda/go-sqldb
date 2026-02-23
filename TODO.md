@@ -2,6 +2,8 @@
 
 ## Missing Features
 
+- [ ] Query caches?
+- [ ] MockScanner for testing by setting predefined values for each column
 - [ ] **Batch insert** — `InsertRowStructs` processes rows one-by-one in a transaction with a prepared statement. Need optimized multi-row INSERT:
   ```go
   func BatchInsert[T any](ctx context.Context, table string, items []T, batchSize int) error
@@ -15,8 +17,6 @@
 - [ ] **db/multirowscanner.go** — Entire file commented out
 - [ ] **db/scanresult.go** — Entire file commented out
 - [ ] **scanstruct_test.go** — Entire test commented out
-- [ ] **pqconn/arrays.go:61-131** — Large block of commented-out code
-- [ ] **db/insert.go:21-35,47-61** — Commented-out functions
 - [ ] **mysqlconn/mysql.go** — `validateColumnName` and `columnNameRegex` defined but never called
 
 ## API Design for v1.0
@@ -37,7 +37,6 @@
 - [ ] **Stmt functions return `(workFunc, closeFunc, error)` triple** — Inconsistent naming, easy to misuse. Consider returning a struct or `Stmt` value
 - [ ] **Two parallel APIs (root `sqldb` vs `db`)** — Every function exists twice. `db` is a thin forwarding layer that must stay in sync
 - [ ] **`QueryCallback` uses runtime reflection on `any`** — Could use generics for compile-time safety
-- [ ] **Global mutable insert cache** (insert.go:58-61) — Grows without bound, invisible to callers, key doesn't account for `QueryOption`
 
 ### Driver Feature Parity
 
