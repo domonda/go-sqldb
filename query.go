@@ -14,8 +14,10 @@ func QueryRow(ctx context.Context, conn *ConnExt, query string, args ...any) *Ro
 	return NewRow(rows, conn.StructReflector, conn.QueryFormatter, query, args)
 }
 
-// QueryValue queries a single value mapped to the type T.
-func QueryValue[T any](ctx context.Context, conn *ConnExt, query string, args ...any) (val T, err error) {
+// QueryRowAs queries a single row and scans it as the type T.
+// If T is a struct that does not implement sql.Scanner,
+// the column values are scanned into the struct fields.
+func QueryRowAs[T any](ctx context.Context, conn *ConnExt, query string, args ...any) (val T, err error) {
 	err = QueryRow(ctx, conn, query, args...).Scan(&val)
 	if err != nil {
 		return *new(T), err
@@ -23,20 +25,20 @@ func QueryValue[T any](ctx context.Context, conn *ConnExt, query string, args ..
 	return val, nil
 }
 
-// QueryValueOr queries a single value of type T
+// QueryRowAsOr queries a single row and scans it as the type T,
 // or returns the passed defaultVal in case of sql.ErrNoRows.
-func QueryValueOr[T any](ctx context.Context, conn *ConnExt, defaultVal T, query string, args ...any) (val T, err error) {
-	val, err = QueryValue[T](ctx, conn, query, args...)
+func QueryRowAsOr[T any](ctx context.Context, conn *ConnExt, defaultVal T, query string, args ...any) (val T, err error) {
+	val, err = QueryRowAs[T](ctx, conn, query, args...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return defaultVal, nil
 	}
 	return val, err
 }
 
-// QueryValueStmt prepares the query and returns a function that
-// executes it with arguments and scans a single value of type T.
+// QueryRowAsStmt prepares the query and returns a function that
+// executes it with arguments and scans a single row as the type T.
 // The returned closeStmt function must be called to release the prepared statement.
-func QueryValueStmt[T any](ctx context.Context, conn *ConnExt, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
+func QueryRowAsStmt[T any](ctx context.Context, conn *ConnExt, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
 	stmt, err := conn.Prepare(ctx, query)
 	if err != nil {
 		err = fmt.Errorf("failed to prepare query: %w", err)
@@ -51,13 +53,13 @@ func QueryValueStmt[T any](ctx context.Context, conn *ConnExt, query string) (qu
 	return queryFunc, stmt.Close, nil
 }
 
-// QueryRowStruct queries a table row by primary key and scans it into a struct of type S.
+// QueryRowByPK queries a table row by primary key and scans it into a struct of type S.
 // The table name is derived from the `db` struct tag of an embedded sqldb.TableName field
 // (e.g., sqldb.TableName `db:"my_table"`).
 // Primary key columns are identified by fields with the "primarykey" option
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
 // The number of pkValue+pkValues must match the number of primary key columns.
-func QueryRowStruct[S StructWithTableName](ctx context.Context, conn *ConnExt, pkValue any, pkValues ...any) (S, error) {
+func QueryRowByPK[S StructWithTableName](ctx context.Context, conn *ConnExt, pkValue any, pkValues ...any) (S, error) {
 	// Using explicit first pkValue value
 	// to not be able to compile without any value
 	pkValues = append([]any{pkValue}, pkValues...)
@@ -93,18 +95,18 @@ func QueryRowStruct[S StructWithTableName](ctx context.Context, conn *ConnExt, p
 	if err != nil {
 		return *new(S), err
 	}
-	return QueryValue[S](ctx, conn, query, pkValues...)
+	return QueryRowAs[S](ctx, conn, query, pkValues...)
 }
 
-// QueryRowStructOr queries a table row by primary key and scans it into a struct of type S.
+// QueryRowByPKOr queries a table row by primary key and scans it into a struct of type S.
 // Returns defaultVal and no error if no row was found.
 // The table name is derived from the `db` struct tag of an embedded sqldb.TableName field
 // (e.g., sqldb.TableName `db:"my_table"`).
 // Primary key columns are identified by fields with the "primarykey" option
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
 // The number of pkValue+pkValues must match the number of primary key columns.
-func QueryRowStructOr[S StructWithTableName](ctx context.Context, conn *ConnExt, defaultVal S, pkValue any, pkValues ...any) (S, error) {
-	row, err := QueryRowStruct[S](ctx, conn, pkValue, pkValues...)
+func QueryRowByPKOr[S StructWithTableName](ctx context.Context, conn *ConnExt, defaultVal S, pkValue any, pkValues ...any) (S, error) {
+	row, err := QueryRowByPK[S](ctx, conn, pkValue, pkValues...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return defaultVal, nil
 	}

@@ -47,7 +47,7 @@ func TestQueryRow_DB(t *testing.T) {
 	})
 }
 
-func TestQueryValueStmt_DB(t *testing.T) {
+func TestQueryRowAsStmt_DB(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		mock := sqldb.NewMockConn("$", nil, nil)
 		var queryCount int
@@ -60,7 +60,7 @@ func TestQueryValueStmt_DB(t *testing.T) {
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
 
-		queryFunc, closeStmt, err := QueryValueStmt[string](ctx, "SELECT name FROM users WHERE id = $1")
+		queryFunc, closeStmt, err := QueryRowAsStmt[string](ctx, "SELECT name FROM users WHERE id = $1")
 		require.NoError(t, err)
 		defer closeStmt()
 
@@ -82,13 +82,13 @@ func TestQueryValueStmt_DB(t *testing.T) {
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
 
-		_, _, err := QueryValueStmt[string](ctx, "SELECT name FROM users WHERE id = $1")
+		_, _, err := QueryRowAsStmt[string](ctx, "SELECT name FROM users WHERE id = $1")
 		require.ErrorIs(t, err, prepErr)
 		require.Equal(t, 1, prepareCount, "MockPrepare call count")
 	})
 }
 
-func TestQueryRowStruct_DB(t *testing.T) {
+func TestQueryRowByPK_DB(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		mock := sqldb.NewMockConn("$", nil, nil)
 		var queryCount int
@@ -106,7 +106,7 @@ func TestQueryRowStruct_DB(t *testing.T) {
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
 
-		row, err := QueryRowStruct[testUserRow](ctx, int64(1))
+		row, err := QueryRowByPK[testUserRow](ctx, int64(1))
 		require.NoError(t, err)
 		require.Equal(t, int64(1), row.ID)
 		require.Equal(t, "Alice", row.Name)
@@ -126,13 +126,13 @@ func TestQueryRowStruct_DB(t *testing.T) {
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
 
-		_, err := QueryRowStruct[testUserRow](ctx, int64(999))
+		_, err := QueryRowByPK[testUserRow](ctx, int64(999))
 		require.ErrorIs(t, err, sql.ErrNoRows)
 		require.Equal(t, 1, queryCount, "MockQuery call count")
 	})
 }
 
-func TestQueryRowStructOr_DB(t *testing.T) {
+func TestQueryRowByPKOr_DB(t *testing.T) {
 	t.Run("found", func(t *testing.T) {
 		mock := sqldb.NewMockConn("$", nil, nil)
 		var queryCount int
@@ -147,7 +147,7 @@ func TestQueryRowStructOr_DB(t *testing.T) {
 		ctx := ContextWithConn(t.Context(), config)
 
 		defaultVal := testUserRow{ID: 0, Name: "default"}
-		row, err := QueryRowStructOr(ctx, defaultVal, int64(1))
+		row, err := QueryRowByPKOr(ctx, defaultVal, int64(1))
 		require.NoError(t, err)
 		require.Equal(t, int64(1), row.ID)
 		require.Equal(t, "Alice", row.Name)
@@ -165,7 +165,7 @@ func TestQueryRowStructOr_DB(t *testing.T) {
 		ctx := ContextWithConn(t.Context(), config)
 
 		defaultVal := testUserRow{ID: 0, Name: "default"}
-		row, err := QueryRowStructOr(ctx, defaultVal, int64(999))
+		row, err := QueryRowByPKOr(ctx, defaultVal, int64(999))
 		require.NoError(t, err)
 		require.Equal(t, defaultVal, row)
 		require.Equal(t, 1, queryCount, "MockQuery call count")

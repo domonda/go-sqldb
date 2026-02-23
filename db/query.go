@@ -16,7 +16,7 @@ import (
 // Useful for getting the timestamp of a
 // SQL transaction for use in Go code.
 func CurrentTimestamp(ctx context.Context) time.Time {
-	t, err := QueryValue[time.Time](ctx, `SELECT CURRENT_TIMESTAMP`)
+	t, err := QueryRowAs[time.Time](ctx, `SELECT CURRENT_TIMESTAMP`)
 	if err != nil {
 		return time.Now()
 	}
@@ -28,43 +28,45 @@ func QueryRow(ctx context.Context, query string, args ...any) *sqldb.Row {
 	return sqldb.QueryRow(ctx, Conn(ctx), query, args...)
 }
 
-// QueryValue queries a single value mapped to the type T.
-func QueryValue[T any](ctx context.Context, query string, args ...any) (val T, err error) {
-	return sqldb.QueryValue[T](ctx, Conn(ctx), query, args...)
+// QueryRowAs queries a single row and scans it as the type T.
+// If T is a struct that does not implement sql.Scanner,
+// the column values are scanned into the struct fields.
+func QueryRowAs[T any](ctx context.Context, query string, args ...any) (val T, err error) {
+	return sqldb.QueryRowAs[T](ctx, Conn(ctx), query, args...)
 }
 
-// QueryValueOr queries a single value of type T
+// QueryRowAsOr queries a single row and scans it as the type T,
 // or returns the passed defaultVal in case of sql.ErrNoRows.
-func QueryValueOr[T any](ctx context.Context, defaultVal T, query string, args ...any) (val T, err error) {
-	return sqldb.QueryValueOr(ctx, Conn(ctx), defaultVal, query, args...)
+func QueryRowAsOr[T any](ctx context.Context, defaultVal T, query string, args ...any) (val T, err error) {
+	return sqldb.QueryRowAsOr(ctx, Conn(ctx), defaultVal, query, args...)
 }
 
-// QueryValueStmt prepares a statement that queries a single value of type T.
+// QueryRowAsStmt prepares a statement that queries a single row and scans it as the type T.
 // Returns a queryFunc to execute the query with different args each time
 // and a closeStmt function that must be called when done.
-func QueryValueStmt[T any](ctx context.Context, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
-	return sqldb.QueryValueStmt[T](ctx, Conn(ctx), query)
+func QueryRowAsStmt[T any](ctx context.Context, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
+	return sqldb.QueryRowAsStmt[T](ctx, Conn(ctx), query)
 }
 
-// QueryRowStruct queries a table row by primary key and scans it into a struct of type S.
+// QueryRowByPK queries a table row by primary key and scans it into a struct of type S.
 // The table name is derived from the `db` struct tag of an embedded sqldb.TableName field
 // (e.g., sqldb.TableName `db:"my_table"`).
 // Primary key columns are identified by fields with the "primarykey" option
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
 // The number of pkValue+pkValues must match the number of primary key columns.
-func QueryRowStruct[S sqldb.StructWithTableName](ctx context.Context, pkValue any, pkValues ...any) (S, error) {
-	return sqldb.QueryRowStruct[S](ctx, Conn(ctx), pkValue, pkValues...)
+func QueryRowByPK[S sqldb.StructWithTableName](ctx context.Context, pkValue any, pkValues ...any) (S, error) {
+	return sqldb.QueryRowByPK[S](ctx, Conn(ctx), pkValue, pkValues...)
 }
 
-// QueryRowStructOr queries a table row by primary key and scans it into a struct of type S.
+// QueryRowByPKOr queries a table row by primary key and scans it into a struct of type S.
 // Returns defaultVal and no error if no row was found.
 // The table name is derived from the `db` struct tag of an embedded sqldb.TableName field
 // (e.g., sqldb.TableName `db:"my_table"`).
 // Primary key columns are identified by fields with the "primarykey" option
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
 // The number of pkValue+pkValues must match the number of primary key columns.
-func QueryRowStructOr[S sqldb.StructWithTableName](ctx context.Context, defaultVal S, pkValue any, pkValues ...any) (S, error) {
-	return sqldb.QueryRowStructOr(ctx, Conn(ctx), defaultVal, pkValue, pkValues...)
+func QueryRowByPKOr[S sqldb.StructWithTableName](ctx context.Context, defaultVal S, pkValue any, pkValues ...any) (S, error) {
+	return sqldb.QueryRowByPKOr(ctx, Conn(ctx), defaultVal, pkValue, pkValues...)
 }
 
 // QueryRowAsMap queries a single row and returns the columns as map

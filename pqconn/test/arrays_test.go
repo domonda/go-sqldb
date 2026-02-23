@@ -209,9 +209,9 @@ func TestArrayStructQueryRowByPK(t *testing.T) {
 		t.Fatalf("InsertRowStruct: %v", err)
 	}
 
-	got, err := sqldb.QueryRowStruct[testArraysRow](ctx, c, input.ID)
+	got, err := sqldb.QueryRowByPK[testArraysRow](ctx, c, input.ID)
 	if err != nil {
-		t.Fatalf("QueryRowStruct: %v", err)
+		t.Fatalf("QueryRowByPK: %v", err)
 	}
 
 	assertInt64Slice(t, "IntArray", got.IntArray, []int64{42})
@@ -362,11 +362,11 @@ func TestArrayPreparedStmt(t *testing.T) {
 	}
 
 	// Use prepared statement query that returns rows with arrays
-	queryFunc, closeStmt, err := sqldb.QueryValueStmt[testArraysRow](ctx, c,
+	queryFunc, closeStmt, err := sqldb.QueryRowAsStmt[testArraysRow](ctx, c,
 		/*sql*/ `SELECT * FROM test_arrays WHERE id = $1`,
 	)
 	if err != nil {
-		t.Fatalf("QueryValueStmt: %v", err)
+		t.Fatalf("QueryRowAsStmt: %v", err)
 	}
 	defer closeStmt()
 
