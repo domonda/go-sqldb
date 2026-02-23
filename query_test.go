@@ -405,3 +405,54 @@ func TestQueryRowsAsSlice(t *testing.T) {
 		}
 	})
 }
+
+type User struct {
+	TableName `db:"user"`
+
+	ID     int64  `db:"id,primarykey"`
+	Name   string `db:"name"`
+	Email  string `db:"email"`
+	Active bool   `db:"active"`
+}
+
+func TestQueryRowsAsSlice_MockQueryResults(t *testing.T) {
+	conn := NewMockConn("$", nil, nil)
+	conn = conn.WithQueryResult(
+		[]string{"id", "name", "email", "active"},
+		[][]driver.Value{
+			{int64(1), "Alice", "alice@example.com", true},
+			{int64(2), "Bob", "bob@example.com", false},
+			{int64(3), "Charlie", "charlie@example.com", true},
+		},
+		"SELECT * FROM user",
+	)
+	ext := NewConnExt(conn, NewTaggedStructReflector(), NewQueryFormatter("$"), StdQueryBuilder{})
+
+	users, err := QueryRowsAsSlice[User](t.Context(), ext, "SELECT * FROM user")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(users) != 3 {
+		t.Fatalf("len = %d, want 3", len(users))
+	}
+
+	want := []User{
+		{ID: 1, Name: "Alice", Email: "alice@example.com", Active: true},
+		{ID: 2, Name: "Bob", Email: "bob@example.com", Active: false},
+		{ID: 3, Name: "Charlie", Email: "charlie@example.com", Active: true},
+	}
+	for i, w := range want {
+		if users[i].ID != w.ID {
+			t.Errorf("users[%d].ID = %d, want %d", i, users[i].ID, w.ID)
+		}
+		if users[i].Name != w.Name {
+			t.Errorf("users[%d].Name = %q, want %q", i, users[i].Name, w.Name)
+		}
+		if users[i].Email != w.Email {
+			t.Errorf("users[%d].Email = %q, want %q", i, users[i].Email, w.Email)
+		}
+		if users[i].Active != w.Active {
+			t.Errorf("users[%d].Active = %v, want %v", i, users[i].Active, w.Active)
+		}
+	}
+}
