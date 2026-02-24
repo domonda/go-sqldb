@@ -272,6 +272,20 @@ then `Transaction(ctx, txFunc)` is called without savepoints.
 err = db.TransactionSavepoint(ctx, func(context.Context) error { ... })
 ```
 
+## Internal caching
+
+The package internally caches struct reflection data and generated SQL queries to avoid repeated reflection and string building on every call. Caches are keyed by struct type, `StructReflector`, `QueryBuilder`, and `QueryFormatter` and are protected by `sync.RWMutex` for concurrent use.
+
+Cached data includes:
+- **Struct reflection**: Flattened field metadata (column names, flags, field indices) for each struct type and reflector combination.
+- **INSERT queries**: The generated SQL query string and struct field indices, cached per struct type and connection configuration.
+- **UPSERT queries**: Same as INSERT caching for upsert operations.
+- **QueryRowByPK queries**: The generated SELECT query and primary key column count.
+
+Query caches are bypassed when `QueryOption` arguments are provided, since options like `ColumnFilter` change which columns are included and are not part of the cache key.
+
+All caches can be cleared with `ClearQueryCaches()` which is useful for testing and debugging.
+
 ## Testing
 
 Integration tests use a dockerized PostgreSQL 17 instance on port 5433 (to avoid conflicts with a local PostgreSQL on the default port 5432).
