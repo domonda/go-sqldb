@@ -70,11 +70,20 @@ func QueryRowByPK[S StructWithTableName](ctx context.Context, conn *ConnExt, pkV
 	if t.Kind() != reflect.Struct {
 		return *new(S), fmt.Errorf("expected struct or pointer to struct, got %s", reflect.TypeFor[S]())
 	}
-	table, err := conn.StructReflector.TableNameForStruct(t)
-	if err != nil {
-		return *new(S), err
+
+	// Try cache lookup
+	queryRowByPKCacheMtx.RLock()
+	cached, ok := queryRowByPKCache[t][conn.StructReflector][conn.QueryBuilder][conn.QueryFormatter]
+	queryRowByPKCacheMtx.RUnlock()
+	if ok {
+		if cached.numPKColumns != len(pkValues) {
+			return *new(S), fmt.Errorf("got %d primary key values, but struct %s has %d primary key fields", len(pkValues), t, cached.numPKColumns)
+		}
+		return QueryRowAs[S](ctx, conn, cached.query, pkValues...)
 	}
-	table, err = conn.QueryFormatter.FormatTableName(table)
+
+	// Cache miss — build query
+	table, err := conn.StructReflector.TableNameForStruct(t)
 	if err != nil {
 		return *new(S), err
 	}
@@ -82,19 +91,34 @@ func QueryRowByPK[S StructWithTableName](ctx context.Context, conn *ConnExt, pkV
 	if err != nil {
 		return *new(S), err
 	}
+	if len(pkColumns) == 0 {
+		return *new(S), fmt.Errorf("QueryRowByPK of table %s: %s has no primary key fields", table, t)
+	}
 	if len(pkColumns) != len(pkValues) {
 		return *new(S), fmt.Errorf("got %d primary key values, but struct %s has %d primary key fields", len(pkValues), t, len(pkColumns))
-	}
-	for i, column := range pkColumns {
-		pkColumns[i], err = conn.QueryFormatter.FormatColumnName(column)
-		if err != nil {
-			return *new(S), err
-		}
 	}
 	query, err := conn.QueryBuilder.QueryRowWithPK(conn.QueryFormatter, table, pkColumns)
 	if err != nil {
 		return *new(S), err
 	}
+
+	// Store in cache
+	queryRowByPKCacheMtx.Lock()
+	if _, ok := queryRowByPKCache[t]; !ok {
+		queryRowByPKCache[t] = make(map[StructReflector]map[QueryBuilder]map[QueryFormatter]queryRowByPKCacheEntry)
+	}
+	if _, ok := queryRowByPKCache[t][conn.StructReflector]; !ok {
+		queryRowByPKCache[t][conn.StructReflector] = make(map[QueryBuilder]map[QueryFormatter]queryRowByPKCacheEntry)
+	}
+	if _, ok := queryRowByPKCache[t][conn.StructReflector][conn.QueryBuilder]; !ok {
+		queryRowByPKCache[t][conn.StructReflector][conn.QueryBuilder] = make(map[QueryFormatter]queryRowByPKCacheEntry)
+	}
+	queryRowByPKCache[t][conn.StructReflector][conn.QueryBuilder][conn.QueryFormatter] = queryRowByPKCacheEntry{
+		query:        query,
+		numPKColumns: len(pkColumns),
+	}
+	queryRowByPKCacheMtx.Unlock()
+
 	return QueryRowAs[S](ctx, conn, query, pkValues...)
 }
 
@@ -169,7 +193,7 @@ func QueryRowsAsSlice[T any](ctx context.Context, conn *ConnExt, query string, a
 		}
 	}()
 
-	sliceElemType := reflect.TypeOf(rows).Elem()
+	sliceElemType := reflect.TypeFor[T]()
 	rowStructs := isNonSQLScannerStruct(sliceElemType)
 
 	columns, err := sqlRows.Columns()

@@ -84,7 +84,7 @@ func InsertRowStruct(ctx context.Context, conn *ConnExt, rowStruct StructWithTab
 	useCache := len(options) == 0
 	if useCache {
 		insertRowStructQueryCacheMtx.RLock()
-		cached, ok := insertRowStructQueryCache[structType][conn.StructReflector][conn.QueryBuilder]
+		cached, ok := insertRowStructQueryCache[structType][conn.StructReflector][conn.QueryBuilder][conn.QueryFormatter]
 		insertRowStructQueryCacheMtx.RUnlock()
 		if ok {
 			vals = make([]any, len(cached.structFieldIndices))
@@ -100,7 +100,10 @@ func InsertRowStruct(ctx context.Context, conn *ConnExt, rowStruct StructWithTab
 	}
 	var cached queryCache
 	var columns []ColumnInfo
-	columns, cached.structFieldIndices, vals = ReflectStructColumnsFieldIndicesAndValues(structVal, conn.StructReflector, append(options, IgnoreReadOnly)...)
+	columns, cached.structFieldIndices, vals, err = ReflectStructColumnsFieldIndicesAndValues(structVal, conn.StructReflector, append(options, IgnoreReadOnly)...)
+	if err != nil {
+		return err
+	}
 	table, err := conn.StructReflector.TableNameForStruct(structType)
 	if err != nil {
 		return err
@@ -112,12 +115,15 @@ func InsertRowStruct(ctx context.Context, conn *ConnExt, rowStruct StructWithTab
 	if useCache {
 		insertRowStructQueryCacheMtx.Lock()
 		if _, ok := insertRowStructQueryCache[structType]; !ok {
-			insertRowStructQueryCache[structType] = make(map[StructReflector]map[QueryBuilder]queryCache)
+			insertRowStructQueryCache[structType] = make(map[StructReflector]map[QueryBuilder]map[QueryFormatter]queryCache)
 		}
 		if _, ok := insertRowStructQueryCache[structType][conn.StructReflector]; !ok {
-			insertRowStructQueryCache[structType][conn.StructReflector] = make(map[QueryBuilder]queryCache)
+			insertRowStructQueryCache[structType][conn.StructReflector] = make(map[QueryBuilder]map[QueryFormatter]queryCache)
 		}
-		insertRowStructQueryCache[structType][conn.StructReflector][conn.QueryBuilder] = cached
+		if _, ok := insertRowStructQueryCache[structType][conn.StructReflector][conn.QueryBuilder]; !ok {
+			insertRowStructQueryCache[structType][conn.StructReflector][conn.QueryBuilder] = make(map[QueryFormatter]queryCache)
+		}
+		insertRowStructQueryCache[structType][conn.StructReflector][conn.QueryBuilder][conn.QueryFormatter] = cached
 		insertRowStructQueryCacheMtx.Unlock()
 	}
 
@@ -141,7 +147,10 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, conn *ConnE
 		return nil, nil, err
 	}
 	options = append(options, IgnoreReadOnly)
-	columns := ReflectStructColumns(structType, conn.StructReflector, options...)
+	columns, err := ReflectStructColumns(structType, conn.StructReflector, options...)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	query, err := conn.QueryBuilder.Insert(conn.QueryFormatter, table, columns)
 	if err != nil {
@@ -158,7 +167,10 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, conn *ConnE
 		if err != nil {
 			return err
 		}
-		vals := ReflectStructValues(strct, conn.StructReflector, options...)
+		vals, err := ReflectStructValues(strct, conn.StructReflector, options...)
+		if err != nil {
+			return err
+		}
 		err = stmt.Exec(ctx, vals...)
 		if err != nil {
 			return WrapErrorWithQuery(err, query, vals, conn.QueryFormatter)
@@ -201,7 +213,10 @@ func InsertUniqueRowStruct(ctx context.Context, conn *ConnExt, rowStruct StructW
 		return false, err
 	}
 
-	columns, vals := ReflectStructColumnsAndValues(structVal, conn.StructReflector, append(options, IgnoreReadOnly)...)
+	columns, vals, err := ReflectStructColumnsAndValues(structVal, conn.StructReflector, append(options, IgnoreReadOnly)...)
+	if err != nil {
+		return false, err
+	}
 
 	if strings.HasPrefix(onConflict, "(") && strings.HasSuffix(onConflict, ")") {
 		onConflict = onConflict[1 : len(onConflict)-1]

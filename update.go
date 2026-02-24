@@ -72,7 +72,10 @@ func UpdateRowStruct(ctx context.Context, conn *ConnExt, table string, rowStruct
 		return fmt.Errorf("UpdateRowStruct of table %s: expected struct but got %T", table, rowStruct)
 	}
 
-	columns, vals := ReflectStructColumnsAndValues(v, conn.StructReflector, append(options, IgnoreReadOnly)...)
+	columns, vals, err := ReflectStructColumnsAndValues(v, conn.StructReflector, append(options, IgnoreReadOnly)...)
+	if err != nil {
+		return err
+	}
 	hasPK := slices.ContainsFunc(columns, func(col ColumnInfo) bool {
 		return col.PrimaryKey
 	})

@@ -50,7 +50,10 @@ func CreateTableForStruct(ctx context.Context, typeMap TypeMapper, rowStruct sql
 	if err != nil {
 		return err
 	}
-	columns, fields := sqldb.ReflectStructColumnsAndFields(v, config.StructReflector)
+	columns, fields, err := sqldb.ReflectStructColumnsAndFields(v, config.StructReflector)
+	if err != nil {
+		return err
+	}
 	if len(columns) == 0 {
 		return fmt.Errorf("CreateTableForStruct %s: no columns at struct %T", tableName, rowStruct)
 	}

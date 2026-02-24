@@ -2,11 +2,11 @@
 
 ## Missing Features
 
+- [ ] Query formatter tets with name escaping
 - [ ] **Batch insert** — `InsertRowStructs` processes rows one-by-one in a transaction with a prepared statement. Need optimized multi-row INSERT:
   ```go
   func BatchInsert[T any](ctx context.Context, table string, items []T, batchSize int) error
   ```
-- [ ] **Struct reflection cache** — Only insert query caching exists (`insert.go:58`). No broader caching of `StructReflector` results for repeated struct types (see commit `090e73d1`)
 
 ## Dead Code
 

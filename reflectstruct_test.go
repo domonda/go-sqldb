@@ -92,22 +92,22 @@ func TestPrimaryKeyColumnsOfStruct(t *testing.T) {
 	}{
 		{
 			name: "single PK",
-			typ:  reflect.TypeOf(reflectTestStruct{}),
+			typ:  reflect.TypeFor[reflectTestStruct](),
 			want: []string{"id"},
 		},
 		{
 			name: "composite PK",
-			typ:  reflect.TypeOf(reflectTestComposite{}),
+			typ:  reflect.TypeFor[reflectTestComposite](),
 			want: []string{"org_id", "item_id"},
 		},
 		{
 			name: "no PK columns",
-			typ:  reflect.TypeOf(reflectEmbedded{}),
+			typ:  reflect.TypeFor[reflectEmbedded](),
 			want: nil,
 		},
 		{
 			name: "embedded struct with PK",
-			typ:  reflect.TypeOf(reflectTestEmbedded{}),
+			typ:  reflect.TypeFor[reflectTestEmbedded](),
 			want: []string{"id"},
 		},
 	}
@@ -115,7 +115,7 @@ func TestPrimaryKeyColumnsOfStruct(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := PrimaryKeyColumnsOfStruct(reflectTestReflector, tt.typ)
 			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
+				t.Fatal(err)
 			}
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("got %v, want %v", got, tt.want)
@@ -131,7 +131,10 @@ func TestPrimaryKeyColumnsOfStruct(t *testing.T) {
 func TestReflectStructColumnsAndValues(t *testing.T) {
 	t.Run("flat struct", func(t *testing.T) {
 		s := reflectTestStruct{ID: 1, Name: "Alice", Active: true, Ignored: 99}
-		cols, vals := ReflectStructColumnsAndValues(reflect.ValueOf(s), reflectTestReflector)
+		cols, vals, err := ReflectStructColumnsAndValues(reflect.ValueOf(s), reflectTestReflector)
+		if err != nil {
+			t.Fatal(err)
+		}
 		wantNames := []string{"id", "name", "active"}
 		if len(cols) != len(wantNames) {
 			t.Fatalf("got %d columns, want %d", len(cols), len(wantNames))
@@ -157,7 +160,10 @@ func TestReflectStructColumnsAndValues(t *testing.T) {
 			ID:              10,
 			reflectEmbedded: reflectEmbedded{EmbVal: 42, reflectDeepEmbedded: reflectDeepEmbedded{DeepVal: "deep"}},
 		}
-		cols, vals := ReflectStructColumnsAndValues(reflect.ValueOf(s), reflectTestReflector)
+		cols, vals, err := ReflectStructColumnsAndValues(reflect.ValueOf(s), reflectTestReflector)
+		if err != nil {
+			t.Fatal(err)
+		}
 		wantNames := []string{"id", "deep_val", "emb_val"}
 		if len(cols) != len(wantNames) {
 			t.Fatalf("got %d columns, want %d", len(cols), len(wantNames))
@@ -180,7 +186,10 @@ func TestReflectStructColumnsAndValues(t *testing.T) {
 
 	t.Run("with IgnoreColumns option", func(t *testing.T) {
 		s := reflectTestStruct{ID: 1, Name: "Bob", Active: false}
-		cols, vals := ReflectStructColumnsAndValues(reflect.ValueOf(s), reflectTestReflector, IgnoreColumns("active"))
+		cols, vals, err := ReflectStructColumnsAndValues(reflect.ValueOf(s), reflectTestReflector, IgnoreColumns("active"))
+		if err != nil {
+			t.Fatal(err)
+		}
 		wantNames := []string{"id", "name"}
 		if len(cols) != len(wantNames) {
 			t.Fatalf("got %d columns, want %d", len(cols), len(wantNames))
@@ -203,7 +212,10 @@ func TestReflectStructColumnsAndValues(t *testing.T) {
 func TestReflectStructColumnsFieldIndicesAndValues(t *testing.T) {
 	t.Run("flat struct", func(t *testing.T) {
 		s := reflectTestStruct{ID: 5, Name: "Charlie", Active: true}
-		cols, indices, vals := ReflectStructColumnsFieldIndicesAndValues(reflect.ValueOf(s), reflectTestReflector)
+		cols, indices, vals, err := ReflectStructColumnsFieldIndicesAndValues(reflect.ValueOf(s), reflectTestReflector)
+		if err != nil {
+			t.Fatal(err)
+		}
 		wantNames := []string{"id", "name", "active"}
 		if len(cols) != len(wantNames) {
 			t.Fatalf("got %d columns, want %d", len(cols), len(wantNames))
@@ -235,7 +247,10 @@ func TestReflectStructColumnsFieldIndicesAndValues(t *testing.T) {
 			ID:              10,
 			reflectEmbedded: reflectEmbedded{EmbVal: 42, reflectDeepEmbedded: reflectDeepEmbedded{DeepVal: "deep"}},
 		}
-		cols, indices, vals := ReflectStructColumnsFieldIndicesAndValues(reflect.ValueOf(s), reflectTestReflector)
+		cols, indices, vals, err := ReflectStructColumnsFieldIndicesAndValues(reflect.ValueOf(s), reflectTestReflector)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if len(cols) != 3 {
 			t.Fatalf("got %d columns, want 3", len(cols))
 		}
@@ -256,7 +271,10 @@ func TestReflectStructColumnsFieldIndicesAndValues(t *testing.T) {
 func TestReflectStructValues(t *testing.T) {
 	t.Run("returns only values", func(t *testing.T) {
 		s := reflectTestStruct{ID: 7, Name: "Dana", Active: false, Ignored: 100}
-		vals := ReflectStructValues(reflect.ValueOf(s), reflectTestReflector)
+		vals, err := ReflectStructValues(reflect.ValueOf(s), reflectTestReflector)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if len(vals) != 3 {
 			t.Fatalf("got %d values, want 3", len(vals))
 		}
@@ -276,7 +294,10 @@ func TestReflectStructValues(t *testing.T) {
 			ID:              1,
 			reflectEmbedded: reflectEmbedded{EmbVal: 99, reflectDeepEmbedded: reflectDeepEmbedded{DeepVal: "x"}},
 		}
-		vals := ReflectStructValues(reflect.ValueOf(s), reflectTestReflector)
+		vals, err := ReflectStructValues(reflect.ValueOf(s), reflectTestReflector)
+		if err != nil {
+			t.Fatal(err)
+		}
 		if len(vals) != 3 {
 			t.Fatalf("got %d values, want 3", len(vals))
 		}
@@ -293,7 +314,10 @@ func TestReflectStructValues(t *testing.T) {
 
 	t.Run("with IgnoreReadOnly option", func(t *testing.T) {
 		s := reflectTestWithOptions{ID: 1, Name: "Test", ReadOnly: "ro_val", HasDef: "def_val"}
-		vals := ReflectStructValues(reflect.ValueOf(s), reflectTestReflector, IgnoreReadOnly)
+		vals, err := ReflectStructValues(reflect.ValueOf(s), reflectTestReflector, IgnoreReadOnly)
+		if err != nil {
+			t.Fatal(err)
+		}
 		// Should skip readonly column, leaving: id, name, has_def
 		if len(vals) != 3 {
 			t.Fatalf("got %d values, want 3", len(vals))
@@ -307,7 +331,10 @@ func TestReflectStructValues(t *testing.T) {
 
 func TestReflectStructColumns(t *testing.T) {
 	t.Run("flat struct", func(t *testing.T) {
-		cols := ReflectStructColumns(reflect.TypeOf(reflectTestStruct{}), reflectTestReflector)
+		cols, err := ReflectStructColumns(reflect.TypeFor[reflectTestStruct](), reflectTestReflector)
+		if err != nil {
+			t.Fatal(err)
+		}
 		wantNames := []string{"id", "name", "active"}
 		if len(cols) != len(wantNames) {
 			t.Fatalf("got %d columns, want %d", len(cols), len(wantNames))
@@ -327,7 +354,10 @@ func TestReflectStructColumns(t *testing.T) {
 	})
 
 	t.Run("embedded struct", func(t *testing.T) {
-		cols := ReflectStructColumns(reflect.TypeOf(reflectTestEmbedded{}), reflectTestReflector)
+		cols, err := ReflectStructColumns(reflect.TypeFor[reflectTestEmbedded](), reflectTestReflector)
+		if err != nil {
+			t.Fatal(err)
+		}
 		wantNames := []string{"id", "deep_val", "emb_val"}
 		if len(cols) != len(wantNames) {
 			t.Fatalf("got %d columns, want %d", len(cols), len(wantNames))
@@ -340,7 +370,10 @@ func TestReflectStructColumns(t *testing.T) {
 	})
 
 	t.Run("with OnlyColumns option", func(t *testing.T) {
-		cols := ReflectStructColumns(reflect.TypeOf(reflectTestStruct{}), reflectTestReflector, OnlyColumns("id", "name"))
+		cols, err := ReflectStructColumns(reflect.TypeFor[reflectTestStruct](), reflectTestReflector, OnlyColumns("id", "name"))
+		if err != nil {
+			t.Fatal(err)
+		}
 		if len(cols) != 2 {
 			t.Fatalf("got %d columns, want 2", len(cols))
 		}
@@ -353,7 +386,10 @@ func TestReflectStructColumns(t *testing.T) {
 	})
 
 	t.Run("ignored and private fields excluded", func(t *testing.T) {
-		cols := ReflectStructColumns(reflect.TypeOf(reflectTestStruct{}), reflectTestReflector)
+		cols, err := ReflectStructColumns(reflect.TypeFor[reflectTestStruct](), reflectTestReflector)
+		if err != nil {
+			t.Fatal(err)
+		}
 		for _, col := range cols {
 			if col.Name == "-" || col.Name == "private" || col.Name == "Ignored" {
 				t.Errorf("unexpected column %q should be excluded", col.Name)

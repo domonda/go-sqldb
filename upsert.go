@@ -17,34 +17,71 @@ import (
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
 // The struct must have at least one primary key field.
 func UpsertRowStruct(ctx context.Context, conn *ConnExt, rowStruct StructWithTableName, options ...QueryOption) error {
-	v, err := derefStruct(reflect.ValueOf(rowStruct))
+	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return err
 	}
-	table, err := conn.StructReflector.TableNameForStruct(v.Type())
-	if err != nil {
-		return err
-	}
-	table, err = conn.QueryFormatter.FormatTableName(table)
-	if err != nil {
-		return err
-	}
+	structType := structVal.Type()
 
-	columns, vals := ReflectStructColumnsAndValues(v, conn.StructReflector, append(options, IgnoreReadOnly)...)
+	var vals []any
+	// Only use the cache when no caller-provided options are passed
+	// because options (like ColumnFilter) change which columns are included
+	// and the cache key does not account for them.
+	useCache := len(options) == 0
+	if useCache {
+		upsertRowStructQueryCacheMtx.RLock()
+		cached, ok := upsertRowStructQueryCache[structType][conn.StructReflector][conn.QueryBuilder][conn.QueryFormatter]
+		upsertRowStructQueryCacheMtx.RUnlock()
+		if ok {
+			vals = make([]any, len(cached.structFieldIndices))
+			for i, fieldIndex := range cached.structFieldIndices {
+				vals[i] = structVal.FieldByIndex(fieldIndex).Interface()
+			}
+			err = conn.Exec(ctx, cached.query, vals...)
+			if err != nil {
+				return WrapErrorWithQuery(err, cached.query, vals, conn.QueryFormatter)
+			}
+			return nil
+		}
+	}
+	var cached queryCache
+	var columns []ColumnInfo
+	columns, cached.structFieldIndices, vals, err = ReflectStructColumnsFieldIndicesAndValues(structVal, conn.StructReflector, append(options, IgnoreReadOnly)...)
+	if err != nil {
+		return err
+	}
+	table, err := conn.StructReflector.TableNameForStruct(structType)
+	if err != nil {
+		return err
+	}
 	hasPK := slices.ContainsFunc(columns, func(col ColumnInfo) bool {
 		return col.PrimaryKey
 	})
 	if !hasPK {
-		return fmt.Errorf("UpsertRowStruct of table %s: %s has no mapped primary key field", table, v.Type())
+		return fmt.Errorf("UpsertRowStruct of table %s: %s has no mapped primary key field", table, structType)
 	}
-
-	query, err := conn.QueryBuilder.Upsert(conn.QueryFormatter, table, columns)
+	cached.query, err = conn.QueryBuilder.Upsert(conn.QueryFormatter, table, columns)
 	if err != nil {
 		return fmt.Errorf("UpsertRowStruct of table %s: failed to create UPSERT query: %w", table, err)
 	}
-	err = conn.Exec(ctx, query, vals...)
+	if useCache {
+		upsertRowStructQueryCacheMtx.Lock()
+		if _, ok := upsertRowStructQueryCache[structType]; !ok {
+			upsertRowStructQueryCache[structType] = make(map[StructReflector]map[QueryBuilder]map[QueryFormatter]queryCache)
+		}
+		if _, ok := upsertRowStructQueryCache[structType][conn.StructReflector]; !ok {
+			upsertRowStructQueryCache[structType][conn.StructReflector] = make(map[QueryBuilder]map[QueryFormatter]queryCache)
+		}
+		if _, ok := upsertRowStructQueryCache[structType][conn.StructReflector][conn.QueryBuilder]; !ok {
+			upsertRowStructQueryCache[structType][conn.StructReflector][conn.QueryBuilder] = make(map[QueryFormatter]queryCache)
+		}
+		upsertRowStructQueryCache[structType][conn.StructReflector][conn.QueryBuilder][conn.QueryFormatter] = cached
+		upsertRowStructQueryCacheMtx.Unlock()
+	}
+
+	err = conn.Exec(ctx, cached.query, vals...)
 	if err != nil {
-		return WrapErrorWithQuery(err, query, vals, conn.QueryFormatter)
+		return WrapErrorWithQuery(err, cached.query, vals, conn.QueryFormatter)
 	}
 	return nil
 }
@@ -64,13 +101,12 @@ func UpsertRowStructStmt[S StructWithTableName](ctx context.Context, conn *ConnE
 	if err != nil {
 		return nil, nil, err
 	}
-	table, err = conn.QueryFormatter.FormatTableName(table)
+
+	options = append(options, IgnoreReadOnly)
+	columns, err := ReflectStructColumns(structType, conn.StructReflector, options...)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	options = append(options, IgnoreReadOnly)
-	columns := ReflectStructColumns(structType, conn.StructReflector, options...)
 	hasPK := slices.ContainsFunc(columns, func(col ColumnInfo) bool {
 		return col.PrimaryKey
 	})
@@ -93,7 +129,10 @@ func UpsertRowStructStmt[S StructWithTableName](ctx context.Context, conn *ConnE
 		if err != nil {
 			return err
 		}
-		vals := ReflectStructValues(v, conn.StructReflector, options...)
+		vals, err := ReflectStructValues(v, conn.StructReflector, options...)
+		if err != nil {
+			return err
+		}
 		err = stmt.Exec(ctx, vals...)
 		if err != nil {
 			return WrapErrorWithQuery(err, query, vals, conn.QueryFormatter)
