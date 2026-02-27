@@ -1,80 +1,146 @@
 package mockconn
 
 import (
+	"bytes"
 	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"fmt"
 	"reflect"
-	"slices"
 	"strconv"
 	"time"
 
-	sqldb "github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/impl"
 )
 
-// Row implements impl.Row with the fields of a struct as column values.
-type Row struct {
-	rowStructVal reflect.Value
-	columnNamer  sqldb.StructFieldMapper
+// MockRows implements the impl.Rows interface for testing purposes.
+type MockRows struct {
+	columns []string
+	rows    [][]driver.Value
+
+	current int
+	closed  bool
+	err     error
 }
 
-func NewRow(rowStruct any, columnNamer sqldb.StructFieldMapper) *Row {
-	val := reflect.ValueOf(rowStruct)
-	for val.Kind() == reflect.Ptr {
-		val = val.Elem()
-	}
-	return &Row{
-		rowStructVal: val,
-		columnNamer:  columnNamer,
-	}
-}
+var _ impl.Rows = new(MockRows)
 
-func (r *Row) StructFieldMapper() sqldb.StructFieldMapper {
-	return r.columnNamer
-}
-
-func (r *Row) Columns() ([]string, error) {
-	columns := make([]string, r.rowStructVal.NumField())
-	for i := range columns {
-		field := r.rowStructVal.Type().Field(i)
-		_, columns[i], _, _ = r.columnNamer.MapStructField(field)
-	}
-	return columns, nil
-}
-
-func (r *Row) Scan(dest ...any) error {
-	for i := range dest {
-		src := r.rowStructVal.Field(i).Interface()
-		if valuer, ok := src.(driver.Valuer); ok {
-			val, err := valuer.Value()
-			if err != nil {
-				return err
+// NewMockRows returns a Rows implementation
+// that iterates over and scans the passed rows.
+func NewMockRows(columns []string, rows [][]driver.Value) *MockRows {
+	for _, row := range rows {
+		for _, value := range row {
+			if !isDriverValue(value) {
+				panic(fmt.Sprintf("value %[1]v of type %[1]T is not a driver.Value", value))
 			}
-			src = val
 		}
-		err := convertAssign(dest[i], src)
+	}
+	return &MockRows{
+		columns: columns,
+		rows:    rows,
+		current: -1,
+	}
+}
+
+func (m *MockRows) WithErr(err error) *MockRows {
+	if err == m.err {
+		return m
+	}
+	clone := *m
+	clone.err = err
+	return &clone
+}
+
+// Columns returns the names of the columns.
+func (m *MockRows) Columns() ([]string, error) {
+	return m.columns, nil
+}
+
+// Next moves the cursor to the next row.
+func (m *MockRows) Next() bool {
+	if m.closed || m.err != nil {
+		return false
+	}
+	m.current++
+	return m.current < len(m.rows)
+}
+
+// Scan copies the current row into the provided destination values.
+func (m *MockRows) Scan(dest ...any) error {
+	if m.err != nil {
+		return m.err
+	}
+	if m.closed {
+		return errors.New("sql: Rows are closed")
+	}
+	if m.current < 0 {
+		return errors.New("sql: Scan called without calling Next")
+	}
+	if m.current >= len(m.rows) {
+		return sql.ErrNoRows
+	}
+	row := m.rows[m.current]
+	if len(dest) != len(row) {
+		return fmt.Errorf("sql: expected %d destination arguments in Scan, not %d", len(row), len(dest))
+	}
+	for i := range row {
+		err := convertAssign(dest[i], row[i])
 		if err != nil {
-			return fmt.Errorf("can't scan value %d because: %w", i, err)
+			return fmt.Errorf("sql: Scan error on column index %d, name %q: %w", i, m.columns[i], err)
 		}
 	}
 	return nil
 }
 
+// Err returns any error that occurred while iterating.
+func (m *MockRows) Err() error {
+	return m.err
+}
+
+// Close marks the mock rows as closed.
+func (m *MockRows) Close() error {
+	m.closed = true
+	return nil
+}
+
+func isDriverValue(v any) bool {
+	switch v.(type) {
+	case nil,
+		int64,
+		float64,
+		bool,
+		[]byte,
+		string,
+		time.Time,
+		decimalDecompose:
+		return true
+	}
+	return false
+}
+
 ///////////////////////////////////////////////////////////////////////////////
-//
-// The following is adapted from the Go sql package source
-// to mirror the behaviour of the sql package
-// for mocked tests without a SQL driver implementation:
-// https://github.com/golang/go/blob/0efbd1015774a2d894138519f1efcf7704bb2d95/src/database/sql/convert.go
-//
+// The following code is copied and slightly simplified from
+// database/sql/convert.go
 
 var errNilPtr = errors.New("destination pointer is nil") // embedded in descriptive error
+
+type decimalDecompose interface {
+	// Decompose returns the internal decimal state in parts.
+	// If the provided buf has sufficient capacity, buf may be returned as the coefficient with
+	// the value set and length set as appropriate.
+	Decompose(buf []byte) (form byte, negative bool, coefficient []byte, exponent int32)
+}
+
+type decimalCompose interface {
+	// Compose sets the internal decimal value from parts. If the value cannot be
+	// represented then an error should be returned.
+	Compose(form byte, negative bool, coefficient []byte, exponent int32) error
+}
 
 // convertAssign copies to dest the value in src, converting it if possible.
 // An error is returned if the copy would result in loss of information.
 // dest should be a pointer type.
-func convertAssign(dest, src any) error {
+func convertAssign(dest any, src driver.Value) error {
 	// Common cases, without reflect.
 	switch s := src.(type) {
 	case string:
@@ -110,19 +176,19 @@ func convertAssign(dest, src any) error {
 			if d == nil {
 				return errNilPtr
 			}
-			*d = slices.Clone(s)
+			*d = bytes.Clone(s)
 			return nil
 		case *[]byte:
 			if d == nil {
 				return errNilPtr
 			}
-			*d = slices.Clone(s)
+			*d = bytes.Clone(s)
 			return nil
 		case *sql.RawBytes:
 			if d == nil {
 				return errNilPtr
 			}
-			*d = slices.Clone(s)
+			*d = bytes.Clone(s)
 			return nil
 		}
 	case time.Time:
@@ -143,7 +209,7 @@ func convertAssign(dest, src any) error {
 			if d == nil {
 				return errNilPtr
 			}
-			*d = s.AppendFormat((*d)[:0], time.RFC3339Nano)
+			*d = sql.RawBytes(s.Format(time.RFC3339Nano))
 			return nil
 		}
 	case decimalDecompose:
@@ -195,8 +261,8 @@ func convertAssign(dest, src any) error {
 		}
 	case *sql.RawBytes:
 		sv = reflect.ValueOf(src)
-		if b, ok := asBytes([]byte(*d)[:0], sv); ok {
-			*d = sql.RawBytes(b)
+		if b, ok := asBytes(nil, sv); ok {
+			*d = b
 			return nil
 		}
 	case *bool:
@@ -215,7 +281,7 @@ func convertAssign(dest, src any) error {
 	}
 
 	dpv := reflect.ValueOf(dest)
-	if dpv.Kind() != reflect.Ptr {
+	if dpv.Kind() != reflect.Pointer {
 		return errors.New("destination not a pointer")
 	}
 	if dpv.IsNil() {
@@ -230,14 +296,14 @@ func convertAssign(dest, src any) error {
 	if sv.IsValid() && sv.Type().AssignableTo(dv.Type()) {
 		switch b := src.(type) {
 		case []byte:
-			dv.Set(reflect.ValueOf(slices.Clone(b)))
+			dv.Set(reflect.ValueOf(bytes.Clone(b)))
 		default:
 			dv.Set(sv)
 		}
 		return nil
 	}
 
-	if dv.Kind() == sv.Kind() && sv.CanConvert(dv.Type()) {
+	if dv.Kind() == sv.Kind() && sv.Type().ConvertibleTo(dv.Type()) {
 		dv.Set(sv.Convert(dv.Type()))
 		return nil
 	}
@@ -248,7 +314,7 @@ func convertAssign(dest, src any) error {
 	// This also allows scanning into user defined types such as "type Int int64".
 	// For symmetry, also check for string destination types.
 	switch dv.Kind() {
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if src == nil {
 			dv.SetZero()
 			return nil
@@ -355,17 +421,4 @@ func asBytes(buf []byte, rv reflect.Value) (b []byte, ok bool) {
 		return append(buf, s...), true
 	}
 	return
-}
-
-type decimalDecompose interface {
-	// Decompose returns the internal decimal state in parts.
-	// If the provided buf has sufficient capacity, buf may be returned as the coefficient with
-	// the value set and length set as appropriate.
-	Decompose(buf []byte) (form byte, negative bool, coefficient []byte, exponent int32)
-}
-
-type decimalCompose interface {
-	// Compose sets the internal decimal value from parts. If the value cannot be
-	// represented then an error should be returned.
-	Compose(form byte, negative bool, coefficient []byte, exponent int32) error
 }
