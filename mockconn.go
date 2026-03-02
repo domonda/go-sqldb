@@ -179,7 +179,7 @@ func (c *MockConn) Query(ctx context.Context, query string, args ...any) Rows {
 	if c.MockQuery == nil {
 		mockRows := c.MockQueryResults[queryData.Format(queryFormatter)]
 		if mockRows == nil {
-			return NewErrRows(ctx.Err())
+			return NewErrRows(errors.Join(fmt.Errorf("mock %w", sql.ErrNoRows), ctx.Err()))
 		}
 		return mockRows.WithErr(ctx.Err())
 	}
