@@ -270,19 +270,25 @@ func (c *Conn) UpdateReturningRows(table string, values sqldb.Values, returning,
 }
 
 // QueryRow implements sqldb.Connection.
+// If the query method returns nil (MockQuery returned nil
+// or no matching entry in MockQueryResults), it returns a RowScanner
+// with a joined error of sql.ErrNoRows and the context error (if any).
 func (c *Conn) QueryRow(query string, args ...any) sqldb.RowScanner {
 	mockRows := c.query(query, args...)
 	if mockRows == nil {
-		return sqldb.RowScannerWithError(c.ctx().Err())
+		return sqldb.RowScannerWithError(errors.Join(fmt.Errorf("mock %w", sql.ErrNoRows), c.ctx().Err()))
 	}
 	return impl.NewRowScanner(mockRows, c.structFieldMapper(), query, c.ArgFmt, args)
 }
 
 // QueryRows implements sqldb.Connection.
+// If the query method returns nil (MockQuery returned nil
+// or no matching entry in MockQueryResults), it returns a RowsScanner
+// with a joined error of sql.ErrNoRows and the context error (if any).
 func (c *Conn) QueryRows(query string, args ...any) sqldb.RowsScanner {
 	mockRows := c.query(query, args...)
 	if mockRows == nil {
-		return sqldb.RowsScannerWithError(c.ctx().Err())
+		return sqldb.RowsScannerWithError(errors.Join(fmt.Errorf("mock %w", sql.ErrNoRows), c.ctx().Err()))
 	}
 	return impl.NewRowsScanner(c.ctx(), mockRows, c.structFieldMapper(), query, c.ArgFmt, args)
 }
