@@ -15,6 +15,8 @@ import (
 // MockConn implements ListenerConnection
 var _ ListenerConnection = new(MockConn)
 
+// QueryRecordings holds the recorded exec and query calls
+// made through a MockConn.
 type QueryRecordings struct {
 	Execs   []QueryData
 	Queries []QueryData
@@ -64,6 +66,9 @@ type MockConn struct {
 	MockClose                func() error
 }
 
+// NewMockConn returns a new MockConn configured with the given
+// placeholder prefix (e.g. "$" for PostgreSQL), an optional
+// query normalization function, and an optional query log writer.
 func NewMockConn(placeholderPosPrefix string, normalizeQuery NormalizeQueryFunc, queryLog io.Writer) *MockConn {
 	return &MockConn{
 		QueryFormatter: NewQueryFormatter(placeholderPosPrefix),
@@ -72,6 +77,8 @@ func NewMockConn(placeholderPosPrefix string, normalizeQuery NormalizeQueryFunc,
 	}
 }
 
+// Clone returns a shallow copy of the MockConn
+// with cloned ListeningOn and MockQueryResults maps.
 func (c *MockConn) Clone() *MockConn {
 	copy := *c
 	copy.ListeningOn = maps.Clone(c.ListeningOn)
@@ -79,6 +86,10 @@ func (c *MockConn) Clone() *MockConn {
 	return &copy
 }
 
+// WithQueryResult returns a clone of the MockConn with an additional
+// MockRows result registered for the given query and args.
+// The query is normalized and formatted using the connection's
+// NormalizeQuery and QueryFormatter before being used as lookup key.
 func (c *MockConn) WithQueryResult(columns []string, rows [][]driver.Value, forQuery string, args ...any) *MockConn {
 	queryFormatter := c.QueryFormatter
 	if queryFormatter == nil {
@@ -94,10 +105,14 @@ func (c *MockConn) WithQueryResult(columns []string, rows [][]driver.Value, forQ
 	return cc
 }
 
+// FormatStringLiteral implements Connection by returning
+// a single-quoted SQL string literal.
 func (*MockConn) FormatStringLiteral(str string) string {
 	return FormatSingleQuoteStringLiteral(str)
 }
 
+// Config implements Connection by returning MockConfig()
+// or a default ConnConfig with Driver "MockConn" if MockConfig is nil.
 func (c *MockConn) Config() *ConnConfig {
 	if c.MockConfig == nil {
 		return &ConnConfig{
@@ -107,6 +122,8 @@ func (c *MockConn) Config() *ConnConfig {
 	return c.MockConfig()
 }
 
+// Ping implements Connection by calling MockPing
+// or returning the context error if MockPing is nil.
 func (c *MockConn) Ping(ctx context.Context, timeout time.Duration) error {
 	if c.MockPing == nil {
 		return ctx.Err()
@@ -114,6 +131,8 @@ func (c *MockConn) Ping(ctx context.Context, timeout time.Duration) error {
 	return c.MockPing(ctx, timeout)
 }
 
+// Stats implements Connection by calling MockStats
+// or returning a zero sql.DBStats if MockStats is nil.
 func (c *MockConn) Stats() sql.DBStats {
 	if c.MockStats == nil {
 		return sql.DBStats{}
@@ -121,6 +140,9 @@ func (c *MockConn) Stats() sql.DBStats {
 	return c.MockStats()
 }
 
+// Exec implements Connection by recording the query,
+// optionally logging it, and then calling MockExec
+// or returning the context error if MockExec is nil.
 func (c *MockConn) Exec(ctx context.Context, query string, args ...any) (err error) {
 	queryFormatter := c.QueryFormatter
 	if queryFormatter == nil {
@@ -151,6 +173,11 @@ func (c *MockConn) Exec(ctx context.Context, query string, args ...any) (err err
 	return c.MockExec(ctx, query, args...)
 }
 
+// Query implements Connection by recording the query,
+// optionally logging it, and then calling MockQuery.
+// If MockQuery is nil, it looks up the result in MockQueryResults.
+// If no matching result is found, it returns ErrRows wrapping
+// sql.ErrNoRows joined with the context error.
 func (c *MockConn) Query(ctx context.Context, query string, args ...any) Rows {
 	queryFormatter := c.QueryFormatter
 	if queryFormatter == nil {
@@ -186,6 +213,9 @@ func (c *MockConn) Query(ctx context.Context, query string, args ...any) Rows {
 	return c.MockQuery(ctx, query, args...)
 }
 
+// Prepare implements Connection by calling MockPrepare.
+// If MockPrepare is nil, it returns a MockStmt that delegates
+// Exec and Query back to the MockConn.
 func (c *MockConn) Prepare(ctx context.Context, query string) (Stmt, error) {
 	if c.QueryLog != nil {
 		var err error
@@ -224,10 +254,14 @@ func (c *MockConn) Prepare(ctx context.Context, query string) (Stmt, error) {
 	return c.MockPrepare(ctx, query)
 }
 
+// DefaultIsolationLevel implements Connection
+// by returning sql.LevelDefault.
 func (c *MockConn) DefaultIsolationLevel() sql.IsolationLevel {
 	return sql.LevelDefault
 }
 
+// Transaction implements Connection by calling MockTransaction
+// or returning a TransactionState with the current TxID if MockTransaction is nil.
 func (c *MockConn) Transaction() TransactionState {
 	if c.MockTransaction == nil {
 		return TransactionState{
@@ -238,6 +272,9 @@ func (c *MockConn) Transaction() TransactionState {
 	return c.MockTransaction()
 }
 
+// Begin implements Connection by calling MockBegin.
+// If MockBegin is nil, it returns a copy of the MockConn
+// with TxID set to the given id. Returns an error if id is zero.
 func (c *MockConn) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (Connection, error) {
 	if id == 0 {
 		return nil, errors.New("transaction ID must not be zero")
@@ -266,6 +303,8 @@ func (c *MockConn) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (C
 	return c.MockBegin(ctx, id, opts)
 }
 
+// Commit implements Connection by calling MockCommit
+// or returning nil if MockCommit is nil.
 func (c *MockConn) Commit() error {
 	if c.QueryLog != nil {
 		_, err := fmt.Fprint(c.QueryLog, "COMMIT;\n")
@@ -280,6 +319,8 @@ func (c *MockConn) Commit() error {
 	return c.MockCommit()
 }
 
+// Rollback implements Connection by calling MockRollback
+// or returning nil if MockRollback is nil.
 func (c *MockConn) Rollback() error {
 	if c.QueryLog != nil {
 		_, err := fmt.Fprint(c.QueryLog, "ROLLBACK;\n")
@@ -294,6 +335,9 @@ func (c *MockConn) Rollback() error {
 	return c.MockRollback()
 }
 
+// ListenOnChannel implements ListenerConnection by registering
+// the channel in ListeningOn and calling MockListenOnChannel
+// or returning nil if MockListenOnChannel is nil.
 func (c *MockConn) ListenOnChannel(channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error {
 	if c.ListeningOn == nil {
 		c.ListeningOn = make(map[string]struct{})
@@ -313,6 +357,9 @@ func (c *MockConn) ListenOnChannel(channel string, onNotify OnNotifyFunc, onUnli
 	return c.MockListenOnChannel(channel, onNotify, onUnlisten)
 }
 
+// UnlistenChannel implements ListenerConnection by removing
+// the channel from ListeningOn and calling MockUnlistenChannel
+// or returning nil if MockUnlistenChannel is nil.
 func (c *MockConn) UnlistenChannel(channel string) error {
 	delete(c.ListeningOn, channel)
 
@@ -329,6 +376,9 @@ func (c *MockConn) UnlistenChannel(channel string) error {
 	return c.MockUnlistenChannel(channel)
 }
 
+// IsListeningOnChannel implements ListenerConnection by calling
+// MockIsListeningOnChannel or checking the ListeningOn map
+// if MockIsListeningOnChannel is nil.
 func (c *MockConn) IsListeningOnChannel(channel string) bool {
 	if c.MockIsListeningOnChannel == nil {
 		_, ok := c.ListeningOn[channel]
@@ -337,6 +387,8 @@ func (c *MockConn) IsListeningOnChannel(channel string) bool {
 	return c.MockIsListeningOnChannel(channel)
 }
 
+// Close implements Connection by calling MockClose
+// or returning nil if MockClose is nil.
 func (c *MockConn) Close() error {
 	if c.MockClose == nil {
 		return nil
