@@ -51,6 +51,12 @@ func (m *MockRows) WithErr(err error) *MockRows {
 	return &clone
 }
 
+func (m *MockRows) WithJoinErrors(errs ...error) *MockRows {
+	clone := *m
+	clone.err = errors.Join(append([]error{m.err}, errs...)...)
+	return &clone
+}
+
 // Columns returns the names of the columns
 func (m *MockRows) Columns() ([]string, error) {
 	return m.columns, nil
