@@ -42,6 +42,9 @@ func NewMockRows(columns []string, rows [][]driver.Value) *MockRows {
 	}
 }
 
+// WithErr returns a clone of the MockRows with the given error set,
+// replacing any previously set error.
+// If err is the same as the current error, the receiver is returned as-is.
 func (m *MockRows) WithErr(err error) *MockRows {
 	if err == m.err {
 		return m
@@ -51,6 +54,8 @@ func (m *MockRows) WithErr(err error) *MockRows {
 	return &clone
 }
 
+// WithJoinErrors returns a clone of the MockRows with the given errors
+// joined with the existing error via errors.Join.
 func (m *MockRows) WithJoinErrors(errs ...error) *MockRows {
 	clone := *m
 	clone.err = errors.Join(append([]error{m.err}, errs...)...)
