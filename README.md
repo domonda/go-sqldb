@@ -288,6 +288,176 @@ All caches can be cleared with `ClearQueryCaches()` which is useful for testing 
 
 ## Testing
 
+### MockConn for unit tests
+
+`MockConn` implements the `ListenerConnection` interface entirely in memory, allowing you to unit test database-dependent code without a running database.
+
+#### Creating a MockConn
+
+```go
+// Create a MockConn for PostgreSQL-style $1, $2, ... placeholders.
+// Pass nil for normalizeQuery and queryLog if not needed.
+mockConn := sqldb.NewMockConn("$", nil, nil)
+```
+
+The arguments are:
+- `placeholderPosPrefix`: the positional placeholder prefix (e.g. `"$"` for PostgreSQL, `"?"` for MySQL)
+- `normalizeQuery`: an optional `NormalizeQueryFunc` to normalize SQL whitespace before matching
+- `queryLog`: an optional `io.Writer` to log all executed SQL statements
+
+#### Registering mock query results
+
+Use `WithQueryResult` to register expected results for specific queries. It returns a cloned `MockConn` so you can chain calls:
+
+```go
+mockConn = mockConn.WithQueryResult(
+    []string{"id", "email", "name"},               // column names
+    [][]driver.Value{                               // rows
+        {"550e8400-e29b-41d4-a716-446655440000", "alice@example.com", "Alice"},
+        {"6ba7b810-9dad-11d1-80b4-00c04fd430c8", "bob@example.com", "Bob"},
+    },
+    `SELECT id, email, name FROM public.user`,      // the query to match
+    // args... (if the query has placeholders)
+)
+```
+
+For queries with arguments:
+
+```go
+mockConn = mockConn.WithQueryResult(
+    []string{"id", "email", "name"},
+    [][]driver.Value{
+        {"550e8400-e29b-41d4-a716-446655440000", "alice@example.com", "Alice"},
+    },
+    `SELECT id, email, name FROM public.user WHERE id = $1`,
+    "550e8400-e29b-41d4-a716-446655440000",         // matches $1
+)
+```
+
+If a query has no matching result registered, the returned `Rows` will have an error wrapping `sql.ErrNoRows`.
+
+#### Using MockConn with the db package
+
+Wrap the `MockConn` in a `ConnExt` and set it as the connection in the context or globally:
+
+```go
+func TestGetUser(t *testing.T) {
+    mockConn := sqldb.NewMockConn("$", nil, nil)
+    mockConn = mockConn.WithQueryResult(
+        []string{"id", "email", "name"},
+        [][]driver.Value{
+            {"550e8400-e29b-41d4-a716-446655440000", "alice@example.com", "Alice"},
+        },
+        `SELECT id, email, name FROM public.user WHERE id = $1`,
+        "550e8400-e29b-41d4-a716-446655440000",
+    )
+
+    connExt := sqldb.NewConnExt(
+        mockConn,
+        new(sqldb.TaggedStructReflector), // default struct reflector
+        mockConn.QueryFormatter,          // reuse the formatter from mockConn
+        sqldb.StdQueryBuilder{},
+    )
+
+    ctx := db.ContextWithConn(t.Context(), connExt)
+
+    user, err := GetUser(ctx, uu.IDFrom("550e8400-e29b-41d4-a716-446655440000"))
+    require.NoError(t, err)
+    assert.Equal(t, "Alice", user.Name)
+    assert.Equal(t, "alice@example.com", user.Email)
+}
+```
+
+#### Mocking Exec calls
+
+By default, `Exec` returns the context error (nil for non-canceled contexts). To customize:
+
+```go
+mockConn.MockExec = func(ctx context.Context, query string, args ...any) error {
+    if strings.Contains(query, "DELETE") {
+        return errs.New("delete not allowed in test")
+    }
+    return nil
+}
+```
+
+#### Custom query handling with MockQuery
+
+For dynamic query responses, set the `MockQuery` function instead of using `MockQueryResults`:
+
+```go
+mockConn.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
+    if strings.Contains(query, "public.user") {
+        return sqldb.NewMockRows(
+            []string{"id", "name"},
+            [][]driver.Value{{"some-id", "Alice"}},
+        )
+    }
+    return sqldb.NewErrRows(sql.ErrNoRows)
+}
+```
+
+Note: when `MockQuery` is set, `MockQueryResults` is not consulted.
+
+#### Mocking transactions
+
+Transactions work out of the box. `Begin` returns a copy of the `MockConn` with the transaction ID set, and `Commit`/`Rollback` return nil:
+
+```go
+func TestWithTransaction(t *testing.T) {
+    mockConn := sqldb.NewMockConn("$", nil, nil)
+    mockConn = mockConn.WithQueryResult(
+        []string{"count"},
+        [][]driver.Value{{int64(42)}},
+        `SELECT count(*) FROM public.user`,
+    )
+
+    connExt := sqldb.NewConnExt(
+        mockConn,
+        new(sqldb.TaggedStructReflector),
+        mockConn.QueryFormatter,
+        sqldb.StdQueryBuilder{},
+    )
+    ctx := db.ContextWithConn(t.Context(), connExt)
+
+    err := db.Transaction(ctx, func(ctx context.Context) error {
+        count, err := db.QueryRowAs[int64](ctx, `SELECT count(*) FROM public.user`)
+        require.NoError(t, err)
+        assert.Equal(t, int64(42), count)
+        return nil
+    })
+    require.NoError(t, err)
+}
+```
+
+#### Inspecting recorded queries
+
+All queries and exec calls are recorded in the `Recordings` field:
+
+```go
+// After running code under test...
+require.Len(t, mockConn.Recordings.Queries, 1)
+assert.Equal(t, `SELECT id FROM public.user WHERE email = $1`, mockConn.Recordings.Queries[0].Query)
+
+require.Len(t, mockConn.Recordings.Execs, 1)
+assert.Contains(t, mockConn.Recordings.Execs[0].Query, "UPDATE")
+```
+
+#### Logging SQL for debugging
+
+Pass an `io.Writer` to log all SQL statements:
+
+```go
+var buf strings.Builder
+mockConn := sqldb.NewMockConn("$", nil, &buf)
+
+// ... run code under test ...
+
+t.Log("Executed SQL:\n" + buf.String())
+```
+
+### Integration tests
+
 Integration tests use a dockerized PostgreSQL 17 instance on port 5433 (to avoid conflicts with a local PostgreSQL on the default port 5432).
 
 Start the test database:
