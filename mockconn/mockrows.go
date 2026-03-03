@@ -27,11 +27,8 @@ var _ impl.Rows = new(MockRows)
 
 // NewMockRows returns a new MockRows with the given column names
 // and no data rows. Use WithRow or WithRows to add rows.
-// Panics if no columns are provided.
+// Call without arguments to create an empty result set.
 func NewMockRows(columns ...string) *MockRows {
-	if len(columns) == 0 {
-		panic("columns must be provided for mock rows")
-	}
 	return &MockRows{
 		columns: columns,
 		current: -1,
