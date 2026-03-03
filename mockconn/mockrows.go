@@ -27,7 +27,7 @@ var _ impl.Rows = new(MockRows)
 
 // NewMockRows returns a Rows implementation
 // that iterates over and scans the passed rows.
-func NewMockRows(columns []string, rows [][]driver.Value) *MockRows {
+func NewMockRows(columns []string, rows ...[]driver.Value) *MockRows {
 	for _, row := range rows {
 		for _, value := range row {
 			if !isDriverValue(value) {
