@@ -50,6 +50,9 @@ func NewMockRowsValue(column string, value driver.Value) *MockRows {
 	if column == "" {
 		panic("column name is empty")
 	}
+	if !isDriverValue(value) {
+		panic(fmt.Sprintf("value %[1]v of type %[1]T is not a driver.Value", value))
+	}
 	return &MockRows{
 		columns: []string{column},
 		rows:    [][]driver.Value{{value}},
