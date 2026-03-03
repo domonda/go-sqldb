@@ -13,6 +13,12 @@ import (
 	"github.com/domonda/go-sqldb/impl"
 )
 
+// DriverValue is a type constraint for the types
+// allowed as driver.Value.
+type DriverValue interface {
+	int64 | float64 | bool | []byte | string | time.Time
+}
+
 // MockRows implements the impl.Rows interface for testing purposes.
 type MockRows struct {
 	columns []string
@@ -46,16 +52,27 @@ func NewMockRows(columns ...string) *MockRows {
 // NewMockRowsValue returns a new MockRows with a single column and a single row
 // containing the given value. Useful for mocking scalar query results.
 // Panics if column is empty.
-func NewMockRowsValue(column string, value driver.Value) *MockRows {
+func NewMockRowsValue[T DriverValue](column string, value T) *MockRows {
 	if column == "" {
 		panic("column name is empty")
-	}
-	if !isDriverValue(value) {
-		panic(fmt.Sprintf("value %[1]v of type %[1]T is not a driver.Value", value))
 	}
 	return &MockRows{
 		columns: []string{column},
 		rows:    [][]driver.Value{{value}},
+		current: -1,
+	}
+}
+
+// NewMockRowsValueNull returns a new MockRows with a single column
+// and a single row containing nil (SQL NULL).
+// Panics if column is empty.
+func NewMockRowsValueNull(column string) *MockRows {
+	if column == "" {
+		panic("column name is empty")
+	}
+	return &MockRows{
+		columns: []string{column},
+		rows:    [][]driver.Value{{nil}},
 		current: -1,
 	}
 }
