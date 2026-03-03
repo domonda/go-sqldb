@@ -27,13 +27,32 @@ var _ impl.Rows = new(MockRows)
 
 // NewMockRows returns a new MockRows with the given column names
 // and no data rows. Use WithRow or WithRows to add rows.
-// Panics if no columns are provided.
+// Panics if no columns are provided or if any column name is empty.
 func NewMockRows(columns ...string) *MockRows {
 	if len(columns) == 0 {
 		panic("columns must be provided for mock rows")
 	}
+	for i, col := range columns {
+		if col == "" {
+			panic(fmt.Sprintf("column %d name is empty", i+1))
+		}
+	}
 	return &MockRows{
 		columns: columns,
+		current: -1,
+	}
+}
+
+// NewMockRowsValue returns a new MockRows with a single column and a single row
+// containing the given value. Useful for mocking scalar query results.
+// Panics if column is empty.
+func NewMockRowsValue(column string, value driver.Value) *MockRows {
+	if column == "" {
+		panic("column name is empty")
+	}
+	return &MockRows{
+		columns: []string{column},
+		rows:    [][]driver.Value{{value}},
 		current: -1,
 	}
 }
