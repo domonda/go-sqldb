@@ -2,16 +2,13 @@ package sqldb
 
 import (
 	"database/sql"
-	"database/sql/driver"
 	"errors"
 	"testing"
 )
 
 func TestRow_Scan_Scalars(t *testing.T) {
-	rows := NewMockRows(
-		[]string{"id", "name", "active"},
-		[][]driver.Value{{int64(1), "Alice", true}},
-	)
+	rows := NewMockRows("id", "name", "active").
+		WithRow(int64(1), "Alice", true)
 	row := NewRow(rows, NewTaggedStructReflector(), testFormatter, "SELECT * FROM users", nil)
 
 	var id int64
@@ -38,10 +35,8 @@ func TestRow_Scan_Struct(t *testing.T) {
 		Name      string   `db:"name"`
 		Active    bool     `db:"active"`
 	}
-	rows := NewMockRows(
-		[]string{"id", "name", "active"},
-		[][]driver.Value{{int64(42), "Bob", false}},
-	)
+	rows := NewMockRows("id", "name", "active").
+		WithRow(int64(42), "Bob", false)
 	row := NewRow(rows, NewTaggedStructReflector(), testFormatter, "SELECT * FROM users", nil)
 
 	var user User
@@ -70,10 +65,8 @@ func (s *scannerStruct) Scan(src any) error {
 }
 
 func TestRow_Scan_SQLScannerStruct(t *testing.T) {
-	rows := NewMockRows(
-		[]string{"val"},
-		[][]driver.Value{{"hello"}},
-	)
+	rows := NewMockRows("val").
+		WithRow("hello")
 	row := NewRow(rows, NewTaggedStructReflector(), testFormatter, "SELECT val", nil)
 
 	var dest scannerStruct
@@ -86,7 +79,7 @@ func TestRow_Scan_SQLScannerStruct(t *testing.T) {
 }
 
 func TestRow_Scan_NoRows(t *testing.T) {
-	rows := NewMockRows([]string{"id"}, nil) // no data rows
+	rows := NewMockRows("id") // no data rows
 	row := NewRow(rows, NewTaggedStructReflector(), testFormatter, "SELECT id", nil)
 
 	var id int64
@@ -97,10 +90,8 @@ func TestRow_Scan_NoRows(t *testing.T) {
 }
 
 func TestRow_Scan_NoDestinations(t *testing.T) {
-	rows := NewMockRows(
-		[]string{"id"},
-		[][]driver.Value{{int64(1)}},
-	)
+	rows := NewMockRows("id").
+		WithRow(int64(1))
 	row := NewRow(rows, NewTaggedStructReflector(), testFormatter, "SELECT id", nil)
 
 	err := row.Scan()
@@ -110,10 +101,8 @@ func TestRow_Scan_NoDestinations(t *testing.T) {
 }
 
 func TestRow_ScanValues(t *testing.T) {
-	rows := NewMockRows(
-		[]string{"id", "name", "data"},
-		[][]driver.Value{{int64(1), "Alice", []byte("raw")}},
-	)
+	rows := NewMockRows("id", "name", "data").
+		WithRow(int64(1), "Alice", []byte("raw"))
 	row := NewRow(rows, NewTaggedStructReflector(), testFormatter, "SELECT id, name, data", nil)
 
 	vals, err := row.ScanValues()
@@ -139,10 +128,8 @@ func TestRow_ScanValues(t *testing.T) {
 }
 
 func TestRow_ScanStrings(t *testing.T) {
-	rows := NewMockRows(
-		[]string{"num", "str", "null_val", "flag", "data"},
-		[][]driver.Value{{int64(99), "hello", nil, true, []byte("bytes")}},
-	)
+	rows := NewMockRows("num", "str", "null_val", "flag", "data").
+		WithRow(int64(99), "hello", nil, true, []byte("bytes"))
 	row := NewRow(rows, NewTaggedStructReflector(), testFormatter, "SELECT num, str, null_val, flag, data", nil)
 
 	vals, err := row.ScanStrings()

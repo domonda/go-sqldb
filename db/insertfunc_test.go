@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"database/sql/driver"
 	"errors"
 	"testing"
 
@@ -22,7 +21,7 @@ func TestInsertUnique(t *testing.T) {
 			gotQuery = query
 			gotArgs = args
 			// InsertUnique checks rows.Next() — return a row to indicate insertion
-			return sqldb.NewMockRows([]string{"bool"}, [][]driver.Value{{true}})
+			return sqldb.NewMockRows("bool").WithRow(true)
 		}
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
@@ -42,7 +41,7 @@ func TestInsertUnique(t *testing.T) {
 		mock.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
 			queryCount++
 			// No rows returned means conflict — not inserted
-			return sqldb.NewMockRows([]string{"bool"}, nil)
+			return sqldb.NewMockRows("bool")
 		}
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
@@ -86,7 +85,7 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 			queryCount++
 			gotQuery = query
 			gotArgs = args
-			return sqldb.NewMockRows([]string{"bool"}, [][]driver.Value{{true}})
+			return sqldb.NewMockRows("bool").WithRow(true)
 		}
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
@@ -108,7 +107,7 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 			queryCount++
 			gotQuery = query
 			gotArgs = args
-			return sqldb.NewMockRows([]string{"bool"}, [][]driver.Value{{true}})
+			return sqldb.NewMockRows("bool").WithRow(true)
 		}
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)

@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	"database/sql/driver"
 	"errors"
 	"testing"
 
@@ -29,7 +28,7 @@ func TestQueryRow_DB(t *testing.T) {
 			queryCount++
 			gotQuery = query
 			gotArgs = args
-			return sqldb.NewMockRows([]string{"id", "name"}, [][]driver.Value{{int64(1), "Alice"}})
+			return sqldb.NewMockRows("id", "name").WithRow(int64(1), "Alice")
 		}
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
@@ -55,7 +54,7 @@ func TestQueryRowAsStmt_DB(t *testing.T) {
 		mock.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
 			queryCount++
 			gotArgs = args
-			return sqldb.NewMockRows([]string{"name"}, [][]driver.Value{{"Alice"}})
+			return sqldb.NewMockRows("name").WithRow("Alice")
 		}
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
@@ -98,10 +97,7 @@ func TestQueryRowByPK_DB(t *testing.T) {
 			queryCount++
 			gotQuery = query
 			gotArgs = args
-			return sqldb.NewMockRows(
-				[]string{"id", "name", "active"},
-				[][]driver.Value{{int64(1), "Alice", true}},
-			)
+			return sqldb.NewMockRows("id", "name", "active").WithRow(int64(1), "Alice", true)
 		}
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
@@ -121,7 +117,7 @@ func TestQueryRowByPK_DB(t *testing.T) {
 		var queryCount int
 		mock.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
 			queryCount++
-			return sqldb.NewMockRows([]string{"id", "name", "active"}, nil)
+			return sqldb.NewMockRows("id", "name", "active")
 		}
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
@@ -138,10 +134,7 @@ func TestQueryRowByPKOr_DB(t *testing.T) {
 		var queryCount int
 		mock.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
 			queryCount++
-			return sqldb.NewMockRows(
-				[]string{"id", "name", "active"},
-				[][]driver.Value{{int64(1), "Alice", true}},
-			)
+			return sqldb.NewMockRows("id", "name", "active").WithRow(int64(1), "Alice", true)
 		}
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
@@ -159,7 +152,7 @@ func TestQueryRowByPKOr_DB(t *testing.T) {
 		var queryCount int
 		mock.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
 			queryCount++
-			return sqldb.NewMockRows([]string{"id", "name", "active"}, nil)
+			return sqldb.NewMockRows("id", "name", "active")
 		}
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
@@ -182,10 +175,7 @@ func TestQueryRowAsMap_DB(t *testing.T) {
 			queryCount++
 			gotQuery = query
 			gotArgs = args
-			return sqldb.NewMockRows(
-				[]string{"id", "name"},
-				[][]driver.Value{{int64(1), "Alice"}},
-			)
+			return sqldb.NewMockRows("id", "name").WithRow(int64(1), "Alice")
 		}
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
@@ -205,7 +195,7 @@ func TestQueryRowAsMap_DB(t *testing.T) {
 		var queryCount int
 		mock.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
 			queryCount++
-			return sqldb.NewMockRows([]string{"id"}, nil)
+			return sqldb.NewMockRows("id")
 		}
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
@@ -224,7 +214,7 @@ func TestQueryRowsAsSlice_DB(t *testing.T) {
 		mock.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
 			queryCount++
 			gotQuery = query
-			return sqldb.NewMockRows([]string{"name"}, [][]driver.Value{{"Alice"}, {"Bob"}, {"Charlie"}})
+			return sqldb.NewMockRows("name").WithRow("Alice").WithRow("Bob").WithRow("Charlie")
 		}
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
@@ -241,7 +231,7 @@ func TestQueryRowsAsSlice_DB(t *testing.T) {
 		var queryCount int
 		mock.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
 			queryCount++
-			return sqldb.NewMockRows([]string{"name"}, nil)
+			return sqldb.NewMockRows("name")
 		}
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)
@@ -257,13 +247,9 @@ func TestQueryRowsAsSlice_DB(t *testing.T) {
 		var queryCount int
 		mock.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
 			queryCount++
-			return sqldb.NewMockRows(
-				[]string{"id", "name", "active"},
-				[][]driver.Value{
-					{int64(1), "Alice", true},
-					{int64(2), "Bob", false},
-				},
-			)
+			return sqldb.NewMockRows("id", "name", "active").
+				WithRow(int64(1), "Alice", true).
+				WithRow(int64(2), "Bob", false)
 		}
 		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
 		ctx := ContextWithConn(t.Context(), config)

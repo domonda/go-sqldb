@@ -2,7 +2,6 @@ package sqldb
 
 import (
 	"context"
-	"database/sql/driver"
 	"errors"
 	"testing"
 )
@@ -92,7 +91,7 @@ func TestTransactionResult(t *testing.T) {
 		var queryCount int
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
 			queryCount++
-			return NewMockRows([]string{"count"}, [][]driver.Value{{int64(42)}})
+			return NewMockRows("count").WithRow(int64(42))
 		}
 		result, err := TransactionResult(t.Context(), ext, nil, func(tx *ConnExt) (int64, error) {
 			return QueryRowAs[int64](t.Context(), tx, "SELECT count(*) FROM users")

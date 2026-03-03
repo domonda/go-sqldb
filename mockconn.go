@@ -34,8 +34,8 @@ type QueryRecordings struct {
 //
 // If NormalizeQuery is nil, the query is not normalized.
 //
-// If TxNo is returned by TransactionState
-// and a non zero value simulates a transaction.
+// TxID is returned by TransactionState
+// and a non-zero value simulates a transaction.
 type MockConn struct {
 	// Configuration
 	QueryFormatter QueryFormatter     // StdQueryFormatter{} is used if nil
@@ -101,7 +101,7 @@ func (c *MockConn) WithQueryResult(columns []string, rows [][]driver.Value, forQ
 	if cc.MockQueryResults == nil {
 		cc.MockQueryResults = make(map[string]*MockRows)
 	}
-	cc.MockQueryResults[normQuery] = NewMockRows(columns, rows)
+	cc.MockQueryResults[normQuery] = NewMockRows(columns...).WithRows(rows)
 	return cc
 }
 
@@ -206,9 +206,9 @@ func (c *MockConn) Query(ctx context.Context, query string, args ...any) Rows {
 	if c.MockQuery == nil {
 		mockRows := c.MockQueryResults[queryData.Format(queryFormatter)]
 		if mockRows == nil {
-			return NewErrRows(errors.Join(fmt.Errorf("mock %w", sql.ErrNoRows), ctx.Err()))
+			return NewErrRows(fmt.Errorf("mock %w", sql.ErrNoRows))
 		}
-		return mockRows.WithErr(ctx.Err())
+		return mockRows
 	}
 	return c.MockQuery(ctx, query, args...)
 }

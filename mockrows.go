@@ -11,7 +11,14 @@ import (
 	"time"
 )
 
-// MockRows implements the driver.Rows interface for testing purposes
+// DriverValue is a type constraint for the types
+// allowed as driver.Value.
+type DriverValue interface {
+	int64 | float64 | bool | []byte | string | time.Time
+}
+
+// MockRows implements the Rows interface for testing purposes.
+// Create with NewMockRows, NewMockRowsValue, or NewMockRowsValueNull.
 type MockRows struct {
 	// Output
 	columns []string
@@ -25,49 +32,80 @@ type MockRows struct {
 
 var _ Rows = new(MockRows)
 
-// NewMockRows a Rows implementation for query with args,
-// that iterates over and scans the passed rows.
-func NewMockRows(columns []string, rows [][]driver.Value) *MockRows {
-	for _, row := range rows {
-		for _, value := range row {
-			if !isDriverValue(value) {
-				panic(fmt.Sprintf("value %[1]v of type %[1]T is not a driver.Value", value))
-			}
+// NewMockRows returns a new MockRows with the given column names
+// and no data rows. Use WithRow or WithRows to add rows.
+// Panics if no columns are provided or if any column name is empty.
+func NewMockRows(columns ...string) *MockRows {
+	if len(columns) == 0 {
+		panic("columns must be provided for mock rows")
+	}
+	for i, col := range columns {
+		if col == "" {
+			panic(fmt.Sprintf("column %d name is empty", i+1))
 		}
 	}
 	return &MockRows{
 		columns: columns,
-		rows:    rows,
 		current: -1,
 	}
 }
 
-// WithErr returns a clone of the MockRows with the given error set,
-// replacing any previously set error.
-// If err is the same as the current error, the receiver is returned as-is.
-func (m *MockRows) WithErr(err error) *MockRows {
-	if err == m.err {
-		return m
+// NewMockRowsValue returns a new MockRows with a single column and a single row
+// containing the given value. Useful for mocking scalar query results.
+// Panics if column is empty.
+func NewMockRowsValue[T DriverValue](column string, value T) *MockRows {
+	if column == "" {
+		panic("column name is empty")
 	}
-	clone := *m
-	clone.err = err
-	return &clone
+	return &MockRows{
+		columns: []string{column},
+		rows:    [][]driver.Value{{value}},
+		current: -1,
+	}
 }
 
-// WithJoinErrors returns a clone of the MockRows with the given errors
-// joined with the existing error via errors.Join.
-func (m *MockRows) WithJoinErrors(errs ...error) *MockRows {
-	clone := *m
-	clone.err = errors.Join(append([]error{m.err}, errs...)...)
-	return &clone
+// NewMockRowsValueNull returns a new MockRows with a single column
+// and a single row containing nil (SQL NULL).
+// Panics if column is empty.
+func NewMockRowsValueNull(column string) *MockRows {
+	if column == "" {
+		panic("column name is empty")
+	}
+	return &MockRows{
+		columns: []string{column},
+		rows:    [][]driver.Value{{nil}},
+		current: -1,
+	}
 }
 
-// Columns returns the names of the columns
+// WithRow appends a single data row to the MockRows.
+// Each value must be a valid driver.Value (nil, int64, float64,
+// bool, []byte, string, time.Time, or decimalDecompose) or it panics.
+func (m *MockRows) WithRow(row ...driver.Value) *MockRows {
+	for _, value := range row {
+		if !isDriverValue(value) {
+			panic(fmt.Sprintf("value %[1]v of type %[1]T is not a driver.Value", value))
+		}
+	}
+	m.rows = append(m.rows, row)
+	return m
+}
+
+// WithRows appends multiple data rows to the MockRows.
+// Each row's values are validated via WithRow.
+func (m *MockRows) WithRows(rows [][]driver.Value) *MockRows {
+	for _, row := range rows {
+		m.WithRow(row...)
+	}
+	return m
+}
+
+// Columns returns the names of the columns.
 func (m *MockRows) Columns() ([]string, error) {
 	return m.columns, nil
 }
 
-// Next moves the cursor to the next row
+// Next moves the cursor to the next row.
 func (m *MockRows) Next() bool {
 	if m.closed || m.err != nil {
 		return false
@@ -76,7 +114,7 @@ func (m *MockRows) Next() bool {
 	return m.current < len(m.rows)
 }
 
-// Scan copies the current row into the provided destination values
+// Scan copies the current row into the provided destination values.
 func (m *MockRows) Scan(dest ...any) error {
 	if m.err != nil {
 		return m.err
@@ -103,12 +141,12 @@ func (m *MockRows) Scan(dest ...any) error {
 	return nil
 }
 
-// Err returns any error that occurred while iterating
+// Err returns any error that occurred while iterating.
 func (m *MockRows) Err() error {
 	return m.err
 }
 
-// Close marks the mock rows as closed
+// Close marks the mock rows as closed.
 func (m *MockRows) Close() error {
 	m.closed = true
 	return nil

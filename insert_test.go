@@ -2,7 +2,6 @@ package sqldb
 
 import (
 	"context"
-	"database/sql/driver"
 	"errors"
 	"testing"
 )
@@ -67,7 +66,7 @@ func TestInsertReturning(t *testing.T) {
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
 			gotQuery = query
 			gotArgs = args
-			return NewMockRows([]string{"id"}, [][]driver.Value{{int64(42)}})
+			return NewMockRows("id").WithRow(int64(42))
 		}
 		var id int64
 		err := InsertReturning(t.Context(), ext, "users", Values{"name": "Alice", "age": 30}, "id").Scan(&id)
@@ -87,7 +86,7 @@ func TestInsertReturning(t *testing.T) {
 	t.Run("scan multiple values", func(t *testing.T) {
 		conn, ext := newTestConnExt()
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
-			return NewMockRows([]string{"id", "created_at"}, [][]driver.Value{{int64(1), "2025-01-01T00:00:00Z"}})
+			return NewMockRows("id", "created_at").WithRow(int64(1), "2025-01-01T00:00:00Z")
 		}
 		var id int64
 		var createdAt string
@@ -136,7 +135,7 @@ func TestInsertUnique(t *testing.T) {
 			queryCount++
 			gotQuery = query
 			gotArgs = args
-			return NewMockRows([]string{"true"}, [][]driver.Value{{true}})
+			return NewMockRows("true").WithRow(true)
 		}
 		inserted, err := InsertUnique(t.Context(), ext, "users", Values{"id": 1, "name": "Alice"}, "id")
 		if err != nil {
@@ -160,7 +159,7 @@ func TestInsertUnique(t *testing.T) {
 		var queryCount int
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
 			queryCount++
-			return NewMockRows([]string{"true"}, nil)
+			return NewMockRows("true")
 		}
 		inserted, err := InsertUnique(t.Context(), ext, "users", Values{"id": 1, "name": "Alice"}, "id")
 		if err != nil {
@@ -267,7 +266,7 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 			queryCount++
 			gotQuery = query
 			gotArgs = args
-			return NewMockRows([]string{"true"}, [][]driver.Value{{true}})
+			return NewMockRows("true").WithRow(true)
 		}
 		row := reflectTestStruct{ID: 1, Name: "Alice", Active: true}
 		inserted, err := InsertUniqueRowStruct(t.Context(), ext, row, "id")
@@ -291,7 +290,7 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 		var queryCount int
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
 			queryCount++
-			return NewMockRows([]string{"true"}, nil)
+			return NewMockRows("true")
 		}
 		row := reflectTestStruct{ID: 1, Name: "Alice", Active: true}
 		inserted, err := InsertUniqueRowStruct(t.Context(), ext, row, "id")

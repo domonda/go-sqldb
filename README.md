@@ -388,10 +388,8 @@ For dynamic query responses, set the `MockQuery` function instead of using `Mock
 ```go
 mockConn.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
     if strings.Contains(query, "public.user") {
-        return sqldb.NewMockRows(
-            []string{"id", "name"},
-            [][]driver.Value{{"some-id", "Alice"}},
-        )
+        return sqldb.NewMockRows("id", "name").
+            WithRow("some-id", "Alice")
     }
     return sqldb.NewErrRows(sql.ErrNoRows)
 }
