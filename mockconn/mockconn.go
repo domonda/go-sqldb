@@ -108,7 +108,7 @@ func (c *Conn) WithQueryResult(columns []string, rows [][]driver.Value, forQuery
 	if cc.MockQueryResults == nil {
 		cc.MockQueryResults = make(map[string]*MockRows)
 	}
-	cc.MockQueryResults[key] = NewMockRows(columns, rows...)
+	cc.MockQueryResults[key] = NewMockRows(columns...).WithRows(rows)
 	return cc
 }
 

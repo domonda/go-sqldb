@@ -25,30 +25,39 @@ type MockRows struct {
 
 var _ impl.Rows = new(MockRows)
 
-// NewMockRows returns a Rows implementation
-// that iterates over and scans the passed rows.
-func NewMockRows(columns []string, rows ...[]driver.Value) *MockRows {
-	for _, row := range rows {
-		for _, value := range row {
-			if !isDriverValue(value) {
-				panic(fmt.Sprintf("value %[1]v of type %[1]T is not a driver.Value", value))
-			}
-		}
+// NewMockRows returns a new MockRows with the given column names
+// and no data rows. Use WithRow or WithRows to add rows.
+// Panics if no columns are provided.
+func NewMockRows(columns ...string) *MockRows {
+	if len(columns) == 0 {
+		panic("columns must be provided for mock rows")
 	}
 	return &MockRows{
 		columns: columns,
-		rows:    rows,
 		current: -1,
 	}
 }
 
-func (m *MockRows) WithErr(err error) *MockRows {
-	if err == m.err {
-		return m
+// WithRow appends a single data row to the MockRows.
+// Each value must be a valid driver.Value (nil, int64, float64,
+// bool, []byte, string, time.Time, or decimalDecompose) or it panics.
+func (m *MockRows) WithRow(row ...driver.Value) *MockRows {
+	for _, value := range row {
+		if !isDriverValue(value) {
+			panic(fmt.Sprintf("value %[1]v of type %[1]T is not a driver.Value", value))
+		}
 	}
-	clone := *m
-	clone.err = err
-	return &clone
+	m.rows = append(m.rows, row)
+	return m
+}
+
+// WithRows appends multiple data rows to the MockRows.
+// Each row's values are validated via WithRow.
+func (m *MockRows) WithRows(rows [][]driver.Value) *MockRows {
+	for _, row := range rows {
+		m.WithRow(row...)
+	}
+	return m
 }
 
 // Columns returns the names of the columns.
