@@ -82,15 +82,26 @@ type Conn struct {
 	mtx sync.Mutex
 }
 
-// New creates a new Conn with the given argument format, normalizer, and query log.
-func New(argFmt string, normalizeQuery NormalizeQueryFunc, queryLog io.Writer) *Conn {
+// New creates a new Conn with the given argument format.
+// Use WithNormalizeQuery and WithQueryLog to configure further.
+func New(argFmt string) *Conn {
 	return &Conn{
 		Ctx:              context.Background(),
 		StructFieldNamer: sqldb.DefaultStructFieldMapping,
 		ArgFmt:           argFmt,
-		NormalizeQuery:   normalizeQuery,
-		QueryLog:         queryLog,
 	}
+}
+
+// WithNormalizeQuery returns the Conn with the given NormalizeQueryFunc set.
+func (c *Conn) WithNormalizeQuery(f NormalizeQueryFunc) *Conn {
+	c.NormalizeQuery = f
+	return c
+}
+
+// WithQueryLog returns the Conn with the given query log writer set.
+func (c *Conn) WithQueryLog(w io.Writer) *Conn {
+	c.QueryLog = w
+	return c
 }
 
 // Clone returns a shallow copy of the Conn with cloned maps
