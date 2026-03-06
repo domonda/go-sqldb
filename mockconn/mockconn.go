@@ -61,11 +61,11 @@ type Conn struct {
 
 	ListeningOn      map[string]struct{}
 	Recordings       QueryRecordings
-	MockQueryResults map[string]*MockRows
+	MockQueryResults map[string]impl.Rows
 
 	// Base mock hooks — ALL query/exec methods delegate to these
 	MockExec  func(query string, args ...any) error
-	MockQuery func(query string, args ...any) *MockRows
+	MockQuery func(query string, args ...any) impl.Rows
 
 	// Non-query mock hooks
 	MockConfig               func() *sqldb.Config
@@ -142,7 +142,7 @@ func (c *Conn) WithQueryResult(columns []string, rows [][]driver.Value, forQuery
 
 	cc := c.Clone()
 	if cc.MockQueryResults == nil {
-		cc.MockQueryResults = make(map[string]*MockRows)
+		cc.MockQueryResults = make(map[string]impl.Rows)
 	}
 	cc.MockQueryResults[key] = NewMockRows(columns...).WithRows(rows)
 	return cc
@@ -258,7 +258,7 @@ func (c *Conn) Exec(query string, args ...any) error {
 
 // query is the internal base query method —
 // all query-related methods delegate through here.
-func (c *Conn) query(query string, args ...any) *MockRows {
+func (c *Conn) query(query string, args ...any) impl.Rows {
 	c.mtx.Lock()
 	c.Recordings.Queries = append(c.Recordings.Queries, QueryData{Query: query, Args: args})
 	c.mtx.Unlock()
