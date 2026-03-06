@@ -82,7 +82,7 @@ func NewMockRowsValueNull(column string) *MockRows {
 // bool, []byte, string, time.Time, or decimalDecompose) or it panics.
 func (m *MockRows) WithRow(row ...driver.Value) *MockRows {
 	for _, value := range row {
-		if !isDriverValue(value) {
+		if !driver.IsValue(value) {
 			panic(fmt.Sprintf("value %[1]v of type %[1]T is not a driver.Value", value))
 		}
 	}
@@ -149,21 +149,6 @@ func (m *MockRows) Err() error {
 func (m *MockRows) Close() error {
 	m.closed = true
 	return nil
-}
-
-func isDriverValue(v any) bool {
-	switch v.(type) {
-	case nil,
-		int64,
-		float64,
-		bool,
-		[]byte,
-		string,
-		time.Time,
-		decimalDecompose:
-		return true
-	}
-	return false
 }
 
 ///////////////////////////////////////////////////////////////////////////////
