@@ -10,6 +10,7 @@ import (
 	"maps"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	sqldb "github.com/domonda/go-sqldb"
@@ -35,7 +36,13 @@ type QueryData struct {
 }
 
 // Conn is a mock implementation of sqldb.Connection for testing.
-// It is not safe for concurrent use.
+// Its methods are safe for concurrent use, simulating the
+// thread-safety of real database connections.
+// Returned rows from queries are not safe for concurrent use,
+// consistent with the standard library's sql.Rows.
+//
+// Exported struct fields are not protected by the mutex
+// and must only be set during setup before concurrent use.
 //
 // Methods where the corresponding mock function is nil
 // return sane defaults and no errors.
@@ -71,6 +78,8 @@ type Conn struct {
 	MockUnlistenChannel      func(channel string) error
 	MockIsListeningOnChannel func(channel string) bool
 	MockClose                func() error
+
+	mtx sync.Mutex
 }
 
 // New creates a new Conn with the given argument format, normalizer, and query log.
@@ -84,12 +93,38 @@ func New(argFmt string, normalizeQuery NormalizeQueryFunc, queryLog io.Writer) *
 	}
 }
 
-// Clone returns a shallow copy of the Conn with cloned maps.
+// Clone returns a shallow copy of the Conn with cloned maps
+// and a new mutex.
 func (c *Conn) Clone() *Conn {
-	cp := *c
-	cp.ListeningOn = maps.Clone(c.ListeningOn)
-	cp.MockQueryResults = maps.Clone(c.MockQueryResults)
-	return &cp
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+
+	cp := &Conn{
+		Ctx:              c.Ctx,
+		StructFieldNamer: c.StructFieldNamer,
+		ArgFmt:           c.ArgFmt,
+		NormalizeQuery:   c.NormalizeQuery,
+		QueryLog:         c.QueryLog,
+		TxNo:             c.TxNo,
+		TxOpts:           c.TxOpts,
+		ListeningOn:      maps.Clone(c.ListeningOn),
+		Recordings:       c.Recordings,
+		MockQueryResults: maps.Clone(c.MockQueryResults),
+
+		MockExec:                 c.MockExec,
+		MockQuery:                c.MockQuery,
+		MockConfig:               c.MockConfig,
+		MockPing:                 c.MockPing,
+		MockStats:                c.MockStats,
+		MockBegin:                c.MockBegin,
+		MockCommit:               c.MockCommit,
+		MockRollback:             c.MockRollback,
+		MockListenOnChannel:      c.MockListenOnChannel,
+		MockUnlistenChannel:      c.MockUnlistenChannel,
+		MockIsListeningOnChannel: c.MockIsListeningOnChannel,
+		MockClose:                c.MockClose,
+	}
+	return cp
 }
 
 // WithQueryResult returns a clone of the Conn with a pre-configured
@@ -196,7 +231,9 @@ func (c *Conn) Stats() sql.DBStats {
 // Exec implements sqldb.Connection.
 // This is the base exec method — all exec-related methods delegate through here.
 func (c *Conn) Exec(query string, args ...any) error {
+	c.mtx.Lock()
 	c.Recordings.Execs = append(c.Recordings.Execs, QueryData{Query: query, Args: args})
+	c.mtx.Unlock()
 
 	if c.QueryLog != nil {
 		q := query
@@ -222,7 +259,9 @@ func (c *Conn) Exec(query string, args ...any) error {
 // query is the internal base query method —
 // all query-related methods delegate through here.
 func (c *Conn) query(query string, args ...any) *MockRows {
+	c.mtx.Lock()
 	c.Recordings.Queries = append(c.Recordings.Queries, QueryData{Query: query, Args: args})
+	c.mtx.Unlock()
 
 	if c.QueryLog != nil {
 		q := query
@@ -373,10 +412,12 @@ func (c *Conn) Rollback() error {
 
 // ListenOnChannel implements sqldb.Connection.
 func (c *Conn) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) error {
+	c.mtx.Lock()
 	if c.ListeningOn == nil {
 		c.ListeningOn = make(map[string]struct{})
 	}
 	c.ListeningOn[channel] = struct{}{}
+	c.mtx.Unlock()
 
 	if c.QueryLog != nil {
 		_, err := fmt.Fprintf(c.QueryLog, "LISTEN %s;\n", channel)
@@ -393,7 +434,9 @@ func (c *Conn) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUn
 
 // UnlistenChannel implements sqldb.Connection.
 func (c *Conn) UnlistenChannel(channel string) error {
+	c.mtx.Lock()
 	delete(c.ListeningOn, channel)
+	c.mtx.Unlock()
 
 	if c.QueryLog != nil {
 		_, err := fmt.Fprintf(c.QueryLog, "UNLISTEN %s;\n", channel)
@@ -413,7 +456,9 @@ func (c *Conn) IsListeningOnChannel(channel string) bool {
 	if c.MockIsListeningOnChannel != nil {
 		return c.MockIsListeningOnChannel(channel)
 	}
+	c.mtx.Lock()
 	_, ok := c.ListeningOn[channel]
+	c.mtx.Unlock()
 	return ok
 }
 
