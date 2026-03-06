@@ -56,7 +56,7 @@ type MockConn struct {
 	ListeningOn map[string]struct{}
 
 	Recordings       QueryRecordings
-	MockQueryResults map[string]*MockRows
+	MockQueryResults map[string]Rows
 
 	MockConfig               func() *ConnConfig
 	MockPing                 func(context.Context, time.Duration) error
@@ -133,7 +133,7 @@ func (c *MockConn) WithQueryResult(columns []string, rows [][]driver.Value, forQ
 
 	cc := c.Clone()
 	if cc.MockQueryResults == nil {
-		cc.MockQueryResults = make(map[string]*MockRows)
+		cc.MockQueryResults = make(map[string]Rows)
 	}
 	cc.MockQueryResults[normQuery] = NewMockRows(columns...).WithRows(rows)
 	return cc
