@@ -35,6 +35,7 @@ type QueryData struct {
 }
 
 // Conn is a mock implementation of sqldb.Connection for testing.
+// It is not safe for concurrent use.
 //
 // Methods where the corresponding mock function is nil
 // return sane defaults and no errors.

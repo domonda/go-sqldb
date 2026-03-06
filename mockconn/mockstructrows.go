@@ -11,6 +11,8 @@ import (
 	"github.com/domonda/go-sqldb/impl"
 )
 
+// MockStructRows implements the impl.Rows interface for testing purposes.
+// It is not safe for concurrent use.
 type MockStructRows[S any] struct {
 	columns []string
 	rows    []S

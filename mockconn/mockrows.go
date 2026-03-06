@@ -20,6 +20,7 @@ type DriverValue interface {
 }
 
 // MockRows implements the impl.Rows interface for testing purposes.
+// It is not safe for concurrent use.
 type MockRows struct {
 	columns []string
 	rows    [][]driver.Value
