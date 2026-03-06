@@ -12,14 +12,13 @@ import (
 	"github.com/domonda/go-sqldb"
 )
 
-func setupQueryCallbackCtx(t *testing.T, conn *sqldb.MockConn) context.Context {
-	config := sqldb.NewConnExt(conn, sqldb.NewTaggedStructReflector(), sqldb.StdQueryFormatter{}, sqldb.StdQueryBuilder{})
-	return ContextWithConn(t.Context(), config)
+func setupQueryCallbackCtx(t *testing.T, mock *sqldb.MockConn) context.Context {
+	return ContextWithConn(t.Context(), mock.ConnExt())
 }
 
 func TestQueryCallback_ScalarSingle(t *testing.T) {
 	query := /*sql*/ `SELECT name FROM users`
-	conn := sqldb.NewMockConn("$", nil, nil).
+	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
 		WithQueryResult(
 			[]string{"name"},
 			[][]driver.Value{{"Alice"}, {"Bob"}, {"Charlie"}},
@@ -38,7 +37,7 @@ func TestQueryCallback_ScalarSingle(t *testing.T) {
 
 func TestQueryCallback_ScalarMultiColumn(t *testing.T) {
 	query := /*sql*/ `SELECT name, age FROM users`
-	conn := sqldb.NewMockConn("$", nil, nil).
+	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
 		WithQueryResult(
 			[]string{"name", "age"},
 			[][]driver.Value{
@@ -68,7 +67,7 @@ func TestQueryCallback_WithQueryArgs(t *testing.T) {
 	// Regression test: callback args count differs from SQL query args count.
 	// The old bug used len(args) instead of typ.NumIn() to build callbackArgs.
 	query := /*sql*/ `SELECT name, value FROM kv WHERE org_id = $1 AND type = $2`
-	conn := sqldb.NewMockConn("$", nil, nil).
+	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
 		WithQueryResult(
 			[]string{"name", "value"},
 			[][]driver.Value{
@@ -94,7 +93,7 @@ func TestQueryCallback_WithQueryArgs(t *testing.T) {
 
 func TestQueryCallback_WithContext(t *testing.T) {
 	query := /*sql*/ `SELECT id FROM items`
-	conn := sqldb.NewMockConn("$", nil, nil).
+	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
 		WithQueryResult(
 			[]string{"id"},
 			[][]driver.Value{{int64(1)}, {int64(2)}},
@@ -116,7 +115,7 @@ func TestQueryCallback_WithContext(t *testing.T) {
 
 func TestQueryCallback_WithErrorReturn(t *testing.T) {
 	query := /*sql*/ `SELECT name FROM users`
-	conn := sqldb.NewMockConn("$", nil, nil).
+	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
 		WithQueryResult(
 			[]string{"name"},
 			[][]driver.Value{{"Alice"}, {"STOP"}, {"Charlie"}},
@@ -142,7 +141,7 @@ func TestQueryCallback_WithErrorReturn(t *testing.T) {
 
 func TestQueryCallback_WithContextAndErrorReturn(t *testing.T) {
 	query := /*sql*/ `SELECT value FROM items`
-	conn := sqldb.NewMockConn("$", nil, nil).
+	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
 		WithQueryResult(
 			[]string{"value"},
 			[][]driver.Value{{int64(10)}, {int64(20)}},
@@ -164,7 +163,7 @@ func TestQueryCallback_WithContextAndErrorReturn(t *testing.T) {
 
 func TestQueryCallback_ZeroRows(t *testing.T) {
 	query := /*sql*/ `SELECT name FROM users WHERE 1=0`
-	conn := sqldb.NewMockConn("$", nil, nil).
+	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
 		WithQueryResult(
 			[]string{"name"},
 			[][]driver.Value{},
@@ -183,7 +182,7 @@ func TestQueryCallback_ZeroRows(t *testing.T) {
 
 func TestQueryCallback_InvalidNotFunc(t *testing.T) {
 	query := /*sql*/ `SELECT 1`
-	conn := sqldb.NewMockConn("$", nil, nil)
+	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := setupQueryCallbackCtx(t, conn)
 
 	err := QueryCallback(ctx, "not a function", query)
@@ -193,7 +192,7 @@ func TestQueryCallback_InvalidNotFunc(t *testing.T) {
 
 func TestQueryCallback_InvalidVariadic(t *testing.T) {
 	query := /*sql*/ `SELECT 1`
-	conn := sqldb.NewMockConn("$", nil, nil)
+	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := setupQueryCallbackCtx(t, conn)
 
 	err := QueryCallback(ctx, func(args ...string) {}, query)
@@ -203,7 +202,7 @@ func TestQueryCallback_InvalidVariadic(t *testing.T) {
 
 func TestQueryCallback_InvalidNoArgs(t *testing.T) {
 	query := /*sql*/ `SELECT 1`
-	conn := sqldb.NewMockConn("$", nil, nil)
+	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := setupQueryCallbackCtx(t, conn)
 
 	err := QueryCallback(ctx, func() {}, query)
@@ -213,7 +212,7 @@ func TestQueryCallback_InvalidNoArgs(t *testing.T) {
 
 func TestQueryCallback_InvalidOnlyContext(t *testing.T) {
 	query := /*sql*/ `SELECT 1`
-	conn := sqldb.NewMockConn("$", nil, nil)
+	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := setupQueryCallbackCtx(t, conn)
 
 	err := QueryCallback(ctx, func(ctx context.Context) {}, query)
@@ -223,7 +222,7 @@ func TestQueryCallback_InvalidOnlyContext(t *testing.T) {
 
 func TestQueryCallback_InvalidMultipleResults(t *testing.T) {
 	query := /*sql*/ `SELECT 1`
-	conn := sqldb.NewMockConn("$", nil, nil)
+	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := setupQueryCallbackCtx(t, conn)
 
 	err := QueryCallback(ctx, func(v int64) (int64, error) { return v, nil }, query)
@@ -233,7 +232,7 @@ func TestQueryCallback_InvalidMultipleResults(t *testing.T) {
 
 func TestQueryCallback_InvalidNonErrorResult(t *testing.T) {
 	query := /*sql*/ `SELECT 1`
-	conn := sqldb.NewMockConn("$", nil, nil)
+	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := setupQueryCallbackCtx(t, conn)
 
 	err := QueryCallback(ctx, func(v int64) string { return "" }, query)
@@ -243,7 +242,7 @@ func TestQueryCallback_InvalidNonErrorResult(t *testing.T) {
 
 func TestQueryCallback_InvalidChanArg(t *testing.T) {
 	query := /*sql*/ `SELECT 1`
-	conn := sqldb.NewMockConn("$", nil, nil)
+	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := setupQueryCallbackCtx(t, conn)
 
 	err := QueryCallback(ctx, func(ch chan int) {}, query)
@@ -253,7 +252,7 @@ func TestQueryCallback_InvalidChanArg(t *testing.T) {
 
 func TestQueryCallback_InvalidFuncArg(t *testing.T) {
 	query := /*sql*/ `SELECT 1`
-	conn := sqldb.NewMockConn("$", nil, nil)
+	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := setupQueryCallbackCtx(t, conn)
 
 	err := QueryCallback(ctx, func(fn func()) {}, query)
@@ -263,7 +262,7 @@ func TestQueryCallback_InvalidFuncArg(t *testing.T) {
 
 func TestQueryCallback_ColumnCountMismatch(t *testing.T) {
 	query := /*sql*/ `SELECT name, age FROM users`
-	conn := sqldb.NewMockConn("$", nil, nil).
+	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
 		WithQueryResult(
 			[]string{"name", "age"},
 			[][]driver.Value{{"Alice", int64(30)}},
@@ -285,7 +284,7 @@ func TestQueryCallback_ManyQueryArgsFewerCallbackArgs(t *testing.T) {
 	// was used instead of typ.NumIn() (2 callback args) to build callbackArgs,
 	// causing "reflect: Call using zero Value argument" panic.
 	query := /*sql*/ `INSERT INTO kv (id, unstruct_id, name, value) VALUES ($1, $2, $3, $4) ON CONFLICT (unstruct_id, name) DO UPDATE SET value = EXCLUDED.value RETURNING name, value`
-	conn := sqldb.NewMockConn("$", nil, nil).
+	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
 		WithQueryResult(
 			[]string{"name", "value"},
 			[][]driver.Value{{"greeting", "hello"}},

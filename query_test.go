@@ -405,7 +405,7 @@ type User struct {
 }
 
 func TestQueryRowsAsSlice_MockQueryResults(t *testing.T) {
-	conn := NewMockConn("$", nil, nil)
+	conn := NewMockConn(NewQueryFormatter("$"))
 	conn.MockQueryResults = map[string]Rows{
 		"SELECT * FROM user": NewMockRows("id", "name", "email", "active").
 			WithRow(int64(1), "Alice", "alice@example.com", true).

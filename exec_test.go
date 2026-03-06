@@ -10,7 +10,7 @@ import (
 // newTestConnExt creates a MockConn and ConnExt for testing.
 // Shared helper used across multiple test files.
 func newTestConnExt() (*MockConn, *ConnExt) {
-	conn := NewMockConn("$", nil, nil)
+	conn := NewMockConn(NewQueryFormatter("$"))
 	return conn, NewConnExt(conn, NewTaggedStructReflector(), NewQueryFormatter("$"), StdQueryBuilder{})
 }
 

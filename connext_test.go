@@ -7,13 +7,13 @@ import (
 )
 
 func TestConnExt_WithConnection(t *testing.T) {
-	conn1 := NewMockConn("$", nil, nil)
+	conn1 := NewMockConn(NewQueryFormatter("$"))
 	reflector := NewTaggedStructReflector()
 	formatter := NewQueryFormatter("$")
 	builder := StdQueryBuilder{}
 	ext := NewConnExt(conn1, reflector, formatter, builder)
 
-	conn2 := NewMockConn("$", nil, nil)
+	conn2 := NewMockConn(NewQueryFormatter("$"))
 	ext2 := ext.WithConnection(conn2)
 
 	if ext2.Connection != conn2 {

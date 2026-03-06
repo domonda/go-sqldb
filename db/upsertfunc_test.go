@@ -19,7 +19,7 @@ func TestUpsertRowStruct(t *testing.T) {
 	}
 
 	t.Run("success", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var execCount int
 		var gotQuery string
 		var gotArgs []any
@@ -29,8 +29,8 @@ func TestUpsertRowStruct(t *testing.T) {
 			gotArgs = args
 			return nil
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		err := UpsertRowStruct(ctx, &UserRow{ID: 1, Name: "Alice", Active: true})
 		require.NoError(t, err)
@@ -40,7 +40,7 @@ func TestUpsertRowStruct(t *testing.T) {
 	})
 
 	t.Run("with IgnoreColumns", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var execCount int
 		var gotQuery string
 		var gotArgs []any
@@ -50,8 +50,8 @@ func TestUpsertRowStruct(t *testing.T) {
 			gotArgs = args
 			return nil
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		err := UpsertRowStruct(ctx, &UserRow{ID: 1, Name: "Alice", Active: true}, sqldb.IgnoreColumns("active"))
 		require.NoError(t, err)
@@ -61,15 +61,15 @@ func TestUpsertRowStruct(t *testing.T) {
 	})
 
 	t.Run("exec error", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var execCount int
 		testErr := errors.New("upsert failed")
 		mock.MockExec = func(ctx context.Context, query string, args ...any) error {
 			execCount++
 			return testErr
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		err := UpsertRowStruct(ctx, &UserRow{ID: 1, Name: "Alice"})
 		require.ErrorIs(t, err, testErr)
@@ -77,9 +77,9 @@ func TestUpsertRowStruct(t *testing.T) {
 	})
 
 	t.Run("nil struct error", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		err := UpsertRowStruct(ctx, (*UserRow)(nil))
 		require.Error(t, err)
@@ -94,7 +94,7 @@ func TestUpsertRowStructs(t *testing.T) {
 	}
 
 	t.Run("success multiple rows", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var execCount int
 		var queries []string
 		var allArgs [][]any
@@ -104,8 +104,8 @@ func TestUpsertRowStructs(t *testing.T) {
 			allArgs = append(allArgs, args)
 			return nil
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		rows := []ItemRow{
 			{ID: 1, Name: "Item1"},
@@ -122,16 +122,16 @@ func TestUpsertRowStructs(t *testing.T) {
 	})
 
 	t.Run("empty slice", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		err := UpsertRowStructs(ctx, []ItemRow{})
 		require.NoError(t, err)
 	})
 
 	t.Run("exec error on second row", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var execCount int
 		testErr := errors.New("upsert row 2 failed")
 		mock.MockExec = func(ctx context.Context, query string, args ...any) error {
@@ -141,8 +141,8 @@ func TestUpsertRowStructs(t *testing.T) {
 			}
 			return nil
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		rows := []ItemRow{
 			{ID: 1, Name: "Item1"},

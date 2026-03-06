@@ -76,15 +76,36 @@ type MockConn struct {
 	mtx sync.Mutex
 }
 
-// NewMockConn returns a new MockConn configured with the given
-// placeholder prefix (e.g. "$" for PostgreSQL), an optional
-// query normalization function, and an optional query log writer.
-func NewMockConn(placeholderPosPrefix string, normalizeQuery NormalizeQueryFunc, queryLog io.Writer) *MockConn {
+// NewMockConn returns a new MockConn configured with the given QueryFormatter.
+// If queryFormatter is nil, StdQueryFormatter{} is used.
+// Use WithNormalizeQuery and WithQueryLog to configure further.
+func NewMockConn(queryFormatter QueryFormatter) *MockConn {
 	return &MockConn{
-		QueryFormatter: NewQueryFormatter(placeholderPosPrefix),
-		NormalizeQuery: normalizeQuery,
-		QueryLog:       queryLog,
+		QueryFormatter: queryFormatter,
 	}
+}
+
+// WithNormalizeQuery returns the MockConn with the given NormalizeQueryFunc set.
+func (c *MockConn) WithNormalizeQuery(f NormalizeQueryFunc) *MockConn {
+	c.NormalizeQuery = f
+	return c
+}
+
+// WithQueryLog returns the MockConn with the given query log writer set.
+func (c *MockConn) WithQueryLog(w io.Writer) *MockConn {
+	c.QueryLog = w
+	return c
+}
+
+// ConnExt returns a ConnExt wrapping this MockConn as Connection
+// with a TaggedStructReflector, the MockConn's QueryFormatter,
+// and a StdQueryBuilder.
+func (c *MockConn) ConnExt() *ConnExt {
+	qf := c.QueryFormatter
+	if qf == nil {
+		qf = StdQueryFormatter{}
+	}
+	return NewConnExt(c, NewTaggedStructReflector(), qf, StdQueryBuilder{})
 }
 
 // Clone returns a shallow copy of the MockConn

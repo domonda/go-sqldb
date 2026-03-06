@@ -132,7 +132,7 @@ func TestNextTransactionID(t *testing.T) {
 
 func TestTransaction(t *testing.T) {
 	t.Run("success commits", func(t *testing.T) {
-		conn := NewMockConn("$", nil, nil)
+		conn := NewMockConn(NewQueryFormatter("$"))
 		var commitCount int
 		conn.MockCommit = func() error {
 			commitCount++
@@ -153,7 +153,7 @@ func TestTransaction(t *testing.T) {
 	})
 
 	t.Run("error rolls back", func(t *testing.T) {
-		conn := NewMockConn("$", nil, nil)
+		conn := NewMockConn(NewQueryFormatter("$"))
 		var rollbackCount int
 		conn.MockRollback = func() error {
 			rollbackCount++
@@ -172,7 +172,7 @@ func TestTransaction(t *testing.T) {
 	})
 
 	t.Run("already in transaction passes through", func(t *testing.T) {
-		conn := NewMockConn("$", nil, nil)
+		conn := NewMockConn(NewQueryFormatter("$"))
 		conn.TxID = 1 // simulate active transaction
 		var called bool
 		err := Transaction(t.Context(), conn, nil, func(tx Connection) error {
@@ -193,7 +193,7 @@ func TestTransaction(t *testing.T) {
 
 func TestIsolatedTransaction(t *testing.T) {
 	t.Run("success commits", func(t *testing.T) {
-		conn := NewMockConn("$", nil, nil)
+		conn := NewMockConn(NewQueryFormatter("$"))
 		var commitCount int
 		conn.MockCommit = func() error {
 			commitCount++
@@ -211,7 +211,7 @@ func TestIsolatedTransaction(t *testing.T) {
 	})
 
 	t.Run("error rolls back", func(t *testing.T) {
-		conn := NewMockConn("$", nil, nil)
+		conn := NewMockConn(NewQueryFormatter("$"))
 		var rollbackCount int
 		conn.MockRollback = func() error {
 			rollbackCount++
@@ -230,7 +230,7 @@ func TestIsolatedTransaction(t *testing.T) {
 	})
 
 	t.Run("panic rolls back and re-panics", func(t *testing.T) {
-		conn := NewMockConn("$", nil, nil)
+		conn := NewMockConn(NewQueryFormatter("$"))
 		var rollbackCount int
 		conn.MockRollback = func() error {
 			rollbackCount++
@@ -254,7 +254,7 @@ func TestIsolatedTransaction(t *testing.T) {
 	})
 
 	t.Run("begin error", func(t *testing.T) {
-		conn := NewMockConn("$", nil, nil)
+		conn := NewMockConn(NewQueryFormatter("$"))
 		var beginCount int
 		beginErr := errors.New("begin failed")
 		conn.MockBegin = func(ctx context.Context, id uint64, opts *sql.TxOptions) (Connection, error) {

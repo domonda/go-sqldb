@@ -12,7 +12,7 @@ import (
 
 func TestExec(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var execCount int
 		var gotQuery string
 		var gotArgs []any
@@ -22,8 +22,8 @@ func TestExec(t *testing.T) {
 			gotArgs = args
 			return nil
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		err := Exec(ctx, "DELETE FROM users WHERE id = $1", 42)
 		require.NoError(t, err)
@@ -33,15 +33,15 @@ func TestExec(t *testing.T) {
 	})
 
 	t.Run("error", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var execCount int
 		testErr := errors.New("exec failed")
 		mock.MockExec = func(ctx context.Context, query string, args ...any) error {
 			execCount++
 			return testErr
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		err := Exec(ctx, "DELETE FROM users WHERE id = $1", 42)
 		require.ErrorIs(t, err, testErr)
@@ -51,7 +51,7 @@ func TestExec(t *testing.T) {
 
 func TestExecStmt(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var execCount int
 		var gotQueries []string
 		var gotAllArgs [][]any
@@ -61,8 +61,8 @@ func TestExecStmt(t *testing.T) {
 			gotAllArgs = append(gotAllArgs, args)
 			return nil
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		execFunc, closeStmt, err := ExecStmt(ctx, "DELETE FROM users WHERE id = $1")
 		require.NoError(t, err)
@@ -80,15 +80,15 @@ func TestExecStmt(t *testing.T) {
 	})
 
 	t.Run("prepare error", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var prepareCount int
 		prepErr := errors.New("prepare failed")
 		mock.MockPrepare = func(ctx context.Context, query string) (sqldb.Stmt, error) {
 			prepareCount++
 			return nil, prepErr
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		_, _, err := ExecStmt(ctx, "DELETE FROM users WHERE id = $1")
 		require.ErrorIs(t, err, prepErr)
@@ -96,15 +96,15 @@ func TestExecStmt(t *testing.T) {
 	})
 
 	t.Run("exec func error", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var execCount int
 		testErr := errors.New("exec failed")
 		mock.MockExec = func(ctx context.Context, query string, args ...any) error {
 			execCount++
 			return testErr
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		execFunc, closeStmt, err := ExecStmt(ctx, "DELETE FROM users WHERE id = $1")
 		require.NoError(t, err)

@@ -22,13 +22,10 @@ func ExampleUpsertRowStructStmt() {
 		{ID: 3, Name: "Charlie", Email: "charlie@example.com"},
 	}
 
-	queryFormatter := sqldb.NewQueryFormatter("$")
-	conn := &sqldb.MockConn{
-		QueryFormatter: queryFormatter,
-		QueryLog:       os.Stdout,
-	}
-	config := sqldb.NewConnExt(conn, sqldb.NewTaggedStructReflector(), queryFormatter, sqldb.StdQueryBuilder{})
-	ctx := db.ContextWithConn(context.Background(), config)
+	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
+		WithQueryLog(os.Stdout)
+	conn := mock.ConnExt()
+	ctx := db.ContextWithConn(context.Background(), conn)
 
 	err := db.Transaction(ctx, func(ctx context.Context) error {
 		upsert, closeStmt, err := db.UpsertRowStructStmt[User](ctx)

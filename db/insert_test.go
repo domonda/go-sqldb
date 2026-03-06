@@ -22,7 +22,7 @@ func TestInsertRowStruct(t *testing.T) {
 		name      string
 		rowStruct sqldb.StructWithTableName
 		options   []sqldb.QueryOption
-		config    *sqldb.ConnExt
+		conn      *sqldb.ConnExt
 		want      sqldb.QueryRecordings
 		wantErr   bool
 	}{
@@ -32,12 +32,7 @@ func TestInsertRowStruct(t *testing.T) {
 				ID:   1,
 				Name: "test",
 			},
-			config: sqldb.NewConnExt(
-				sqldb.NewMockConn("$", nil, os.Stdout),
-				sqldb.NewTaggedStructReflector(),
-				sqldb.NewQueryFormatter("$"),
-				sqldb.StdQueryBuilder{},
-			),
+			conn: sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).WithQueryLog(os.Stdout).ConnExt(),
 			want: sqldb.QueryRecordings{
 				Execs: []sqldb.QueryData{
 					{Query: "INSERT INTO my_table(id,name) VALUES($1,$2)", Args: []any{1, "test"}},
@@ -52,25 +47,20 @@ func TestInsertRowStruct(t *testing.T) {
 				ID   int    `db:"id"`
 				Name string `db:"name"`
 			}{},
-			config: sqldb.NewConnExt(
-				sqldb.NewMockConn("$", nil, os.Stdout),
-				sqldb.NewTaggedStructReflector(),
-				sqldb.NewQueryFormatter("$"),
-				sqldb.StdQueryBuilder{},
-			),
+			conn:    sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).WithQueryLog(os.Stdout).ConnExt(),
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := ContextWithConn(t.Context(), tt.config)
+			ctx := ContextWithConn(t.Context(), tt.conn)
 			err := InsertRowStruct(ctx, tt.rowStruct, tt.options...)
 			if tt.wantErr {
 				require.Error(t, err, "error from InsertStruct")
 				return
 			}
 			require.NoError(t, err, "error from InsertStruct")
-			require.Equal(t, tt.want, tt.config.Connection.(*sqldb.MockConn).Recordings, "MockConn.Recordings")
+			require.Equal(t, tt.want, tt.conn.Connection.(*sqldb.MockConn).Recordings, "MockConn.Recordings")
 		})
 	}
 }
@@ -85,14 +75,9 @@ func TestInsertRowStruct_CacheWithoutOptions(t *testing.T) {
 		Extra           string `db:"extra"`
 	}
 
-	mock := sqldb.NewMockConn("$", nil, nil)
-	config := sqldb.NewConnExt(
-		mock,
-		sqldb.NewTaggedStructReflector(),
-		sqldb.NewQueryFormatter("$"),
-		sqldb.StdQueryBuilder{},
-	)
-	ctx := ContextWithConn(t.Context(), config)
+	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+	conn := mock.ConnExt()
+	ctx := ContextWithConn(t.Context(), conn)
 
 	// First call populates the cache
 	err := InsertRowStruct(ctx, &CacheTestStruct{ID: 1, Name: "first", Extra: "a"})
@@ -120,14 +105,9 @@ func TestInsertRowStruct_CacheBypassedWithOptions(t *testing.T) {
 		Extra           string `db:"extra"`
 	}
 
-	mock := sqldb.NewMockConn("$", nil, nil)
-	config := sqldb.NewConnExt(
-		mock,
-		sqldb.NewTaggedStructReflector(),
-		sqldb.NewQueryFormatter("$"),
-		sqldb.StdQueryBuilder{},
-	)
-	ctx := ContextWithConn(t.Context(), config)
+	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+	conn := mock.ConnExt()
+	ctx := ContextWithConn(t.Context(), conn)
 
 	// First call without options — all columns
 	err := InsertRowStruct(ctx, &OptionsCacheTestStruct{ID: 1, Name: "first", Extra: "a"})
@@ -160,14 +140,9 @@ func TestInsertRowStruct_CacheNotPollutedByOptions(t *testing.T) {
 		Extra           string `db:"extra"`
 	}
 
-	mock := sqldb.NewMockConn("$", nil, nil)
-	config := sqldb.NewConnExt(
-		mock,
-		sqldb.NewTaggedStructReflector(),
-		sqldb.NewQueryFormatter("$"),
-		sqldb.StdQueryBuilder{},
-	)
-	ctx := ContextWithConn(t.Context(), config)
+	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+	conn := mock.ConnExt()
+	ctx := ContextWithConn(t.Context(), conn)
 
 	// First call WITH options — should NOT populate the cache
 	err := InsertRowStruct(ctx, &PollutionTestStruct{ID: 1, Name: "first"}, sqldb.IgnoreColumns("extra"))
@@ -197,7 +172,7 @@ func TestInsert(t *testing.T) {
 		name    string
 		table   string
 		values  sqldb.Values
-		config  *sqldb.ConnExt
+		conn    *sqldb.ConnExt
 		want    sqldb.QueryRecordings
 		wantErr bool
 	}{
@@ -210,12 +185,7 @@ func TestInsert(t *testing.T) {
 				"created_at": timestamp,
 				"updated_at": sql.NullTime{},
 			},
-			config: sqldb.NewConnExt(
-				sqldb.NewMockConn("$", nil, os.Stdout),
-				sqldb.NewTaggedStructReflector(),
-				sqldb.NewQueryFormatter("$"),
-				sqldb.StdQueryBuilder{},
-			),
+			conn: sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).WithQueryLog(os.Stdout).ConnExt(),
 			want: sqldb.QueryRecordings{
 				Execs: []sqldb.QueryData{
 					{
@@ -228,29 +198,23 @@ func TestInsert(t *testing.T) {
 
 		// Error cases
 		{
-			name:   "no values",
-			table:  "public.my_table",
-			values: sqldb.Values{},
-			config: sqldb.NewConnExt(
-				sqldb.NewMockConn("$", nil, os.Stdout),
-				sqldb.NewTaggedStructReflector(),
-				sqldb.NewQueryFormatter("$"),
-				sqldb.StdQueryBuilder{},
-			),
-
+			name:    "no values",
+			table:   "public.my_table",
+			values:  sqldb.Values{},
+			conn:    sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).WithQueryLog(os.Stdout).ConnExt(),
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := ContextWithConn(t.Context(), tt.config)
+			ctx := ContextWithConn(t.Context(), tt.conn)
 			err := Insert(ctx, tt.table, tt.values)
 			if tt.wantErr {
 				require.Error(t, err, "error from Insert")
 				return
 			}
 			require.NoError(t, err, "error from Insert")
-			require.Equal(t, tt.want, tt.config.Connection.(*sqldb.MockConn).Recordings, "MockConn.Recordings")
+			require.Equal(t, tt.want, tt.conn.Connection.(*sqldb.MockConn).Recordings, "MockConn.Recordings")
 		})
 	}
 }

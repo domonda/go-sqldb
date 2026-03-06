@@ -13,7 +13,7 @@ import (
 
 func TestQueryRowAs(t *testing.T) {
 	query := /*sql*/ `SELECT EXISTS (SELECT FROM my_table WHERE id = $1)`
-	conn := sqldb.NewMockConn("$", nil, nil).
+	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
 		WithQueryResult(
 			[]string{"exists"},       // columns
 			[][]driver.Value{{true}}, // rows
@@ -26,8 +26,8 @@ func TestQueryRowAs(t *testing.T) {
 			query,              // query
 			777,                // args
 		)
-	config := sqldb.NewConnExt(conn, sqldb.NewTaggedStructReflector(), sqldb.StdQueryFormatter{}, sqldb.StdQueryBuilder{})
-	ctx := ContextWithConn(t.Context(), config)
+	conn := mock.ConnExt()
+	ctx := ContextWithConn(t.Context(), conn)
 
 	// id 666 has a row with the value true
 	value, err := QueryRowAs[bool](ctx, query, 666)
@@ -41,7 +41,7 @@ func TestQueryRowAs(t *testing.T) {
 
 func TestQueryRowAsOr(t *testing.T) {
 	query := /*sql*/ `SELECT EXISTS (SELECT FROM my_table WHERE id = $1)`
-	conn := sqldb.NewMockConn("$", nil, nil).
+	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
 		WithQueryResult(
 			[]string{"exists"},       // columns
 			[][]driver.Value{{true}}, // rows
@@ -54,8 +54,8 @@ func TestQueryRowAsOr(t *testing.T) {
 			query,              // query
 			777,                // args
 		)
-	config := sqldb.NewConnExt(conn, sqldb.NewTaggedStructReflector(), sqldb.StdQueryFormatter{}, sqldb.StdQueryBuilder{})
-	ctx := ContextWithConn(t.Context(), config)
+	conn := mock.ConnExt()
+	ctx := ContextWithConn(t.Context(), conn)
 
 	// id 666 has a row with the value true
 	value, err := QueryRowAsOr(ctx, false, query, 666)
@@ -97,7 +97,7 @@ func TestQueryStrings(t *testing.T) {
 			},
 		},
 	}
-	conn := sqldb.NewMockConn("$", nil, nil).
+	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
 		WithQueryResult(
 			[]string{"test_no", "col1", "col2", "col3"},
 			[][]driver.Value{},
@@ -114,8 +114,8 @@ func TestQueryStrings(t *testing.T) {
 			query,
 			1,
 		)
-	config := sqldb.NewConnExt(conn, sqldb.NewTaggedStructReflector(), sqldb.StdQueryFormatter{}, sqldb.StdQueryBuilder{})
-	ctx := ContextWithConn(t.Context(), config)
+	conn := mock.ConnExt()
+	ctx := ContextWithConn(t.Context(), conn)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotRows, err := QueryRowsAsStrings(ctx, tt.query, tt.args...)

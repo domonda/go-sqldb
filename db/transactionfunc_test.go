@@ -20,27 +20,27 @@ func TestContextWithoutTransactions(t *testing.T) {
 
 func TestIsTransaction(t *testing.T) {
 	t.Run("not in transaction", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		require.False(t, IsTransaction(ctx))
 	})
 
 	t.Run("in transaction", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		mock.TxID = 1 // simulate active transaction
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		require.True(t, IsTransaction(ctx))
 	})
 
 	t.Run("in transaction but ContextWithoutTransactions", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		mock.TxID = 1 // simulate active transaction
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 		ctx = ContextWithoutTransactions(ctx)
 
 		require.False(t, IsTransaction(ctx))
@@ -49,29 +49,29 @@ func TestIsTransaction(t *testing.T) {
 
 func TestValidateWithinTransaction(t *testing.T) {
 	t.Run("within transaction", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		mock.TxID = 1
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		err := ValidateWithinTransaction(ctx)
 		require.NoError(t, err)
 	})
 
 	t.Run("not within transaction", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		err := ValidateWithinTransaction(ctx)
 		require.ErrorIs(t, err, sqldb.ErrNotWithinTransaction)
 	})
 
 	t.Run("ContextWithoutTransactions", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		mock.TxID = 1
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 		ctx = ContextWithoutTransactions(ctx)
 
 		err := ValidateWithinTransaction(ctx)
@@ -81,29 +81,29 @@ func TestValidateWithinTransaction(t *testing.T) {
 
 func TestValidateNotWithinTransaction(t *testing.T) {
 	t.Run("not within transaction", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		err := ValidateNotWithinTransaction(ctx)
 		require.NoError(t, err)
 	})
 
 	t.Run("within transaction", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		mock.TxID = 1
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		err := ValidateNotWithinTransaction(ctx)
 		require.ErrorIs(t, err, sqldb.ErrWithinTransaction)
 	})
 
 	t.Run("ContextWithoutTransactions bypasses check", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		mock.TxID = 1
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 		ctx = ContextWithoutTransactions(ctx)
 
 		err := ValidateNotWithinTransaction(ctx)
@@ -113,14 +113,14 @@ func TestValidateNotWithinTransaction(t *testing.T) {
 
 func TestTransaction_DB(t *testing.T) {
 	t.Run("success commits", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var commitCount int
 		mock.MockCommit = func() error {
 			commitCount++
 			return nil
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		var called bool
 		err := Transaction(ctx, func(ctx context.Context) error {
@@ -134,14 +134,14 @@ func TestTransaction_DB(t *testing.T) {
 	})
 
 	t.Run("error rolls back", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var rollbackCount int
 		mock.MockRollback = func() error {
 			rollbackCount++
 			return nil
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		txErr := errors.New("tx failed")
 		err := Transaction(ctx, func(ctx context.Context) error {
@@ -152,10 +152,10 @@ func TestTransaction_DB(t *testing.T) {
 	})
 
 	t.Run("already in transaction passes through", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		mock.TxID = 1 // simulate active transaction
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		var called bool
 		err := Transaction(ctx, func(ctx context.Context) error {
@@ -167,9 +167,9 @@ func TestTransaction_DB(t *testing.T) {
 	})
 
 	t.Run("ContextWithoutTransactions bypasses transaction", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 		ctx = ContextWithoutTransactions(ctx)
 
 		var called bool
@@ -186,14 +186,14 @@ func TestTransaction_DB(t *testing.T) {
 
 func TestTransactionResult_DB(t *testing.T) {
 	t.Run("success with result", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var commitCount int
 		mock.MockCommit = func() error {
 			commitCount++
 			return nil
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		result, err := TransactionResult(ctx, func(ctx context.Context) (string, error) {
 			return "hello", nil
@@ -204,14 +204,14 @@ func TestTransactionResult_DB(t *testing.T) {
 	})
 
 	t.Run("error returns zero result", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var rollbackCount int
 		mock.MockRollback = func() error {
 			rollbackCount++
 			return nil
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		txErr := errors.New("tx failed")
 		result, err := TransactionResult(ctx, func(ctx context.Context) (int, error) {
@@ -225,14 +225,14 @@ func TestTransactionResult_DB(t *testing.T) {
 
 func TestIsolatedTransaction_DB(t *testing.T) {
 	t.Run("success commits", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var commitCount int
 		mock.MockCommit = func() error {
 			commitCount++
 			return nil
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		err := IsolatedTransaction(ctx, func(ctx context.Context) error {
 			require.True(t, IsTransaction(ctx))
@@ -243,14 +243,14 @@ func TestIsolatedTransaction_DB(t *testing.T) {
 	})
 
 	t.Run("error rolls back", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var rollbackCount int
 		mock.MockRollback = func() error {
 			rollbackCount++
 			return nil
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		txErr := errors.New("isolated tx failed")
 		err := IsolatedTransaction(ctx, func(ctx context.Context) error {
@@ -261,9 +261,9 @@ func TestIsolatedTransaction_DB(t *testing.T) {
 	})
 
 	t.Run("ContextWithoutTransactions bypasses transaction", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 		ctx = ContextWithoutTransactions(ctx)
 
 		var called bool
@@ -278,14 +278,14 @@ func TestIsolatedTransaction_DB(t *testing.T) {
 
 func TestOptionalTransaction_DB(t *testing.T) {
 	t.Run("with transaction", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var commitCount int
 		mock.MockCommit = func() error {
 			commitCount++
 			return nil
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		var inTx bool
 		err := OptionalTransaction(ctx, true, func(ctx context.Context) error {
@@ -298,9 +298,9 @@ func TestOptionalTransaction_DB(t *testing.T) {
 	})
 
 	t.Run("without transaction", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		var inTx bool
 		err := OptionalTransaction(ctx, false, func(ctx context.Context) error {
@@ -314,14 +314,14 @@ func TestOptionalTransaction_DB(t *testing.T) {
 
 func TestTransactionReadOnly_DB(t *testing.T) {
 	t.Run("success commits", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var commitCount int
 		mock.MockCommit = func() error {
 			commitCount++
 			return nil
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		err := TransactionReadOnly(ctx, func(ctx context.Context) error {
 			require.True(t, IsTransaction(ctx))
@@ -332,14 +332,14 @@ func TestTransactionReadOnly_DB(t *testing.T) {
 	})
 
 	t.Run("error rolls back", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var rollbackCount int
 		mock.MockRollback = func() error {
 			rollbackCount++
 			return nil
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		txErr := errors.New("read-only tx failed")
 		err := TransactionReadOnly(ctx, func(ctx context.Context) error {
@@ -350,9 +350,9 @@ func TestTransactionReadOnly_DB(t *testing.T) {
 	})
 
 	t.Run("ContextWithoutTransactions bypasses", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 		ctx = ContextWithoutTransactions(ctx)
 
 		var called bool
@@ -367,14 +367,14 @@ func TestTransactionReadOnly_DB(t *testing.T) {
 
 func TestTransactionSavepoint_DB(t *testing.T) {
 	t.Run("not in transaction uses regular transaction", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var commitCount int
 		mock.MockCommit = func() error {
 			commitCount++
 			return nil
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 
 		err := TransactionSavepoint(ctx, func(ctx context.Context) error {
 			require.True(t, IsTransaction(ctx))
@@ -385,7 +385,7 @@ func TestTransactionSavepoint_DB(t *testing.T) {
 	})
 
 	t.Run("in transaction uses savepoint", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		mock.TxID = 1 // simulate active transaction
 		var execCount int
 		var execQueries []string
@@ -394,8 +394,8 @@ func TestTransactionSavepoint_DB(t *testing.T) {
 			execQueries = append(execQueries, query)
 			return nil
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 		ctx = ContextWithSavepointFunc(ctx, func() string { return "test_sp" })
 
 		var called bool
@@ -411,7 +411,7 @@ func TestTransactionSavepoint_DB(t *testing.T) {
 	})
 
 	t.Run("in transaction error rolls back to savepoint", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		mock.TxID = 1 // simulate active transaction
 		var execCount int
 		var execQueries []string
@@ -420,8 +420,8 @@ func TestTransactionSavepoint_DB(t *testing.T) {
 			execQueries = append(execQueries, query)
 			return nil
 		}
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 		ctx = ContextWithSavepointFunc(ctx, func() string { return "test_sp" })
 
 		txErr := errors.New("savepoint tx failed")
@@ -435,9 +435,9 @@ func TestTransactionSavepoint_DB(t *testing.T) {
 	})
 
 	t.Run("ContextWithoutTransactions bypasses", func(t *testing.T) {
-		mock := sqldb.NewMockConn("$", nil, nil)
-		config := sqldb.NewConnExt(mock, sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), config)
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+		conn := mock.ConnExt()
+		ctx := ContextWithConn(t.Context(), conn)
 		ctx = ContextWithoutTransactions(ctx)
 
 		var called bool

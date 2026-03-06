@@ -296,14 +296,12 @@ All caches can be cleared with `ClearQueryCaches()` which is useful for testing 
 
 ```go
 // Create a MockConn for PostgreSQL-style $1, $2, ... placeholders.
-// Pass nil for normalizeQuery and queryLog if not needed.
-mockConn := sqldb.NewMockConn("$", nil, nil)
+mockConn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 ```
 
-The arguments are:
-- `placeholderPosPrefix`: the positional placeholder prefix (e.g. `"$"` for PostgreSQL, `"?"` for MySQL)
-- `normalizeQuery`: an optional `NormalizeQueryFunc` to normalize SQL whitespace before matching
-- `queryLog`: an optional `io.Writer` to log all executed SQL statements
+Use builder methods to configure further:
+- `WithNormalizeQuery`: set a `NormalizeQueryFunc` to normalize SQL whitespace before matching
+- `WithQueryLog`: set an `io.Writer` to log all executed SQL statements
 
 #### Registering mock query results
 
@@ -342,15 +340,15 @@ Wrap the `MockConn` in a `ConnExt` and set it as the connection in the context o
 
 ```go
 func TestGetUser(t *testing.T) {
-    mockConn := sqldb.NewMockConn("$", nil, nil)
-    mockConn = mockConn.WithQueryResult(
-        []string{"id", "email", "name"},
-        [][]driver.Value{
-            {"550e8400-e29b-41d4-a716-446655440000", "alice@example.com", "Alice"},
-        },
-        `SELECT id, email, name FROM public.user WHERE id = $1`,
-        "550e8400-e29b-41d4-a716-446655440000",
-    )
+    mockConn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
+        WithQueryResult(
+            []string{"id", "email", "name"},
+            [][]driver.Value{
+                {"550e8400-e29b-41d4-a716-446655440000", "alice@example.com", "Alice"},
+            },
+            `SELECT id, email, name FROM public.user WHERE id = $1`,
+            "550e8400-e29b-41d4-a716-446655440000",
+        )
 
     connExt := sqldb.NewConnExt(
         mockConn,
@@ -403,12 +401,12 @@ Transactions work out of the box. `Begin` returns a copy of the `MockConn` with 
 
 ```go
 func TestWithTransaction(t *testing.T) {
-    mockConn := sqldb.NewMockConn("$", nil, nil)
-    mockConn = mockConn.WithQueryResult(
-        []string{"count"},
-        [][]driver.Value{{int64(42)}},
-        `SELECT count(*) FROM public.user`,
-    )
+    mockConn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
+        WithQueryResult(
+            []string{"count"},
+            [][]driver.Value{{int64(42)}},
+            `SELECT count(*) FROM public.user`,
+        )
 
     connExt := sqldb.NewConnExt(
         mockConn,
@@ -447,7 +445,8 @@ Pass an `io.Writer` to log all SQL statements:
 
 ```go
 var buf strings.Builder
-mockConn := sqldb.NewMockConn("$", nil, &buf)
+mockConn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
+    WithQueryLog(&buf)
 
 // ... run code under test ...
 

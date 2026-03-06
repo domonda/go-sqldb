@@ -10,6 +10,7 @@ import (
 type ConnExt struct {
 	Connection
 
+	// TODO should this be an interface instead implementing the methods directly on ConnExt?
 	StructReflector StructReflector
 	QueryFormatter  QueryFormatter
 	QueryBuilder    QueryBuilder
