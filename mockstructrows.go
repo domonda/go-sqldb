@@ -11,8 +11,9 @@ import (
 // MockStructRows implements the Rows interface for testing purposes.
 // It is not safe for concurrent use.
 type MockStructRows[S any] struct {
-	columns []string
-	rows    []S
+	reflector StructReflector
+	columns   []string
+	rows      []S
 
 	current int
 	closed  bool
@@ -48,9 +49,10 @@ func NewMockStructRows[S any](reflector StructReflector, rows ...S) *MockStructR
 		columns[i] = ci.Name
 	}
 	return &MockStructRows[S]{
-		columns: columns,
-		rows:    rows,
-		current: -1,
+		reflector: reflector,
+		columns:   columns,
+		rows:      rows,
+		current:   -1,
 	}
 }
 
@@ -79,7 +81,7 @@ func (m *MockStructRows[S]) Scan(dest ...any) error {
 	if m.current >= len(m.rows) {
 		return sql.ErrNoRows
 	}
-	_, values, err := ReflectStructColumnsAndValues(reflect.ValueOf(&m.rows[m.current]).Elem(), NewTaggedStructReflector())
+	_, values, err := ReflectStructColumnsAndValues(reflect.ValueOf(&m.rows[m.current]).Elem(), m.reflector)
 	if err != nil {
 		return err
 	}

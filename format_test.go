@@ -92,8 +92,8 @@ WHERE
 	AND
 	active = TRUE
 	AND
-	created_at >= '2006-01-02 15:04:05.999999+07:00:00'`
-	createdAt, err := time.Parse(timeFormat, "'2006-01-02 15:04:05.999999999+07:00:00'")
+	created_at >= '2006-01-02 15:04:05.999999+07:00'`
+	createdAt, err := time.Parse(timeFormat, "'2006-01-02 15:04:05.999999999+07:00'")
 	if err != nil {
 		panic(err)
 	}

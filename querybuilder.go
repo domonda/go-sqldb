@@ -97,6 +97,17 @@ func (b StdQueryBuilder) InsertUnique(formatter QueryFormatter, table string, co
 // Primary key columns are used as the conflict target,
 // non-primary key columns are updated on conflict.
 func (b StdQueryBuilder) Upsert(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error) {
+	hasNonPK := false
+	for i := range columns {
+		if !columns[i].PrimaryKey {
+			hasNonPK = true
+			break
+		}
+	}
+	if !hasNonPK {
+		return "", fmt.Errorf("Upsert requires at least one non-primary-key column")
+	}
+
 	var q strings.Builder
 	insert, err := b.Insert(formatter, table, columns)
 	if err != nil {
@@ -170,6 +181,17 @@ func (StdQueryBuilder) Update(formatter QueryFormatter, table string, values Val
 // UpdateColumns builds an UPDATE SET ... WHERE query using column metadata.
 // Primary key columns form the WHERE clause, non-primary key columns are SET.
 func (StdQueryBuilder) UpdateColumns(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error) {
+	hasNonPK := false
+	for i := range columns {
+		if !columns[i].PrimaryKey {
+			hasNonPK = true
+			break
+		}
+	}
+	if !hasNonPK {
+		return "", fmt.Errorf("UpdateColumns requires at least one non-primary-key column")
+	}
+
 	var q strings.Builder
 	table, err = formatter.FormatTableName(table)
 	if err != nil {
