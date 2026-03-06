@@ -83,9 +83,12 @@ type Conn struct {
 }
 
 // New creates a new Conn with the given PlaceholderFormatter.
-// If placeholderFmt is nil, WithArgFmt must be called before use.
+// Use NewWithArgFmt to create a Conn with a printf-style placeholder format.
 // Use WithNormalizeQuery and WithQueryLog to configure further.
 func New(placeholderFmt sqldb.PlaceholderFormatter) *Conn {
+	if placeholderFmt == nil {
+		panic("mockconn.New: placeholderFmt must not be nil")
+	}
 	return &Conn{
 		Ctx:              context.Background(),
 		StructFieldNamer: sqldb.DefaultStructFieldMapping,
@@ -93,12 +96,18 @@ func New(placeholderFmt sqldb.PlaceholderFormatter) *Conn {
 	}
 }
 
-// WithArgFmt returns the Conn with PlaceholderFmt set to
-// an ArgFmtPlaceholderFormatter using the given format string.
-// For example, "$%d" produces "$1", "$2", etc.
-func (c *Conn) WithArgFmt(argFmt string) *Conn {
-	c.PlaceholderFmt = sqldb.ArgFmtPlaceholderFormatter(argFmt)
-	return c
+// NewWithArgFmt creates a new Conn with a PlaceholderFormatter
+// derived from the given printf-style format string.
+// For example, "$%d" produces "$1", "$2", etc. for PostgreSQL
+// and "?" can be used for MySQL-style placeholders.
+//
+// Example:
+//
+//	conn := mockconn.NewWithArgFmt("$%d")
+//	ctx := db.ContextWithConn(t.Context(), conn)
+//	conn.MockQuery = func(query string, args ...any) impl.Rows { ... }
+func NewWithArgFmt(argFmt string) *Conn {
+	return New(sqldb.ArgFmtPlaceholderFormatter(argFmt))
 }
 
 // WithNormalizeQuery returns the Conn with the given NormalizeQueryFunc set.
