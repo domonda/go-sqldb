@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-// NewGenericConn returns a generic Connection implementation
-// for an existing sql.DB connection.
+// NewGenericConn returns a generic [Connection] implementation
+// for an existing [sql.DB] connection.
 func NewGenericConn(db *sql.DB, config *ConnConfig, defaultIsolationLevel sql.IsolationLevel) Connection {
 	return &genericConn{
 		db:                    db,

@@ -31,7 +31,7 @@ type testArraysRow struct {
 	UUIDArray  uu.IDSlice `db:"uuid_array"`
 }
 
-func testConnExt(t *testing.T) *sqldb.ConnExt {
+func testConnExt(t *testing.T) sqldb.ConnExt {
 	t.Helper()
 	ctx := context.Background()
 
@@ -61,7 +61,9 @@ func testConnExt(t *testing.T) *sqldb.ConnExt {
 		t.Fatalf("Failed to create test_arrays table: %v", err)
 	}
 	t.Cleanup(func() {
-		connExt.Exec(ctx /*sql*/, `DROP TABLE IF EXISTS test_arrays`)
+		connExt.Exec(ctx,
+			/*sql*/ `DROP TABLE IF EXISTS test_arrays`,
+		)
 	})
 
 	return connExt
@@ -84,13 +86,13 @@ func TestArrayStructInsertAndQueryRow(t *testing.T) {
 		UUIDArray:  uu.IDSlice{id1, id2, id3},
 	}
 
-	err := sqldb.InsertRowStruct(ctx, c, input)
+	err := sqldb.InsertRowStruct(ctx, c, c, c, c, input)
 	if err != nil {
 		t.Fatalf("InsertRowStruct: %v", err)
 	}
 
 	var got testArraysRow
-	err = sqldb.QueryRow(ctx, c,
+	err = sqldb.QueryRow(ctx, c, c, c,
 		/*sql*/ `SELECT * FROM test_arrays WHERE id = $1`,
 		input.ID,
 	).Scan(&got)
@@ -125,13 +127,13 @@ func TestArrayStructQueryRowsAsSlice(t *testing.T) {
 		},
 	}
 	for i := range rows {
-		err := sqldb.InsertRowStruct(ctx, c, &rows[i])
+		err := sqldb.InsertRowStruct(ctx, c, c, c, c, &rows[i])
 		if err != nil {
 			t.Fatalf("InsertRowStruct[%d]: %v", i, err)
 		}
 	}
 
-	got, err := sqldb.QueryRowsAsSlice[testArraysRow](ctx, c,
+	got, err := sqldb.QueryRowsAsSlice[testArraysRow](ctx, c, c, c,
 		/*sql*/ `SELECT * FROM test_arrays ORDER BY int_array[1]`,
 	)
 	if err != nil {
@@ -160,13 +162,13 @@ func TestArrayStructNullSlices(t *testing.T) {
 		UUIDArray:  nil,
 	}
 
-	err := sqldb.InsertRowStruct(ctx, c, input)
+	err := sqldb.InsertRowStruct(ctx, c, c, c, c, input)
 	if err != nil {
 		t.Fatalf("InsertRowStruct: %v", err)
 	}
 
 	var got testArraysRow
-	err = sqldb.QueryRow(ctx, c,
+	err = sqldb.QueryRow(ctx, c, c, c,
 		/*sql*/ `SELECT * FROM test_arrays WHERE id = $1`,
 		input.ID,
 	).Scan(&got)
@@ -204,12 +206,12 @@ func TestArrayStructQueryRowByPK(t *testing.T) {
 		TextArray: []string{"pk-test"},
 	}
 
-	err := sqldb.InsertRowStruct(ctx, c, input)
+	err := sqldb.InsertRowStruct(ctx, c, c, c, c, input)
 	if err != nil {
 		t.Fatalf("InsertRowStruct: %v", err)
 	}
 
-	got, err := sqldb.QueryRowByPK[testArraysRow](ctx, c, input.ID)
+	got, err := sqldb.QueryRowByPK[testArraysRow](ctx, c, c, c, c, input.ID)
 	if err != nil {
 		t.Fatalf("QueryRowByPK: %v", err)
 	}
@@ -228,16 +230,15 @@ func TestArrayStructTransaction(t *testing.T) {
 		TextArray: []string{"tx-test"},
 	}
 
-	err := sqldb.Transaction(ctx, c, nil, func(tx sqldb.Connection) error {
-		txExt := pqconn.NewConnExt(tx, sqldb.NewTaggedStructReflector())
-		return sqldb.InsertRowStruct(ctx, txExt, input)
+	err := sqldb.TransactionExt(ctx, c, nil, func(tx sqldb.ConnExt) error {
+		return sqldb.InsertRowStruct(ctx, tx, tx, tx, tx, input)
 	})
 	if err != nil {
 		t.Fatalf("Transaction insert: %v", err)
 	}
 
 	var got testArraysRow
-	err = sqldb.QueryRow(ctx, c,
+	err = sqldb.QueryRow(ctx, c, c, c,
 		/*sql*/ `SELECT * FROM test_arrays WHERE id = $1`,
 		input.ID,
 	).Scan(&got)
@@ -258,13 +259,13 @@ func TestArrayStructQueryCallback(t *testing.T) {
 		IntArray:  []int64{7, 8, 9},
 		TextArray: []string{"callback"},
 	}
-	err := sqldb.InsertRowStruct(ctx, c, input)
+	err := sqldb.InsertRowStruct(ctx, c, c, c, c, input)
 	if err != nil {
 		t.Fatalf("InsertRowStruct: %v", err)
 	}
 
 	var called bool
-	err = sqldb.QueryCallback(ctx, c,
+	err = sqldb.QueryCallback(ctx, c, c, c,
 		func(row testArraysRow) {
 			called = true
 			assertInt64Slice(t, "IntArray", row.IntArray, []int64{7, 8, 9})
@@ -298,13 +299,13 @@ func TestArrayStructSpecialStrings(t *testing.T) {
 		},
 	}
 
-	err := sqldb.InsertRowStruct(ctx, c, input)
+	err := sqldb.InsertRowStruct(ctx, c, c, c, c, input)
 	if err != nil {
 		t.Fatalf("InsertRowStruct: %v", err)
 	}
 
 	var got testArraysRow
-	err = sqldb.QueryRow(ctx, c,
+	err = sqldb.QueryRow(ctx, c, c, c,
 		/*sql*/ `SELECT * FROM test_arrays WHERE id = $1`,
 		input.ID,
 	).Scan(&got)
@@ -325,14 +326,14 @@ func TestArraySliceAsQueryArg(t *testing.T) {
 		{ID: id1, IntArray: []int64{10, 20, 30}, TextArray: []string{"a"}},
 		{ID: id2, IntArray: []int64{40, 50, 60}, TextArray: []string{"b"}},
 	} {
-		err := sqldb.InsertRowStruct(ctx, c, row)
+		err := sqldb.InsertRowStruct(ctx, c, c, c, c, row)
 		if err != nil {
 			t.Fatalf("InsertRowStruct: %v", err)
 		}
 	}
 
 	// Use array containment operator with a slice argument
-	got, err := sqldb.QueryRowsAsSlice[testArraysRow](ctx, c,
+	got, err := sqldb.QueryRowsAsSlice[testArraysRow](ctx, c, c, c,
 		/*sql*/ `SELECT * FROM test_arrays WHERE int_array @> $1`,
 		[]int64{10, 20},
 	)
@@ -356,13 +357,13 @@ func TestArrayPreparedStmt(t *testing.T) {
 		IntArray:  []int64{11, 22},
 		TextArray: []string{"prepared"},
 	}
-	err := sqldb.InsertRowStruct(ctx, c, input)
+	err := sqldb.InsertRowStruct(ctx, c, c, c, c, input)
 	if err != nil {
 		t.Fatalf("InsertRowStruct: %v", err)
 	}
 
 	// Use prepared statement query that returns rows with arrays
-	queryFunc, closeStmt, err := sqldb.QueryRowAsStmt[testArraysRow](ctx, c,
+	queryFunc, closeStmt, err := sqldb.QueryRowAsStmt[testArraysRow](ctx, c, c, c,
 		/*sql*/ `SELECT * FROM test_arrays WHERE id = $1`,
 	)
 	if err != nil {

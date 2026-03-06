@@ -9,7 +9,7 @@ import (
 
 func TestQueryRow(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, _, fmtr := newTestInterfaces()
 		var queryCount int
 		var gotQuery string
 		var gotArgs []any
@@ -19,7 +19,7 @@ func TestQueryRow(t *testing.T) {
 			gotArgs = args
 			return NewMockRows("id", "name").WithRow(int64(1), "Alice")
 		}
-		row := QueryRow(t.Context(), ext, "SELECT id, name FROM users WHERE id = $1", 1)
+		row := QueryRow(t.Context(), conn, refl, fmtr, "SELECT id, name FROM users WHERE id = $1", 1)
 		var id int64
 		var name string
 		if err := row.Scan(&id, &name); err != nil {
@@ -43,7 +43,7 @@ func TestQueryRow(t *testing.T) {
 
 func TestQueryRowAs(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, _, fmtr := newTestInterfaces()
 		var queryCount int
 		var gotQuery string
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
@@ -51,7 +51,7 @@ func TestQueryRowAs(t *testing.T) {
 			gotQuery = query
 			return NewMockRows("count").WithRow(int64(42))
 		}
-		val, err := QueryRowAs[int64](t.Context(), ext, "SELECT count(*) FROM users")
+		val, err := QueryRowAs[int64](t.Context(), conn, refl, fmtr, "SELECT count(*) FROM users")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -67,13 +67,13 @@ func TestQueryRowAs(t *testing.T) {
 	})
 
 	t.Run("no rows error", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, _, fmtr := newTestInterfaces()
 		var queryCount int
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
 			queryCount++
 			return NewMockRows("id")
 		}
-		_, err := QueryRowAs[int64](t.Context(), ext, "SELECT id FROM users WHERE id = $1", 999)
+		_, err := QueryRowAs[int64](t.Context(), conn, refl, fmtr, "SELECT id FROM users WHERE id = $1", 999)
 		if !errors.Is(err, sql.ErrNoRows) {
 			t.Errorf("expected sql.ErrNoRows, got: %v", err)
 		}
@@ -85,7 +85,7 @@ func TestQueryRowAs(t *testing.T) {
 
 func TestQueryRowAsOr(t *testing.T) {
 	t.Run("value found", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, _, fmtr := newTestInterfaces()
 		var queryCount int
 		var gotQuery string
 		var gotArgs []any
@@ -95,7 +95,7 @@ func TestQueryRowAsOr(t *testing.T) {
 			gotArgs = args
 			return NewMockRows("name").WithRow("Alice")
 		}
-		val, err := QueryRowAsOr(t.Context(), ext, "default", "SELECT name FROM users WHERE id = $1", 1)
+		val, err := QueryRowAsOr(t.Context(), conn, refl, fmtr, "default", "SELECT name FROM users WHERE id = $1", 1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -112,13 +112,13 @@ func TestQueryRowAsOr(t *testing.T) {
 	})
 
 	t.Run("no rows returns default", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, _, fmtr := newTestInterfaces()
 		var queryCount int
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
 			queryCount++
 			return NewMockRows("name")
 		}
-		val, err := QueryRowAsOr(t.Context(), ext, "default", "SELECT name FROM users WHERE id = $1", 999)
+		val, err := QueryRowAsOr(t.Context(), conn, refl, fmtr, "default", "SELECT name FROM users WHERE id = $1", 999)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -131,14 +131,14 @@ func TestQueryRowAsOr(t *testing.T) {
 	})
 
 	t.Run("other error propagated", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, _, fmtr := newTestInterfaces()
 		var queryCount int
 		testErr := errors.New("query failed")
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
 			queryCount++
 			return NewErrRows(testErr)
 		}
-		_, err := QueryRowAsOr(t.Context(), ext, "default", "SELECT name FROM users")
+		_, err := QueryRowAsOr(t.Context(), conn, refl, fmtr, "default", "SELECT name FROM users")
 		if !errors.Is(err, testErr) {
 			t.Errorf("expected error wrapping %v, got: %v", testErr, err)
 		}
@@ -150,7 +150,7 @@ func TestQueryRowAsOr(t *testing.T) {
 
 func TestQueryRowAsStmt(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, _, fmtr := newTestInterfaces()
 		var queryCount int
 		var gotQuery string
 		var gotArgs []any
@@ -160,7 +160,7 @@ func TestQueryRowAsStmt(t *testing.T) {
 			gotArgs = args
 			return NewMockRows("name").WithRow("Alice")
 		}
-		queryFunc, closeStmt, err := QueryRowAsStmt[string](t.Context(), ext, "SELECT name FROM users WHERE id = $1")
+		queryFunc, closeStmt, err := QueryRowAsStmt[string](t.Context(), conn, refl, fmtr, "SELECT name FROM users WHERE id = $1")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -183,14 +183,14 @@ func TestQueryRowAsStmt(t *testing.T) {
 	})
 
 	t.Run("prepare error", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, _, fmtr := newTestInterfaces()
 		var prepareCount int
 		prepErr := errors.New("prepare failed")
 		conn.MockPrepare = func(ctx context.Context, query string) (Stmt, error) {
 			prepareCount++
 			return nil, prepErr
 		}
-		_, _, err := QueryRowAsStmt[string](t.Context(), ext, "SELECT name FROM users")
+		_, _, err := QueryRowAsStmt[string](t.Context(), conn, refl, fmtr, "SELECT name FROM users")
 		if !errors.Is(err, prepErr) {
 			t.Errorf("expected error wrapping %v, got: %v", prepErr, err)
 		}
@@ -202,7 +202,7 @@ func TestQueryRowAsStmt(t *testing.T) {
 
 func TestQueryRowByPK(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
 		var queryCount int
 		var gotQuery string
 		var gotArgs []any
@@ -212,7 +212,7 @@ func TestQueryRowByPK(t *testing.T) {
 			gotArgs = args
 			return NewMockRows("id", "name", "active").WithRow(int64(1), "Alice", true)
 		}
-		row, err := QueryRowByPK[reflectTestStruct](t.Context(), ext, int64(1))
+		row, err := QueryRowByPK[reflectTestStruct](t.Context(), conn, refl, builder, fmtr, int64(1))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -236,22 +236,23 @@ func TestQueryRowByPK(t *testing.T) {
 	})
 
 	t.Run("pk count mismatch", func(t *testing.T) {
-		_, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
+		_ = conn
 		// reflectTestStruct has 1 PK but we pass 2 values
-		_, err := QueryRowByPK[reflectTestStruct](t.Context(), ext, 1, 2)
+		_, err := QueryRowByPK[reflectTestStruct](t.Context(), conn, refl, builder, fmtr, 1, 2)
 		if err == nil {
 			t.Error("expected error for PK count mismatch")
 		}
 	})
 
 	t.Run("no rows", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
 		var queryCount int
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
 			queryCount++
 			return NewMockRows("id", "name", "active")
 		}
-		_, err := QueryRowByPK[reflectTestStruct](t.Context(), ext, int64(999))
+		_, err := QueryRowByPK[reflectTestStruct](t.Context(), conn, refl, builder, fmtr, int64(999))
 		if !errors.Is(err, sql.ErrNoRows) {
 			t.Errorf("expected sql.ErrNoRows, got: %v", err)
 		}
@@ -263,7 +264,7 @@ func TestQueryRowByPK(t *testing.T) {
 
 func TestQueryRowAsMap(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, _, _, fmtr := newTestInterfaces()
 		var queryCount int
 		var gotQuery string
 		var gotArgs []any
@@ -273,7 +274,7 @@ func TestQueryRowAsMap(t *testing.T) {
 			gotArgs = args
 			return NewMockRows("id", "name").WithRow(int64(1), "Alice")
 		}
-		m, err := QueryRowAsMap[string, any](t.Context(), ext, "SELECT id, name FROM users WHERE id = $1", 1)
+		m, err := QueryRowAsMap[string, any](t.Context(), conn, fmtr, "SELECT id, name FROM users WHERE id = $1", 1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -296,13 +297,13 @@ func TestQueryRowAsMap(t *testing.T) {
 	})
 
 	t.Run("no rows", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, _, _, fmtr := newTestInterfaces()
 		var queryCount int
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
 			queryCount++
 			return NewMockRows("id")
 		}
-		_, err := QueryRowAsMap[string, any](t.Context(), ext, "SELECT id FROM users WHERE id = $1", 999)
+		_, err := QueryRowAsMap[string, any](t.Context(), conn, fmtr, "SELECT id FROM users WHERE id = $1", 999)
 		if !errors.Is(err, sql.ErrNoRows) {
 			t.Errorf("expected sql.ErrNoRows, got: %v", err)
 		}
@@ -314,7 +315,7 @@ func TestQueryRowAsMap(t *testing.T) {
 
 func TestQueryRowsAsSlice(t *testing.T) {
 	t.Run("scalar values", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, _, fmtr := newTestInterfaces()
 		var queryCount int
 		var gotQuery string
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
@@ -322,7 +323,7 @@ func TestQueryRowsAsSlice(t *testing.T) {
 			gotQuery = query
 			return NewMockRows("name").WithRow("Alice").WithRow("Bob").WithRow("Charlie")
 		}
-		names, err := QueryRowsAsSlice[string](t.Context(), ext, "SELECT name FROM users")
+		names, err := QueryRowsAsSlice[string](t.Context(), conn, refl, fmtr, "SELECT name FROM users")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -344,7 +345,7 @@ func TestQueryRowsAsSlice(t *testing.T) {
 	})
 
 	t.Run("struct values", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, _, fmtr := newTestInterfaces()
 		var queryCount int
 		var gotQuery string
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
@@ -354,7 +355,7 @@ func TestQueryRowsAsSlice(t *testing.T) {
 				WithRow(int64(1), "Alice", true).
 				WithRow(int64(2), "Bob", false)
 		}
-		rows, err := QueryRowsAsSlice[reflectTestStruct](t.Context(), ext, "SELECT id, name, active FROM test_table")
+		rows, err := QueryRowsAsSlice[reflectTestStruct](t.Context(), conn, refl, fmtr, "SELECT id, name, active FROM test_table")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -376,13 +377,13 @@ func TestQueryRowsAsSlice(t *testing.T) {
 	})
 
 	t.Run("empty result", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, _, fmtr := newTestInterfaces()
 		var queryCount int
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
 			queryCount++
 			return NewMockRows("name")
 		}
-		names, err := QueryRowsAsSlice[string](t.Context(), ext, "SELECT name FROM users WHERE 1=0")
+		names, err := QueryRowsAsSlice[string](t.Context(), conn, refl, fmtr, "SELECT name FROM users WHERE 1=0")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -412,9 +413,10 @@ func TestQueryRowsAsSlice_MockQueryResults(t *testing.T) {
 			WithRow(int64(2), "Bob", "bob@example.com", false).
 			WithRow(int64(3), "Charlie", "charlie@example.com", true),
 	}
-	ext := NewConnExt(conn, NewTaggedStructReflector(), NewQueryFormatter("$"), StdQueryBuilder{})
+	refl := NewTaggedStructReflector()
+	fmtr := NewQueryFormatter("$")
 
-	users, err := QueryRowsAsSlice[User](t.Context(), ext, "SELECT * FROM user")
+	users, err := QueryRowsAsSlice[User](t.Context(), conn, refl, fmtr, "SELECT * FROM user")
 	if err != nil {
 		t.Fatal(err)
 	}

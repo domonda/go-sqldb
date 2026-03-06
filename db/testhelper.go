@@ -40,17 +40,17 @@ func (m *StagedTypeMapper) ColumnType(t reflect.Type) string {
 
 // CreateTableForStruct is mostly used to create tests.
 func CreateTableForStruct(ctx context.Context, typeMap TypeMapper, rowStruct sqldb.StructWithTableName) error {
-	config := Conn(ctx)
+	conn := Conn(ctx)
 	v := reflect.ValueOf(rowStruct)
-	tableName, err := config.StructReflector.TableNameForStruct(v.Type())
+	tableName, err := conn.TableNameForStruct(v.Type())
 	if err != nil {
 		return err
 	}
-	tableName, err = config.QueryFormatter.FormatTableName(tableName)
+	tableName, err = conn.FormatTableName(tableName)
 	if err != nil {
 		return err
 	}
-	columns, fields, err := sqldb.ReflectStructColumnsAndFields(v, config.StructReflector)
+	columns, fields, err := sqldb.ReflectStructColumnsAndFields(v, conn)
 	if err != nil {
 		return err
 	}
@@ -62,7 +62,7 @@ func CreateTableForStruct(ctx context.Context, typeMap TypeMapper, rowStruct sql
 	fmt.Fprintf(&query, "CREATE TABLE %s (\n  ", tableName)
 	for i := range columns {
 		fieldType := fields[i]
-		columnName, err := config.QueryFormatter.FormatColumnName(columns[i].Name)
+		columnName, err := conn.FormatColumnName(columns[i].Name)
 		if err != nil {
 			return err
 		}

@@ -26,8 +26,8 @@
 ### Coupling
 
 - [ ] **pqconn imports db** — `pqconn/queryformatter.go` imports `db` for `db.StagedTypeMapper` in `NewTypeMapper()`. Driver should not depend on the high-level convenience layer. Move `StagedTypeMapper`/`TypeMapper` to root `sqldb` package
-- [ ] **information imports db** — Could accept `*sqldb.ConnExt` directly instead of requiring global connection pattern
-- [ ] **ConnExt bundles 3 orthogonal concerns** — Connection (I/O) + StructReflector (Go reflection) + QueryFormatter/QueryBuilder (SQL text). Functions that only need one still carry all three
+- [ ] **information imports db** — Could accept `sqldb.ConnExt` directly instead of requiring global connection pattern
+- [x] *ConnExt bundles 3 orthogonal concerns** — Connection (I/O) + StructReflector (Go reflection) + QueryFormatter/QueryBuilder (SQL text). Functions that only need one still carry all three. **Resolved**: Functions now accept narrow interfaces (`Querier`, `Executor`, `Preparer`) for the connection argument
 
 ### Patterns
 

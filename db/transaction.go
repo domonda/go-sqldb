@@ -33,7 +33,7 @@ func IsTransaction(ctx context.Context) bool {
 	if IsContextWithoutTransactions(ctx) {
 		return false
 	}
-	return Conn(ctx).Connection.Transaction().Active()
+	return Conn(ctx).Transaction().Active()
 }
 
 // ValidateWithinTransaction returns [sqldb.ErrNotWithinTransaction]
@@ -42,7 +42,7 @@ func ValidateWithinTransaction(ctx context.Context) error {
 	if IsContextWithoutTransactions(ctx) {
 		return sqldb.ErrNotWithinTransaction
 	}
-	if !Conn(ctx).Connection.Transaction().Active() {
+	if !Conn(ctx).Transaction().Active() {
 		return sqldb.ErrNotWithinTransaction
 	}
 	return nil
@@ -54,7 +54,7 @@ func ValidateNotWithinTransaction(ctx context.Context) error {
 	if IsContextWithoutTransactions(ctx) {
 		return nil
 	}
-	if Conn(ctx).Connection.Transaction().Active() {
+	if Conn(ctx).Transaction().Active() {
 		return sqldb.ErrWithinTransaction
 	}
 	return nil
@@ -77,7 +77,7 @@ func IsolatedTransaction(ctx context.Context, txFunc func(context.Context) error
 	}
 	conn := Conn(ctx)
 	return sqldb.IsolatedTransaction(ctx, conn, nil, func(tx sqldb.Connection) error {
-		return txFunc(ContextWithConn(ctx, conn.WithConnection(tx)))
+		return txFunc(ContextWithConn(ctx, sqldb.NewConnExtWithConn(conn, tx)))
 	})
 }
 
@@ -105,9 +105,9 @@ func Transaction(ctx context.Context, txFunc func(context.Context) error) error 
 	if IsContextWithoutTransactions(ctx) {
 		return txFunc(ctx)
 	}
-	connExt := Conn(ctx)
-	return sqldb.Transaction(ctx, connExt, nil, func(tx sqldb.Connection) error {
-		return txFunc(ContextWithConn(ctx, connExt.WithConnection(tx)))
+	conn := Conn(ctx)
+	return sqldb.Transaction(ctx, conn, nil, func(tx sqldb.Connection) error {
+		return txFunc(ContextWithConn(ctx, sqldb.NewConnExtWithConn(conn, tx)))
 	})
 }
 
@@ -223,7 +223,7 @@ func TransactionOpts(ctx context.Context, opts *sql.TxOptions, txFunc func(conte
 	}
 	conn := Conn(ctx)
 	return sqldb.Transaction(ctx, conn, opts, func(tx sqldb.Connection) error {
-		return txFunc(ContextWithConn(ctx, conn.WithConnection(tx)))
+		return txFunc(ContextWithConn(ctx, sqldb.NewConnExtWithConn(conn, tx)))
 	})
 }
 
@@ -241,7 +241,7 @@ func TransactionReadOnly(ctx context.Context, txFunc func(context.Context) error
 	conn := Conn(ctx)
 	opts := sql.TxOptions{ReadOnly: true}
 	return sqldb.Transaction(ctx, conn, &opts, func(tx sqldb.Connection) error {
-		return txFunc(ContextWithConn(ctx, conn.WithConnection(tx)))
+		return txFunc(ContextWithConn(ctx, sqldb.NewConnExtWithConn(conn, tx)))
 	})
 }
 
@@ -277,7 +277,7 @@ func TransactionSavepoint(ctx context.Context, txFunc func(context.Context) erro
 		return txFunc(ctx)
 	}
 
-	conn := Conn(ctx).Connection
+	conn := Conn(ctx)
 	if !conn.Transaction().Active() {
 		// If not already in a transaction, then execute txFunc
 		// within a transaction instead of using savepoints:

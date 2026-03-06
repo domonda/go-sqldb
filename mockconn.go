@@ -100,7 +100,7 @@ func (c *MockConn) WithQueryLog(w io.Writer) *MockConn {
 // ConnExt returns a ConnExt wrapping this MockConn as Connection
 // with a TaggedStructReflector, the MockConn's QueryFormatter,
 // and a StdQueryBuilder.
-func (c *MockConn) ConnExt() *ConnExt {
+func (c *MockConn) ConnExt() ConnExt {
 	qf := c.QueryFormatter
 	if qf == nil {
 		qf = StdQueryFormatter{}

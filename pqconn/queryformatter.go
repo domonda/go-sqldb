@@ -210,6 +210,10 @@ func (QueryFormatter) FormatStringLiteral(str string) string {
 	return sqldb.FormatSingleQuoteStringLiteral(str)
 }
 
+// QueryBuilder is the standard [sqldb.QueryBuilder] implementation
+// used for PostgreSQL.
+type QueryBuilder = sqldb.StdQueryBuilder
+
 func NewTypeMapper() *db.StagedTypeMapper {
 	return &db.StagedTypeMapper{
 		Types: map[reflect.Type]string{

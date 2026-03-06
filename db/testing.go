@@ -15,5 +15,5 @@ import (
 // simulate a transaction without any actual transaction handling.
 // All other methods except Close will cause the test to fail.
 func ContextWithNonConnectionForTest(ctx context.Context, t *testing.T) context.Context {
-	return ContextWithConn(ctx, Conn(ctx).WithConnection(sqldb.NonConnForTest(t)))
+	return ContextWithConn(ctx, sqldb.NewConnExtWithConn(Conn(ctx), sqldb.NonConnForTest(t)))
 }

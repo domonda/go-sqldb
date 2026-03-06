@@ -8,7 +8,7 @@ import (
 
 func TestInsert(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, _, builder, fmtr := newTestInterfaces()
 		var execCount int
 		var gotQuery string
 		var gotArgs []any
@@ -18,7 +18,7 @@ func TestInsert(t *testing.T) {
 			gotArgs = args
 			return nil
 		}
-		err := Insert(t.Context(), ext, "users", Values{"name": "Alice", "age": 30})
+		err := Insert(t.Context(), conn, builder, fmtr, "users", Values{"name": "Alice", "age": 30})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -33,22 +33,23 @@ func TestInsert(t *testing.T) {
 	})
 
 	t.Run("empty values error", func(t *testing.T) {
-		_, ext := newTestConnExt()
-		err := Insert(t.Context(), ext, "users", Values{})
+		conn, _, builder, fmtr := newTestInterfaces()
+		_ = conn
+		err := Insert(t.Context(), conn, builder, fmtr, "users", Values{})
 		if err == nil {
 			t.Error("expected error for empty values")
 		}
 	})
 
 	t.Run("exec error", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, _, builder, fmtr := newTestInterfaces()
 		var execCount int
 		testErr := errors.New("insert failed")
 		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
 			execCount++
 			return testErr
 		}
-		err := Insert(t.Context(), ext, "users", Values{"name": "Alice"})
+		err := Insert(t.Context(), conn, builder, fmtr, "users", Values{"name": "Alice"})
 		if !errors.Is(err, testErr) {
 			t.Errorf("expected error wrapping %v, got: %v", testErr, err)
 		}
@@ -60,7 +61,7 @@ func TestInsert(t *testing.T) {
 
 func TestInsertReturning(t *testing.T) {
 	t.Run("scan single value", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
 		var gotQuery string
 		var gotArgs []any
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
@@ -69,7 +70,7 @@ func TestInsertReturning(t *testing.T) {
 			return NewMockRows("id").WithRow(int64(42))
 		}
 		var id int64
-		err := InsertReturning(t.Context(), ext, "users", Values{"name": "Alice", "age": 30}, "id").Scan(&id)
+		err := InsertReturning(t.Context(), conn, refl, builder, fmtr, "users", Values{"name": "Alice", "age": 30}, "id").Scan(&id)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -84,13 +85,13 @@ func TestInsertReturning(t *testing.T) {
 	})
 
 	t.Run("scan multiple values", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
 			return NewMockRows("id", "created_at").WithRow(int64(1), "2025-01-01T00:00:00Z")
 		}
 		var id int64
 		var createdAt string
-		err := InsertReturning(t.Context(), ext, "users", Values{"name": "Bob"}, "id, created_at").Scan(&id, &createdAt)
+		err := InsertReturning(t.Context(), conn, refl, builder, fmtr, "users", Values{"name": "Bob"}, "id, created_at").Scan(&id, &createdAt)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -103,22 +104,23 @@ func TestInsertReturning(t *testing.T) {
 	})
 
 	t.Run("empty values error", func(t *testing.T) {
-		_, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
+		_ = conn
 		var id int64
-		err := InsertReturning(t.Context(), ext, "users", Values{}, "id").Scan(&id)
+		err := InsertReturning(t.Context(), conn, refl, builder, fmtr, "users", Values{}, "id").Scan(&id)
 		if err == nil {
 			t.Error("expected error for empty values")
 		}
 	})
 
 	t.Run("query error", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
 		queryErr := errors.New("insert failed")
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
 			return NewErrRows(queryErr)
 		}
 		var id int64
-		err := InsertReturning(t.Context(), ext, "users", Values{"name": "Alice"}, "id").Scan(&id)
+		err := InsertReturning(t.Context(), conn, refl, builder, fmtr, "users", Values{"name": "Alice"}, "id").Scan(&id)
 		if !errors.Is(err, queryErr) {
 			t.Errorf("expected error wrapping %v, got: %v", queryErr, err)
 		}
@@ -127,7 +129,7 @@ func TestInsertReturning(t *testing.T) {
 
 func TestInsertUnique(t *testing.T) {
 	t.Run("inserted", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, _, builder, fmtr := newTestInterfaces()
 		var queryCount int
 		var gotQuery string
 		var gotArgs []any
@@ -137,7 +139,7 @@ func TestInsertUnique(t *testing.T) {
 			gotArgs = args
 			return NewMockRows("true").WithRow(true)
 		}
-		inserted, err := InsertUnique(t.Context(), ext, "users", Values{"id": 1, "name": "Alice"}, "id")
+		inserted, err := InsertUnique(t.Context(), conn, builder, fmtr, "users", Values{"id": 1, "name": "Alice"}, "id")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -155,13 +157,13 @@ func TestInsertUnique(t *testing.T) {
 	})
 
 	t.Run("conflict no insert", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, _, builder, fmtr := newTestInterfaces()
 		var queryCount int
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
 			queryCount++
 			return NewMockRows("true")
 		}
-		inserted, err := InsertUnique(t.Context(), ext, "users", Values{"id": 1, "name": "Alice"}, "id")
+		inserted, err := InsertUnique(t.Context(), conn, builder, fmtr, "users", Values{"id": 1, "name": "Alice"}, "id")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -174,8 +176,9 @@ func TestInsertUnique(t *testing.T) {
 	})
 
 	t.Run("empty values error", func(t *testing.T) {
-		_, ext := newTestConnExt()
-		_, err := InsertUnique(t.Context(), ext, "users", Values{}, "id")
+		conn, _, builder, fmtr := newTestInterfaces()
+		_ = conn
+		_, err := InsertUnique(t.Context(), conn, builder, fmtr, "users", Values{}, "id")
 		if err == nil {
 			t.Error("expected error for empty values")
 		}
@@ -186,7 +189,7 @@ func TestInsertRowStruct(t *testing.T) {
 	wantQuery := "INSERT INTO test_table(id,name,active) VALUES($1,$2,$3)"
 
 	t.Run("success", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
 		var execCount int
 		var gotQuery string
 		var gotArgs []any
@@ -197,7 +200,7 @@ func TestInsertRowStruct(t *testing.T) {
 			return nil
 		}
 		row := reflectTestStruct{ID: 1, Name: "Alice", Active: true}
-		err := InsertRowStruct(t.Context(), ext, row)
+		err := InsertRowStruct(t.Context(), conn, refl, builder, fmtr, row)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -211,7 +214,7 @@ func TestInsertRowStruct(t *testing.T) {
 	})
 
 	t.Run("with pointer", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
 		var execCount int
 		var gotQuery string
 		var gotArgs []any
@@ -222,7 +225,7 @@ func TestInsertRowStruct(t *testing.T) {
 			return nil
 		}
 		row := &reflectTestStruct{ID: 2, Name: "Bob", Active: false}
-		err := InsertRowStruct(t.Context(), ext, row)
+		err := InsertRowStruct(t.Context(), conn, refl, builder, fmtr, row)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -236,7 +239,7 @@ func TestInsertRowStruct(t *testing.T) {
 	})
 
 	t.Run("exec error", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
 		var execCount int
 		testErr := errors.New("insert failed")
 		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
@@ -244,7 +247,7 @@ func TestInsertRowStruct(t *testing.T) {
 			return testErr
 		}
 		row := reflectTestStruct{ID: 1, Name: "Alice"}
-		err := InsertRowStruct(t.Context(), ext, row)
+		err := InsertRowStruct(t.Context(), conn, refl, builder, fmtr, row)
 		if !errors.Is(err, testErr) {
 			t.Errorf("expected error wrapping %v, got: %v", testErr, err)
 		}
@@ -258,7 +261,7 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 	wantQuery := "INSERT INTO test_table(id,name,active) VALUES($1,$2,$3) ON CONFLICT (id) DO NOTHING RETURNING TRUE"
 
 	t.Run("inserted", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
 		var queryCount int
 		var gotQuery string
 		var gotArgs []any
@@ -269,7 +272,7 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 			return NewMockRows("true").WithRow(true)
 		}
 		row := reflectTestStruct{ID: 1, Name: "Alice", Active: true}
-		inserted, err := InsertUniqueRowStruct(t.Context(), ext, row, "id")
+		inserted, err := InsertUniqueRowStruct(t.Context(), conn, refl, builder, fmtr, row, "id")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -286,14 +289,14 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 	})
 
 	t.Run("conflict no insert", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
 		var queryCount int
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
 			queryCount++
 			return NewMockRows("true")
 		}
 		row := reflectTestStruct{ID: 1, Name: "Alice", Active: true}
-		inserted, err := InsertUniqueRowStruct(t.Context(), ext, row, "id")
+		inserted, err := InsertUniqueRowStruct(t.Context(), conn, refl, builder, fmtr, row, "id")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -308,7 +311,7 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 
 func TestInsertRowStructStmt(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
 		var execCount int
 		var gotQuery string
 		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
@@ -316,7 +319,7 @@ func TestInsertRowStructStmt(t *testing.T) {
 			gotQuery = query
 			return nil
 		}
-		insertFunc, closeStmt, err := InsertRowStructStmt[reflectTestStruct](t.Context(), ext)
+		insertFunc, closeStmt, err := InsertRowStructStmt[reflectTestStruct](t.Context(), conn, refl, builder, fmtr)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -342,15 +345,15 @@ func TestInsertRowStructStmt(t *testing.T) {
 
 func TestInsertRowStructs(t *testing.T) {
 	t.Run("empty slice", func(t *testing.T) {
-		_, ext := newTestConnExt()
-		err := InsertRowStructs[reflectTestStruct](t.Context(), ext, nil)
+		conn, refl, builder, fmtr := newTestInterfaces()
+		err := InsertRowStructs[reflectTestStruct](t.Context(), conn, refl, builder, fmtr, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 	})
 
 	t.Run("single item", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
 		var execCount int
 		var gotQuery string
 		var gotArgs []any
@@ -361,7 +364,7 @@ func TestInsertRowStructs(t *testing.T) {
 			return nil
 		}
 		items := []reflectTestStruct{{ID: 1, Name: "Alice", Active: true}}
-		err := InsertRowStructs(t.Context(), ext, items)
+		err := InsertRowStructs(t.Context(), conn, refl, builder, fmtr, items)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -376,7 +379,7 @@ func TestInsertRowStructs(t *testing.T) {
 	})
 
 	t.Run("multiple items uses transaction", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
 		var execCount int
 		var gotQuery string
 		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
@@ -389,7 +392,7 @@ func TestInsertRowStructs(t *testing.T) {
 			{ID: 2, Name: "Bob", Active: false},
 			{ID: 3, Name: "Charlie", Active: true},
 		}
-		err := InsertRowStructs(t.Context(), ext, items)
+		err := InsertRowStructs(t.Context(), conn, refl, builder, fmtr, items)
 		if err != nil {
 			t.Fatal(err)
 		}

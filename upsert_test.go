@@ -10,7 +10,7 @@ func TestUpsertRowStruct(t *testing.T) {
 	wantQuery := "INSERT INTO test_table(id,name,active) VALUES($1,$2,$3) ON CONFLICT(id) DO UPDATE SET name=$2, active=$3"
 
 	t.Run("success", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
 		var execCount int
 		var gotQuery string
 		var gotArgs []any
@@ -21,7 +21,7 @@ func TestUpsertRowStruct(t *testing.T) {
 			return nil
 		}
 		row := reflectTestStruct{ID: 1, Name: "Alice", Active: true}
-		err := UpsertRowStruct(t.Context(), ext, row)
+		err := UpsertRowStruct(t.Context(), conn, refl, builder, fmtr, row)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -35,19 +35,20 @@ func TestUpsertRowStruct(t *testing.T) {
 	})
 
 	t.Run("no primary key error", func(t *testing.T) {
-		_, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
+		_ = conn
 		type noPKRow struct {
 			TableName `db:"no_pk_table"`
 			Name      string `db:"name"`
 		}
-		err := UpsertRowStruct(t.Context(), ext, noPKRow{Name: "test"})
+		err := UpsertRowStruct(t.Context(), conn, refl, builder, fmtr, noPKRow{Name: "test"})
 		if err == nil {
 			t.Error("expected error for struct without primary key")
 		}
 	})
 
 	t.Run("exec error", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
 		var execCount int
 		testErr := errors.New("upsert failed")
 		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
@@ -55,7 +56,7 @@ func TestUpsertRowStruct(t *testing.T) {
 			return testErr
 		}
 		row := reflectTestStruct{ID: 1, Name: "Alice"}
-		err := UpsertRowStruct(t.Context(), ext, row)
+		err := UpsertRowStruct(t.Context(), conn, refl, builder, fmtr, row)
 		if !errors.Is(err, testErr) {
 			t.Errorf("expected error wrapping %v, got: %v", testErr, err)
 		}
@@ -69,7 +70,7 @@ func TestUpsertRowStructStmt(t *testing.T) {
 	wantQuery := "INSERT INTO test_table(id,name,active) VALUES($1,$2,$3) ON CONFLICT(id) DO UPDATE SET name=$2, active=$3"
 
 	t.Run("success", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
 		var execCount int
 		var gotQuery string
 		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
@@ -77,7 +78,7 @@ func TestUpsertRowStructStmt(t *testing.T) {
 			gotQuery = query
 			return nil
 		}
-		upsertFunc, closeStmt, err := UpsertRowStructStmt[reflectTestStruct](t.Context(), ext)
+		upsertFunc, closeStmt, err := UpsertRowStructStmt[reflectTestStruct](t.Context(), conn, refl, builder, fmtr)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -100,12 +101,13 @@ func TestUpsertRowStructStmt(t *testing.T) {
 	})
 
 	t.Run("no primary key error", func(t *testing.T) {
-		_, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
+		_ = conn
 		type noPKRow struct {
 			TableName `db:"no_pk_table"`
 			Name      string `db:"name"`
 		}
-		_, _, err := UpsertRowStructStmt[noPKRow](t.Context(), ext)
+		_, _, err := UpsertRowStructStmt[noPKRow](t.Context(), conn, refl, builder, fmtr)
 		if err == nil {
 			t.Error("expected error for struct without primary key")
 		}
@@ -114,15 +116,15 @@ func TestUpsertRowStructStmt(t *testing.T) {
 
 func TestUpsertRowStructs(t *testing.T) {
 	t.Run("empty slice", func(t *testing.T) {
-		_, ext := newTestConnExt()
-		err := UpsertRowStructs[reflectTestStruct](t.Context(), ext, nil)
+		conn, refl, builder, fmtr := newTestInterfaces()
+		err := UpsertRowStructs[reflectTestStruct](t.Context(), conn, refl, builder, fmtr, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
 	})
 
 	t.Run("single item", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
 		var execCount int
 		var gotQuery string
 		var gotArgs []any
@@ -133,7 +135,7 @@ func TestUpsertRowStructs(t *testing.T) {
 			return nil
 		}
 		items := []reflectTestStruct{{ID: 1, Name: "Alice", Active: true}}
-		err := UpsertRowStructs(t.Context(), ext, items)
+		err := UpsertRowStructs(t.Context(), conn, refl, builder, fmtr, items)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -148,7 +150,7 @@ func TestUpsertRowStructs(t *testing.T) {
 	})
 
 	t.Run("multiple items uses transaction", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, refl, builder, fmtr := newTestInterfaces()
 		var execCount int
 		var gotQuery string
 		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
@@ -160,7 +162,7 @@ func TestUpsertRowStructs(t *testing.T) {
 			{ID: 1, Name: "Alice", Active: true},
 			{ID: 2, Name: "Bob", Active: false},
 		}
-		err := UpsertRowStructs(t.Context(), ext, items)
+		err := UpsertRowStructs(t.Context(), conn, refl, builder, fmtr, items)
 		if err != nil {
 			t.Fatal(err)
 		}

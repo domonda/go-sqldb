@@ -60,21 +60,21 @@ func main() {
 	}
 
 	// Query all users as struct slice
-	users, err := sqldb.QueryRowsAsSlice[User](ctx, conn, `select * from public.user`)
+	users, err := sqldb.QueryRowsAsSlice[User](ctx, conn, conn, conn, `select * from public.user`)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(users)
 
 	// Query single column as slice
-	userEmails, err := sqldb.QueryRowsAsSlice[string](ctx, conn, `select email from public.user`)
+	userEmails, err := sqldb.QueryRowsAsSlice[string](ctx, conn, conn, conn, `select email from public.user`)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(userEmails)
 
 	// Callback with scanned values for each row
-	err = sqldb.QueryCallback(ctx, conn,
+	err = sqldb.QueryCallback(ctx, conn, conn, conn,
 		func(name, email string) {
 			fmt.Printf("%q <%s>\n", name, email)
 		},
@@ -86,13 +86,13 @@ func main() {
 
 	// Insert a struct with table name from struct tag
 	newUser := &User{ /* ... */ }
-	err = sqldb.InsertRowStruct(ctx, conn, newUser)
+	err = sqldb.InsertRowStruct(ctx, conn, conn, conn, conn, newUser)
 	if err != nil {
 		panic(err)
 	}
 
 	// Insert with values map
-	err = sqldb.Insert(ctx, conn, "public.user", sqldb.Values{
+	err = sqldb.Insert(ctx, conn, conn, conn, "public.user", sqldb.Values{
 		"name":  "Erik Unger",
 		"email": "erik@domonda.com",
 	})
@@ -101,7 +101,7 @@ func main() {
 	}
 
 	// Upsert a struct
-	err = sqldb.UpsertRowStruct(ctx, conn, newUser, sqldb.IgnoreColumns("created_at"))
+	err = sqldb.UpsertRowStruct(ctx, conn, conn, conn, conn, newUser, sqldb.IgnoreColumns("created_at"))
 	if err != nil {
 		panic(err)
 	}
@@ -109,7 +109,7 @@ func main() {
 	// Transaction with ConnExt
 	txOpts := &sql.TxOptions{Isolation: sql.LevelWriteCommitted}
 
-	err = sqldb.TransactionExt(ctx, conn, txOpts, func(tx *sqldb.ConnExt) error {
+	err = sqldb.TransactionExt(ctx, conn, txOpts, func(tx sqldb.ConnExt) error {
 		err := tx.Exec(ctx, "...")
 		if err != nil {
 			return err

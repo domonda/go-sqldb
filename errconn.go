@@ -24,12 +24,12 @@ func NewErrConnExt(err error) ConnExt {
 	if err == nil {
 		panic("NewErrConnExt expects non nil error")
 	}
-	return ConnExt{
-		Connection:      NewErrConn(err),
-		StructReflector: NewTaggedStructReflector(),
-		QueryFormatter:  StdQueryFormatter{},
-		QueryBuilder:    StdQueryBuilder{},
-	}
+	return NewConnExt(
+		NewErrConn(err),
+		NewTaggedStructReflector(),
+		StdQueryFormatter{},
+		StdQueryBuilder{},
+	)
 }
 
 // ErrConn is a dummy ListenerConnection

@@ -9,7 +9,8 @@ import (
 // NewMockConn returns a new MockConn with the QueryFormatter
 // from the ConnExt in the context or the global ConnExt.
 func NewMockConn(ctx context.Context) *sqldb.MockConn {
-	return sqldb.NewMockConn(Conn(ctx).QueryFormatter)
+	var queryFormatter sqldb.QueryFormatter = Conn(ctx)
+	return sqldb.NewMockConn(queryFormatter)
 }
 
 // NewMockStructRows returns a new MockStructRows with column names
@@ -17,6 +18,6 @@ func NewMockConn(ctx context.Context) *sqldb.MockConn {
 // from the ConnExt in the context or the global ConnExt and the given rows as data.
 // Panics if S is not a struct or has no mapped columns.
 func NewMockStructRows[S any](ctx context.Context, rows ...S) *sqldb.MockStructRows[S] {
-	reflector := Conn(ctx).StructReflector
+	var reflector sqldb.StructReflector = Conn(ctx)
 	return sqldb.NewMockStructRows(reflector, rows...)
 }

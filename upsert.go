@@ -16,7 +16,7 @@ import (
 // Primary key columns are identified by the "primarykey" option
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
 // The struct must have at least one primary key field.
-func UpsertRowStruct(ctx context.Context, conn *ConnExt, rowStruct StructWithTableName, options ...QueryOption) error {
+func UpsertRowStruct(ctx context.Context, conn Executor, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, rowStruct StructWithTableName, options ...QueryOption) error {
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return err
@@ -30,7 +30,7 @@ func UpsertRowStruct(ctx context.Context, conn *ConnExt, rowStruct StructWithTab
 	useCache := len(options) == 0
 	if useCache {
 		upsertRowStructQueryCacheMtx.RLock()
-		cached, ok := upsertRowStructQueryCache[structType][conn.StructReflector][conn.QueryBuilder][conn.QueryFormatter]
+		cached, ok := upsertRowStructQueryCache[structType][refl][builder][fmtr]
 		upsertRowStructQueryCacheMtx.RUnlock()
 		if ok {
 			vals = make([]any, len(cached.structFieldIndices))
@@ -39,18 +39,18 @@ func UpsertRowStruct(ctx context.Context, conn *ConnExt, rowStruct StructWithTab
 			}
 			err = conn.Exec(ctx, cached.query, vals...)
 			if err != nil {
-				return WrapErrorWithQuery(err, cached.query, vals, conn.QueryFormatter)
+				return WrapErrorWithQuery(err, cached.query, vals, fmtr)
 			}
 			return nil
 		}
 	}
 	var cached queryCache
 	var columns []ColumnInfo
-	columns, cached.structFieldIndices, vals, err = ReflectStructColumnsFieldIndicesAndValues(structVal, conn.StructReflector, append(options, IgnoreReadOnly)...)
+	columns, cached.structFieldIndices, vals, err = ReflectStructColumnsFieldIndicesAndValues(structVal, refl, append(options, IgnoreReadOnly)...)
 	if err != nil {
 		return err
 	}
-	table, err := conn.StructReflector.TableNameForStruct(structType)
+	table, err := refl.TableNameForStruct(structType)
 	if err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func UpsertRowStruct(ctx context.Context, conn *ConnExt, rowStruct StructWithTab
 	if !hasPK {
 		return fmt.Errorf("UpsertRowStruct of table %s: %s has no mapped primary key field", table, structType)
 	}
-	cached.query, err = conn.QueryBuilder.Upsert(conn.QueryFormatter, table, columns)
+	cached.query, err = builder.Upsert(fmtr, table, columns)
 	if err != nil {
 		return fmt.Errorf("UpsertRowStruct of table %s: failed to create UPSERT query: %w", table, err)
 	}
@@ -69,19 +69,19 @@ func UpsertRowStruct(ctx context.Context, conn *ConnExt, rowStruct StructWithTab
 		if _, ok := upsertRowStructQueryCache[structType]; !ok {
 			upsertRowStructQueryCache[structType] = make(map[StructReflector]map[QueryBuilder]map[QueryFormatter]queryCache)
 		}
-		if _, ok := upsertRowStructQueryCache[structType][conn.StructReflector]; !ok {
-			upsertRowStructQueryCache[structType][conn.StructReflector] = make(map[QueryBuilder]map[QueryFormatter]queryCache)
+		if _, ok := upsertRowStructQueryCache[structType][refl]; !ok {
+			upsertRowStructQueryCache[structType][refl] = make(map[QueryBuilder]map[QueryFormatter]queryCache)
 		}
-		if _, ok := upsertRowStructQueryCache[structType][conn.StructReflector][conn.QueryBuilder]; !ok {
-			upsertRowStructQueryCache[structType][conn.StructReflector][conn.QueryBuilder] = make(map[QueryFormatter]queryCache)
+		if _, ok := upsertRowStructQueryCache[structType][refl][builder]; !ok {
+			upsertRowStructQueryCache[structType][refl][builder] = make(map[QueryFormatter]queryCache)
 		}
-		upsertRowStructQueryCache[structType][conn.StructReflector][conn.QueryBuilder][conn.QueryFormatter] = cached
+		upsertRowStructQueryCache[structType][refl][builder][fmtr] = cached
 		upsertRowStructQueryCacheMtx.Unlock()
 	}
 
 	err = conn.Exec(ctx, cached.query, vals...)
 	if err != nil {
-		return WrapErrorWithQuery(err, cached.query, vals, conn.QueryFormatter)
+		return WrapErrorWithQuery(err, cached.query, vals, fmtr)
 	}
 	return nil
 }
@@ -95,15 +95,15 @@ func UpsertRowStruct(ctx context.Context, conn *ConnExt, rowStruct StructWithTab
 // The struct must have at least one primary key field.
 // Returns an upsert function to upsert individual rows and a closeStmt
 // function that must be called when done to close the prepared statement.
-func UpsertRowStructStmt[S StructWithTableName](ctx context.Context, conn *ConnExt, options ...QueryOption) (upsert func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
+func UpsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Preparer, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, options ...QueryOption) (upsert func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
 	structType := reflect.TypeFor[S]()
-	table, err := conn.StructReflector.TableNameForStruct(structType)
+	table, err := refl.TableNameForStruct(structType)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	options = append(options, IgnoreReadOnly)
-	columns, err := ReflectStructColumns(structType, conn.StructReflector, options...)
+	columns, err := ReflectStructColumns(structType, refl, options...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -114,7 +114,7 @@ func UpsertRowStructStmt[S StructWithTableName](ctx context.Context, conn *ConnE
 		return nil, nil, fmt.Errorf("UpsertRowStructStmt of table %s: %s has no mapped primary key field", table, structType)
 	}
 
-	query, err := conn.QueryBuilder.Upsert(conn.QueryFormatter, table, columns)
+	query, err := builder.Upsert(fmtr, table, columns)
 	if err != nil {
 		return nil, nil, fmt.Errorf("UpsertRowStructStmt of table %s: failed to create UPSERT query: %w", table, err)
 	}
@@ -129,13 +129,13 @@ func UpsertRowStructStmt[S StructWithTableName](ctx context.Context, conn *ConnE
 		if err != nil {
 			return err
 		}
-		vals, err := ReflectStructValues(v, conn.StructReflector, options...)
+		vals, err := ReflectStructValues(v, refl, options...)
 		if err != nil {
 			return err
 		}
 		err = stmt.Exec(ctx, vals...)
 		if err != nil {
-			return WrapErrorWithQuery(err, query, vals, conn.QueryFormatter)
+			return WrapErrorWithQuery(err, query, vals, fmtr)
 		}
 		return nil
 	}
@@ -149,15 +149,15 @@ func UpsertRowStructStmt[S StructWithTableName](ctx context.Context, conn *ConnE
 // Column names are derived from the `db` struct tags of the struct's fields.
 // Primary key columns are identified by the "primarykey" option
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
-func UpsertRowStructs[S StructWithTableName](ctx context.Context, conn *ConnExt, rowStructs []S, options ...QueryOption) error {
+func UpsertRowStructs[S StructWithTableName](ctx context.Context, conn Connection, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, rowStructs []S, options ...QueryOption) error {
 	switch len(rowStructs) {
 	case 0:
 		return nil
 	case 1:
-		return UpsertRowStruct(ctx, conn, rowStructs[0], options...)
+		return UpsertRowStruct(ctx, conn, refl, builder, fmtr, rowStructs[0], options...)
 	}
-	return TransactionExt(ctx, conn, nil, func(tx *ConnExt) (err error) {
-		upsertFunc, closeStmt, stmtErr := UpsertRowStructStmt[S](ctx, tx, options...)
+	return Transaction(ctx, conn, nil, func(tx Connection) (err error) {
+		upsertFunc, closeStmt, stmtErr := UpsertRowStructStmt[S](ctx, tx, refl, builder, fmtr, options...)
 		if stmtErr != nil {
 			return stmtErr
 		}

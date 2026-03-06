@@ -62,7 +62,7 @@ func TestMain(m *testing.M) {
 	// Retry connecting because docker compose up -d returns
 	// before PostgreSQL is ready to accept connections
 	var (
-		connExt *sqldb.ConnExt
+		connExt sqldb.ConnExt
 		err     error
 	)
 	for range 30 {
@@ -77,19 +77,21 @@ func TestMain(m *testing.M) {
 	}
 
 	// Create a test table for the information schema tests
-	err = connExt.Exec(ctx, /*sql*/ `
-		DROP TABLE IF EXISTS information_test_child;
-		DROP TABLE IF EXISTS information_test;
-		CREATE TABLE information_test (
-			id    integer PRIMARY KEY,
-			name  text NOT NULL,
-			value text
-		);
-		CREATE TABLE information_test_child (
-			id        integer PRIMARY KEY,
-			parent_id integer NOT NULL REFERENCES information_test(id)
-		);
-	`)
+	err = connExt.Exec(ctx,
+		/*sql*/ `
+			DROP TABLE IF EXISTS information_test_child;
+			DROP TABLE IF EXISTS information_test;
+			CREATE TABLE information_test (
+				id    integer PRIMARY KEY,
+				name  text NOT NULL,
+				value text
+			);
+			CREATE TABLE information_test_child (
+				id        integer PRIMARY KEY,
+				parent_id integer NOT NULL REFERENCES information_test(id)
+			);
+		`,
+	)
 	if err != nil {
 		log.Fatalf("Failed to create test tables: %v", err)
 	}
@@ -99,10 +101,12 @@ func TestMain(m *testing.M) {
 	m.Run()
 
 	// Cleanup
-	cleanupErr := connExt.Exec(ctx, /*sql*/ `
-		DROP TABLE IF EXISTS information_test_child;
-		DROP TABLE IF EXISTS information_test;
-	`)
+	cleanupErr := connExt.Exec(ctx,
+		/*sql*/ `
+			DROP TABLE IF EXISTS information_test_child;
+			DROP TABLE IF EXISTS information_test;
+		`,
+	)
 	if cleanupErr != nil {
 		fmt.Fprintf(os.Stderr, "Failed to drop test tables: %v\n", cleanupErr)
 	}
@@ -244,16 +248,20 @@ func TestGetPrimaryKeyColumns(t *testing.T) {
 
 func TestGetTableRowsWithPrimaryKey(t *testing.T) {
 	// Insert a row into the parent table only
-	err := db.Conn(testCtx).Exec(testCtx, /*sql*/ `
-		DELETE FROM information_test_child;
-		DELETE FROM information_test;
-		INSERT INTO information_test (id, name, value) VALUES (42, 'test-row', 'test-value');
-	`)
+	err := db.Conn(testCtx).Exec(testCtx,
+		/*sql*/ `
+			DELETE FROM information_test_child;
+			DELETE FROM information_test;
+			INSERT INTO information_test (id, name, value) VALUES (42, 'test-row', 'test-value');
+		`,
+	)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		db.Conn(testCtx).Exec(testCtx, /*sql*/ `DELETE FROM information_test_child; DELETE FROM information_test`)
+		db.Conn(testCtx).Exec(testCtx,
+			/*sql*/ `DELETE FROM information_test_child; DELETE FROM information_test`,
+		)
 	})
 
 	// PK columns for both tables — information_test_child has no row with id=42

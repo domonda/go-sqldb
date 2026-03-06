@@ -247,6 +247,10 @@ func EscapeIdentifier(ident string) string {
 	return ident
 }
 
+// QueryBuilder is the standard [sqldb.QueryBuilder] implementation
+// used for SQL Server.
+type QueryBuilder = sqldb.StdQueryBuilder
+
 type QueryFormatter struct{}
 
 func (QueryFormatter) FormatTableName(name string) (string, error) {

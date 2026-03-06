@@ -17,7 +17,7 @@ import (
 
 const Driver = "sqlite"
 
-// Connect establishes a new sqldb.Connection using the passed sqldb.ConnConfig
+// Connect establishes a new [sqldb.Connection] using the passed config
 // and zombiezen.com/go/sqlite as the underlying SQLite implementation.
 func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
 	if err := ctx.Err(); err != nil {
@@ -75,9 +75,9 @@ func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection
 	return conn
 }
 
-// ConnectExt establishes a new sqldb.ConnExt using the passed config and structReflector.
-// It wraps Connect and returns an extended connection with SQLite-specific components.
-func ConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) (*sqldb.ConnExt, error) {
+// ConnectExt establishes a new [sqldb.ConnExt] using the passed config and structReflector
+// with the SQLite-specific [QueryFormatter] and [QueryBuilder].
+func ConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) (sqldb.ConnExt, error) {
 	conn, err := Connect(ctx, config)
 	if err != nil {
 		return nil, err
@@ -85,8 +85,8 @@ func ConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector s
 	return NewConnExt(conn, structReflector), nil
 }
 
-// MustConnectExt is like ConnectExt but panics on error.
-func MustConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) *sqldb.ConnExt {
+// MustConnectExt is like [ConnectExt] but panics on error.
+func MustConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) sqldb.ConnExt {
 	connExt, err := ConnectExt(ctx, config, structReflector)
 	if err != nil {
 		panic(err)
@@ -94,15 +94,14 @@ func MustConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflect
 	return connExt
 }
 
-// NewConnExt creates a new sqldb.ConnExt with SQLite-specific components.
-// It combines the passed connection and struct reflector with SQLite
-// specific QueryFormatter and QueryBuilder.
-func NewConnExt(conn sqldb.Connection, structReflector sqldb.StructReflector) *sqldb.ConnExt {
+// NewConnExt wraps conn and structReflector into a [sqldb.ConnExt]
+// using the SQLite-specific [QueryFormatter] and [QueryBuilder].
+func NewConnExt(conn sqldb.Connection, structReflector sqldb.StructReflector) sqldb.ConnExt {
 	return sqldb.NewConnExt(
 		conn,
 		structReflector,
-		sqldb.StdQueryFormatter{},
-		sqldb.StdQueryBuilder{},
+		QueryFormatter{},
+		QueryBuilder{},
 	)
 }
 

@@ -25,27 +25,31 @@ func CurrentTimestamp(ctx context.Context) time.Time {
 
 // QueryRow queries a single row and returns a Row for the results.
 func QueryRow(ctx context.Context, query string, args ...any) *sqldb.Row {
-	return sqldb.QueryRow(ctx, Conn(ctx), query, args...)
+	conn := Conn(ctx)
+	return sqldb.QueryRow(ctx, conn, conn, conn, query, args...)
 }
 
 // QueryRowAs queries a single row and scans it as the type T.
 // If T is a struct that does not implement sql.Scanner,
 // the column values are scanned into the struct fields.
 func QueryRowAs[T any](ctx context.Context, query string, args ...any) (val T, err error) {
-	return sqldb.QueryRowAs[T](ctx, Conn(ctx), query, args...)
+	conn := Conn(ctx)
+	return sqldb.QueryRowAs[T](ctx, conn, conn, conn, query, args...)
 }
 
 // QueryRowAsOr queries a single row and scans it as the type T,
 // or returns the passed defaultVal in case of sql.ErrNoRows.
 func QueryRowAsOr[T any](ctx context.Context, defaultVal T, query string, args ...any) (val T, err error) {
-	return sqldb.QueryRowAsOr(ctx, Conn(ctx), defaultVal, query, args...)
+	conn := Conn(ctx)
+	return sqldb.QueryRowAsOr(ctx, conn, conn, conn, defaultVal, query, args...)
 }
 
 // QueryRowAsStmt prepares a statement that queries a single row and scans it as the type T.
 // Returns a queryFunc to execute the query with different args each time
 // and a closeStmt function that must be called when done.
 func QueryRowAsStmt[T any](ctx context.Context, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
-	return sqldb.QueryRowAsStmt[T](ctx, Conn(ctx), query)
+	conn := Conn(ctx)
+	return sqldb.QueryRowAsStmt[T](ctx, conn, conn, conn, query)
 }
 
 // QueryRowByPK queries a table row by primary key and scans it into a struct of type S.
@@ -55,7 +59,8 @@ func QueryRowAsStmt[T any](ctx context.Context, query string) (queryFunc func(ct
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
 // The number of pkValue+pkValues must match the number of primary key columns.
 func QueryRowByPK[S sqldb.StructWithTableName](ctx context.Context, pkValue any, pkValues ...any) (S, error) {
-	return sqldb.QueryRowByPK[S](ctx, Conn(ctx), pkValue, pkValues...)
+	conn := Conn(ctx)
+	return sqldb.QueryRowByPK[S](ctx, conn, conn, conn, conn, pkValue, pkValues...)
 }
 
 // QueryRowByPKOr queries a table row by primary key and scans it into a struct of type S.
@@ -66,19 +71,22 @@ func QueryRowByPK[S sqldb.StructWithTableName](ctx context.Context, pkValue any,
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
 // The number of pkValue+pkValues must match the number of primary key columns.
 func QueryRowByPKOr[S sqldb.StructWithTableName](ctx context.Context, defaultVal S, pkValue any, pkValues ...any) (S, error) {
-	return sqldb.QueryRowByPKOr(ctx, Conn(ctx), defaultVal, pkValue, pkValues...)
+	conn := Conn(ctx)
+	return sqldb.QueryRowByPKOr(ctx, conn, conn, conn, conn, defaultVal, pkValue, pkValues...)
 }
 
 // QueryRowAsMap queries a single row and returns the columns as map
 // using the column names as keys.
 func QueryRowAsMap[K ~string, V any](ctx context.Context, query string, args ...any) (m map[K]V, err error) {
-	return sqldb.QueryRowAsMap[K, V](ctx, Conn(ctx), query, args...)
+	conn := Conn(ctx)
+	return sqldb.QueryRowAsMap[K, V](ctx, conn, conn, query, args...)
 }
 
 // QueryRowsAsSlice returns queried rows as slice of the generic type T
 // using a reflector from the context to scan column values as struct fields.
 func QueryRowsAsSlice[T any](ctx context.Context, query string, args ...any) (rows []T, err error) {
-	return sqldb.QueryRowsAsSlice[T](ctx, Conn(ctx), query, args...)
+	conn := Conn(ctx)
+	return sqldb.QueryRowsAsSlice[T](ctx, conn, conn, conn, query, args...)
 }
 
 // QueryRowsAsStrings scans the query result into a table of strings
@@ -91,7 +99,8 @@ func QueryRowsAsSlice[T any](ctx context.Context, query string, args ...any) (ro
 // If the query result has no rows, then only the header row
 // and no error will be returned.
 func QueryRowsAsStrings(ctx context.Context, query string, args ...any) (rows [][]string, err error) {
-	return sqldb.QueryRowsAsStrings(ctx, Conn(ctx), query, args...)
+	conn := Conn(ctx)
+	return sqldb.QueryRowsAsStrings(ctx, conn, conn, query, args...)
 }
 
 // QueryCallback calls the passed callback
@@ -111,5 +120,6 @@ func QueryRowsAsStrings(ctx context.Context, query string, args ...any) (rows []
 //
 // In case of zero rows, no error will be returned.
 func QueryCallback(ctx context.Context, callback any, query string, args ...any) error {
-	return sqldb.QueryCallback(ctx, Conn(ctx), callback, query, args...)
+	conn := Conn(ctx)
+	return sqldb.QueryCallback(ctx, conn, conn, conn, callback, query, args...)
 }

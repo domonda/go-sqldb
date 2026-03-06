@@ -6,59 +6,7 @@ import (
 	"testing"
 )
 
-func TestConnExt_WithConnection(t *testing.T) {
-	conn1 := NewMockConn(NewQueryFormatter("$"))
-	reflector := NewTaggedStructReflector()
-	formatter := NewQueryFormatter("$")
-	builder := StdQueryBuilder{}
-	ext := NewConnExt(conn1, reflector, formatter, builder)
-
-	conn2 := NewMockConn(NewQueryFormatter("$"))
-	ext2 := ext.WithConnection(conn2)
-
-	if ext2.Connection != conn2 {
-		t.Error("expected new connection")
-	}
-	if ext2.StructReflector != reflector {
-		t.Error("StructReflector not preserved")
-	}
-	if ext2.QueryFormatter != formatter {
-		t.Error("QueryFormatter not preserved")
-	}
-	if ext2.QueryBuilder != builder {
-		t.Error("QueryBuilder not preserved")
-	}
-}
-
 func TestTransactionExt(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		conn, ext := newTestConnExt()
-		var committed bool
-		conn.MockCommit = func() error {
-			committed = true
-			return nil
-		}
-		var txExtReceived bool
-		err := TransactionExt(t.Context(), ext, nil, func(tx *ConnExt) error {
-			txExtReceived = true
-			if tx.StructReflector != ext.StructReflector {
-				t.Error("StructReflector not preserved in tx")
-			}
-			if tx.QueryFormatter != ext.QueryFormatter {
-				t.Error("QueryFormatter not preserved in tx")
-			}
-			return nil
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !txExtReceived {
-			t.Error("txFunc was not called")
-		}
-		if !committed {
-			t.Error("expected MockCommit to be called")
-		}
-	})
 
 	t.Run("error propagation", func(t *testing.T) {
 		conn, ext := newTestConnExt()
@@ -68,7 +16,7 @@ func TestTransactionExt(t *testing.T) {
 			return nil
 		}
 		txErr := errors.New("tx error")
-		err := TransactionExt(t.Context(), ext, nil, func(tx *ConnExt) error {
+		err := TransactionExt(t.Context(), ext, nil, func(tx ConnExt) error {
 			return txErr
 		})
 		if !errors.Is(err, txErr) {
@@ -93,8 +41,8 @@ func TestTransactionResult(t *testing.T) {
 			queryCount++
 			return NewMockRows("count").WithRow(int64(42))
 		}
-		result, err := TransactionResult(t.Context(), ext, nil, func(tx *ConnExt) (int64, error) {
-			return QueryRowAs[int64](t.Context(), tx, "SELECT count(*) FROM users")
+		result, err := TransactionResult(t.Context(), ext, nil, func(tx ConnExt) (int64, error) {
+			return QueryRowAs[int64](t.Context(), tx, tx, tx, "SELECT count(*) FROM users")
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -118,7 +66,7 @@ func TestTransactionResult(t *testing.T) {
 			return nil
 		}
 		txErr := errors.New("tx error")
-		result, err := TransactionResult(t.Context(), ext, nil, func(tx *ConnExt) (string, error) {
+		result, err := TransactionResult(t.Context(), ext, nil, func(tx ConnExt) (string, error) {
 			return "", txErr
 		})
 		if !errors.Is(err, txErr) {

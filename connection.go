@@ -26,21 +26,46 @@ func (ts TransactionState) Active() bool {
 	return ts.ID != 0
 }
 
-// type Preparer interface {
-// 	// Prepare a statement for execution.
-// 	Prepare(ctx context.Context, query string) (Stmt, error)
-// }
+type Preparer interface {
+	// Prepare a statement for execution.
+	Prepare(ctx context.Context, query string) (Stmt, error)
+}
 
-// type Executor interface {
-// 	// Exec executes a query with optional args.
-// 	Exec(ctx context.Context, query string, args ...any) error
-// }
+type Executor interface {
+	// Exec executes a query with optional args.
+	Exec(ctx context.Context, query string, args ...any) error
+}
 
-// type Querier interface {
-// 	// Query queries rows with optional args.
-// 	// Any error will be returned by the Rows.Err method.
-// 	Query(ctx context.Context, query string, args ...any) Rows
-// }
+type Querier interface {
+	// Query queries rows with optional args.
+	// Any error will be returned by the Rows.Err method.
+	Query(ctx context.Context, query string, args ...any) Rows
+}
+
+type Transactioner interface {
+	// Transaction returns the transaction state of the connection
+	Transaction() TransactionState
+
+	// Begin a new transaction.
+	// If the connection is already a transaction then a brand
+	// new transaction will begin based on the connection
+	// that started this transaction.
+	// The passed id and opts will be returned from the transaction's
+	// Connection.Transaction method as TransactionState.
+	// Implementations should use the function NextTransactionID
+	// to acquire a new ID in a threadsafe way.
+	Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (Connection, error)
+
+	// Commit the current transaction.
+	// Returns ErrNotWithinTransaction if the connection
+	// is not within a transaction.
+	Commit() error
+
+	// Rollback the current transaction.
+	// Returns ErrNotWithinTransaction if the connection
+	// is not within a transaction.
+	Rollback() error
+}
 
 // Connection represents a database connection or transaction
 type Connection interface {

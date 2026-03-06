@@ -18,7 +18,7 @@ func TestSetConn(t *testing.T) {
 		defer func() { globalConn = saved }()
 
 		SetConn(conn)
-		require.Equal(t, mock, globalConn.Connection)
+		require.Equal(t, conn, globalConn)
 	})
 
 	t.Run("nil panics", func(t *testing.T) {
@@ -35,7 +35,7 @@ func TestConn(t *testing.T) {
 		ctx := ContextWithConn(t.Context(), conn)
 
 		got := Conn(ctx)
-		require.Equal(t, mock, got.Connection)
+		require.Equal(t, conn, got)
 	})
 
 	t.Run("falls back to global", func(t *testing.T) {
@@ -48,7 +48,7 @@ func TestConn(t *testing.T) {
 
 		SetConn(conn)
 		got := Conn(t.Context())
-		require.Equal(t, mock, got.Connection)
+		require.Equal(t, conn, got)
 	})
 }
 
@@ -58,7 +58,7 @@ func TestContextWithConn(t *testing.T) {
 	ctx := ContextWithConn(t.Context(), conn)
 
 	got := Conn(ctx)
-	require.Equal(t, mock, got.Connection)
+	require.Equal(t, conn, got)
 }
 
 func TestContextWithGlobalConn(t *testing.T) {
@@ -74,7 +74,7 @@ func TestContextWithGlobalConn(t *testing.T) {
 	// ContextWithGlobalConn should embed the global conn in context
 	ctx := ContextWithGlobalConn(t.Context())
 	got := Conn(ctx)
-	require.Equal(t, mock, got.Connection)
+	require.Equal(t, conn, got)
 }
 
 func TestClose(t *testing.T) {

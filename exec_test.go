@@ -9,14 +9,21 @@ import (
 
 // newTestConnExt creates a MockConn and ConnExt for testing.
 // Shared helper used across multiple test files.
-func newTestConnExt() (*MockConn, *ConnExt) {
+func newTestConnExt() (*MockConn, ConnExt) {
 	conn := NewMockConn(NewQueryFormatter("$"))
 	return conn, NewConnExt(conn, NewTaggedStructReflector(), NewQueryFormatter("$"), StdQueryBuilder{})
 }
 
+// newTestInterfaces creates a MockConn and separate interface values for testing.
+// Shared helper used across multiple test files.
+func newTestInterfaces() (conn *MockConn, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter) {
+	conn = NewMockConn(NewQueryFormatter("$"))
+	return conn, NewTaggedStructReflector(), StdQueryBuilder{}, NewQueryFormatter("$")
+}
+
 func TestExec(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, _, _, fmtr := newTestInterfaces()
 		var execCount int
 		var gotQuery string
 		var gotArgs []any
@@ -26,7 +33,7 @@ func TestExec(t *testing.T) {
 			gotArgs = args
 			return nil
 		}
-		err := Exec(t.Context(), ext, "DELETE FROM users WHERE id = $1", 42)
+		err := Exec(t.Context(), conn, fmtr, "DELETE FROM users WHERE id = $1", 42)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -42,14 +49,14 @@ func TestExec(t *testing.T) {
 	})
 
 	t.Run("error propagation", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, _, _, fmtr := newTestInterfaces()
 		var execCount int
 		testErr := errors.New("exec failed")
 		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
 			execCount++
 			return testErr
 		}
-		err := Exec(t.Context(), ext, "DELETE FROM users")
+		err := Exec(t.Context(), conn, fmtr, "DELETE FROM users")
 		if !errors.Is(err, testErr) {
 			t.Errorf("expected error wrapping %v, got: %v", testErr, err)
 		}
@@ -61,7 +68,7 @@ func TestExec(t *testing.T) {
 
 func TestExecStmt(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, _, _, fmtr := newTestInterfaces()
 		var execCount int
 		var gotQuery string
 		var gotArgs []any
@@ -71,7 +78,7 @@ func TestExecStmt(t *testing.T) {
 			gotArgs = args
 			return nil
 		}
-		execFunc, closeStmt, err := ExecStmt(t.Context(), ext, "DELETE FROM users WHERE id = $1")
+		execFunc, closeStmt, err := ExecStmt(t.Context(), conn, fmtr, "DELETE FROM users WHERE id = $1")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -93,14 +100,14 @@ func TestExecStmt(t *testing.T) {
 	})
 
 	t.Run("prepare error", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, _, _, fmtr := newTestInterfaces()
 		var prepareCount int
 		prepErr := errors.New("prepare failed")
 		conn.MockPrepare = func(ctx context.Context, query string) (Stmt, error) {
 			prepareCount++
 			return nil, prepErr
 		}
-		_, _, err := ExecStmt(t.Context(), ext, "DELETE FROM users")
+		_, _, err := ExecStmt(t.Context(), conn, fmtr, "DELETE FROM users")
 		if !errors.Is(err, prepErr) {
 			t.Errorf("expected error wrapping %v, got: %v", prepErr, err)
 		}
@@ -110,14 +117,14 @@ func TestExecStmt(t *testing.T) {
 	})
 
 	t.Run("exec error", func(t *testing.T) {
-		conn, ext := newTestConnExt()
+		conn, _, _, fmtr := newTestInterfaces()
 		var execCount int
 		execErr := errors.New("exec failed")
 		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
 			execCount++
 			return execErr
 		}
-		execFunc, closeStmt, err := ExecStmt(t.Context(), ext, "DELETE FROM users WHERE id = $1")
+		execFunc, closeStmt, err := ExecStmt(t.Context(), conn, fmtr, "DELETE FROM users WHERE id = $1")
 		if err != nil {
 			t.Fatal(err)
 		}

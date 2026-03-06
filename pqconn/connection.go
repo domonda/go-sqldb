@@ -12,8 +12,9 @@ import (
 
 const Driver = "postgres"
 
-// Connect establishes a new sqldb.Connection using the passed sqldb.Config
+// Connect establishes a new [sqldb.Connection] using the passed config
 // and github.com/lib/pq as driver implementation.
+// The returned connection also implements [sqldb.ListenerConnection].
 // The connection is pinged with the passed context and only returned
 // when there was no error from the ping.
 func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
@@ -48,14 +49,19 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, e
 	}, nil
 }
 
-// ConnectExt establishes a new sqldb.ConnExt using the passed config and structReflector.
-// It wraps Connect and returns an extended connection with PostgreSQL-specific components.
-func ConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) (*sqldb.ConnExt, error) {
+// ConnectExt establishes a new [sqldb.ConnExt] using the passed config and structReflector
+// with the PostgreSQL-specific [QueryFormatter] and [QueryBuilder].
+func ConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) (sqldb.ConnExt, error) {
 	conn, err := Connect(ctx, config)
 	if err != nil {
 		return nil, err
 	}
-	return NewConnExt(conn, structReflector), nil
+	return sqldb.NewConnExt(
+		conn,
+		structReflector,
+		QueryFormatter{},
+		QueryBuilder{},
+	), nil
 }
 
 // MustConnect creates a new sqldb.Connection using the passed sqldb.Config
@@ -71,25 +77,13 @@ func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection
 	return conn
 }
 
-// MustConnectExt is like ConnectExt but panics on error.
-func MustConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) *sqldb.ConnExt {
+// MustConnectExt is like [ConnectExt] but panics on error.
+func MustConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) sqldb.ConnExt {
 	connExt, err := ConnectExt(ctx, config, structReflector)
 	if err != nil {
 		panic(err)
 	}
 	return connExt
-}
-
-// NewConnExt creates a new sqldb.ConnExt with PostgreSQL-specific components.
-// It combines the passed connection and struct reflector with PostgreSQL
-// specific QueryFormatter and QueryBuilder.
-func NewConnExt(conn sqldb.Connection, structReflector sqldb.StructReflector) *sqldb.ConnExt {
-	return sqldb.NewConnExt(
-		conn,
-		structReflector,
-		QueryFormatter{},
-		sqldb.StdQueryBuilder{},
-	)
 }
 
 type connection struct {

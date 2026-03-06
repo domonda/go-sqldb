@@ -8,7 +8,8 @@ import (
 
 // Update table rows(s) with values using the where statement with passed in args starting at $1.
 func Update(ctx context.Context, table string, values sqldb.Values, where string, args ...any) error {
-	return sqldb.Update(ctx, Conn(ctx), table, values, where, args...)
+	conn := Conn(ctx)
+	return sqldb.Update(ctx, conn, conn, conn, table, values, where, args...)
 }
 
 // UpdateRowStruct updates a row in a table using the exported fields
@@ -18,5 +19,6 @@ func Update(ctx context.Context, table string, values sqldb.Values, where string
 // The struct must have at least one field with a `db` tag value having a ",pk" suffix
 // to mark primary key column(s).
 func UpdateRowStruct(ctx context.Context, table string, rowStruct any, options ...sqldb.QueryOption) error {
-	return sqldb.UpdateRowStruct(ctx, Conn(ctx), table, rowStruct, options...)
+	conn := Conn(ctx)
+	return sqldb.UpdateRowStruct(ctx, conn, conn, conn, conn, table, rowStruct, options...)
 }

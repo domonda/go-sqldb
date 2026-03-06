@@ -8,20 +8,23 @@ import (
 
 // Insert a new row into table using the values.
 func Insert(ctx context.Context, table string, values sqldb.Values) error {
-	return sqldb.Insert(ctx, Conn(ctx), table, values)
+	conn := Conn(ctx)
+	return sqldb.Insert(ctx, conn, conn, conn, table, values)
 }
 
 // InsertUnique inserts a new row into table using the passed values
 // or does nothing if the onConflict statement applies.
 // Returns if a row was inserted.
 func InsertUnique(ctx context.Context, table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
-	return sqldb.InsertUnique(ctx, Conn(ctx), table, values, onConflict)
+	conn := Conn(ctx)
+	return sqldb.InsertUnique(ctx, conn, conn, conn, table, values, onConflict)
 }
 
 // InsertReturning inserts a new row into table using values
 // and returns values from the inserted row listed in returning.
 func InsertReturning(ctx context.Context, table string, values sqldb.Values, returning string) *sqldb.Row {
-	return sqldb.InsertReturning(ctx, Conn(ctx), table, values, returning)
+	conn := Conn(ctx)
+	return sqldb.InsertReturning(ctx, conn, conn, conn, conn, table, values, returning)
 }
 
 // InsertRowStruct inserts a new row into the table for the given struct.
@@ -30,7 +33,8 @@ func InsertReturning(ctx context.Context, table string, values sqldb.Values, ret
 // Column names are derived from the `db` struct tags of the struct's fields.
 // Optional QueryOption can be passed to ignore mapped columns.
 func InsertRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, options ...sqldb.QueryOption) error {
-	return sqldb.InsertRowStruct(ctx, Conn(ctx), rowStruct, options...)
+	conn := Conn(ctx)
+	return sqldb.InsertRowStruct(ctx, conn, conn, conn, conn, rowStruct, options...)
 }
 
 // InsertRowStructStmt prepares a statement for inserting rows of type S.
@@ -40,7 +44,8 @@ func InsertRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, o
 // Returns an insertFunc to insert individual rows and a closeStmt
 // function that must be called when done.
 func InsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, options ...sqldb.QueryOption) (insertFunc func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
-	return sqldb.InsertRowStructStmt[S](ctx, Conn(ctx), options...)
+	conn := Conn(ctx)
+	return sqldb.InsertRowStructStmt[S](ctx, conn, conn, conn, conn, options...)
 }
 
 // InsertUniqueRowStruct inserts a new row or does nothing if the onConflict statement applies.
@@ -50,7 +55,8 @@ func InsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, optio
 // Column names are derived from the `db` struct tags of the struct's fields.
 // Optional QueryOption can be passed to ignore mapped columns.
 func InsertUniqueRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, onConflict string, options ...sqldb.QueryOption) (inserted bool, err error) {
-	return sqldb.InsertUniqueRowStruct(ctx, Conn(ctx), rowStruct, onConflict, options...)
+	conn := Conn(ctx)
+	return sqldb.InsertUniqueRowStruct(ctx, conn, conn, conn, conn, rowStruct, onConflict, options...)
 }
 
 // InsertRowStructs inserts a slice of structs as new rows into the table for the given struct type.
@@ -59,5 +65,6 @@ func InsertUniqueRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableN
 // Column names are derived from the `db` struct tags of the struct's fields.
 // Optional QueryOption can be passed to ignore mapped columns.
 func InsertRowStructs[S sqldb.StructWithTableName](ctx context.Context, rowStructs []S, options ...sqldb.QueryOption) error {
-	return sqldb.InsertRowStructs(ctx, Conn(ctx), rowStructs, options...)
+	conn := Conn(ctx)
+	return sqldb.InsertRowStructs(ctx, conn, conn, conn, conn, rowStructs, options...)
 }
