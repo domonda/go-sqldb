@@ -9,6 +9,7 @@ import (
 	"io"
 	"maps"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -24,6 +25,13 @@ type QueryRecordings struct {
 
 // MockConn implements the ListenerConnection interface
 // with mock functions for testing.
+// Its methods are safe for concurrent use, simulating the
+// thread-safety of real database connections.
+// Returned rows from queries are not safe for concurrent use,
+// consistent with the standard library's sql.Rows.
+//
+// Exported struct fields are not protected by the mutex
+// and must only be set during setup before concurrent use.
 //
 // Methods where the corresponding mock function is nil
 // return sane defaults and no errors,
@@ -64,6 +72,8 @@ type MockConn struct {
 	MockUnlistenChannel      func(channel string) error
 	MockIsListeningOnChannel func(channel string) bool
 	MockClose                func() error
+
+	mtx sync.Mutex
 }
 
 // NewMockConn returns a new MockConn configured with the given
@@ -78,12 +88,36 @@ func NewMockConn(placeholderPosPrefix string, normalizeQuery NormalizeQueryFunc,
 }
 
 // Clone returns a shallow copy of the MockConn
-// with cloned ListeningOn and MockQueryResults maps.
+// with cloned ListeningOn and MockQueryResults maps
+// and a new mutex.
 func (c *MockConn) Clone() *MockConn {
-	copy := *c
-	copy.ListeningOn = maps.Clone(c.ListeningOn)
-	copy.MockQueryResults = maps.Clone(c.MockQueryResults)
-	return &copy
+	c.mtx.Lock()
+	defer c.mtx.Unlock()
+
+	return &MockConn{
+		QueryFormatter:           c.QueryFormatter,
+		NormalizeQuery:           c.NormalizeQuery,
+		QueryLog:                 c.QueryLog,
+		TxID:                     c.TxID,
+		StmtNo:                   c.StmtNo,
+		ListeningOn:              maps.Clone(c.ListeningOn),
+		Recordings:               c.Recordings,
+		MockQueryResults:         maps.Clone(c.MockQueryResults),
+		MockConfig:               c.MockConfig,
+		MockPing:                 c.MockPing,
+		MockStats:                c.MockStats,
+		MockExec:                 c.MockExec,
+		MockQuery:                c.MockQuery,
+		MockPrepare:              c.MockPrepare,
+		MockTransaction:          c.MockTransaction,
+		MockBegin:                c.MockBegin,
+		MockCommit:               c.MockCommit,
+		MockRollback:             c.MockRollback,
+		MockListenOnChannel:      c.MockListenOnChannel,
+		MockUnlistenChannel:      c.MockUnlistenChannel,
+		MockIsListeningOnChannel: c.MockIsListeningOnChannel,
+		MockClose:                c.MockClose,
+	}
 }
 
 // WithQueryResult returns a clone of the MockConn with an additional
@@ -152,7 +186,10 @@ func (c *MockConn) Exec(ctx context.Context, query string, args ...any) (err err
 	if err != nil {
 		return err
 	}
+
+	c.mtx.Lock()
 	c.Recordings.Execs = append(c.Recordings.Execs, queryData)
+	c.mtx.Unlock()
 
 	if c.QueryLog != nil {
 		if c.NormalizeQuery != nil {
@@ -187,7 +224,10 @@ func (c *MockConn) Query(ctx context.Context, query string, args ...any) Rows {
 	if err != nil {
 		return NewErrRows(err)
 	}
+
+	c.mtx.Lock()
 	c.Recordings.Queries = append(c.Recordings.Queries, queryData)
+	c.mtx.Unlock()
 
 	if c.QueryLog != nil {
 		var err error
@@ -225,8 +265,11 @@ func (c *MockConn) Prepare(ctx context.Context, query string) (Stmt, error) {
 				return nil, err
 			}
 		}
+		c.mtx.Lock()
 		c.StmtNo++
-		_, err = fmt.Fprintf(c.QueryLog, "PREPARE stmt%d AS %s;\n", c.StmtNo, query)
+		stmtNo := c.StmtNo
+		c.mtx.Unlock()
+		_, err = fmt.Fprintf(c.QueryLog, "PREPARE stmt%d AS %s;\n", stmtNo, query)
 		if err != nil {
 			return nil, err
 		}
@@ -243,7 +286,10 @@ func (c *MockConn) Prepare(ctx context.Context, query string) (Stmt, error) {
 			},
 		}
 		if c.QueryLog != nil {
-			dealloc := fmt.Sprintf("DEALLOCATE PREPARE stmt%d;\n", c.StmtNo)
+			c.mtx.Lock()
+			stmtNo := c.StmtNo
+			c.mtx.Unlock()
+			dealloc := fmt.Sprintf("DEALLOCATE PREPARE stmt%d;\n", stmtNo)
 			stmt.MockClose = func() error {
 				_, err := fmt.Fprint(c.QueryLog, dealloc)
 				return err
@@ -296,9 +342,9 @@ func (c *MockConn) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (C
 	}
 
 	if c.MockBegin == nil {
-		tx := *c // copy
+		tx := c.Clone()
 		tx.TxID = id
-		return &tx, nil
+		return tx, nil
 	}
 	return c.MockBegin(ctx, id, opts)
 }
@@ -339,10 +385,12 @@ func (c *MockConn) Rollback() error {
 // the channel in ListeningOn and calling MockListenOnChannel
 // or returning nil if MockListenOnChannel is nil.
 func (c *MockConn) ListenOnChannel(channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error {
+	c.mtx.Lock()
 	if c.ListeningOn == nil {
 		c.ListeningOn = make(map[string]struct{})
 	}
 	c.ListeningOn[channel] = struct{}{}
+	c.mtx.Unlock()
 
 	if c.QueryLog != nil {
 		_, err := fmt.Fprintf(c.QueryLog, "LISTEN %s;\n", channel)
@@ -361,7 +409,9 @@ func (c *MockConn) ListenOnChannel(channel string, onNotify OnNotifyFunc, onUnli
 // the channel from ListeningOn and calling MockUnlistenChannel
 // or returning nil if MockUnlistenChannel is nil.
 func (c *MockConn) UnlistenChannel(channel string) error {
+	c.mtx.Lock()
 	delete(c.ListeningOn, channel)
+	c.mtx.Unlock()
 
 	if c.QueryLog != nil {
 		_, err := fmt.Fprintf(c.QueryLog, "UNLISTEN %s;\n", channel)
@@ -381,7 +431,9 @@ func (c *MockConn) UnlistenChannel(channel string) error {
 // if MockIsListeningOnChannel is nil.
 func (c *MockConn) IsListeningOnChannel(channel string) bool {
 	if c.MockIsListeningOnChannel == nil {
+		c.mtx.Lock()
 		_, ok := c.ListeningOn[channel]
+		c.mtx.Unlock()
 		return ok
 	}
 	return c.MockIsListeningOnChannel(channel)
