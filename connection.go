@@ -3,6 +3,7 @@ package sqldb
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 )
 
@@ -20,6 +21,15 @@ type PlaceholderFormatter interface {
 	// Placeholder formats a query parameter placeholder
 	// for the paramIndex starting at zero.
 	Placeholder(paramIndex int) string
+}
+
+// ArgFmtPlaceholderFormatter implements PlaceholderFormatter
+// using a fmt.Sprintf format string with paramIndex+1 as argument.
+// For example, ArgFmtPlaceholderFormatter("$%d") produces "$1", "$2", etc.
+type ArgFmtPlaceholderFormatter string
+
+func (f ArgFmtPlaceholderFormatter) Placeholder(paramIndex int) string {
+	return fmt.Sprintf(string(f), paramIndex+1)
 }
 
 // Connection represents a database connection or transaction

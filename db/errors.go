@@ -35,5 +35,5 @@ type errWithQuery struct {
 func (e errWithQuery) Unwrap() error { return e.err }
 
 func (e errWithQuery) Error() string {
-	return fmt.Sprintf("%s from query: %s", e.err, impl.FormatQuery2(e.query, e.argFmt, e.args...))
+	return fmt.Sprintf("%s from query: %s", e.err, impl.FormatQueryWithPlaceholderFormatter(e.query, e.argFmt, e.args...))
 }

@@ -126,7 +126,7 @@ func FormatQuery(query, argFmt string, args ...any) string {
 	return strings.Join(lines, "\n")
 }
 
-func FormatQuery2(query string, argFmt sqldb.PlaceholderFormatter, args ...any) string {
+func FormatQueryWithPlaceholderFormatter(query string, argFmt sqldb.PlaceholderFormatter, args ...any) string {
 	for i := len(args) - 1; i >= 0; i-- {
 		placeholder := argFmt.Placeholder(i)
 		value, err := FormatValue(args[i])

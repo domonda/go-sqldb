@@ -6,11 +6,12 @@ import (
 	"os"
 	"testing"
 
+	sqldb "github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/mockconn"
 )
 
 func TestSerializedTransaction(t *testing.T) {
-	globalConn = mockconn.New("$%d").WithQueryLog(os.Stdout)
+	globalConn = mockconn.New(sqldb.ArgFmtPlaceholderFormatter("$%d")).WithQueryLog(os.Stdout)
 
 	expectSerialized := func(ctx context.Context) error {
 		if !Conn(ctx).IsTransaction() {
@@ -64,7 +65,7 @@ func TestSerializedTransaction(t *testing.T) {
 }
 
 func TestTransaction(t *testing.T) {
-	globalConn = mockconn.New("$%d").WithQueryLog(os.Stdout)
+	globalConn = mockconn.New(sqldb.ArgFmtPlaceholderFormatter("$%d")).WithQueryLog(os.Stdout)
 
 	expectNonSerialized := func(ctx context.Context) error {
 		if !Conn(ctx).IsTransaction() {

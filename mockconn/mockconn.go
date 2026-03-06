@@ -50,8 +50,8 @@ type QueryData struct {
 // All query/exec Connection methods delegate to MockExec and MockQuery.
 type Conn struct {
 	Ctx              context.Context
-	StructFieldNamer sqldb.StructFieldMapper // DefaultStructFieldMapping if nil
-	ArgFmt           string                  // e.g. "$%d"
+	StructFieldNamer sqldb.StructFieldMapper    // DefaultStructFieldMapping if nil
+	PlaceholderFmt   sqldb.PlaceholderFormatter // used for Placeholder method
 
 	NormalizeQuery NormalizeQueryFunc
 	QueryLog       io.Writer
@@ -82,14 +82,23 @@ type Conn struct {
 	mtx sync.Mutex
 }
 
-// New creates a new Conn with the given argument format.
+// New creates a new Conn with the given PlaceholderFormatter.
+// If placeholderFmt is nil, WithArgFmt must be called before use.
 // Use WithNormalizeQuery and WithQueryLog to configure further.
-func New(argFmt string) *Conn {
+func New(placeholderFmt sqldb.PlaceholderFormatter) *Conn {
 	return &Conn{
 		Ctx:              context.Background(),
 		StructFieldNamer: sqldb.DefaultStructFieldMapping,
-		ArgFmt:           argFmt,
+		PlaceholderFmt:   placeholderFmt,
 	}
+}
+
+// WithArgFmt returns the Conn with PlaceholderFmt set to
+// an ArgFmtPlaceholderFormatter using the given format string.
+// For example, "$%d" produces "$1", "$2", etc.
+func (c *Conn) WithArgFmt(argFmt string) *Conn {
+	c.PlaceholderFmt = sqldb.ArgFmtPlaceholderFormatter(argFmt)
+	return c
 }
 
 // WithNormalizeQuery returns the Conn with the given NormalizeQueryFunc set.
@@ -113,7 +122,7 @@ func (c *Conn) Clone() *Conn {
 	cp := &Conn{
 		Ctx:              c.Ctx,
 		StructFieldNamer: c.StructFieldNamer,
-		ArgFmt:           c.ArgFmt,
+		PlaceholderFmt:   c.PlaceholderFmt,
 		NormalizeQuery:   c.NormalizeQuery,
 		QueryLog:         c.QueryLog,
 		TxNo:             c.TxNo,
@@ -149,7 +158,7 @@ func (c *Conn) WithQueryResult(columns []string, rows [][]driver.Value, forQuery
 			panic(err)
 		}
 	}
-	key := impl.FormatQuery(query, c.ArgFmt, args...)
+	key := impl.FormatQueryWithPlaceholderFormatter(query, c, args...)
 
 	cc := c.Clone()
 	if cc.MockQueryResults == nil {
@@ -164,6 +173,20 @@ func (c *Conn) ctx() context.Context {
 		return c.Ctx
 	}
 	return context.Background()
+}
+
+// argFmt returns a printf-style format string for impl package compatibility.
+// It works by observing Placeholder(0) output (e.g. "$1") and replacing
+// the "1" suffix with "%d" to produce "$%d".
+// For non-positional placeholders like "?" it returns "?" which also works
+// since fmt.Sprintf("?", n) returns "?".
+// TODO remove this is a hack later, not needed in the the slim-conn branch which will become v1.0
+func (c *Conn) argFmt() string {
+	p := c.Placeholder(0)
+	if strings.HasSuffix(p, "1") {
+		return p[:len(p)-1] + "%d"
+	}
+	return p
 }
 
 func (c *Conn) structFieldMapper() sqldb.StructFieldMapper {
@@ -202,7 +225,7 @@ func (c *Conn) StructFieldMapper() sqldb.StructFieldMapper {
 
 // Placeholder implements sqldb.PlaceholderFormatter.
 func (c *Conn) Placeholder(paramIndex int) string {
-	return fmt.Sprintf(c.ArgFmt, paramIndex+1)
+	return c.PlaceholderFmt.Placeholder(paramIndex)
 }
 
 var columnNameRegex = regexp.MustCompile(`^[0-9a-zA-Z_]{1,64}$`)
@@ -255,7 +278,7 @@ func (c *Conn) Exec(query string, args ...any) error {
 				return err
 			}
 		}
-		_, err := fmt.Fprint(c.QueryLog, impl.FormatQuery(q, c.ArgFmt, args...), ";\n")
+		_, err := fmt.Fprint(c.QueryLog, impl.FormatQueryWithPlaceholderFormatter(q, c, args...), ";\n")
 		if err != nil {
 			return err
 		}
@@ -279,7 +302,7 @@ func (c *Conn) query(query string, args ...any) impl.Rows {
 		if c.NormalizeQuery != nil {
 			q, _ = c.NormalizeQuery(q)
 		}
-		fmt.Fprint(c.QueryLog, impl.FormatQuery(q, c.ArgFmt, args...), ";\n")
+		fmt.Fprint(c.QueryLog, impl.FormatQueryWithPlaceholderFormatter(q, c, args...), ";\n")
 	}
 
 	if c.MockQuery != nil {
@@ -291,23 +314,23 @@ func (c *Conn) query(query string, args ...any) impl.Rows {
 	if c.NormalizeQuery != nil {
 		q, _ = c.NormalizeQuery(q)
 	}
-	key := impl.FormatQuery(q, c.ArgFmt, args...)
+	key := impl.FormatQueryWithPlaceholderFormatter(q, c, args...)
 	return c.MockQueryResults[key]
 }
 
 // Update implements sqldb.Connection.
 func (c *Conn) Update(table string, values sqldb.Values, where string, args ...any) error {
-	return impl.Update(c, table, values, where, c.ArgFmt, args)
+	return impl.Update(c, table, values, where, c.argFmt(), args)
 }
 
 // UpdateStruct implements sqldb.Connection.
 func (c *Conn) UpdateStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.UpdateStruct(c, table, rowStruct, c.structFieldMapper(), c.ArgFmt, ignoreColumns)
+	return impl.UpdateStruct(c, table, rowStruct, c.structFieldMapper(), c.argFmt(), ignoreColumns)
 }
 
 // UpsertStruct implements sqldb.Connection.
 func (c *Conn) UpsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.UpsertStruct(c, table, rowStruct, c.structFieldMapper(), c.ArgFmt, ignoreColumns)
+	return impl.UpsertStruct(c, table, rowStruct, c.structFieldMapper(), c.argFmt(), ignoreColumns)
 }
 
 // UpdateReturningRow implements sqldb.Connection.
@@ -329,7 +352,7 @@ func (c *Conn) QueryRow(query string, args ...any) sqldb.RowScanner {
 	if mockRows == nil {
 		return sqldb.RowScannerWithError(errors.Join(fmt.Errorf("mock %w", sql.ErrNoRows), c.ctx().Err()))
 	}
-	return impl.NewRowScanner(mockRows, c.structFieldMapper(), query, c.ArgFmt, args)
+	return impl.NewRowScanner(mockRows, c.structFieldMapper(), query, c.argFmt(), args)
 }
 
 // QueryRows implements sqldb.Connection.
@@ -341,7 +364,7 @@ func (c *Conn) QueryRows(query string, args ...any) sqldb.RowsScanner {
 	if mockRows == nil {
 		return sqldb.RowsScannerWithError(errors.Join(fmt.Errorf("mock %w", sql.ErrNoRows), c.ctx().Err()))
 	}
-	return impl.NewRowsScanner(c.ctx(), mockRows, c.structFieldMapper(), query, c.ArgFmt, args)
+	return impl.NewRowsScanner(c.ctx(), mockRows, c.structFieldMapper(), query, c.argFmt(), args)
 }
 
 // IsTransaction implements sqldb.Connection.

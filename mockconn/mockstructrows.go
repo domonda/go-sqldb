@@ -12,6 +12,7 @@ import (
 )
 
 // MockStructRows implements the impl.Rows interface for testing purposes.
+// Create with NewMockStructRows.
 // It is not safe for concurrent use.
 type MockStructRows[S any] struct {
 	columns []string
@@ -38,8 +39,7 @@ func NewMockStructRows[S any](namer sqldb.StructFieldMapper, rows ...S) *MockStr
 	if namer == nil {
 		namer = sqldb.DefaultStructFieldMapping
 	}
-	var zero S
-	columns, _, _ := impl.ReflectStructValues(reflect.ValueOf(&zero).Elem(), namer, nil)
+	columns, _, _ := impl.ReflectStructValues(reflect.ValueOf(new(S)).Elem(), namer, nil)
 	if len(columns) == 0 {
 		panic(fmt.Sprintf("mockconn.NewMockStructRows: struct %s has no mapped columns", t))
 	}

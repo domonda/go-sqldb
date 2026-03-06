@@ -6,6 +6,16 @@ import (
 	"github.com/domonda/go-sqldb/mockconn"
 )
 
+// NewMockConn returns a new mockconn.Conn with the PlaceholderFormatter
+// and StructFieldMapper from the connection in the context
+// or the global connection.
+func NewMockConn(ctx context.Context) *mockconn.Conn {
+	conn := Conn(ctx)
+	mockConn := mockconn.New(conn)
+	mockConn.StructFieldNamer = conn.StructFieldMapper()
+	return mockConn
+}
+
 // NewMockStructRows returns a new MockStructRows with column names
 // derived from the struct fields of S using the StructFieldMapper
 // from the connection in the context or the global connection and the given rows as data.
