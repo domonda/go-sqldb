@@ -37,19 +37,18 @@ func TestTaggedStructReflector_MapStructField(t *testing.T) {
 		UntaggedNameFunc: ToSnakeCase,
 	}
 	type AnonymousEmbedded struct{}
-	var s struct {
-		Index             int    `db:"index,pk"`           // Field(0)
-		IndexB            int    `db:"index_b,pk"`         // Field(1)
-		Str               string `db:"named_str"`          // Field(2)
-		ReadOnly          bool   `db:"read_only,readonly"` // Field(3)
-		UntaggedField     bool   // Field(4)
-		Ignore            bool   `db:"-"`                                   // Field(5)
-		PKReadOnly        int    `db:"pk_read_only,pk,readonly"`            // Field(6)
-		NoFlag            bool   `db:"no_flag,"`                            // Field(7)
-		MalformedFlags    bool   `db:"malformed_flags,x, ,-,readonly,y,  "` // Field(8)
-		AnonymousEmbedded        // Field(9)
-	}
-	st := reflect.TypeOf(s)
+	st := reflect.TypeFor[struct {
+		Index          int    "db:\"index,pk\""
+		IndexB         int    "db:\"index_b,pk\""
+		Str            string "db:\"named_str\""
+		ReadOnly       bool   "db:\"read_only,readonly\""
+		UntaggedField  bool
+		Ignore         bool "db:\"-\""
+		PKReadOnly     int  "db:\"pk_read_only,pk,readonly\""
+		NoFlag         bool "db:\"no_flag,\""
+		MalformedFlags bool "db:\"malformed_flags,x, ,-,readonly,y,  \""
+		AnonymousEmbedded
+	}]()
 
 	tests := []struct {
 		name        string

@@ -232,7 +232,7 @@ func TestReflectStructColumnsFieldIndicesAndValues(t *testing.T) {
 			t.Fatalf("got %d values, want %d", len(vals), len(wantNames))
 		}
 		// Verify field indices point to correct fields
-		sType := reflect.TypeOf(s)
+		sType := reflect.TypeFor[reflectTestStruct]()
 		for i, idx := range indices {
 			field := sType.FieldByIndex(idx)
 			col, _ := reflectTestReflector.MapStructField(field)

@@ -121,13 +121,13 @@ func TestIsNullable(t *testing.T) {
 		typ  reflect.Type
 		want bool
 	}{
-		{name: "*int (nil pointer)", typ: reflect.TypeOf((*int)(nil)), want: true},
-		{name: "[]byte (nil slice)", typ: reflect.TypeOf([]byte(nil)), want: true},
-		{name: "map (nil map)", typ: reflect.TypeOf(map[string]int(nil)), want: true},
-		{name: "int (not nullable)", typ: reflect.TypeOf(0), want: false},
-		{name: "string (not nullable)", typ: reflect.TypeOf(""), want: false},
-		{name: "bool (not nullable)", typ: reflect.TypeOf(false), want: false},
-		{name: "sql.NullString (driver.Valuer)", typ: reflect.TypeOf(sql.NullString{}), want: true},
+		{name: "*int (nil pointer)", typ: reflect.TypeFor[*int](), want: true},
+		{name: "[]byte (nil slice)", typ: reflect.TypeFor[[]byte](), want: true},
+		{name: "map (nil map)", typ: reflect.TypeFor[map[string]int](), want: true},
+		{name: "int (not nullable)", typ: reflect.TypeFor[int](), want: false},
+		{name: "string (not nullable)", typ: reflect.TypeFor[string](), want: false},
+		{name: "bool (not nullable)", typ: reflect.TypeFor[bool](), want: false},
+		{name: "sql.NullString (driver.Valuer)", typ: reflect.TypeFor[sql.NullString](), want: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

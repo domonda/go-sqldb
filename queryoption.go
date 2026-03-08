@@ -89,22 +89,12 @@ func (f StructFieldFilterFunc) IgnoreField(field *reflect.StructField) bool {
 
 func IgnoreStructFields(names ...string) StructFieldFilterFunc {
 	return func(field *reflect.StructField) bool {
-		for _, ignore := range names {
-			if field.Name == ignore {
-				return true
-			}
-		}
-		return false
+		return slices.Contains(names, field.Name)
 	}
 }
 
 func OnlyStructFields(names ...string) StructFieldFilterFunc {
 	return func(field *reflect.StructField) bool {
-		for _, include := range names {
-			if field.Name == include {
-				return false
-			}
-		}
-		return true
+		return !slices.Contains(names, field.Name)
 	}
 }
