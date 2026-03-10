@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Version Control
 
-- **NEVER** create a git commit without asking
+- **NEVER** create a git commit without permission
 - **NEVER** git push
 
 ## Architecture Overview

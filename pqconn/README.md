@@ -57,6 +57,20 @@ PostgreSQL error codes are wrapped into typed `sqldb` errors. Helper functions c
 | `IsRaisedException(err)`             |           P0001 | PL/pgSQL RAISE EXCEPTION                    |
 | `GetRaisedException(err)`            |           P0001 | Returns the exception message                |
 
+Constraint errors (codes 23xxx) are also wrapped as generic `sqldb` error types and can be inspected with `errors.As`:
+
+```go
+err := db.Exec(ctx, "INSERT INTO orders ...")
+if pqconn.IsUniqueViolation(err) {
+    // pqconn-specific: works even before errors.As-wrapping
+}
+
+var fkErr sqldb.ErrForeignKeyViolation
+if errors.As(err, &fkErr) {
+    fmt.Println("violated foreign key constraint:", fkErr.Constraint)
+}
+```
+
 ## Query Formatting
 
 `QueryFormatter` implements `sqldb.QueryFormatter` with PostgreSQL-specific formatting:

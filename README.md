@@ -17,8 +17,43 @@ The design patterns evolved mostly through discovery led by the desire to minimi
 
 ## Database drivers
 
-* [pqconn](https://pkg.go.dev/github.com/domonda/go-sqldb/pqconn) using [github.com/lib/pq](https://github.com/lib/pq) 
+* [pqconn](https://pkg.go.dev/github.com/domonda/go-sqldb/pqconn) using [github.com/lib/pq](https://github.com/lib/pq)
 * [mysqlconn](https://pkg.go.dev/github.com/domonda/go-sqldb/mysqlconn) using [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)
+* [mssqlconn](https://pkg.go.dev/github.com/domonda/go-sqldb/mssqlconn) using [github.com/microsoft/go-mssqldb](https://github.com/microsoft/go-mssqldb)
+* [sqliteconn](https://pkg.go.dev/github.com/domonda/go-sqldb/sqliteconn) using [zombiezen.com/go/sqlite](https://pkg.go.dev/zombiezen.com/go/sqlite)
+
+
+## Generic Errors
+
+Each driver maps its database-specific constraint errors to typed values defined in the root `sqldb` package:
+
+| Type                              | `Constraint` field | Description                                   |
+| --------------------------------- | ------------------ | --------------------------------------------- |
+| `ErrIntegrityConstraintViolation` | constraint name    | Base type for all constraint violations       |
+| `ErrNotNullViolation`             | column name        | NULL inserted into a NOT NULL column          |
+| `ErrUniqueViolation`              | index/constraint   | Duplicate value for a unique key              |
+| `ErrForeignKeyViolation`          | constraint name    | Referential integrity violation               |
+| `ErrCheckViolation`               | constraint name    | CHECK constraint violated                     |
+| `ErrRestrictViolation`            | constraint name    | RESTRICT constraint violated (PostgreSQL)     |
+| `ErrExclusionViolation`           | constraint name    | Exclusion constraint violated (PostgreSQL)    |
+
+All specific types unwrap to `ErrIntegrityConstraintViolation`, so `errors.As` traverses the chain and matches any subtype:
+
+```go
+// catch any constraint violation and read the constraint name
+var cv sqldb.ErrIntegrityConstraintViolation
+if errors.As(err, &cv) {
+    fmt.Println("constraint violated:", cv.Constraint)
+}
+
+// catch a specific violation type
+var uv sqldb.ErrUniqueViolation
+if errors.As(err, &uv) {
+    fmt.Println("unique constraint violated:", uv.Constraint)
+}
+```
+
+Driver packages also expose driver-specific helper functions (e.g. `pqconn.IsUniqueViolation`) for error conditions that have no generic `sqldb` type, such as deadlocks, query cancellations, or text-representation errors. See each driver's README for the full list.
 
 
 ## Usage
