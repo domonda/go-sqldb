@@ -2,6 +2,7 @@ package pqconn
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,6 +18,42 @@ func TestQueryFormatter_FormatTableName(t *testing.T) {
 		{name: `table`, want: `"table"`},
 		{name: `public.table`, want: `public."table"`},
 		{name: `public.my_table`, want: `public.my_table`},
+		// reserved words get quoted — original set
+		{name: `select`, want: `"select"`},
+		{name: `public.select`, want: `public."select"`},
+		{name: `order`, want: `"order"`},
+		// reserved words get quoted — newly added keywords
+		{name: `is`, want: `"is"`},
+		{name: `like`, want: `"like"`},
+		{name: `ilike`, want: `"ilike"`},
+		{name: `join`, want: `"join"`},
+		{name: `inner`, want: `"inner"`},
+		{name: `outer`, want: `"outer"`},
+		{name: `left`, want: `"left"`},
+		{name: `right`, want: `"right"`},
+		{name: `full`, want: `"full"`},
+		{name: `cross`, want: `"cross"`},
+		{name: `natural`, want: `"natural"`},
+		{name: `similar`, want: `"similar"`},
+		{name: `between`, want: `"between"`},
+		{name: `overlaps`, want: `"overlaps"`},
+		{name: `isnull`, want: `"isnull"`},
+		{name: `notnull`, want: `"notnull"`},
+		{name: `tablesample`, want: `"tablesample"`},
+		{name: `freeze`, want: `"freeze"`},
+		{name: `concurrently`, want: `"concurrently"`},
+		{name: `authorization`, want: `"authorization"`},
+		{name: `current_schema`, want: `"current_schema"`},
+		// mixed case gets quoted
+		{name: `MyTable`, want: `"MyTable"`},
+		{name: `public.MyTable`, want: `public."MyTable"`},
+		// max length: 63 chars is valid
+		{name: strings.Repeat("a", 63), want: strings.Repeat("a", 63)},
+		// invalid: too long, empty, digit-start, hyphen
+		{name: strings.Repeat("a", 64), wantErr: true},
+		{name: ``, wantErr: true},
+		{name: `1table`, wantErr: true},
+		{name: `my-table`, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -41,6 +78,37 @@ func TestQueryFormatter_FormatColumnName(t *testing.T) {
 		{name: `column`, want: `"column"`},
 		{name: `Hello_World`, want: `"Hello_World"`},
 		{name: `public.my_table`, wantErr: true},
+		// reserved words get quoted — original set
+		{name: `select`, want: `"select"`},
+		{name: `user`, want: `"user"`},
+		{name: `order`, want: `"order"`},
+		// reserved words get quoted — newly added keywords
+		{name: `is`, want: `"is"`},
+		{name: `like`, want: `"like"`},
+		{name: `ilike`, want: `"ilike"`},
+		{name: `join`, want: `"join"`},
+		{name: `inner`, want: `"inner"`},
+		{name: `outer`, want: `"outer"`},
+		{name: `left`, want: `"left"`},
+		{name: `right`, want: `"right"`},
+		{name: `full`, want: `"full"`},
+		{name: `cross`, want: `"cross"`},
+		{name: `natural`, want: `"natural"`},
+		{name: `similar`, want: `"similar"`},
+		{name: `between`, want: `"between"`},
+		{name: `overlaps`, want: `"overlaps"`},
+		// plain lowercase not reserved — no quotes
+		{name: `my_column`, want: `my_column`},
+		// underscore-prefixed, all lowercase — no quotes
+		{name: `_private`, want: `_private`},
+		// digits in name trigger quoting (not lowercase/underscore)
+		{name: `col1`, want: `"col1"`},
+		// max length: 63 chars is valid
+		{name: strings.Repeat("a", 63), want: strings.Repeat("a", 63)},
+		// invalid: too long, empty, digit-start, dot
+		{name: strings.Repeat("a", 64), wantErr: true},
+		{name: ``, wantErr: true},
+		{name: `1column`, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -95,9 +163,13 @@ func TestQueryFormatter_FormatStringLiteral(t *testing.T) {
 		{name: "simple", str: "hello", want: "'hello'"},
 		{name: "empty", str: "", want: "''"},
 		{name: "with single quote", str: "it's", want: "'it''s'"},
+		// two consecutive single-quote chars in input — each must be escaped independently
+		{name: "two consecutive quotes", str: "it''s", want: "'it''''s'"},
+		// backslashes are literal with standard_conforming_strings=on (PostgreSQL default)
 		{name: "with backslash", str: `path\to`, want: `'path\to'`},
-		{name: "with backslash quote", str: `Erik\'s`, want: `'Erik''s'`},
-		{name: "already quoted no inner quotes", str: "'hello'", want: "'hello'"},
+		{name: "with backslash before quote", str: `Erik\'s`, want: `'Erik\''s'`},
+		// a raw value that starts/ends with single quotes must have those quotes escaped too
+		{name: "value with outer quotes", str: "'hello'", want: "'''hello'''"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -176,6 +248,17 @@ func TestEscapeIdentifier(t *testing.T) {
 		{ident: `table`, want: `"table"`},
 		{ident: `public.table`, want: `"public.table"`},
 		{ident: `my_column`, want: `my_column`},
+		// reserved words get quoted
+		{ident: `select`, want: `"select"`},
+		{ident: `user`, want: `"user"`},
+		// uppercase triggers quoting
+		{ident: `MyCol`, want: `"MyCol"`},
+		// digits trigger quoting
+		{ident: `col1`, want: `"col1"`},
+		// embedded double quote: escaped and quoted
+		{ident: `col"name`, want: `"col""name"`},
+		// underscore-prefixed, all lowercase — no quotes
+		{ident: `_private`, want: `_private`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.ident, func(t *testing.T) {

@@ -4,7 +4,7 @@
 
 ## Missing Features
 
-- [ ] Query formatter tests with name escaping
+- [x] Query formatter tests with name escaping
 - [ ] **Batch insert** — `InsertRowStructs` processes rows one-by-one in a transaction with a prepared statement. Need optimized multi-row INSERT:
   ```go
   func BatchInsert[T any](ctx context.Context, table string, items []T, batchSize int) error

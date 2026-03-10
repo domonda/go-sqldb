@@ -141,7 +141,7 @@ func TestStdQueryFormatter_FormatStringLiteral(t *testing.T) {
 		{name: "empty", str: "", want: "''"},
 		{name: "with single quote", str: "it's", want: "'it''s'"},
 		{name: "with backslash", str: `path\to`, want: `'path\to'`},
-		{name: "with backslash quote", str: `Erik\'s`, want: `'Erik''s'`},
+		{name: "with backslash quote", str: `Erik\'s`, want: `'Erik\''s'`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -157,17 +157,23 @@ func TestFormatSingleQuoteStringLiteral(t *testing.T) {
 		str  string
 		want string
 	}{
+		// basic cases
 		{str: ``, want: `''`},
-		{str: `''`, want: `''`},
-		{str: `'''`, want: `''''`},
-		{str: `'a'b'c'`, want: `'a''b''c'`},
+		{str: `hello`, want: `'hello'`},
+		// single-quote chars are doubled — each literal ' in the input becomes '' in SQL
+		{str: `''`, want: `''''''`},
+		{str: `'''`, want: `''''''''`},
+		{str: `'a'b'c'`, want: `'''a''b''c'''`},
 		{str: `'Hello`, want: `'''Hello'`},
 		{str: `World'`, want: `'World'''`},
 		{str: `Erik's String`, want: `'Erik''s String'`},
-		{str: `'Erik's String'`, want: `'Erik''s String'`},
-		{str: `'Erik''s String'`, want: `'Erik''s String'`},
-		{str: `Erik\'s String`, want: `'Erik''s String'`},
-		{str: `'Erik\'s String'`, want: `'Erik''s String'`},
+		// strings that happen to look like pre-quoted SQL must still escape all quotes
+		{str: `'Erik's String'`, want: `'''Erik''s String'''`},
+		{str: `'Erik''s String'`, want: `'''Erik''''s String'''`},
+		// backslashes are literal (standard_conforming_strings = on is the PostgreSQL default)
+		{str: `path\to`, want: `'path\to'`},
+		{str: `Erik\'s String`, want: `'Erik\''s String'`},
+		{str: `'Erik\'s String'`, want: `'''Erik\''s String'''`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.str, func(t *testing.T) {
