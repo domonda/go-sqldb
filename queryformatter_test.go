@@ -24,6 +24,10 @@ func TestStdQueryFormatter_FormatTableName(t *testing.T) {
 		{name: "has space", wantErr: true},
 		{name: "has-dash", wantErr: true},
 		{name: "two..dots", wantErr: true},
+		{name: "a.b.c", wantErr: true},
+		{name: ".table", wantErr: true},
+		{name: "table.", wantErr: true},
+		{name: "has$sign", wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -61,6 +65,8 @@ func TestStdQueryFormatter_FormatColumnName(t *testing.T) {
 		{name: "has space", wantErr: true},
 		{name: "has.dot", wantErr: true},
 		{name: "has-dash", wantErr: true},
+		{name: "has$sign", wantErr: true},
+		{name: "public.col", wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -119,6 +125,16 @@ func TestStdQueryFormatter_FormatPlaceholder(t *testing.T) {
 		}
 	})
 
+	t.Run("Oracle style", func(t *testing.T) {
+		f := NewQueryFormatter(":")
+		if got := f.FormatPlaceholder(0); got != ":1" {
+			t.Errorf("got %q, want :1", got)
+		}
+		if got := f.FormatPlaceholder(2); got != ":3" {
+			t.Errorf("got %q, want :3", got)
+		}
+	})
+
 	t.Run("negative index panics", func(t *testing.T) {
 		f := NewQueryFormatter("$")
 		defer func() {
@@ -149,6 +165,13 @@ func TestStdQueryFormatter_FormatStringLiteral(t *testing.T) {
 				t.Errorf("FormatStringLiteral(%q) = %q, want %q", tt.str, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestStdQueryFormatter_MaxArgs(t *testing.T) {
+	f := StdQueryFormatter{}
+	if got := f.MaxArgs(); got != 65535 {
+		t.Errorf("MaxArgs() = %d, want 65535", got)
 	}
 }
 

@@ -33,6 +33,14 @@ type QueryFormatter interface {
 	MaxArgs() int
 }
 
+// StdQueryFormatter is a [QueryFormatter] implementation that validates
+// identifiers with a conservative regex ([a-zA-Z_][a-zA-Z0-9_]* with optional
+// schema prefix for tables), returns string literals using standard single-quote
+// doubling without backslash escaping (ANSI SQL compliant), and produces either
+// uniform `?` placeholders or positional placeholders with a configurable prefix
+// (e.g. `$` for PostgreSQL, `@p` for SQL Server, `:` for Oracle).
+// It does not quote identifiers; use a database-specific [QueryFormatter] when
+// identifier quoting for reserved words is required.
 type StdQueryFormatter struct {
 	// PlaceholderPosPrefix is prefixed before
 	// the one based placeholder position number in queries.
