@@ -44,5 +44,5 @@
 ### Missing Tests
 
 - [ ] `genericconn.go` / `generictx.go` — `NewGenericConn` and generic transaction types have no unit tests
-- [ ] `errconn.go` — Only compile-time assertion, no behavioral tests
+- [x] `errconn.go` — All methods covered: error-returning methods, zero-value returns, `Close` nil, interface assertion
 - [ ] `strings_test.go:37,40` — Commented-out SQL injection test cases (`admin' #` and `; DROP TABLE users--` not yet detected)

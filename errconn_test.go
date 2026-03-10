@@ -1,6 +1,7 @@
 package sqldb
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"testing"
@@ -130,6 +131,14 @@ func TestErrConn_Config(t *testing.T) {
 	// then
 	require.NotNil(t, cfg)
 	assert.Equal(t, "ErrConn", cfg.Driver)
+}
+
+func TestErrConn_DefaultIsolationLevelReturnsDefault(t *testing.T) {
+	// given
+	conn := NewErrConn(errors.New("some error"))
+
+	// when / then
+	assert.Equal(t, sql.LevelDefault, conn.DefaultIsolationLevel())
 }
 
 func TestErrConn_ImplementsListenerConnection(t *testing.T) {
