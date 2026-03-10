@@ -14,7 +14,7 @@ import (
 
 var (
 	tableNameRegexp  = regexp.MustCompile(`^([a-zA-Z_][a-zA-Z0-9_]{0,62}\.)?[a-zA-Z_][a-zA-Z0-9_]{0,62}$`)
-	columnNameRegexp = regexp.MustCompile(`^[a-zA-Z_][0-9a-zA-Z_]{0,58}$`)
+	columnNameRegexp = regexp.MustCompile(`^[a-zA-Z_][0-9a-zA-Z_]{0,62}$`)
 
 	reservedWords = map[string]struct{}{
 		// Reserved key words

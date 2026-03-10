@@ -2,8 +2,6 @@
 
 ## Bugs
 
-- [ ] `pqconn/queryformatter.go:17` — `columnNameRegexp` allows max 59 chars but PostgreSQL allows 63. Should be `{0,62}` like `tableNameRegexp`
-
 ## Missing Features
 
 - [ ] Query formatter tests with name escaping
