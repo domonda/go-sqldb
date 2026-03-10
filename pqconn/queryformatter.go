@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/db"
 )
 
 var (
@@ -241,8 +240,8 @@ func (QueryFormatter) MaxArgs() int {
 // used for PostgreSQL.
 type QueryBuilder = sqldb.StdQueryBuilder
 
-func NewTypeMapper() *db.StagedTypeMapper {
-	return &db.StagedTypeMapper{
+func NewTypeMapper() *sqldb.StagedTypeMapper {
+	return &sqldb.StagedTypeMapper{
 		Types: map[reflect.Type]string{
 			reflect.TypeFor[time.Time](): "timestamptz",
 		},

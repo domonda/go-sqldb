@@ -1,12 +1,10 @@
-package db
+package sqldb
 
 import (
 	"context"
 	"fmt"
 	"reflect"
 	"strings"
-
-	"github.com/domonda/go-sqldb"
 )
 
 // TypeMapper is used to map Go types to SQL column types.
@@ -39,8 +37,7 @@ func (m *StagedTypeMapper) ColumnType(t reflect.Type) string {
 }
 
 // CreateTableForStruct is mostly used to create tests.
-func CreateTableForStruct(ctx context.Context, typeMap TypeMapper, rowStruct sqldb.StructWithTableName) error {
-	conn := Conn(ctx)
+func CreateTableForStruct(ctx context.Context, conn ConnExt, typeMap TypeMapper, rowStruct StructWithTableName) error {
 	v := reflect.ValueOf(rowStruct)
 	tableName, err := conn.TableNameForStruct(v.Type())
 	if err != nil {
@@ -50,7 +47,7 @@ func CreateTableForStruct(ctx context.Context, typeMap TypeMapper, rowStruct sql
 	if err != nil {
 		return err
 	}
-	columns, fields, err := sqldb.ReflectStructColumnsAndFields(v, conn)
+	columns, fields, err := ReflectStructColumnsAndFields(v, conn)
 	if err != nil {
 		return err
 	}
@@ -76,27 +73,27 @@ func CreateTableForStruct(ctx context.Context, typeMap TypeMapper, rowStruct sql
 		fmt.Fprint(&query, columnName, " ", columnType)
 		if columns[i].PrimaryKey {
 			query.WriteString(" PRIMARY KEY")
-		} else if !sqldb.IsNullable(fieldType) {
+		} else if !IsNullable(fieldType) {
 			query.WriteString(" NOT NULL")
 		}
 	}
 	query.WriteString("\n)")
 
-	return Exec(ctx, query.String())
+	return conn.Exec(ctx, query.String())
 }
 
 // CreateTablesAndInsertStructs is mostly used to create tests.
-func CreateTablesAndInsertStructs(ctx context.Context, typeMap TypeMapper, tables ...[]sqldb.StructWithTableName) error {
+func CreateTablesAndInsertStructs(ctx context.Context, conn ConnExt, typeMap TypeMapper, tables ...[]StructWithTableName) error {
 	for _, rows := range tables {
 		if len(rows) == 0 {
 			continue
 		}
-		err := CreateTableForStruct(ctx, typeMap, rows[0])
+		err := CreateTableForStruct(ctx, conn, typeMap, rows[0])
 		if err != nil {
 			return err
 		}
 		for _, row := range rows {
-			err := InsertRowStruct(ctx, row)
+			err := InsertRowStruct(ctx, conn, conn, conn, conn, row)
 			if err != nil {
 				return err
 			}

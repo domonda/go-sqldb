@@ -18,7 +18,7 @@ func QueryRow(ctx context.Context, conn Querier, refl StructReflector, fmtr Quer
 // If T is a struct that does not implement sql.Scanner,
 // the column values are scanned into the struct fields.
 func QueryRowAs[T any](ctx context.Context, conn Querier, refl StructReflector, fmtr QueryFormatter, query string, args ...any) (val T, err error) {
-	err = QueryRow(ctx, conn,refl, fmtr, query, args...).Scan(&val)
+	err = QueryRow(ctx, conn, refl, fmtr, query, args...).Scan(&val)
 	if err != nil {
 		return *new(T), err
 	}
@@ -28,7 +28,7 @@ func QueryRowAs[T any](ctx context.Context, conn Querier, refl StructReflector, 
 // QueryRowAsOr queries a single row and scans it as the type T,
 // or returns the passed defaultVal in case of sql.ErrNoRows.
 func QueryRowAsOr[T any](ctx context.Context, conn Querier, refl StructReflector, fmtr QueryFormatter, defaultVal T, query string, args ...any) (val T, err error) {
-	val, err = QueryRowAs[T](ctx, conn,refl, fmtr, query, args...)
+	val, err = QueryRowAs[T](ctx, conn, refl, fmtr, query, args...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return defaultVal, nil
 	}
@@ -79,7 +79,7 @@ func QueryRowByPK[S StructWithTableName](ctx context.Context, conn Querier, refl
 		if cached.numPKColumns != len(pkValues) {
 			return *new(S), fmt.Errorf("got %d primary key values, but struct %s has %d primary key fields", len(pkValues), t, cached.numPKColumns)
 		}
-		return QueryRowAs[S](ctx, conn,refl, fmtr, cached.query, pkValues...)
+		return QueryRowAs[S](ctx, conn, refl, fmtr, cached.query, pkValues...)
 	}
 
 	// Cache miss — build query
@@ -119,7 +119,7 @@ func QueryRowByPK[S StructWithTableName](ctx context.Context, conn Querier, refl
 	}
 	queryRowByPKCacheMtx.Unlock()
 
-	return QueryRowAs[S](ctx, conn,refl, fmtr, query, pkValues...)
+	return QueryRowAs[S](ctx, conn, refl, fmtr, query, pkValues...)
 }
 
 // QueryRowByPKOr queries a table row by primary key and scans it into a struct of type S.
@@ -130,7 +130,7 @@ func QueryRowByPK[S StructWithTableName](ctx context.Context, conn Querier, refl
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
 // The number of pkValue+pkValues must match the number of primary key columns.
 func QueryRowByPKOr[S StructWithTableName](ctx context.Context, conn Querier, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, defaultVal S, pkValue any, pkValues ...any) (S, error) {
-	row, err := QueryRowByPK[S](ctx, conn,refl, builder, fmtr, pkValue, pkValues...)
+	row, err := QueryRowByPK[S](ctx, conn, refl, builder, fmtr, pkValue, pkValues...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return defaultVal, nil
 	}

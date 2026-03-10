@@ -27,6 +27,18 @@ type connExtImpl struct {
 // NewConnExt returns a new ConnExt combining the passed
 // Connection, StructReflector, QueryFormatter, and QueryBuilder.
 func NewConnExt(conn Connection, structReflector StructReflector, queryFormatter QueryFormatter, queryBuilder QueryBuilder) ConnExt {
+	if conn == nil {
+		panic("NewConnExt: conn must not be nil")
+	}
+	if structReflector == nil {
+		panic("NewConnExt: structReflector must not be nil")
+	}
+	if queryFormatter == nil {
+		panic("NewConnExt: queryFormatter must not be nil")
+	}
+	if queryBuilder == nil {
+		panic("NewConnExt: queryBuilder must not be nil")
+	}
 	return &connExtImpl{
 		Connection:      conn,
 		StructReflector: structReflector,
@@ -40,6 +52,12 @@ func NewConnExt(conn Connection, structReflector StructReflector, queryFormatter
 // This is typically used to create a ConnExt for a transaction connection
 // that shares the configuration of its parent ConnExt.
 func NewConnExtWithConn(base ConnExt, conn Connection) ConnExt {
+	if base == nil {
+		panic("NewConnExtWithConn: base must not be nil")
+	}
+	if conn == nil {
+		panic("NewConnExtWithConn: conn must not be nil")
+	}
 	return &connExtImpl{
 		Connection:      conn,
 		StructReflector: base,

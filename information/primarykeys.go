@@ -53,7 +53,7 @@ func GetPrimaryKeyColumns(ctx context.Context) (cols []PrimaryKeyColumn, err err
 			AND col.table_name = tc.table_name
 			AND col.column_name = kc.column_name
 		WHERE tc.constraint_type = 'PRIMARY KEY'
-			AND kc.ordinal_positiON IS NOT NULL
+			AND kc.ordinal_position IS NOT NULL
 		ORDER BY
 			tc.table_schema,
 			tc.table_name`,
@@ -88,7 +88,7 @@ func GetPrimaryKeyColumnsOfType(ctx context.Context, pkType string) (cols []Prim
 			AND col.table_name = tc.table_name
 			AND col.column_name = kc.column_name
 		WHERE tc.constraint_type = 'PRIMARY KEY'
-			AND kc.ordinal_positiON IS NOT NULL
+			AND kc.ordinal_position IS NOT NULL
 			AND col.data_type = $1
 		ORDER BY
 			tc.table_schema,
@@ -160,7 +160,7 @@ var RenderUUIDPrimaryKeyRefsHTML = http.HandlerFunc(func(writer http.ResponseWri
 			return !tableRows[i].ForeignKey && tableRows[j].ForeignKey
 		})
 		var b strings.Builder
-		fmt.Fprintf(&b, "<h2><buttON onclick='navigator.clipboard.writeText(%q)'>Copy UUID</button></h2>", pk)
+		fmt.Fprintf(&b, "<h2><button onclick='navigator.clipboard.writeText(%q)'>Copy UUID</button></h2>", pk)
 		for _, tableRow := range tableRows { //#nosec
 			fmt.Fprintf(&b, "<h3>%s</h3>", html.EscapeString(tableRow.Table))
 			fmt.Fprintf(&b, "<table>")
@@ -287,7 +287,7 @@ const StyleDefaultTable = /*html*/ `<style>
 		white-space: nowrap;
 		font-family: "Lucida Console", Monaco, monospace;
 	}
-	table > captiON {
+	table > caption {
 		font-size: 1.4em;
 		text-align: left;
 		margin-bottom: 8px;
@@ -319,7 +319,7 @@ const StyleDefaultTable = /*html*/ `<style>
 		margin: 0;
 		font-family: "Lucida Console", Monaco, monospace;
 	}
-	td > buttON {
+	td > button {
 		font-size: 1em;
 	}
 	td > input[type="checkbox"] {

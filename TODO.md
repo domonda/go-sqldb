@@ -4,11 +4,7 @@
 
 ## Missing Features
 
-- [x] Query formatter tests with name escaping
-- [ ] **Batch insert** — `InsertRowStructs` processes rows one-by-one in a transaction with a prepared statement. Need optimized multi-row INSERT:
-  ```go
-  func BatchInsert[T any](ctx context.Context, table string, items []T, batchSize int) error
-  ```
+- [ ] **Batch insert** — `InsertRowStructs` processes rows one-by-one in a transaction with a prepared statement. Need optimized multi-row INSERT.
 
 ## Dead Code
 
@@ -24,15 +20,15 @@
 
 ## Oversights
 
-- [ ] `transaction.go:16` — Comment references nonexistent `Connection.TransactionNo()`, should be `Connection.Transaction().ID`
-- [ ] `transaction.go:56` — Comment typo: "paniced" should be "panicked"
-- [ ] `db/listen.go:19,30,39` — `ListenerConnection` type assertion on `Conn(ctx)` always succeeds because `connExtImpl` satisfies the interface; the `ok == false` branch is dead code
-- [ ] `connext.go:29-35` — `NewConnExt` and `NewConnExtWithConn` don't validate nil arguments
-- [ ] `query.go:21,31,82,122,133` — Missing space after comma: `conn,refl` should be `conn, refl`
-- [ ] `information/primarykeys.go:56,91` — Odd casing in SQL: `ordinal_positiON` (works but looks wrong)
-- [ ] `information/primarykeys.go:163,290,322` — Odd casing in HTML/CSS: `buttON`, `captiON` (works but looks wrong)
-- [ ] `errconn.go:10` — `var _` assertion checks `Connection` but comment says `ListenerConnection`
-- [ ] `db/conn.go:11,19,28` — `globalConn` read/written without synchronization (race if `SetConn` concurrent with `Conn`)
+- [x] `transaction.go:16` — Comment references nonexistent `Connection.TransactionNo()`, should be `Connection.Transaction().ID`
+- [x] `transaction.go:56` — Comment typo: "paniced" should be "panicked"
+- [x] `db/listen.go:19,30,39` — `ListenerConnection` type assertion on `Conn(ctx)` always succeeds because `connExtImpl` satisfies the interface; the `ok == false` branch is dead code
+- [x] `connext.go:29-35` — `NewConnExt` and `NewConnExtWithConn` don't validate nil arguments
+- [x] `query.go:21,31,82,122,133` — Missing space after comma: `conn,refl` should be `conn, refl`
+- [x] `information/primarykeys.go:56,91` — Odd casing in SQL: `ordinal_positiON` (works but looks wrong)
+- [x] `information/primarykeys.go:163,290,322` — Odd casing in HTML/CSS: `buttON`, `captiON` (works but looks wrong)
+- [x] `errconn.go:10` — `var _` assertion checks `Connection` but comment says `ListenerConnection`
+- [x] `db/conn.go:11,19,28` — `globalConn` read/written without synchronization (race if `SetConn` concurrent with `Conn`)
 
 ## API Design for v1.0
 

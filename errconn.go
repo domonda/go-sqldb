@@ -7,7 +7,7 @@ import (
 )
 
 // ErrConn implements ListenerConnection
-var _ Connection = ErrConn{}
+var _ ListenerConnection = ErrConn{}
 
 // NewErrConn returns an ErrConn with the passed error.
 func NewErrConn(err error) ErrConn {

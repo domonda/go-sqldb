@@ -13,7 +13,7 @@ var txCounter atomic.Uint64
 // NextTransactionID returns the next globally unique number
 // for a new transaction in a threadsafe way.
 //
-// Use Connection.TransactionNo() to get the number
+// Use Connection.Transaction().ID to get the number
 // from a transaction connection.
 func NextTransactionID() uint64 {
 	return txCounter.Add(1)
@@ -53,7 +53,7 @@ func IsolatedTransaction(ctx context.Context, parentConn Connection, opts *sql.T
 
 	defer func() {
 		if r := recover(); r != nil {
-			// txFunc paniced
+			// txFunc panicked
 			e := tx.Rollback()
 			if e != nil && !errors.Is(e, sql.ErrTxDone) {
 				// Double error situation, log e so it doesn't get lost
