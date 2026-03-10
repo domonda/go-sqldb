@@ -18,7 +18,7 @@
 - [ ] **db/foreachrow_test.go** — Test body entirely commented out
 - [ ] **scanstruct_test.go** — Entire test commented out
 - [ ] **db/transaction_test.go** — `TestSerializedTransaction` and `TestTransaction` entirely commented out
-- [ ] **mysqlconn/mysql.go** — `validateColumnName` and `columnNameRegex` defined but never called in production code
+- [x] **mysqlconn/mysql.go** — `validateColumnName` and `columnNameRegex` defined but never called in production code (file deleted, logic moved into QueryFormatter)
 - [ ] **querybuilder.go** — `DefaultQueryBuilder` declared but never referenced
 - [ ] **queryformatter.go** — `DefaultQueryFormatter` declared but never referenced
 
@@ -56,7 +56,7 @@
 | Feature                           | pqconn | mysqlconn | mssqlconn | sqliteconn |
 | --------------------------------- | ------ | --------- | --------- | ---------- |
 | Custom error wrapping             | Yes    | No        | No        | Yes        |
-| Identifier escaping               | Yes    | No        | Yes       | No         |
+| Identifier escaping               | Yes    | Yes       | Yes       | No         |
 | `Connect` takes `context.Context` | Yes    | Yes       | Yes       | Yes        |
 | `driver.Valuer`/`sql.Scanner`     | Yes    | Yes       | Yes       | Yes        |
 | LISTEN/NOTIFY                     | Yes    | N/A       | N/A       | N/A        |
@@ -65,7 +65,7 @@
 | Package doc comment               | No     | No        | No        | Yes        |
 
 - [ ] **Custom error wrapping** — Add to mysqlconn (wrap MySQL error codes) and mssqlconn (wrap MSSQL error numbers)
-- [ ] **Identifier escaping** — Add to mysqlconn (backtick escaping) and sqliteconn (double-quote escaping)
+- [x] **Identifier escaping** — Added to mysqlconn (backtick escaping); sqliteconn (double-quote escaping) still missing
 - [ ] **Drop schema queries** — Add to mysqlconn, mssqlconn, and sqliteconn
 - [ ] **README** — Add to mysqlconn and mssqlconn
 - [ ] **Package doc comment** — Add to pqconn, mysqlconn, and mssqlconn
