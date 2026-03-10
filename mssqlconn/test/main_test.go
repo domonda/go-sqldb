@@ -1,6 +1,7 @@
 package mssqlconn
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -96,23 +97,13 @@ func ensureTestDB() error {
 }
 
 func dropAllTables() error {
-	dsn := fmt.Sprintf("sqlserver://%s:%s@%s:%d?database=%s&encrypt=disable",
-		mssqlUser, mssqlPassword, mssqlHost, mssqlPort, dbName)
-	db, err := sql.Open("sqlserver", dsn)
+	ctx := context.Background()
+	conn, err := mssqlconn.Connect(ctx, testConfig())
 	if err != nil {
 		return err
 	}
-	defer db.Close()
-
-	// Drop all user tables
-	_, err = db.Exec( /*sql*/ `
-		DECLARE @sql NVARCHAR(MAX) = '';
-		SELECT @sql += 'DROP TABLE [' + TABLE_SCHEMA + '].[' + TABLE_NAME + '];'
-		FROM INFORMATION_SCHEMA.TABLES
-		WHERE TABLE_TYPE = 'BASE TABLE';
-		IF @sql <> '' EXEC sp_executesql @sql;
-	`)
-	return err
+	defer conn.Close()
+	return mssqlconn.DropAll(ctx, conn)
 }
 
 func TestMain(m *testing.M) {

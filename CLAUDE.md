@@ -88,6 +88,8 @@ func MyValueFromContext(ctx context.Context) string {
 
 ### SQL Rules
 - Write SQL string literals with backticks and prefix with `/*sql*/`
+  and start such SQL string literals in a new line if not the first argument
+- Check for the positio of `/*sql*/` after running gofmt, move to next line if placement was moved the previous argument
 - Use numbered parameters (`$1`, `$2`) for PostgreSQL driver
 - Avoid SQL code duplication, find existing functions first
 - Database lookup functions use `Get`, `Is`, or `Has` prefixes

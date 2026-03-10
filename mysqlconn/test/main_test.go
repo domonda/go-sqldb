@@ -1,6 +1,7 @@
 package mysqlconn
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -58,42 +59,13 @@ func dockerComposeUp() error {
 }
 
 func dropAllTables() error {
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", mysqlUser, mysqlPassword, mysqlHost, mysqlPort, dbName)
-	db, err := sql.Open("mysql", dsn)
+	ctx := context.Background()
+	conn, err := mysqlconn.Connect(ctx, testConfig())
 	if err != nil {
 		return err
 	}
-	defer db.Close()
-
-	rows, err := db.Query( /*sql*/ `SHOW TABLES`)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-
-	var tables []string
-	for rows.Next() {
-		var table string
-		if err := rows.Scan(&table); err != nil {
-			return err
-		}
-		tables = append(tables, table)
-	}
-	if err := rows.Err(); err != nil {
-		return err
-	}
-
-	// Disable FK checks to allow dropping in any order
-	if _, err := db.Exec( /*sql*/ `SET FOREIGN_KEY_CHECKS = 0`); err != nil {
-		return err
-	}
-	for _, table := range tables {
-		if _, err := db.Exec(fmt.Sprintf( /*sql*/ "DROP TABLE IF EXISTS `%s`", table)); err != nil {
-			return err
-		}
-	}
-	_, err = db.Exec( /*sql*/ `SET FOREIGN_KEY_CHECKS = 1`)
-	return err
+	defer conn.Close()
+	return mysqlconn.DropAllTables(ctx, conn)
 }
 
 func waitForMariaDB() error {

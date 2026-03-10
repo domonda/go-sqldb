@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	_ "github.com/lib/pq"
+
+	"github.com/domonda/go-sqldb/pqconn"
 )
 
 var (
@@ -37,17 +39,7 @@ func dropSchemaTables() error {
 		return err
 	}
 	defer db.Close()
-
-	_, err = db.Exec( /*sql*/ `
-		DO $$
-		DECLARE
-			r RECORD;
-		BEGIN
-			FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = current_schema()) LOOP
-				EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
-			END LOOP;
-		END $$`,
-	)
+	_, err = db.Exec(pqconn.DropAllInCurrentSchemaQuery)
 	return err
 }
 
