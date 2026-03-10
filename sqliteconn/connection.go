@@ -76,7 +76,7 @@ func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection
 }
 
 // ConnectExt establishes a new [sqldb.ConnExt] using the passed config and structReflector
-// with the SQLite-specific [QueryFormatter] and [QueryBuilder].
+// with the SQLite-specific [QueryFormatter] and [sqldb.DefaultQueryBuilder].
 func ConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) (sqldb.ConnExt, error) {
 	conn, err := Connect(ctx, config)
 	if err != nil {
@@ -95,13 +95,13 @@ func MustConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflect
 }
 
 // NewConnExt wraps conn and structReflector into a [sqldb.ConnExt]
-// using the SQLite-specific [QueryFormatter] and [QueryBuilder].
+// using the SQLite-specific [QueryFormatter] and [sqldb.DefaultQueryBuilder].
 func NewConnExt(conn sqldb.Connection, structReflector sqldb.StructReflector) sqldb.ConnExt {
 	return sqldb.NewConnExt(
 		conn,
 		structReflector,
 		QueryFormatter{},
-		QueryBuilder{},
+		sqldb.DefaultQueryBuilder,
 	)
 }
 

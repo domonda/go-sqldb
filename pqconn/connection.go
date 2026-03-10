@@ -50,7 +50,7 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, e
 }
 
 // ConnectExt establishes a new [sqldb.ConnExt] using the passed config and structReflector
-// with the PostgreSQL-specific [QueryFormatter] and [QueryBuilder].
+// with the PostgreSQL-specific [QueryFormatter] and [sqldb.DefaultQueryBuilder].
 func ConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) (sqldb.ConnExt, error) {
 	conn, err := Connect(ctx, config)
 	if err != nil {
@@ -60,7 +60,7 @@ func ConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector s
 		conn,
 		structReflector,
 		QueryFormatter{},
-		QueryBuilder{},
+		sqldb.DefaultQueryBuilder,
 	), nil
 }
 

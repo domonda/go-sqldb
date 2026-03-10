@@ -77,7 +77,7 @@ func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection
 }
 
 // ConnectExt establishes a new [sqldb.ConnExt] using the passed config and structReflector
-// with the SQL Server-specific [QueryFormatter] and [QueryBuilder].
+// with the SQL Server-specific [QueryFormatter] and [sqldb.DefaultQueryBuilder].
 func ConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) (sqldb.ConnExt, error) {
 	conn, err := Connect(ctx, config)
 	if err != nil {
@@ -87,7 +87,7 @@ func ConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector s
 		conn,
 		structReflector,
 		QueryFormatter{},
-		QueryBuilder{},
+		sqldb.DefaultQueryBuilder,
 	), nil
 }
 

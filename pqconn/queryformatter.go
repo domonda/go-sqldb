@@ -236,10 +236,6 @@ func (QueryFormatter) MaxArgs() int {
 	return 65535
 }
 
-// QueryBuilder is the standard [sqldb.QueryBuilder] implementation
-// used for PostgreSQL.
-type QueryBuilder = sqldb.StdQueryBuilder
-
 func NewTypeMapper() *sqldb.StagedTypeMapper {
 	return &sqldb.StagedTypeMapper{
 		Types: map[reflect.Type]string{

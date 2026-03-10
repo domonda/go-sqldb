@@ -11,7 +11,3 @@ type QueryFormatter struct {
 func (QueryFormatter) MaxArgs() int {
 	return 32766
 }
-
-// QueryBuilder is the standard [sqldb.QueryBuilder] implementation
-// used for SQLite.
-type QueryBuilder = sqldb.StdQueryBuilder

@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-
-	"github.com/domonda/go-sqldb"
 )
 
 // MySQL identifier rules:
@@ -107,9 +105,6 @@ func EscapeIdentifier(ident string) string {
 // QueryFormatter is the [sqldb.QueryFormatter] implementation for MySQL/MariaDB.
 // Uses backtick identifier quoting, ? placeholders, and backslash+quote escaping for strings.
 type QueryFormatter struct{}
-
-// QueryBuilder is the standard [sqldb.QueryBuilder] implementation used for MySQL.
-type QueryBuilder = sqldb.StdQueryBuilder
 
 func (QueryFormatter) FormatTableName(name string) (string, error) {
 	if !tableNameRegex.MatchString(name) {

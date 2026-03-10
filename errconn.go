@@ -17,9 +17,10 @@ func NewErrConn(err error) ErrConn {
 	return ErrConn{Err: err}
 }
 
-// NewErrConnExt returns a ConnExt with the passed error.
-// It combines the passed error with a default StructReflector,
-// QueryFormatter and QueryBuilder.
+// NewErrConnExt returns a [ConnExt] that returns err from every operation.
+// It uses [NewTaggedStructReflector], [DefaultQueryFormatter], and [DefaultQueryBuilder]
+// so that the returned [ConnExt] satisfies the interface without requiring a real connection.
+// Useful as a sentinel or placeholder value when a connection could not be established.
 func NewErrConnExt(err error) ConnExt {
 	if err == nil {
 		panic("NewErrConnExt expects non nil error")
@@ -27,8 +28,8 @@ func NewErrConnExt(err error) ConnExt {
 	return NewConnExt(
 		NewErrConn(err),
 		NewTaggedStructReflector(),
-		StdQueryFormatter{},
-		StdQueryBuilder{},
+		DefaultQueryFormatter,
+		DefaultQueryBuilder,
 	)
 }
 
