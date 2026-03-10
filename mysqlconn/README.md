@@ -56,6 +56,38 @@ mysqlconn.EscapeIdentifier("my col") // → `my col` (contains space)
 
 Schema-qualified table names (`schema.table`) are supported by `QueryFormatter.FormatTableName`.
 
+## Error Inspection
+
+MySQL-specific constraint errors are automatically wrapped with the corresponding `sqldb` error types, so they can be checked with `errors.As` or `errors.Is`.
+
+Helper functions are also available for direct inspection:
+
+| Function                              | MySQL Error | Description                          |
+| ------------------------------------- | ----------- | ------------------------------------ |
+| `IsNotNullViolation(err)`             |        1048 | NULL inserted into NOT NULL column   |
+| `IsUniqueViolation(err)`              |        1062 | Duplicate entry for unique key       |
+| `IsForeignKeyViolation(err, ...)`     | 1216/1217/1451/1452 | Foreign key constraint failed |
+| `IsCheckViolation(err)`               |        3819 | CHECK constraint violated            |
+
+```go
+err := db.Exec(ctx, "INSERT INTO orders ...")
+if mysqlconn.IsUniqueViolation(err) {
+    // handle duplicate key
+}
+if mysqlconn.IsForeignKeyViolation(err) {
+    // handle FK violation
+}
+```
+
+Or using the generic `sqldb` error types:
+
+```go
+var uniqueErr sqldb.ErrUniqueViolation
+if errors.As(err, &uniqueErr) {
+    fmt.Println("violated constraint:", uniqueErr.Constraint)
+}
+```
+
 ## Drop Tables for Testing
 
 `DropAllTables` drops all base tables in the current database. Foreign key checks are disabled during the operation so tables can be dropped in any order.

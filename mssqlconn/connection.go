@@ -41,7 +41,7 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, e
 		}
 		return nil, err
 	}
-	return sqldb.NewGenericConn(db, config, sql.LevelReadCommitted), nil
+	return sqldb.NewGenericConn(db, config, sql.LevelReadCommitted, wrapKnownErrors), nil
 }
 
 // formatDSN converts a sqldb.ConnConfig to a SQL Server connection URL.

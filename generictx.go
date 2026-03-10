@@ -10,18 +10,20 @@ import (
 type genericTx struct {
 	// The parent non-transaction connection is needed
 	// for Ping(), Stats(), Config(), and Begin().
-	parent *genericConn
-	tx     *sql.Tx
-	opts   *sql.TxOptions
-	id     uint64
+	parent  *genericConn
+	tx      *sql.Tx
+	opts    *sql.TxOptions
+	id      uint64
+	wrapErr func(error) error // propagated from parent
 }
 
 func newGenericTx(parent *genericConn, tx *sql.Tx, opts *sql.TxOptions, id uint64) *genericTx {
 	return &genericTx{
-		parent: parent,
-		tx:     tx,
-		opts:   opts,
-		id:     id,
+		parent:  parent,
+		tx:      tx,
+		opts:    opts,
+		id:      id,
+		wrapErr: parent.wrapErr,
 	}
 }
 
@@ -37,12 +39,18 @@ func (conn *genericTx) Stats() sql.DBStats { return conn.parent.Stats() }
 
 func (conn *genericTx) Exec(ctx context.Context, query string, args ...any) error {
 	_, err := conn.tx.ExecContext(ctx, query, args...)
+	if err != nil && conn.wrapErr != nil {
+		return conn.wrapErr(err)
+	}
 	return err
 }
 
 func (conn *genericTx) Query(ctx context.Context, query string, args ...any) Rows {
 	rows, err := conn.tx.QueryContext(ctx, query, args...)
 	if err != nil {
+		if conn.wrapErr != nil {
+			err = conn.wrapErr(err)
+		}
 		return NewErrRows(err)
 	}
 	return rows

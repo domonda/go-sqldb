@@ -25,7 +25,7 @@
 
 | Feature                           | pqconn | mysqlconn | mssqlconn | sqliteconn |
 | --------------------------------- | ------ | --------- | --------- | ---------- |
-| Custom error wrapping             | Yes    | No        | No        | Yes        |
+| Custom error wrapping             | Yes    | Yes       | Yes       | Yes        |
 | Identifier escaping               | Yes    | Yes       | Yes       | Yes        |
 | `Connect` takes `context.Context` | Yes    | Yes       | Yes       | Yes        |
 | `driver.Valuer`/`sql.Scanner`     | Yes    | Yes       | Yes       | Yes        |
@@ -34,7 +34,6 @@
 | README                            | Yes    | Yes       | Yes       | Yes        |
 | Package doc comment               | Yes    | Yes       | Yes       | Yes        |
 
-- [ ] **Custom error wrapping** — Add to mysqlconn (wrap MySQL error codes) and mssqlconn (wrap MSSQL error numbers)
 
 ## Testing
 

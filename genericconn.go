@@ -9,11 +9,15 @@ import (
 
 // NewGenericConn returns a generic [Connection] implementation
 // for an existing [sql.DB] connection.
-func NewGenericConn(db *sql.DB, config *ConnConfig, defaultIsolationLevel sql.IsolationLevel) Connection {
+// If wrapErr is non-nil it is called on every error returned from
+// [Connection.Exec] and [Connection.Query] — use it to map
+// driver-specific errors to [sqldb] error types.
+func NewGenericConn(db *sql.DB, config *ConnConfig, defaultIsolationLevel sql.IsolationLevel, wrapErr func(error) error) Connection {
 	return &genericConn{
 		db:                    db,
 		config:                config,
 		defaultIsolationLevel: defaultIsolationLevel,
+		wrapErr:               wrapErr,
 	}
 }
 
@@ -21,6 +25,7 @@ type genericConn struct {
 	db                    *sql.DB
 	config                *ConnConfig
 	defaultIsolationLevel sql.IsolationLevel
+	wrapErr               func(error) error // optional; wraps Exec/Query errors
 }
 
 func (conn *genericConn) Config() *ConnConfig {
@@ -42,12 +47,18 @@ func (conn *genericConn) Stats() sql.DBStats {
 
 func (conn *genericConn) Exec(ctx context.Context, query string, args ...any) error {
 	_, err := conn.db.ExecContext(ctx, query, args...)
+	if err != nil && conn.wrapErr != nil {
+		return conn.wrapErr(err)
+	}
 	return err
 }
 
 func (conn *genericConn) Query(ctx context.Context, query string, args ...any) Rows {
 	rows, err := conn.db.QueryContext(ctx, query, args...)
 	if err != nil {
+		if conn.wrapErr != nil {
+			err = conn.wrapErr(err)
+		}
 		return NewErrRows(err)
 	}
 	return rows

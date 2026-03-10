@@ -2,26 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Development Commands
+## Version Control
 
-- **Run tests for all modules**: `./test-workspace.sh` - This runs tests across all Go workspace modules (main, mssqlconn, mysqlconn, pqconn)
-- **Run tests for specific module**: `go test ./...` in the module directory
-- **Build all modules**: `go build ./...`
-- **Get dependencies**: `go mod tidy` (run in each module directory as needed)
-- **Start test database (PostgreSQL)**: `docker compose -f pqconn/test/docker-compose.yml up -d` (PostgreSQL 17 on port 5433)
-- **Reset test database (PostgreSQL)**: `./pqconn/test/reset-postgres-data.sh` (required after changing PostgreSQL version in docker-compose.yml)
-- **Start test database (MariaDB)**: `docker compose -f mysqlconn/test/docker-compose.yml up -d` (MariaDB 11.7 on port 3307)
-- **Reset test database (MariaDB)**: `./mysqlconn/test/reset-mariadb-data.sh` (required after changing MariaDB version in docker-compose.yml)
-- **Start test database (SQL Server)**: `docker compose -f mssqlconn/test/docker-compose.yml up -d` (SQL Server 2022 on port 1434)
-- **Reset test database (SQL Server)**: `./mssqlconn/test/reset-mssql-data.sh` (required after changing SQL Server version in docker-compose.yml)
-
-## Go Workspace Structure
-
-This repository uses Go workspaces with multiple modules:
-- Main module: `github.com/domonda/go-sqldb` (root)
-- Database drivers: `./mssqlconn`, `./mysqlconn`, `./pqconn`
-- Command tools: `./cmd/sqldb-dump`
-- Examples: `./examples/user_demo`
+- **NEVER** create a git commit without asking
+- **NEVER** git push
 
 ## Architecture Overview
 
@@ -57,13 +41,6 @@ func MyValueFromContext(ctx context.Context) string {
     return val
 }
 ```
-
-### Important Packages
-
-- `sqldb` (root): Core interfaces and types
-- `db/`: Context-based connection management and transaction utilities
-- `information/`: Database schema introspection
-- `_mockconn/`: Mock implementations for testing
 
 ## Go (golang) Rules
 
@@ -116,6 +93,7 @@ func MyValueFromContext(ctx context.Context) string {
 - Remove build artefacts after testing
 
 ### Testing
+- **Run tests for all modules**: `./test-workspace.sh` 
 - Use `t.Context()` instead of `context.Background()` in tests
 - Use `github.com/stretchr/testify` for tests
 - Import `github.com/stretchr/testify/require` for required conditions

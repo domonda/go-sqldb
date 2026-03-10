@@ -15,7 +15,7 @@ func TestNewGenericConn_Config(t *testing.T) {
 		Host:     "localhost",
 		Database: "testdb",
 	}
-	conn := NewGenericConn(&sql.DB{}, cfg, sql.LevelDefault)
+	conn := NewGenericConn(&sql.DB{}, cfg, sql.LevelDefault, nil)
 
 	// when
 	got := conn.Config()
@@ -34,7 +34,7 @@ func TestNewGenericConn_DefaultIsolationLevel(t *testing.T) {
 	} {
 		t.Run(lvl.String(), func(t *testing.T) {
 			// given
-			conn := NewGenericConn(&sql.DB{}, &ConnConfig{Driver: "postgres"}, lvl)
+			conn := NewGenericConn(&sql.DB{}, &ConnConfig{Driver: "postgres"}, lvl, nil)
 
 			// when / then
 			assert.Equal(t, lvl, conn.DefaultIsolationLevel())
@@ -44,7 +44,7 @@ func TestNewGenericConn_DefaultIsolationLevel(t *testing.T) {
 
 func TestNewGenericConn_Transaction(t *testing.T) {
 	// given
-	conn := NewGenericConn(&sql.DB{}, &ConnConfig{Driver: "postgres"}, sql.LevelDefault)
+	conn := NewGenericConn(&sql.DB{}, &ConnConfig{Driver: "postgres"}, sql.LevelDefault, nil)
 
 	// when
 	tx := conn.Transaction()
@@ -56,7 +56,7 @@ func TestNewGenericConn_Transaction(t *testing.T) {
 
 func TestNewGenericConn_Commit_NotWithinTransaction(t *testing.T) {
 	// given
-	conn := NewGenericConn(&sql.DB{}, &ConnConfig{Driver: "postgres"}, sql.LevelDefault)
+	conn := NewGenericConn(&sql.DB{}, &ConnConfig{Driver: "postgres"}, sql.LevelDefault, nil)
 
 	// when
 	err := conn.Commit()
@@ -67,7 +67,7 @@ func TestNewGenericConn_Commit_NotWithinTransaction(t *testing.T) {
 
 func TestNewGenericConn_Rollback_NotWithinTransaction(t *testing.T) {
 	// given
-	conn := NewGenericConn(&sql.DB{}, &ConnConfig{Driver: "postgres"}, sql.LevelDefault)
+	conn := NewGenericConn(&sql.DB{}, &ConnConfig{Driver: "postgres"}, sql.LevelDefault, nil)
 
 	// when
 	err := conn.Rollback()
@@ -78,7 +78,7 @@ func TestNewGenericConn_Rollback_NotWithinTransaction(t *testing.T) {
 
 func TestNewGenericConn_Begin_ZeroIDError(t *testing.T) {
 	// given
-	conn := NewGenericConn(&sql.DB{}, &ConnConfig{Driver: "postgres"}, sql.LevelDefault)
+	conn := NewGenericConn(&sql.DB{}, &ConnConfig{Driver: "postgres"}, sql.LevelDefault, nil)
 
 	// when
 	_, err := conn.Begin(t.Context(), 0, nil)

@@ -55,6 +55,39 @@ mssqlconn.EscapeIdentifier("my col")  // → [my col] (contains space)
 
 Schema-qualified table names (`schema.table`) are supported by `QueryFormatter.FormatTableName`.
 
+## Error Inspection
+
+SQL Server-specific constraint errors are automatically wrapped with the corresponding `sqldb` error types, so they can be checked with `errors.As` or `errors.Is`.
+
+Helper functions are also available for direct inspection:
+
+| Function                              | SQL Server Error | Description                              |
+| ------------------------------------- | ---------------- | ---------------------------------------- |
+| `IsNotNullViolation(err)`             |              515 | NULL inserted into NOT NULL column       |
+| `IsUniqueViolation(err)`              |       2601, 2627 | Duplicate key (unique index or constraint) |
+| `IsForeignKeyViolation(err, ...)`     |              547 | Foreign key constraint violated          |
+| `IsCheckViolation(err)`               |              547 | CHECK constraint violated                |
+| `IsDeadlockDetected(err)`             |             1205 | Transaction deadlock detected            |
+
+```go
+err := db.Exec(ctx, "INSERT INTO orders ...")
+if mssqlconn.IsUniqueViolation(err) {
+    // handle duplicate key
+}
+if mssqlconn.IsForeignKeyViolation(err) {
+    // handle FK violation
+}
+```
+
+Or using the generic `sqldb` error types:
+
+```go
+var uniqueErr sqldb.ErrUniqueViolation
+if errors.As(err, &uniqueErr) {
+    fmt.Println("violated constraint:", uniqueErr.Constraint)
+}
+```
+
 ## Drop Schema for Testing
 
 Three functions are provided for resetting the database to a clean state in tests.
