@@ -233,6 +233,10 @@ func (QueryFormatter) FormatStringLiteral(str string) string {
 	return sqldb.FormatSingleQuoteStringLiteral(str)
 }
 
+func (QueryFormatter) MaxArgs() int {
+	return 65535
+}
+
 // QueryBuilder is the standard [sqldb.QueryBuilder] implementation
 // used for PostgreSQL.
 type QueryBuilder = sqldb.StdQueryBuilder

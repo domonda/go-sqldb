@@ -27,6 +27,10 @@ type QueryFormatter interface {
 	// FormatStringLiteral formats a string literal
 	// by adding quotes or escaping characters if necessary.
 	FormatStringLiteral(str string) string
+
+	// MaxArgs returns the maximum number of query parameters
+	// supported by the database driver per query.
+	MaxArgs() int
 }
 
 type StdQueryFormatter struct {
@@ -80,6 +84,10 @@ func (f StdQueryFormatter) FormatPlaceholder(paramIndex int) string {
 
 func (StdQueryFormatter) FormatStringLiteral(str string) string {
 	return FormatSingleQuoteStringLiteral(str)
+}
+
+func (StdQueryFormatter) MaxArgs() int {
+	return 65535
 }
 
 func FormatSingleQuoteStringLiteral(str string) string {

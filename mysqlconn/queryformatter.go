@@ -142,3 +142,7 @@ func (QueryFormatter) FormatStringLiteral(str string) string {
 	str = strings.ReplaceAll(str, `\`, `\\`)
 	return "'" + strings.ReplaceAll(str, "'", "''") + "'"
 }
+
+func (QueryFormatter) MaxArgs() int {
+	return 65535
+}
