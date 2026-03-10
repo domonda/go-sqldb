@@ -43,5 +43,30 @@ func SanitizeStringTrimSpace(s string) string {
 // produce false positives. go-sqldb's primary injection defenses are
 // parameterized queries for values and regex validation for identifiers.
 func IsSQLInjection(str string) (is bool, info string) {
-	return libinjection.IsSQLi(str)
+	if is, info = libinjection.IsSQLi(str); is {
+		if info == "" {
+			info = "sqli"
+		}
+		return true, info
+	}
+	// libinjection misses MySQL hash comments after a quote (admin' #)
+	// and stacked DDL queries without a leading quote (; DROP TABLE users--)
+	upper := strings.ToUpper(str)
+	for i, c := range upper {
+		switch c {
+		case '\'':
+			rest := strings.TrimLeft(upper[i+1:], " \t")
+			if strings.HasPrefix(rest, "#") {
+				return true, "hash comment after string terminator"
+			}
+		case ';':
+			rest := strings.TrimLeft(upper[i+1:], " \t")
+			for _, kw := range []string{"DROP ", "TRUNCATE ", "ALTER ", "CREATE ", "EXEC "} {
+				if strings.HasPrefix(rest, kw) {
+					return true, "stacked " + strings.ToLower(strings.TrimRight(kw, " ")) + " query"
+				}
+			}
+		}
+	}
+	return false, ""
 }

@@ -26,16 +26,16 @@
 | Feature                           | pqconn | mysqlconn | mssqlconn | sqliteconn |
 | --------------------------------- | ------ | --------- | --------- | ---------- |
 | Custom error wrapping             | Yes    | No        | No        | Yes        |
-| Identifier escaping               | Yes    | Yes       | Yes       | No         |
+| Identifier escaping               | Yes    | Yes       | Yes       | Yes        |
 | `Connect` takes `context.Context` | Yes    | Yes       | Yes       | Yes        |
 | `driver.Valuer`/`sql.Scanner`     | Yes    | Yes       | Yes       | Yes        |
 | LISTEN/NOTIFY                     | Yes    | N/A       | N/A       | N/A        |
-| Drop schema queries               | Yes    | No        | No        | No         |
+| Drop schema queries               | Yes    | Yes       | Yes       | Yes        |
 | README                            | Yes    | No        | No        | Yes        |
 | Package doc comment               | No     | No        | No        | Yes        |
 
 - [ ] **Custom error wrapping** — Add to mysqlconn (wrap MySQL error codes) and mssqlconn (wrap MSSQL error numbers)
-- [ ] **Drop schema queries** — Add to mysqlconn, mssqlconn, and sqliteconn
+- [x] **Drop schema queries** — Add to mysqlconn, mssqlconn, and sqliteconn
 - [ ] **README** — Add to mysqlconn and mssqlconn
 - [ ] **Package doc comment** — Add to pqconn, mysqlconn, and mssqlconn
 
@@ -44,5 +44,4 @@
 ### Missing Tests
 
 - [ ] `genericconn.go` / `generictx.go` — `NewGenericConn` and generic transaction types have no unit tests
-- [x] `errconn.go` — All methods covered: error-returning methods, zero-value returns, `Close` nil, interface assertion
-- [ ] `strings_test.go:37,40` — Commented-out SQL injection test cases (`admin' #` and `; DROP TABLE users--` not yet detected)
+- [x] `strings_test.go:37,40` — Commented-out SQL injection test cases (`admin' #` and `; DROP TABLE users--` not yet detected)
