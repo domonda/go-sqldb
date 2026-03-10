@@ -31,13 +31,10 @@
 | `driver.Valuer`/`sql.Scanner`     | Yes    | Yes       | Yes       | Yes        |
 | LISTEN/NOTIFY                     | Yes    | N/A       | N/A       | N/A        |
 | Drop schema queries               | Yes    | Yes       | Yes       | Yes        |
-| README                            | Yes    | No        | No        | Yes        |
-| Package doc comment               | No     | No        | No        | Yes        |
+| README                            | Yes    | Yes       | Yes       | Yes        |
+| Package doc comment               | Yes    | Yes       | Yes       | Yes        |
 
 - [ ] **Custom error wrapping** — Add to mysqlconn (wrap MySQL error codes) and mssqlconn (wrap MSSQL error numbers)
-- [x] **Drop schema queries** — Add to mysqlconn, mssqlconn, and sqliteconn
-- [ ] **README** — Add to mysqlconn and mssqlconn
-- [ ] **Package doc comment** — Add to pqconn, mysqlconn, and mssqlconn
 
 ## Testing
 
