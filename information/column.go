@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/domonda/go-sqldb/db"
+	"github.com/domonda/go-sqldb"
 )
 
 // Column maps a row from information_schema.columns.
@@ -68,14 +68,14 @@ type KeyColumnUsage struct {
 	PositionInUniqueConstraint *int   `db:"position_in_unique_constraint"`
 }
 
-func ColumnExists(ctx context.Context, table, column string) (bool, error) {
+func ColumnExists(ctx context.Context, conn sqldb.ConnExt, table, column string) (bool, error) {
 	tableSchema, tableName, ok := strings.Cut(table, ".")
 	if !ok {
 		tableSchema = "public"
 		tableName = table
 	}
 
-	return db.QueryRowAs[bool](ctx,
+	return sqldb.QueryRowAs[bool](ctx, conn, conn, conn,
 		/*sql*/ `
 			SELECT EXISTS (
 				SELECT FROM information_schema.columns

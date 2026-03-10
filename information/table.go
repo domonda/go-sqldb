@@ -4,7 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/domonda/go-sqldb/db"
+	"github.com/domonda/go-sqldb"
 )
 
 // Table maps a row from information_schema.tables.
@@ -23,8 +23,8 @@ type Table struct {
 	CommitAction              String `db:"commit_action"`
 }
 
-func GetTable(ctx context.Context, catalog, schema, name string) (table *Table, err error) {
-	return db.QueryRowAs[*Table](ctx,
+func GetTable(ctx context.Context, conn sqldb.ConnExt, catalog, schema, name string) (table *Table, err error) {
+	return sqldb.QueryRowAs[*Table](ctx, conn, conn, conn,
 		/*sql*/ `
 			SELECT *
 			FROM information_schema.tables
@@ -41,13 +41,13 @@ func GetTable(ctx context.Context, catalog, schema, name string) (table *Table, 
 // TableExists checks if a table exists in the database
 // qualifiedName is in the format "schema.table" or "table"
 // If no schema is provided, "public" is assumed.
-func TableExists(ctx context.Context, qualifiedName string) (exists bool, err error) {
+func TableExists(ctx context.Context, conn sqldb.ConnExt, qualifiedName string) (exists bool, err error) {
 	schema, table, ok := strings.Cut(qualifiedName, ".")
 	if !ok {
 		schema = "public"
 		table = qualifiedName
 	}
-	return db.QueryRowAs[bool](ctx,
+	return sqldb.QueryRowAs[bool](ctx, conn, conn, conn,
 		/*sql*/ `
 			SELECT EXISTS (
 				SELECT FROM information_schema.tables
@@ -60,8 +60,8 @@ func TableExists(ctx context.Context, qualifiedName string) (exists bool, err er
 	)
 }
 
-func GetAllTables(ctx context.Context) (tables []*Table, err error) {
-	return db.QueryRowsAsSlice[*Table](ctx,
+func GetAllTables(ctx context.Context, conn sqldb.ConnExt) (tables []*Table, err error) {
+	return sqldb.QueryRowsAsSlice[*Table](ctx, conn, conn, conn,
 		/*sql*/ `
 			SELECT * FROM information_schema.tables
 		`,

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/domonda/go-sqldb/db"
+	"github.com/domonda/go-sqldb"
 	"github.com/domonda/go-types/uu"
 )
 
@@ -25,8 +25,8 @@ type PrimaryKeyColumn struct {
 	ForeignKey bool   `db:"foreign_key"`
 }
 
-func GetPrimaryKeyColumns(ctx context.Context) (cols []PrimaryKeyColumn, err error) {
-	return db.QueryRowsAsSlice[PrimaryKeyColumn](ctx,
+func GetPrimaryKeyColumns(ctx context.Context, conn sqldb.ConnExt) (cols []PrimaryKeyColumn, err error) {
+	return sqldb.QueryRowsAsSlice[PrimaryKeyColumn](ctx, conn, conn, conn,
 		/*sql*/ `
 		SELECT
 			tc.table_schema||'.'||tc.table_name AS "table",
@@ -60,8 +60,8 @@ func GetPrimaryKeyColumns(ctx context.Context) (cols []PrimaryKeyColumn, err err
 	)
 }
 
-func GetPrimaryKeyColumnsOfType(ctx context.Context, pkType string) (cols []PrimaryKeyColumn, err error) {
-	return db.QueryRowsAsSlice[PrimaryKeyColumn](ctx,
+func GetPrimaryKeyColumnsOfType(ctx context.Context, conn sqldb.ConnExt, pkType string) (cols []PrimaryKeyColumn, err error) {
+	return sqldb.QueryRowsAsSlice[PrimaryKeyColumn](ctx, conn, conn, conn,
 		/*sql*/ `
 		SELECT
 			tc.table_schema||'.'||tc.table_name AS "table",
@@ -103,10 +103,10 @@ type TableRowWithPrimaryKey struct {
 	Row    []string
 }
 
-func GetTableRowsWithPrimaryKey(ctx context.Context, pkCols []PrimaryKeyColumn, pk any) (tableRows []TableRowWithPrimaryKey, err error) {
+func GetTableRowsWithPrimaryKey(ctx context.Context, conn sqldb.ConnExt, pkCols []PrimaryKeyColumn, pk any) (tableRows []TableRowWithPrimaryKey, err error) {
 	for _, col := range pkCols {
 		query := fmt.Sprintf(`SELECT * FROM %s WHERE "%s" = $1`, col.Table, col.Column)
-		strs, err := db.QueryRowsAsStrings(ctx, query, pk)
+		strs, err := sqldb.QueryRowsAsStrings(ctx, conn, conn, query, pk)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				continue
@@ -125,86 +125,88 @@ func GetTableRowsWithPrimaryKey(ctx context.Context, pkCols []PrimaryKeyColumn, 
 	return tableRows, nil
 }
 
-var RenderUUIDPrimaryKeyRefsHTML = http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-	var (
-		title       string
-		mainContent any
-		style       = []string{
-			StyleAllMonospace,
-			StyleDefaultTable,
-			`<style>h1 {color:red}</style>`,
-		}
-	)
-	pk, err := uu.IDFromString(request.URL.Query().Get("pk"))
-	if err != nil {
-		title = "Primary Key UUID"
-		mainContent = /*html*/ `
+func RenderUUIDPrimaryKeyRefsHTML(conn sqldb.ConnExt) http.Handler {
+	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		var (
+			title       string
+			mainContent any
+			style       = []string{
+				StyleAllMonospace,
+				StyleDefaultTable,
+				`<style>h1 {color:red}</style>`,
+			}
+		)
+		pk, err := uu.IDFromString(request.URL.Query().Get("pk"))
+		if err != nil {
+			title = "Primary Key UUID"
+			mainContent = /*html*/ `
 			<form onsubmit="event.preventDefault();location='.?pk='+encodeURIComponent(document.getElementById('uuid').value.trim())">
 				<input type="text" size="40" id="uuid"/>
 				<input type="submit" value="Look up"/>
 			</form>`
-	} else {
-		title = pk.String()
-		ctx := request.Context()
-		cols, err := GetPrimaryKeyColumnsOfType(ctx, "uuid")
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		tableRows, err := GetTableRowsWithPrimaryKey(ctx, cols, pk)
-		if err != nil {
-			http.Error(writer, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		sort.SliceStable(tableRows, func(i, j int) bool {
-			return !tableRows[i].ForeignKey && tableRows[j].ForeignKey
-		})
-		var b strings.Builder
-		fmt.Fprintf(&b, "<h2><button onclick='navigator.clipboard.writeText(%q)'>Copy UUID</button></h2>", pk)
-		for _, tableRow := range tableRows { //#nosec
-			fmt.Fprintf(&b, "<h3>%s</h3>", html.EscapeString(tableRow.Table))
-			fmt.Fprintf(&b, "<table>")
-			for colIdx, title := range tableRow.Header {
-				val := tableRow.Row[colIdx]
-				id, err := uu.IDFromString(val)
-				if err == nil {
-					if id == pk {
-						var fk string
-						if tableRow.ForeignKey {
-							fk = " (foreign key)"
-						}
-						fmt.Fprintf(&b, "<tr><td>%s</td><td><b style='color:red'>%s</b>%s</td></tr>", html.EscapeString(title), id, fk)
-					} else {
-						fmt.Fprintf(&b, "<tr><td>%[1]s</td><td><a href='.?pk=%[2]s'>%[2]s</a></td></tr>", html.EscapeString(title), id)
-					}
-				} else {
-					fmt.Fprintf(&b, "<tr><td>%s</td><td>%s</td></tr>", html.EscapeString(title), html.EscapeString(val))
-				}
+		} else {
+			title = pk.String()
+			ctx := request.Context()
+			cols, err := GetPrimaryKeyColumnsOfType(ctx, conn, "uuid")
+			if err != nil {
+				http.Error(writer, err.Error(), http.StatusInternalServerError)
+				return
 			}
-			fmt.Fprintf(&b, "</table>")
+			tableRows, err := GetTableRowsWithPrimaryKey(ctx, conn, cols, pk)
+			if err != nil {
+				http.Error(writer, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			sort.SliceStable(tableRows, func(i, j int) bool {
+				return !tableRows[i].ForeignKey && tableRows[j].ForeignKey
+			})
+			var b strings.Builder
+			fmt.Fprintf(&b, "<h2><button onclick='navigator.clipboard.writeText(%q)'>Copy UUID</button></h2>", pk) //#nosec G705 -- pk is a validated uu.ID UUID
+			for _, tableRow := range tableRows {                                                                   //#nosec
+				fmt.Fprintf(&b, "<h3>%s</h3>", html.EscapeString(tableRow.Table))
+				fmt.Fprintf(&b, "<table>")
+				for colIdx, title := range tableRow.Header {
+					val := tableRow.Row[colIdx]
+					id, err := uu.IDFromString(val)
+					if err == nil {
+						if id == pk {
+							var fk string
+							if tableRow.ForeignKey {
+								fk = " (foreign key)"
+							}
+							fmt.Fprintf(&b, "<tr><td>%s</td><td><b style='color:red'>%s</b>%s</td></tr>", html.EscapeString(title), id, fk) //#nosec G705 -- id is a validated uu.ID UUID, fk is a constant
+						} else {
+							fmt.Fprintf(&b, "<tr><td>%[1]s</td><td><a href='.?pk=%[2]s'>%[2]s</a></td></tr>", html.EscapeString(title), id) //#nosec G705 -- id is a validated uu.ID UUID
+						}
+					} else {
+						fmt.Fprintf(&b, "<tr><td>%s</td><td>%s</td></tr>", html.EscapeString(title), html.EscapeString(val)) //#nosec G705 -- val is HTML-escaped
+					}
+				}
+				fmt.Fprintf(&b, "</table>")
+			}
+			mainContent = b.String()
 		}
-		mainContent = b.String()
-	}
 
-	tpl, err := template.New("").Parse(htmlTemplate)
-	if err != nil {
-		http.Error(writer, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	var buf bytes.Buffer
-	err = tpl.Execute(&buf, map[string]any{
-		"title":       title,
-		"style":       style,
-		"headerTitle": true,
-		"mainContent": mainContent,
+		tpl, err := template.New("").Parse(htmlTemplate)
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		var buf bytes.Buffer
+		err = tpl.Execute(&buf, map[string]any{
+			"title":       title,
+			"style":       style,
+			"headerTitle": true,
+			"mainContent": mainContent,
+		})
+		if err != nil {
+			http.Error(writer, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		writer.Header().Add("Content-Type", "text/html; charset=utf-8")
+		writer.Write(buf.Bytes()) //#nosec G104
 	})
-	if err != nil {
-		http.Error(writer, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	writer.Header().Add("Content-Type", "text/html; charset=utf-8")
-	writer.Write(buf.Bytes()) //#nosec G104
-})
+}
 
 var htmlTemplate = /*html*/ `<!DOCTYPE html>
 <html lang="en">
@@ -220,7 +222,7 @@ var htmlTemplate = /*html*/ `<!DOCTYPE html>
 			--space: 1rem;
 		}
 		*, *::before, *::after { box-sizing: border-box; }
-		html { 
+		html {
 			margin: 8px;
 			padding: 0;
 			color-scheme: light;

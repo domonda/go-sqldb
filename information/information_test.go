@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/db"
 	"github.com/domonda/go-sqldb/pqconn"
 )
 
@@ -39,7 +38,10 @@ func envOrDefaultInt(key string, defaultVal int) int {
 	return defaultVal
 }
 
-var testCtx context.Context
+var (
+	testCtx     context.Context
+	testConnExt sqldb.ConnExt
+)
 
 func TestMain(m *testing.M) {
 	if os.Getenv("CI") == "" {
@@ -61,12 +63,9 @@ func TestMain(m *testing.M) {
 	}
 	// Retry connecting because docker compose up -d returns
 	// before PostgreSQL is ready to accept connections
-	var (
-		connExt sqldb.ConnExt
-		err     error
-	)
+	var err error
 	for range 30 {
-		connExt, err = pqconn.ConnectExt(ctx, config, sqldb.NewTaggedStructReflector())
+		testConnExt, err = pqconn.ConnectExt(ctx, config, sqldb.NewTaggedStructReflector())
 		if err == nil {
 			break
 		}
@@ -77,7 +76,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// Create a test table for the information schema tests
-	err = connExt.Exec(ctx,
+	err = testConnExt.Exec(ctx,
 		/*sql*/ `
 			DROP TABLE IF EXISTS information_test_child;
 			DROP TABLE IF EXISTS information_test;
@@ -96,12 +95,12 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Failed to create test tables: %v", err)
 	}
 
-	testCtx = db.ContextWithConn(ctx, connExt)
+	testCtx = ctx
 
 	m.Run()
 
 	// Cleanup
-	cleanupErr := connExt.Exec(ctx,
+	cleanupErr := testConnExt.Exec(ctx,
 		/*sql*/ `
 			DROP TABLE IF EXISTS information_test_child;
 			DROP TABLE IF EXISTS information_test;
@@ -113,7 +112,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestTableExists(t *testing.T) {
-	exists, err := TableExists(testCtx, "information_test")
+	exists, err := TableExists(testCtx, testConnExt, "information_test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +120,7 @@ func TestTableExists(t *testing.T) {
 		t.Error("expected information_test to exist")
 	}
 
-	exists, err = TableExists(testCtx, "nonexistent_table_xyz")
+	exists, err = TableExists(testCtx, testConnExt, "nonexistent_table_xyz")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -131,7 +130,7 @@ func TestTableExists(t *testing.T) {
 }
 
 func TestTableExists_WithSchema(t *testing.T) {
-	exists, err := TableExists(testCtx, "public.information_test")
+	exists, err := TableExists(testCtx, testConnExt, "public.information_test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +140,7 @@ func TestTableExists_WithSchema(t *testing.T) {
 }
 
 func TestColumnExists(t *testing.T) {
-	exists, err := ColumnExists(testCtx, "information_test", "name")
+	exists, err := ColumnExists(testCtx, testConnExt, "information_test", "name")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -149,7 +148,7 @@ func TestColumnExists(t *testing.T) {
 		t.Error("expected column 'name' to exist in information_test")
 	}
 
-	exists, err = ColumnExists(testCtx, "information_test", "nonexistent_col")
+	exists, err = ColumnExists(testCtx, testConnExt, "information_test", "nonexistent_col")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +158,7 @@ func TestColumnExists(t *testing.T) {
 }
 
 func TestColumnExists_WithSchema(t *testing.T) {
-	exists, err := ColumnExists(testCtx, "public.information_test", "id")
+	exists, err := ColumnExists(testCtx, testConnExt, "public.information_test", "id")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +168,7 @@ func TestColumnExists_WithSchema(t *testing.T) {
 }
 
 func TestGetTable(t *testing.T) {
-	table, err := GetTable(testCtx, dbName, "public", "information_test")
+	table, err := GetTable(testCtx, testConnExt, dbName, "public", "information_test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,7 +190,7 @@ func TestGetTable(t *testing.T) {
 }
 
 func TestGetAllTables(t *testing.T) {
-	tables, err := GetAllTables(testCtx)
+	tables, err := GetAllTables(testCtx, testConnExt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +211,7 @@ func TestGetAllTables(t *testing.T) {
 }
 
 func TestGetPrimaryKeyColumns(t *testing.T) {
-	cols, err := GetPrimaryKeyColumns(testCtx)
+	cols, err := GetPrimaryKeyColumns(testCtx, testConnExt)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +247,7 @@ func TestGetPrimaryKeyColumns(t *testing.T) {
 
 func TestGetTableRowsWithPrimaryKey(t *testing.T) {
 	// Insert a row into the parent table only
-	err := db.Conn(testCtx).Exec(testCtx,
+	err := testConnExt.Exec(testCtx,
 		/*sql*/ `
 			DELETE FROM information_test_child;
 			DELETE FROM information_test;
@@ -259,7 +258,7 @@ func TestGetTableRowsWithPrimaryKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		db.Conn(testCtx).Exec(testCtx,
+		testConnExt.Exec(testCtx,
 			/*sql*/ `DELETE FROM information_test_child; DELETE FROM information_test`,
 		)
 	})
@@ -273,7 +272,7 @@ func TestGetTableRowsWithPrimaryKey(t *testing.T) {
 	t.Run("matching row in one table, no rows in other", func(t *testing.T) {
 		// pk=42 exists in information_test but not in information_test_child
 		// The function should skip information_test_child (sql.ErrNoRows / len < 2 path)
-		tableRows, err := GetTableRowsWithPrimaryKey(testCtx, pkCols, 42)
+		tableRows, err := GetTableRowsWithPrimaryKey(testCtx, testConnExt, pkCols, 42)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -293,7 +292,7 @@ func TestGetTableRowsWithPrimaryKey(t *testing.T) {
 
 	t.Run("no matching rows in any table", func(t *testing.T) {
 		// pk=999 doesn't exist in any table — all tables should be skipped
-		tableRows, err := GetTableRowsWithPrimaryKey(testCtx, pkCols, 999)
+		tableRows, err := GetTableRowsWithPrimaryKey(testCtx, testConnExt, pkCols, 999)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -303,7 +302,7 @@ func TestGetTableRowsWithPrimaryKey(t *testing.T) {
 	})
 
 	t.Run("empty pk columns slice", func(t *testing.T) {
-		tableRows, err := GetTableRowsWithPrimaryKey(testCtx, nil, 42)
+		tableRows, err := GetTableRowsWithPrimaryKey(testCtx, testConnExt, nil, 42)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -314,7 +313,7 @@ func TestGetTableRowsWithPrimaryKey(t *testing.T) {
 }
 
 func TestGetPrimaryKeyColumnsOfType(t *testing.T) {
-	cols, err := GetPrimaryKeyColumnsOfType(testCtx, "integer")
+	cols, err := GetPrimaryKeyColumnsOfType(testCtx, testConnExt, "integer")
 	if err != nil {
 		t.Fatal(err)
 	}
