@@ -34,6 +34,14 @@ func SanitizeStringTrimSpace(s string) string {
 // Returns true if SQL injection is detected, along with diagnostic information
 // about the detected pattern. Returns false for legitimate strings that may
 // contain SQL-like characters (e.g., names with apostrophes like "O'Brien").
+//
+// This function is intended to be called by application code at system
+// boundaries — for example, to validate a user-supplied string before using
+// it as a dynamic table name, column name, or filter value. It should not be
+// applied to developer-authored SQL fragments (WHERE clauses, RETURNING
+// clauses, etc.) that intentionally contain SQL syntax, as those would
+// produce false positives. go-sqldb's primary injection defenses are
+// parameterized queries for values and regex validation for identifiers.
 func IsSQLInjection(str string) (is bool, info string) {
 	return libinjection.IsSQLi(str)
 }
