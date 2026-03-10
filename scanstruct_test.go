@@ -1,56 +1,125 @@
 package sqldb
 
-// func TestGetStructFieldIndices(t *testing.T) {
-// 	type DeepEmbeddedStruct struct {
-// 		DeeperEmbInt int `db:"deep_emb_int"`
-// 	}
-// 	type embeddedStruct struct {
-// 		DeepEmbeddedStruct
-// 		EmbInt int `db:"emb_int"`
-// 	}
-// 	type Struct struct {
-// 		ID     string `db:"id,pk"`
-// 		Int    int    `db:"int"`
-// 		Ignore int    `db:"-"`
-// 		embeddedStruct
-// 		UntaggedField int
-// 		Struct        struct {
-// 			InlineStructInt int `db:"inline_struct_int"`
-// 		}
-// 		NilPtr *byte `db:"nil_ptr"`
-// 	}
+import (
+	"database/sql"
+	"testing"
 
-// 	fieldIndices := map[string][]int{
-// 		"id":           {0},
-// 		"int":          {1},
-// 		"deep_emb_int": {3, 0, 0},
-// 		"emb_int":      {3, 1},
-// 		"nil_ptr":      {6},
-// 	}
-// 	naming := sqldb.StructFieldTagNaming{NameTag: "db", IgnoreName: "-", UntaggedNameFunc: sqldb.IgnoreStructField}
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
 
-// 	type args struct {
-// 		t     reflect.Type
-// 		namer sqldb.StructFieldMapper
-// 	}
-// 	tests := []struct {
-// 		name             string
-// 		args             args
-// 		wantFieldIndices map[string][]int
-// 		wantErr          bool
-// 	}{
-// 		{name: "embedd", args: args{t: reflect.TypeOf(Struct{}), namer: naming}, wantFieldIndices: fieldIndices},
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			gotFieldIndices, err := GetStructFieldIndices(tt.args.t, tt.args.namer)
-// 			if (err != nil) != tt.wantErr {
-// 				t.Errorf("GetStructFieldIndices() error = %v, wantErr %v", err, tt.wantErr)
-// 				return
-// 			}
-// 			if !reflect.DeepEqual(gotFieldIndices, tt.wantFieldIndices) {
-// 				t.Errorf("GetStructFieldIndices() = %v, want %v", gotFieldIndices, tt.wantFieldIndices)
-// 			}
-// 		})
-// 	}
-// }
+type scanTestStruct struct {
+	ID   int64  `db:"id"`
+	Name string `db:"name"`
+}
+
+// mockRowScanner implements rowScanner for testing.
+type mockRowScanner struct {
+	columns []string
+	values  []any
+	scanErr error
+}
+
+func (r *mockRowScanner) Scan(dest ...any) error {
+	if r.scanErr != nil {
+		return r.scanErr
+	}
+	for i, d := range dest {
+		switch v := d.(type) {
+		case *int64:
+			*v = r.values[i].(int64)
+		case *string:
+			*v = r.values[i].(string)
+		}
+	}
+	return nil
+}
+
+func TestScanStruct(t *testing.T) {
+	refl := NewTaggedStructReflector()
+
+	t.Run("scan into struct", func(t *testing.T) {
+		// given
+		row := &mockRowScanner{
+			columns: []string{"id", "name"},
+			values:  []any{int64(42), "Alice"},
+		}
+		var dest scanTestStruct
+
+		// when
+		err := scanStruct(row, []string{"id", "name"}, refl, &dest)
+
+		// then
+		require.NoError(t, err)
+		assert.Equal(t, int64(42), dest.ID)
+		assert.Equal(t, "Alice", dest.Name)
+	})
+
+	t.Run("nil pointer destination returns error", func(t *testing.T) {
+		// given
+		row := &mockRowScanner{
+			columns: []string{"id", "name"},
+			values:  []any{int64(1), "Bob"},
+		}
+		var dest *scanTestStruct = nil
+
+		// when
+		err := scanStruct(row, []string{"id", "name"}, refl, dest)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "nil pointer")
+	})
+
+	t.Run("non-struct destination returns error", func(t *testing.T) {
+		// given
+		row := &mockRowScanner{
+			columns: []string{"id"},
+			values:  []any{int64(1)},
+		}
+		var dest int
+
+		// when
+		err := scanStruct(row, []string{"id"}, refl, &dest)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "expected struct")
+	})
+
+	t.Run("scan error propagates", func(t *testing.T) {
+		// given
+		row := &mockRowScanner{
+			columns: []string{"id", "name"},
+			values:  []any{int64(1), "Bob"},
+			scanErr: sql.ErrNoRows,
+		}
+		var dest scanTestStruct
+
+		// when
+		err := scanStruct(row, []string{"id", "name"}, refl, &dest)
+
+		// then
+		require.Error(t, err)
+	})
+
+	t.Run("allocates nil pointer to struct", func(t *testing.T) {
+		// given
+		row := &mockRowScanner{
+			columns: []string{"id", "name"},
+			values:  []any{int64(7), "Charlie"},
+		}
+		// dest is a pointer to a nil pointer – scanStruct should allocate it
+		var inner *scanTestStruct
+		dest := &inner
+
+		// when
+		err := scanStruct(row, []string{"id", "name"}, refl, dest)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, inner)
+		assert.Equal(t, int64(7), inner.ID)
+		assert.Equal(t, "Charlie", inner.Name)
+	})
+}

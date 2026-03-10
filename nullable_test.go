@@ -3,7 +3,6 @@ package sqldb
 import (
 	"database/sql"
 	"database/sql/driver"
-	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -139,19 +138,46 @@ func TestIsNullable(t *testing.T) {
 }
 
 func TestIsNullOrZero(t *testing.T) {
+	var nilIntPtr *int
+	var nilSlice []byte
+	var nilMap map[string]int
+
+	intVal := 0
+	nonZeroInt := 42
+
 	tests := []struct {
+		name string
 		val  any
 		want bool
 	}{
-		{val: time.Time{}, want: true},
+		// Zero/null values
+		{name: "nil", val: nil, want: true},
+		{name: "zero time.Time", val: time.Time{}, want: true},
+		{name: "zero int", val: 0, want: true},
+		{name: "zero int8", val: int8(0), want: true},
+		{name: "zero float64", val: float64(0), want: true},
+		{name: "zero string", val: "", want: true},
+		{name: "zero bool", val: false, want: true},
+		{name: "nil pointer", val: nilIntPtr, want: true},
+		{name: "nil slice", val: nilSlice, want: true},
+		{name: "nil map", val: nilMap, want: true},
+		{name: "zero [16]byte UUID", val: [16]byte{}, want: true},
+		{name: "sql.NullString invalid", val: sql.NullString{}, want: true},
 
 		// Not null or zero
-		{val: new(int), want: false},
-
-		// TODO more tests
+		{name: "non-nil pointer to zero", val: &intVal, want: false},
+		{name: "non-nil pointer to non-zero", val: &nonZeroInt, want: false},
+		{name: "non-zero int", val: 42, want: false},
+		{name: "non-zero string", val: "hello", want: false},
+		{name: "true bool", val: true, want: false},
+		{name: "non-zero float64", val: 3.14, want: false},
+		{name: "non-empty slice", val: []byte{1, 2, 3}, want: false},
+		{name: "non-empty map", val: map[string]int{"a": 1}, want: false},
+		{name: "non-zero [16]byte", val: [16]byte{1}, want: false},
+		{name: "sql.NullString valid", val: sql.NullString{String: "x", Valid: true}, want: false},
 	}
 	for _, tt := range tests {
-		t.Run(fmt.Sprint(tt.val), func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			if got := IsNullOrZero(tt.val); got != tt.want {
 				t.Errorf("IsNullOrZero(%#v) = %t, want %t", tt.val, got, tt.want)
 			}

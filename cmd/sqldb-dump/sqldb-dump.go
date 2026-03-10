@@ -5,7 +5,6 @@ import (
 
 	"github.com/domonda/go-pretty"
 	"github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/db"
 	"github.com/domonda/go-sqldb/information"
 	"github.com/domonda/go-sqldb/pqconn"
 )
@@ -25,9 +24,7 @@ func main() {
 		panic(err)
 	}
 
-	ctx = db.ContextWithConn(ctx, conn)
-
-	tables, err := information.GetAllTables(ctx)
+	tables, err := information.GetAllTables(ctx, conn)
 	if err != nil {
 		panic(err)
 	}

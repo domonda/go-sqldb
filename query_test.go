@@ -396,6 +396,279 @@ func TestQueryRowsAsSlice(t *testing.T) {
 	})
 }
 
+func TestQueryRowsAsStrings(t *testing.T) {
+	t.Run("header plus data rows", func(t *testing.T) {
+		// given
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("id", "name").
+				WithRow(int64(1), "Alice").
+				WithRow(int64(2), "Bob")
+		}
+
+		// when
+		rows, err := QueryRowsAsStrings(t.Context(), conn, fmtr, "SELECT id, name FROM users")
+
+		// then
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rows) != 3 {
+			t.Fatalf("len = %d, want 3 (header + 2 data rows)", len(rows))
+		}
+		if rows[0][0] != "id" || rows[0][1] != "name" {
+			t.Errorf("header row = %v, want [id name]", rows[0])
+		}
+		if rows[1][0] != "1" || rows[1][1] != "Alice" {
+			t.Errorf("row[1] = %v, want [1 Alice]", rows[1])
+		}
+		if rows[2][0] != "2" || rows[2][1] != "Bob" {
+			t.Errorf("row[2] = %v, want [2 Bob]", rows[2])
+		}
+	})
+
+	t.Run("empty result returns only header", func(t *testing.T) {
+		// given
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("col1", "col2")
+		}
+
+		// when
+		rows, err := QueryRowsAsStrings(t.Context(), conn, fmtr, "SELECT col1, col2 FROM t WHERE 1=0")
+
+		// then
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rows) != 1 {
+			t.Fatalf("len = %d, want 1 (header only)", len(rows))
+		}
+		if rows[0][0] != "col1" || rows[0][1] != "col2" {
+			t.Errorf("header row = %v, want [col1 col2]", rows[0])
+		}
+	})
+
+	t.Run("query error propagates", func(t *testing.T) {
+		// given
+		conn, _, _, fmtr := newTestInterfaces()
+		queryErr := errors.New("query failed")
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewErrRows(queryErr)
+		}
+
+		// when
+		_, err := QueryRowsAsStrings(t.Context(), conn, fmtr, "SELECT 1")
+
+		// then
+		if !errors.Is(err, queryErr) {
+			t.Errorf("expected error wrapping %v, got: %v", queryErr, err)
+		}
+	})
+}
+
+func TestQueryCallback(t *testing.T) {
+	t.Run("scalar single column", func(t *testing.T) {
+		// given
+		conn, refl, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("name").
+				WithRow("Alice").
+				WithRow("Bob").
+				WithRow("Charlie")
+		}
+
+		// when
+		var names []string
+		err := QueryCallback(t.Context(), conn, refl, fmtr,
+			func(name string) { names = append(names, name) },
+			"SELECT name FROM users",
+		)
+
+		// then
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := []string{"Alice", "Bob", "Charlie"}
+		if len(names) != len(want) {
+			t.Fatalf("len = %d, want %d", len(names), len(want))
+		}
+		for i, w := range want {
+			if names[i] != w {
+				t.Errorf("names[%d] = %q, want %q", i, names[i], w)
+			}
+		}
+	})
+
+	t.Run("callback returning error stops iteration", func(t *testing.T) {
+		// given
+		conn, refl, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("name").
+				WithRow("Alice").
+				WithRow("STOP").
+				WithRow("Charlie")
+		}
+		stopErr := errors.New("stop")
+
+		// when
+		var names []string
+		err := QueryCallback(t.Context(), conn, refl, fmtr,
+			func(name string) error {
+				if name == "STOP" {
+					return stopErr
+				}
+				names = append(names, name)
+				return nil
+			},
+			"SELECT name FROM users",
+		)
+
+		// then
+		if !errors.Is(err, stopErr) {
+			t.Errorf("expected error %v, got: %v", stopErr, err)
+		}
+		if len(names) != 1 || names[0] != "Alice" {
+			t.Errorf("names = %v, want [Alice]", names)
+		}
+	})
+
+	t.Run("callback with context arg", func(t *testing.T) {
+		// given
+		conn, refl, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("id").WithRow(int64(1)).WithRow(int64(2))
+		}
+
+		// when
+		var ids []int64
+		err := QueryCallback(t.Context(), conn, refl, fmtr,
+			func(ctx context.Context, id int64) { ids = append(ids, id) },
+			"SELECT id FROM items",
+		)
+
+		// then
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(ids) != 2 || ids[0] != 1 || ids[1] != 2 {
+			t.Errorf("ids = %v, want [1 2]", ids)
+		}
+	})
+
+	t.Run("zero rows no error", func(t *testing.T) {
+		// given
+		conn, refl, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("name")
+		}
+
+		// when
+		called := false
+		err := QueryCallback(t.Context(), conn, refl, fmtr,
+			func(name string) { called = true },
+			"SELECT name FROM users WHERE 1=0",
+		)
+
+		// then
+		if err != nil {
+			t.Fatal(err)
+		}
+		if called {
+			t.Error("callback should not be called for zero rows")
+		}
+	})
+
+	t.Run("not a function returns error", func(t *testing.T) {
+		// given
+		conn, refl, _, fmtr := newTestInterfaces()
+
+		// when
+		err := QueryCallback(t.Context(), conn, refl, fmtr, "not a func", "SELECT 1")
+
+		// then
+		if err == nil {
+			t.Error("expected error for non-function callback")
+		}
+	})
+
+	t.Run("variadic function returns error", func(t *testing.T) {
+		// given
+		conn, refl, _, fmtr := newTestInterfaces()
+
+		// when
+		err := QueryCallback(t.Context(), conn, refl, fmtr, func(args ...string) {}, "SELECT 1")
+
+		// then
+		if err == nil {
+			t.Error("expected error for variadic callback")
+		}
+	})
+
+	t.Run("no arguments returns error", func(t *testing.T) {
+		// given
+		conn, refl, _, fmtr := newTestInterfaces()
+
+		// when
+		err := QueryCallback(t.Context(), conn, refl, fmtr, func() {}, "SELECT 1")
+
+		// then
+		if err == nil {
+			t.Error("expected error for callback with no arguments")
+		}
+	})
+
+	t.Run("column count mismatch returns error", func(t *testing.T) {
+		// given
+		conn, refl, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("name", "age").WithRow("Alice", int64(30))
+		}
+
+		// when – callback takes 1 arg but query returns 2 columns
+		err := QueryCallback(t.Context(), conn, refl, fmtr,
+			func(name string) {},
+			"SELECT name, age FROM users",
+		)
+
+		// then
+		if err == nil {
+			t.Error("expected error for column count mismatch")
+		}
+	})
+
+	t.Run("struct callback scans fields", func(t *testing.T) {
+		// given
+		conn, refl, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("id", "name", "active").
+				WithRow(int64(1), "Alice", true).
+				WithRow(int64(2), "Bob", false)
+		}
+
+		// when
+		var results []reflectTestStruct
+		err := QueryCallback(t.Context(), conn, refl, fmtr,
+			func(row reflectTestStruct) { results = append(results, row) },
+			"SELECT id, name, active FROM test_table",
+		)
+
+		// then
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(results) != 2 {
+			t.Fatalf("len = %d, want 2", len(results))
+		}
+		if results[0].ID != 1 || results[0].Name != "Alice" || !results[0].Active {
+			t.Errorf("results[0] = %+v, unexpected", results[0])
+		}
+		if results[1].ID != 2 || results[1].Name != "Bob" || results[1].Active {
+			t.Errorf("results[1] = %+v, unexpected", results[1])
+		}
+	})
+}
+
 type User struct {
 	TableName `db:"user"`
 

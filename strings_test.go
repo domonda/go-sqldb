@@ -34,10 +34,10 @@ func TestIsSQLInjection(t *testing.T) {
 		{"' OR '1'='1", true},
 		{"1' OR '1' = '1", true},
 		{"admin'--", true},
-		// {"admin' #", true}, // TODO
+		// {"admin' #", true}, // TODO: not yet detected
 		{"admin'/*", true},
 		{"' OR 1=1--", true},
-		// {"; DROP TABLE users--", true}, // TODO
+		// {"; DROP TABLE users--", true}, // TODO: not yet detected
 		{"'; DROP TABLE users; --", true},
 		{"1; DELETE FROM users", true},
 		{"' UNION SELECT NULL--", true},
