@@ -7,8 +7,7 @@ import (
 )
 
 var (
-	_ ListenerConnection       = ErrConn{}
-	_ ConnectionQueryFormatter = ErrConn{}
+	_ ListenerConnection = ErrConn{}
 )
 
 // NewErrConn returns an ErrConn with the passed error.
@@ -21,7 +20,7 @@ func NewErrConn(err error) ErrConn {
 
 // ErrConn is a dummy ListenerConnection
 // where all methods except Close return Err.
-// It embeds StdQueryFormatter to satisfy ConnectionQueryFormatter.
+// It embeds StdQueryFormatter to satisfy Connection.
 type ErrConn struct {
 	StdQueryFormatter
 

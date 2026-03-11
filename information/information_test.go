@@ -40,7 +40,7 @@ func envOrDefaultInt(key string, defaultVal int) int {
 
 var (
 	testCtx  context.Context
-	testConn sqldb.ConnectionQueryFormatter
+	testConn sqldb.Connection
 )
 
 func TestMain(m *testing.M) {

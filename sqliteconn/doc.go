@@ -23,7 +23,7 @@ Basic usage:
 	}
 	defer conn.Close()
 
-	// conn implements sqldb.ConnectionQueryFormatter
+	// conn implements sqldb.Connection
 	// and can be used directly with the db package:
 	db.SetConn(conn)
 

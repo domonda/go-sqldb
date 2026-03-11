@@ -128,6 +128,26 @@ func (t *transaction) Rollback() error {
 	return sqlitex.ExecuteTransient(t.parent.conn, `ROLLBACK`, nil)
 }
 
+func (t *transaction) FormatTableName(name string) (string, error) {
+	return t.parent.FormatTableName(name)
+}
+
+func (t *transaction) FormatColumnName(name string) (string, error) {
+	return t.parent.FormatColumnName(name)
+}
+
+func (t *transaction) FormatPlaceholder(paramIndex int) string {
+	return t.parent.FormatPlaceholder(paramIndex)
+}
+
+func (t *transaction) FormatStringLiteral(str string) string {
+	return t.parent.FormatStringLiteral(str)
+}
+
+func (t *transaction) MaxArgs() int {
+	return t.parent.MaxArgs()
+}
+
 func (t *transaction) Close() error {
 	return t.Rollback()
 }

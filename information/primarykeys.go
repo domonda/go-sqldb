@@ -25,7 +25,7 @@ type PrimaryKeyColumn struct {
 	ForeignKey bool   `db:"foreign_key"`
 }
 
-func GetPrimaryKeyColumns(ctx context.Context, conn sqldb.ConnectionQueryFormatter) (cols []PrimaryKeyColumn, err error) {
+func GetPrimaryKeyColumns(ctx context.Context, conn sqldb.Connection) (cols []PrimaryKeyColumn, err error) {
 	return sqldb.QueryRowsAsSlice[PrimaryKeyColumn](ctx, conn, structReflector, conn,
 		/*sql*/ `
 		SELECT
@@ -60,7 +60,7 @@ func GetPrimaryKeyColumns(ctx context.Context, conn sqldb.ConnectionQueryFormatt
 	)
 }
 
-func GetPrimaryKeyColumnsOfType(ctx context.Context, conn sqldb.ConnectionQueryFormatter, pkType string) (cols []PrimaryKeyColumn, err error) {
+func GetPrimaryKeyColumnsOfType(ctx context.Context, conn sqldb.Connection, pkType string) (cols []PrimaryKeyColumn, err error) {
 	return sqldb.QueryRowsAsSlice[PrimaryKeyColumn](ctx, conn, structReflector, conn,
 		/*sql*/ `
 		SELECT
@@ -103,7 +103,7 @@ type TableRowWithPrimaryKey struct {
 	Row    []string
 }
 
-func GetTableRowsWithPrimaryKey(ctx context.Context, conn sqldb.ConnectionQueryFormatter, pkCols []PrimaryKeyColumn, pk any) (tableRows []TableRowWithPrimaryKey, err error) {
+func GetTableRowsWithPrimaryKey(ctx context.Context, conn sqldb.Connection, pkCols []PrimaryKeyColumn, pk any) (tableRows []TableRowWithPrimaryKey, err error) {
 	for _, col := range pkCols {
 		query := fmt.Sprintf(`SELECT * FROM %s WHERE "%s" = $1`, col.Table, col.Column)
 		strs, err := sqldb.QueryRowsAsStrings(ctx, conn, conn, query, pk)
@@ -125,7 +125,7 @@ func GetTableRowsWithPrimaryKey(ctx context.Context, conn sqldb.ConnectionQueryF
 	return tableRows, nil
 }
 
-func RenderUUIDPrimaryKeyRefsHTML(conn sqldb.ConnectionQueryFormatter) http.Handler {
+func RenderUUIDPrimaryKeyRefsHTML(conn sqldb.Connection) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		var (
 			title       string

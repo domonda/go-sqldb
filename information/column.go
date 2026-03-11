@@ -68,7 +68,7 @@ type KeyColumnUsage struct {
 	PositionInUniqueConstraint *int   `db:"position_in_unique_constraint"`
 }
 
-func ColumnExists(ctx context.Context, conn sqldb.ConnectionQueryFormatter, table, column string) (bool, error) {
+func ColumnExists(ctx context.Context, conn sqldb.Connection, table, column string) (bool, error) {
 	tableSchema, tableName, ok := strings.Cut(table, ".")
 	if !ok {
 		tableSchema = "public"

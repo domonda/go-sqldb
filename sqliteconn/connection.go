@@ -19,7 +19,7 @@ const Driver = "sqlite"
 
 // Connect establishes a new [sqldb.Connection] using the passed config
 // and zombiezen.com/go/sqlite as the underlying SQLite implementation.
-func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.ConnectionQueryFormatter, error) {
+func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.ConnectionQue
 // MustConnect creates a new sqldb.Connection using the passed sqldb.ConnConfig
 // and zombiezen.com/go/sqlite as the underlying implementation.
 // Errors are panicked.
-func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.ConnectionQueryFormatter {
+func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
 	conn, err := Connect(ctx, config)
 	if err != nil {
 		panic(err)
@@ -76,7 +76,7 @@ func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection
 }
 
 type connection struct {
-	QueryFormatter
+	QueryFormatter // SQLite specific implementation
 
 	conn   *sqlite.Conn
 	config *sqldb.ConnConfig

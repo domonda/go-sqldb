@@ -75,9 +75,8 @@ func IsolatedTransaction(ctx context.Context, txFunc func(context.Context) error
 	if IsContextWithoutTransactions(ctx) {
 		return txFunc(ctx)
 	}
-	conn := Conn(ctx)
-	return sqldb.IsolatedTransaction(ctx, conn, nil, func(tx sqldb.Connection) error {
-		return txFunc(ContextWithConn(ctx, sqldb.SwapConnection(conn, tx)))
+	return sqldb.IsolatedTransaction(ctx, Conn(ctx), nil, func(tx sqldb.Connection) error {
+		return txFunc(ContextWithConn(ctx, tx))
 	})
 }
 
@@ -105,9 +104,8 @@ func Transaction(ctx context.Context, txFunc func(context.Context) error) error 
 	if IsContextWithoutTransactions(ctx) {
 		return txFunc(ctx)
 	}
-	conn := Conn(ctx)
-	return sqldb.Transaction(ctx, conn, nil, func(tx sqldb.Connection) error {
-		return txFunc(ContextWithConn(ctx, sqldb.SwapConnection(conn, tx)))
+	return sqldb.Transaction(ctx, Conn(ctx), nil, func(tx sqldb.Connection) error {
+		return txFunc(ContextWithConn(ctx, tx))
 	})
 }
 
@@ -221,9 +219,8 @@ func TransactionOpts(ctx context.Context, opts *sql.TxOptions, txFunc func(conte
 	if IsContextWithoutTransactions(ctx) {
 		return txFunc(ctx)
 	}
-	conn := Conn(ctx)
-	return sqldb.Transaction(ctx, conn, opts, func(tx sqldb.Connection) error {
-		return txFunc(ContextWithConn(ctx, sqldb.SwapConnection(conn, tx)))
+	return sqldb.Transaction(ctx, Conn(ctx), opts, func(tx sqldb.Connection) error {
+		return txFunc(ContextWithConn(ctx, tx))
 	})
 }
 
@@ -238,10 +235,9 @@ func TransactionReadOnly(ctx context.Context, txFunc func(context.Context) error
 	if IsContextWithoutTransactions(ctx) {
 		return txFunc(ctx)
 	}
-	conn := Conn(ctx)
 	opts := sql.TxOptions{ReadOnly: true}
-	return sqldb.Transaction(ctx, conn, &opts, func(tx sqldb.Connection) error {
-		return txFunc(ContextWithConn(ctx, sqldb.SwapConnection(conn, tx)))
+	return sqldb.Transaction(ctx, Conn(ctx), &opts, func(tx sqldb.Connection) error {
+		return txFunc(ContextWithConn(ctx, tx))
 	})
 }
 

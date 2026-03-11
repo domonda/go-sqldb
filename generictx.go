@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+var _ Connection = &genericTx{}
+
 type genericTx struct {
 	// The parent non-transaction connection is needed
 	// for Ping(), Stats(), Config(), and Begin().
@@ -92,6 +94,26 @@ func (conn *genericTx) Commit() error {
 
 func (conn *genericTx) Rollback() error {
 	return conn.tx.Rollback()
+}
+
+func (conn *genericTx) FormatTableName(name string) (string, error) {
+	return conn.parent.FormatTableName(name)
+}
+
+func (conn *genericTx) FormatColumnName(name string) (string, error) {
+	return conn.parent.FormatColumnName(name)
+}
+
+func (conn *genericTx) FormatPlaceholder(paramIndex int) string {
+	return conn.parent.FormatPlaceholder(paramIndex)
+}
+
+func (conn *genericTx) FormatStringLiteral(str string) string {
+	return conn.parent.FormatStringLiteral(str)
+}
+
+func (conn *genericTx) MaxArgs() int {
+	return conn.parent.MaxArgs()
 }
 
 func (conn *genericTx) Close() error {

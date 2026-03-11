@@ -33,7 +33,7 @@ type testArraysRow struct {
 	UUIDArray  uu.IDSlice `db:"uuid_array"`
 }
 
-func testConn(t *testing.T) sqldb.ConnectionQueryFormatter {
+func testConn(t *testing.T) sqldb.Connection {
 	t.Helper()
 	ctx := context.Background()
 

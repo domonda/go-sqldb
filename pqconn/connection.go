@@ -17,7 +17,7 @@ const Driver = "postgres"
 // The returned connection also implements [sqldb.ListenerConnection].
 // The connection is pinged with the passed context and only returned
 // when there was no error from the ping.
-func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.ConnectionQueryFormatter, error) {
+func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
@@ -54,7 +54,7 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.ConnectionQue
 // The connection is pinged with the passed context and only returned
 // when there was no error from the ping.
 // Errors are panicked.
-func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.ConnectionQueryFormatter {
+func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
 	conn, err := Connect(ctx, config)
 	if err != nil {
 		panic(err)

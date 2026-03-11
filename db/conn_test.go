@@ -12,7 +12,7 @@ import (
 // testContext returns a context with the given connection
 // and the standard QueryBuilder and StructReflector,
 // so that tests don't depend on global state.
-func testContext(t *testing.T, conn Connection) context.Context {
+func testContext(t *testing.T, conn sqldb.Connection) context.Context {
 	t.Helper()
 	ctx := ContextWithConn(t.Context(), conn)
 	ctx = ContextWithQueryBuilder(ctx, sqldb.StdQueryBuilder{})

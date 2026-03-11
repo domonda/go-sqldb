@@ -14,7 +14,7 @@ type (
 )
 
 var (
-	globalConn    Connection = sqldb.NewErrConn(sqldb.ErrNoDatabaseConnection)
+	globalConn    sqldb.Connection = sqldb.NewErrConn(sqldb.ErrNoDatabaseConnection)
 	globalConnMtx sync.RWMutex
 
 	globalQueryBuilder    sqldb.QueryBuilder = sqldb.StdQueryBuilder{}
@@ -24,13 +24,11 @@ var (
 	globalStructReflectorMtx sync.RWMutex
 )
 
-// Connection is a database connection that combines
-// [sqldb.Connection] with [sqldb.QueryFormatter].
-type Connection = sqldb.ConnectionQueryFormatter
-
 // SetConn sets the global connection that will be returned by [Conn]
 // if there is no other connection in the context passed to [Conn].
-func SetConn(c Connection) {
+// If the connection also implements [sqldb.QueryBuilder],
+// it will be used by [QueryBuilder] when no context-level query builder is set.
+func SetConn(c sqldb.Connection) {
 	if c == nil {
 		panic("unable to set nil Connection") // Prefer to panic early
 	}
@@ -57,8 +55,8 @@ func SetStructReflector(structReflector sqldb.StructReflector) {
 
 // Conn returns the connection from the context
 // or the global connection that was configured with [SetConn].
-func Conn(ctx context.Context) Connection {
-	if c, _ := ctx.Value(connCtxKey{}).(Connection); c != nil {
+func Conn(ctx context.Context) sqldb.Connection {
+	if c, _ := ctx.Value(connCtxKey{}).(sqldb.Connection); c != nil {
 		return c
 	}
 	globalConnMtx.RLock()
@@ -67,13 +65,16 @@ func Conn(ctx context.Context) Connection {
 	return c
 }
 
-// QueryBuilder returns the [sqldb.QueryBuilder] from the connection or context,
-// or the global query builder that was configured with [SetQueryBuilder].
+// QueryBuilder returns the [sqldb.QueryBuilder] for the given context.
+// It checks the following sources in order:
+//  1. A query builder stored in the context via [ContextWithQueryBuilder].
+//  2. The connection from [Conn] if it implements [sqldb.QueryBuilder].
+//  3. The global query builder configured with [SetQueryBuilder].
 func QueryBuilder(ctx context.Context) sqldb.QueryBuilder {
-	if qb, _ := Conn(ctx).(sqldb.QueryBuilder); qb != nil {
+	if qb, _ := ctx.Value(queryBuilderCtxKey{}).(sqldb.QueryBuilder); qb != nil {
 		return qb
 	}
-	if qb, _ := ctx.Value(queryBuilderCtxKey{}).(sqldb.QueryBuilder); qb != nil {
+	if qb, _ := Conn(ctx).(sqldb.QueryBuilder); qb != nil {
 		return qb
 	}
 	globalQueryBuilderMtx.RLock()
@@ -96,7 +97,7 @@ func StructReflector(ctx context.Context) sqldb.StructReflector {
 
 // ContextWithConn returns a new context with the passed [Connection]
 // added as value so it can be retrieved again using [Conn].
-func ContextWithConn(ctx context.Context, conn Connection) context.Context {
+func ContextWithConn(ctx context.Context, conn sqldb.Connection) context.Context {
 	return context.WithValue(ctx, connCtxKey{}, conn)
 }
 

@@ -44,7 +44,7 @@ func TestListenOnChannel(t *testing.T) {
 
 	t.Run("non-listener connection returns unsupported", func(t *testing.T) {
 		// NonConnForTest only implements Connection, not ListenerConnection
-		ctx := testContext(t, sqldb.NonConnForTest(t).(Connection))
+		ctx := testContext(t, sqldb.NonConnForTest(t))
 
 		err := ListenOnChannel(ctx, "my_channel", nil, nil)
 		require.ErrorIs(t, err, errors.ErrUnsupported)
@@ -85,7 +85,7 @@ func TestUnlistenChannel(t *testing.T) {
 	})
 
 	t.Run("non-listener connection returns unsupported", func(t *testing.T) {
-		ctx := testContext(t, sqldb.NonConnForTest(t).(Connection))
+		ctx := testContext(t, sqldb.NonConnForTest(t))
 
 		err := UnlistenChannel(ctx, "my_channel")
 		require.ErrorIs(t, err, errors.ErrUnsupported)
@@ -122,7 +122,7 @@ func TestIsListeningOnChannel(t *testing.T) {
 	})
 
 	t.Run("non-listener connection returns false", func(t *testing.T) {
-		ctx := testContext(t, sqldb.NonConnForTest(t).(Connection))
+		ctx := testContext(t, sqldb.NonConnForTest(t))
 
 		result := IsListeningOnChannel(ctx, "my_channel")
 		require.False(t, result)

@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// NewGenericConn returns a generic [ConnectionQueryFormatter] implementation
+// NewGenericConn returns a generic [Connection] implementation
 // wrapping an existing [sql.DB].
 //
 // The config parameter holds connection metadata like the driver name and DSN.
@@ -20,7 +20,7 @@ import (
 // wrapErr is an optional function called on every error returned from
 // [Connection.Exec] and [Connection.Query] — use it to map
 // driver-specific errors to generic sqldb error types like [ErrUniqueViolation].
-func NewGenericConn(db *sql.DB, config *ConnConfig, defaultIsolationLevel sql.IsolationLevel, queryFormatter QueryFormatter, wrapErr func(error) error) ConnectionQueryFormatter {
+func NewGenericConn(db *sql.DB, config *ConnConfig, defaultIsolationLevel sql.IsolationLevel, queryFormatter QueryFormatter, wrapErr func(error) error) Connection {
 	if queryFormatter == nil {
 		queryFormatter = StdQueryFormatter{}
 	}

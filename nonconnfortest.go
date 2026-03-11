@@ -8,6 +8,12 @@ import (
 	"time"
 )
 
+// NonConnForTest returns a [Connection] that fails the test with [testing.T.Fatal]
+// when any database operation (Ping, Exec, Query, Prepare) is called.
+// It is intended for tests where a connection must be provided
+// but all actual database calls are expected to be mocked.
+// Begin returns a new non-working transaction connection
+// and Commit/Rollback work based on transaction state.
 func NonConnForTest(t *testing.T) Connection {
 	t.Helper()
 	return &nonConnForTest{t: t}
