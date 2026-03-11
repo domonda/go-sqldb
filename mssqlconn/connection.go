@@ -17,7 +17,7 @@ const Driver = "sqlserver"
 // and github.com/microsoft/go-mssqldb as driver implementation.
 // The connection is pinged with the passed context and only returned
 // when there was no error from the ping.
-func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
+func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.ConnectionQueryFormatter, error) {
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
@@ -41,7 +41,13 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, e
 		}
 		return nil, err
 	}
-	return sqldb.NewGenericConn(db, config, sql.LevelReadCommitted, wrapKnownErrors), nil
+	return sqldb.NewGenericConn(
+		db,
+		config,
+		sql.LevelReadCommitted,
+		QueryFormatter{},
+		wrapKnownErrors,
+	), nil
 }
 
 // formatDSN converts a sqldb.ConnConfig to a SQL Server connection URL.
@@ -68,34 +74,10 @@ func formatDSN(config *sqldb.ConnConfig) string {
 }
 
 // MustConnect is like Connect but panics on error.
-func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
+func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.ConnectionQueryFormatter {
 	conn, err := Connect(ctx, config)
 	if err != nil {
 		panic(err)
 	}
 	return conn
-}
-
-// ConnectExt establishes a new [sqldb.ConnExt] using the passed config and structReflector
-// with the SQL Server-specific [QueryFormatter] and [sqldb.DefaultQueryBuilder].
-func ConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) (sqldb.ConnExt, error) {
-	conn, err := Connect(ctx, config)
-	if err != nil {
-		return nil, err
-	}
-	return sqldb.NewConnExt(
-		conn,
-		structReflector,
-		QueryFormatter{},
-		sqldb.DefaultQueryBuilder,
-	), nil
-}
-
-// MustConnectExt is like [ConnectExt] but panics on error.
-func MustConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) sqldb.ConnExt {
-	connExt, err := ConnectExt(ctx, config, structReflector)
-	if err != nil {
-		panic(err)
-	}
-	return connExt
 }

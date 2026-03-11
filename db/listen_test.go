@@ -19,8 +19,7 @@ func TestListenOnChannel(t *testing.T) {
 			gotChannel = channel
 			return nil
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := ListenOnChannel(ctx, "my_channel", nil, nil)
 		require.NoError(t, err)
@@ -36,8 +35,7 @@ func TestListenOnChannel(t *testing.T) {
 			listenCount++
 			return testErr
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := ListenOnChannel(ctx, "my_channel", nil, nil)
 		require.ErrorIs(t, err, testErr)
@@ -46,8 +44,7 @@ func TestListenOnChannel(t *testing.T) {
 
 	t.Run("non-listener connection returns unsupported", func(t *testing.T) {
 		// NonConnForTest only implements Connection, not ListenerConnection
-		conn := sqldb.NewConnExt(sqldb.NonConnForTest(t), sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, sqldb.NonConnForTest(t).(Connection))
 
 		err := ListenOnChannel(ctx, "my_channel", nil, nil)
 		require.ErrorIs(t, err, errors.ErrUnsupported)
@@ -64,8 +61,7 @@ func TestUnlistenChannel(t *testing.T) {
 			gotChannel = channel
 			return nil
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := UnlistenChannel(ctx, "my_channel")
 		require.NoError(t, err)
@@ -81,8 +77,7 @@ func TestUnlistenChannel(t *testing.T) {
 			unlistenCount++
 			return testErr
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := UnlistenChannel(ctx, "my_channel")
 		require.ErrorIs(t, err, testErr)
@@ -90,8 +85,7 @@ func TestUnlistenChannel(t *testing.T) {
 	})
 
 	t.Run("non-listener connection returns unsupported", func(t *testing.T) {
-		conn := sqldb.NewConnExt(sqldb.NonConnForTest(t), sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, sqldb.NonConnForTest(t).(Connection))
 
 		err := UnlistenChannel(ctx, "my_channel")
 		require.ErrorIs(t, err, errors.ErrUnsupported)
@@ -106,8 +100,7 @@ func TestIsListeningOnChannel(t *testing.T) {
 			isListeningCount++
 			return true
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		result := IsListeningOnChannel(ctx, "my_channel")
 		require.True(t, result)
@@ -121,8 +114,7 @@ func TestIsListeningOnChannel(t *testing.T) {
 			isListeningCount++
 			return false
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		result := IsListeningOnChannel(ctx, "my_channel")
 		require.False(t, result)
@@ -130,8 +122,7 @@ func TestIsListeningOnChannel(t *testing.T) {
 	})
 
 	t.Run("non-listener connection returns false", func(t *testing.T) {
-		conn := sqldb.NewConnExt(sqldb.NonConnForTest(t), sqldb.NewTaggedStructReflector(), sqldb.NewQueryFormatter("$"), sqldb.StdQueryBuilder{})
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, sqldb.NonConnForTest(t).(Connection))
 
 		result := IsListeningOnChannel(ctx, "my_channel")
 		require.False(t, result)

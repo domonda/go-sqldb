@@ -24,8 +24,9 @@ func ExampleUpsertRowStructStmt() {
 
 	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
 		WithQueryLog(os.Stdout)
-	conn := mock.ConnExt()
-	ctx := db.ContextWithConn(context.Background(), conn)
+	ctx := db.ContextWithConn(context.Background(), mock)
+	ctx = db.ContextWithQueryBuilder(ctx, sqldb.StdQueryBuilder{})
+	ctx = db.ContextWithStructReflector(ctx, sqldb.NewTaggedStructReflector())
 
 	err := db.Transaction(ctx, func(ctx context.Context) error {
 		upsert, closeStmt, err := db.UpsertRowStructStmt[User](ctx)

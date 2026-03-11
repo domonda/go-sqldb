@@ -7,13 +7,6 @@ import (
 	"strings"
 )
 
-// DefaultQueryFormatter is the fallback [QueryFormatter] used by [NewErrConnExt]
-// when no driver-specific formatter is available. It wraps [StdQueryFormatter]
-// with no positional-placeholder prefix, producing `?` placeholders.
-// Driver packages (pqconn, mysqlconn, etc.) use their own [QueryFormatter]
-// implementations rather than this variable.
-var DefaultQueryFormatter QueryFormatter = StdQueryFormatter{}
-
 // QueryFormatter has methods for formatting parts
 // of a query dependent on the database driver.
 type QueryFormatter interface {

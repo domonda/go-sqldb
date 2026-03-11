@@ -86,7 +86,7 @@ func MyValueFromContext(ctx context.Context) string {
 
 ### Struct Field Mapping
 - Default tag: `db:"column_name"`
-- Primary key: `db:"id,pk"`
+- Primary key: `db:"id,primarykey"`
 - Ignore field: `db:"-"`
 
 ### Building Rules

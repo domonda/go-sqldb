@@ -31,6 +31,8 @@ type User struct {
 	DisabledAt nullable.Time `db:"disabled_at"`
 }
 
+var refl = sqldb.NewTaggedStructReflector()
+
 func main() {
 	ctx := context.Background()
 
@@ -44,37 +46,27 @@ func main() {
 
 	fmt.Println("Connecting to:", config)
 
-	conn, err := pqconn.ConnectExt(ctx, config, sqldb.NewTaggedStructReflector())
-	if err != nil {
-		panic(err)
-	}
-
-	// Or use a custom struct reflector
-	conn, err = pqconn.ConnectExt(ctx, config, &sqldb.TaggedStructReflector{
-		NameTag:          "col",
-		Ignore:           "ignore",
-		UntaggedNameFunc: sqldb.ToSnakeCase,
-	})
+	conn, err := pqconn.Connect(ctx, config)
 	if err != nil {
 		panic(err)
 	}
 
 	// Query all users as struct slice
-	users, err := sqldb.QueryRowsAsSlice[User](ctx, conn, conn, conn, `select * from public.user`)
+	users, err := sqldb.QueryRowsAsSlice[User](ctx, conn, refl, conn, `select * from public.user`)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(users)
 
 	// Query single column as slice
-	userEmails, err := sqldb.QueryRowsAsSlice[string](ctx, conn, conn, conn, `select email from public.user`)
+	userEmails, err := sqldb.QueryRowsAsSlice[string](ctx, conn, refl, conn, `select email from public.user`)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(userEmails)
 
 	// Callback with scanned values for each row
-	err = sqldb.QueryCallback(ctx, conn, conn, conn,
+	err = sqldb.QueryCallback(ctx, conn, refl, conn,
 		func(name, email string) {
 			fmt.Printf("%q <%s>\n", name, email)
 		},
@@ -86,13 +78,13 @@ func main() {
 
 	// Insert a struct with table name from struct tag
 	newUser := &User{ /* ... */ }
-	err = sqldb.InsertRowStruct(ctx, conn, conn, conn, conn, newUser)
+	err = sqldb.InsertRowStruct(ctx, conn, refl, sqldb.StdQueryBuilder{}, conn, newUser)
 	if err != nil {
 		panic(err)
 	}
 
 	// Insert with values map
-	err = sqldb.Insert(ctx, conn, conn, conn, "public.user", sqldb.Values{
+	err = sqldb.Insert(ctx, conn, sqldb.StdQueryBuilder{}, conn, "public.user", sqldb.Values{
 		"name":  "Erik Unger",
 		"email": "erik@domonda.com",
 	})
@@ -101,15 +93,15 @@ func main() {
 	}
 
 	// Upsert a struct
-	err = sqldb.UpsertRowStruct(ctx, conn, conn, conn, conn, newUser, sqldb.IgnoreColumns("created_at"))
+	err = sqldb.UpsertRowStruct(ctx, conn, refl, sqldb.StdQueryBuilder{}, conn, newUser, sqldb.IgnoreColumns("created_at"))
 	if err != nil {
 		panic(err)
 	}
 
-	// Transaction with ConnExt
+	// Transaction
 	txOpts := &sql.TxOptions{Isolation: sql.LevelWriteCommitted}
 
-	err = sqldb.TransactionExt(ctx, conn, txOpts, func(tx sqldb.ConnExt) error {
+	err = sqldb.Transaction(ctx, conn, txOpts, func(tx sqldb.Connection) error {
 		err := tx.Exec(ctx, "...")
 		if err != nil {
 			return err

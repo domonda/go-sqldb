@@ -19,7 +19,7 @@ func TestPrepare_Success(t *testing.T) {
 		gotQuery = query
 		return &sqldb.MockStmt{Prepared: query}, nil
 	}
-	ctx := ContextWithConn(t.Context(), mock.ConnExt())
+	ctx := testContext(t, mock)
 	query := /*sql*/ `SELECT id FROM users WHERE id = $1`
 
 	// when
@@ -40,7 +40,7 @@ func TestPrepare_Error(t *testing.T) {
 	mock.MockPrepare = func(ctx context.Context, query string) (sqldb.Stmt, error) {
 		return nil, prepErr
 	}
-	ctx := ContextWithConn(t.Context(), mock.ConnExt())
+	ctx := testContext(t, mock)
 	query := /*sql*/ `SELECT 1`
 
 	// when
@@ -66,7 +66,7 @@ func TestStmtWithErrWrapping_Exec_Success(t *testing.T) {
 			},
 		}, nil
 	}
-	ctx := ContextWithConn(t.Context(), mock.ConnExt())
+	ctx := testContext(t, mock)
 	query := /*sql*/ `DELETE FROM users WHERE id = $1`
 
 	stmt, err := Prepare(ctx, query)
@@ -94,7 +94,7 @@ func TestStmtWithErrWrapping_Exec_Error(t *testing.T) {
 			},
 		}, nil
 	}
-	ctx := ContextWithConn(t.Context(), mock.ConnExt())
+	ctx := testContext(t, mock)
 	query := /*sql*/ `DELETE FROM users WHERE id = $1`
 
 	stmt, err := Prepare(ctx, query)
@@ -119,7 +119,7 @@ func TestStmtWithErrWrapping_Query_Success(t *testing.T) {
 			},
 		}, nil
 	}
-	ctx := ContextWithConn(t.Context(), mock.ConnExt())
+	ctx := testContext(t, mock)
 	query := /*sql*/ `SELECT id FROM users WHERE id = $1`
 
 	stmt, err := Prepare(ctx, query)
@@ -150,7 +150,7 @@ func TestStmtWithErrWrapping_Query_Error(t *testing.T) {
 			},
 		}, nil
 	}
-	ctx := ContextWithConn(t.Context(), mock.ConnExt())
+	ctx := testContext(t, mock)
 	query := /*sql*/ `SELECT id FROM users WHERE id = $1`
 
 	stmt, err := Prepare(ctx, query)

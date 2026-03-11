@@ -23,8 +23,7 @@ func TestUpdate(t *testing.T) {
 			gotArgs = args
 			return nil
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := Update(ctx, "users", sqldb.Values{"name": "Bob"}, "id = $1", 42)
 		require.NoError(t, err)
@@ -44,8 +43,7 @@ func TestUpdate(t *testing.T) {
 			gotArgs = args
 			return nil
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := Update(ctx, "users", sqldb.Values{"name": "Bob", "active": true}, "id = $1", 42)
 		require.NoError(t, err)
@@ -57,8 +55,7 @@ func TestUpdate(t *testing.T) {
 
 	t.Run("empty values error", func(t *testing.T) {
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := Update(ctx, "users", sqldb.Values{}, "id = $1", 42)
 		require.Error(t, err)
@@ -72,8 +69,7 @@ func TestUpdate(t *testing.T) {
 			execCount++
 			return testErr
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := Update(ctx, "users", sqldb.Values{"name": "Bob"}, "id = $1", 42)
 		require.ErrorIs(t, err, testErr)
@@ -99,8 +95,7 @@ func TestUpdateRowStruct(t *testing.T) {
 			gotArgs = args
 			return nil
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := UpdateRowStruct(ctx, "users", UserRow{ID: 1, Name: "Alice", Active: true})
 		require.NoError(t, err)
@@ -122,8 +117,7 @@ func TestUpdateRowStruct(t *testing.T) {
 			gotArgs = args
 			return nil
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := UpdateRowStruct(ctx, "users", &UserRow{ID: 2, Name: "Bob", Active: false})
 		require.NoError(t, err)
@@ -143,8 +137,7 @@ func TestUpdateRowStruct(t *testing.T) {
 			gotArgs = args
 			return nil
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := UpdateRowStruct(ctx, "users", UserRow{ID: 1, Name: "Alice", Active: true}, sqldb.IgnoreColumns("active"))
 		require.NoError(t, err)
@@ -155,8 +148,7 @@ func TestUpdateRowStruct(t *testing.T) {
 
 	t.Run("nil struct error", func(t *testing.T) {
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := UpdateRowStruct(ctx, "users", (*UserRow)(nil))
 		require.Error(t, err)
@@ -165,8 +157,7 @@ func TestUpdateRowStruct(t *testing.T) {
 
 	t.Run("non-struct error", func(t *testing.T) {
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := UpdateRowStruct(ctx, "users", "not a struct")
 		require.Error(t, err)
@@ -178,8 +169,7 @@ func TestUpdateRowStruct(t *testing.T) {
 			Name string `db:"name"`
 		}
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := UpdateRowStruct(ctx, "users", NoPKRow{Name: "test"})
 		require.Error(t, err)
@@ -194,8 +184,7 @@ func TestUpdateRowStruct(t *testing.T) {
 			execCount++
 			return testErr
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := UpdateRowStruct(ctx, "users", UserRow{ID: 1, Name: "Alice"})
 		require.ErrorIs(t, err, testErr)

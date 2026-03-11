@@ -29,8 +29,7 @@ func TestUpsertRowStruct(t *testing.T) {
 			gotArgs = args
 			return nil
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := UpsertRowStruct(ctx, &UserRow{ID: 1, Name: "Alice", Active: true})
 		require.NoError(t, err)
@@ -50,8 +49,7 @@ func TestUpsertRowStruct(t *testing.T) {
 			gotArgs = args
 			return nil
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := UpsertRowStruct(ctx, &UserRow{ID: 1, Name: "Alice", Active: true}, sqldb.IgnoreColumns("active"))
 		require.NoError(t, err)
@@ -68,8 +66,7 @@ func TestUpsertRowStruct(t *testing.T) {
 			execCount++
 			return testErr
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := UpsertRowStruct(ctx, &UserRow{ID: 1, Name: "Alice"})
 		require.ErrorIs(t, err, testErr)
@@ -78,8 +75,7 @@ func TestUpsertRowStruct(t *testing.T) {
 
 	t.Run("nil struct error", func(t *testing.T) {
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := UpsertRowStruct(ctx, (*UserRow)(nil))
 		require.Error(t, err)
@@ -104,8 +100,7 @@ func TestUpsertRowStructs(t *testing.T) {
 			allArgs = append(allArgs, args)
 			return nil
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		rows := []ItemRow{
 			{ID: 1, Name: "Item1"},
@@ -123,8 +118,7 @@ func TestUpsertRowStructs(t *testing.T) {
 
 	t.Run("empty slice", func(t *testing.T) {
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := UpsertRowStructs(ctx, []ItemRow{})
 		require.NoError(t, err)
@@ -141,8 +135,7 @@ func TestUpsertRowStructs(t *testing.T) {
 			}
 			return nil
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		rows := []ItemRow{
 			{ID: 1, Name: "Item1"},

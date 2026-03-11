@@ -23,8 +23,7 @@ func TestInsertUnique(t *testing.T) {
 			// InsertUnique checks rows.Next() — return a row to indicate insertion
 			return sqldb.NewMockRows("bool").WithRow(true)
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		inserted, err := InsertUnique(ctx, "users", sqldb.Values{"id": 1, "name": "Alice"}, "(id)")
 		require.NoError(t, err)
@@ -43,8 +42,7 @@ func TestInsertUnique(t *testing.T) {
 			// No rows returned means conflict — not inserted
 			return sqldb.NewMockRows("bool")
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		inserted, err := InsertUnique(ctx, "users", sqldb.Values{"id": 1, "name": "Alice"}, "(id)")
 		require.NoError(t, err)
@@ -60,8 +58,7 @@ func TestInsertUnique(t *testing.T) {
 			queryCount++
 			return sqldb.NewErrRows(testErr)
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		_, err := InsertUnique(ctx, "users", sqldb.Values{"id": 1}, "(id)")
 		require.ErrorIs(t, err, testErr)
@@ -87,8 +84,7 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 			gotArgs = args
 			return sqldb.NewMockRows("bool").WithRow(true)
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		inserted, err := InsertUniqueRowStruct(ctx, &UserRow{ID: 1, Name: "Alice"}, "(id)")
 		require.NoError(t, err)
@@ -109,8 +105,7 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 			gotArgs = args
 			return sqldb.NewMockRows("bool").WithRow(true)
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		inserted, err := InsertUniqueRowStruct(ctx, &UserRow{ID: 1, Name: "Alice"}, "(id)", sqldb.IgnoreColumns("name"))
 		require.NoError(t, err)
@@ -137,8 +132,7 @@ func TestInsertRowStructStmt(t *testing.T) {
 			gotAllArgs = append(gotAllArgs, args)
 			return nil
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		insertFunc, closeStmt, err := InsertRowStructStmt[ItemRow](ctx)
 		require.NoError(t, err)
@@ -163,8 +157,7 @@ func TestInsertRowStructStmt(t *testing.T) {
 			prepareCount++
 			return nil, prepErr
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		_, _, err := InsertRowStructStmt[ItemRow](ctx)
 		require.ErrorIs(t, err, prepErr)
@@ -188,8 +181,7 @@ func TestInsertRowStructs(t *testing.T) {
 			gotAllArgs = append(gotAllArgs, args)
 			return nil
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		rows := []ItemRow{
 			{ID: 1, Name: "Item1"},
@@ -206,8 +198,7 @@ func TestInsertRowStructs(t *testing.T) {
 
 	t.Run("empty slice", func(t *testing.T) {
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := InsertRowStructs(ctx, []ItemRow{})
 		require.NoError(t, err)
@@ -224,8 +215,7 @@ func TestInsertRowStructs(t *testing.T) {
 			}
 			return nil
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		rows := []ItemRow{
 			{ID: 1, Name: "Item1"},

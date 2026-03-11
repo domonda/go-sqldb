@@ -25,8 +25,8 @@ type PrimaryKeyColumn struct {
 	ForeignKey bool   `db:"foreign_key"`
 }
 
-func GetPrimaryKeyColumns(ctx context.Context, conn sqldb.ConnExt) (cols []PrimaryKeyColumn, err error) {
-	return sqldb.QueryRowsAsSlice[PrimaryKeyColumn](ctx, conn, conn, conn,
+func GetPrimaryKeyColumns(ctx context.Context, conn sqldb.ConnectionQueryFormatter) (cols []PrimaryKeyColumn, err error) {
+	return sqldb.QueryRowsAsSlice[PrimaryKeyColumn](ctx, conn, structReflector, conn,
 		/*sql*/ `
 		SELECT
 			tc.table_schema||'.'||tc.table_name AS "table",
@@ -60,8 +60,8 @@ func GetPrimaryKeyColumns(ctx context.Context, conn sqldb.ConnExt) (cols []Prima
 	)
 }
 
-func GetPrimaryKeyColumnsOfType(ctx context.Context, conn sqldb.ConnExt, pkType string) (cols []PrimaryKeyColumn, err error) {
-	return sqldb.QueryRowsAsSlice[PrimaryKeyColumn](ctx, conn, conn, conn,
+func GetPrimaryKeyColumnsOfType(ctx context.Context, conn sqldb.ConnectionQueryFormatter, pkType string) (cols []PrimaryKeyColumn, err error) {
+	return sqldb.QueryRowsAsSlice[PrimaryKeyColumn](ctx, conn, structReflector, conn,
 		/*sql*/ `
 		SELECT
 			tc.table_schema||'.'||tc.table_name AS "table",
@@ -103,7 +103,7 @@ type TableRowWithPrimaryKey struct {
 	Row    []string
 }
 
-func GetTableRowsWithPrimaryKey(ctx context.Context, conn sqldb.ConnExt, pkCols []PrimaryKeyColumn, pk any) (tableRows []TableRowWithPrimaryKey, err error) {
+func GetTableRowsWithPrimaryKey(ctx context.Context, conn sqldb.ConnectionQueryFormatter, pkCols []PrimaryKeyColumn, pk any) (tableRows []TableRowWithPrimaryKey, err error) {
 	for _, col := range pkCols {
 		query := fmt.Sprintf(`SELECT * FROM %s WHERE "%s" = $1`, col.Table, col.Column)
 		strs, err := sqldb.QueryRowsAsStrings(ctx, conn, conn, query, pk)
@@ -125,7 +125,7 @@ func GetTableRowsWithPrimaryKey(ctx context.Context, conn sqldb.ConnExt, pkCols 
 	return tableRows, nil
 }
 
-func RenderUUIDPrimaryKeyRefsHTML(conn sqldb.ConnExt) http.Handler {
+func RenderUUIDPrimaryKeyRefsHTML(conn sqldb.ConnectionQueryFormatter) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		var (
 			title       string

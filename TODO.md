@@ -1,7 +1,5 @@
 # go-sqldb TODO for v1.0
 
-## Bugs
-
 ## Missing Features
 
 - [ ] **Batch insert** — `InsertRowStructs` processes rows one-by-one in a transaction with a prepared statement. Need optimized multi-row INSERT.
@@ -15,6 +13,10 @@
 - [ ] **db/transaction_test.go** — `TestSerializedTransaction` and `TestTransaction` entirely commented out
 
 ## API Design for v1.0
+
+### Drivers
+
+- Connect returns ConnExt?
 
 ### Missing Symmetry
 
@@ -36,6 +38,8 @@
 
 
 ## Testing
+
+- what about testhelper.go ?
 
 ### Missing Tests
 

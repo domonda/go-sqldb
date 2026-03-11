@@ -10,6 +10,8 @@ import (
 )
 
 type transaction struct {
+	QueryFormatter
+
 	// The parent non-transaction connection is needed
 	// for Ping() and Stats()
 	parent *connection

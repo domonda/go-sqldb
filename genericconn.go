@@ -7,13 +7,25 @@ import (
 	"time"
 )
 
-// NewGenericConn returns a generic [Connection] implementation
-// for an existing [sql.DB] connection.
-// If wrapErr is non-nil it is called on every error returned from
+// NewGenericConn returns a generic [ConnectionQueryFormatter] implementation
+// wrapping an existing [sql.DB].
+//
+// The config parameter holds connection metadata like the driver name and DSN.
+//
+// defaultIsolationLevel is used when beginning a transaction without explicit options.
+//
+// queryFormatter formats queries before they are sent to the driver;
+// if nil, [StdQueryFormatter] is used.
+//
+// wrapErr is an optional function called on every error returned from
 // [Connection.Exec] and [Connection.Query] — use it to map
-// driver-specific errors to [sqldb] error types.
-func NewGenericConn(db *sql.DB, config *ConnConfig, defaultIsolationLevel sql.IsolationLevel, wrapErr func(error) error) Connection {
+// driver-specific errors to generic sqldb error types like [ErrUniqueViolation].
+func NewGenericConn(db *sql.DB, config *ConnConfig, defaultIsolationLevel sql.IsolationLevel, queryFormatter QueryFormatter, wrapErr func(error) error) ConnectionQueryFormatter {
+	if queryFormatter == nil {
+		queryFormatter = StdQueryFormatter{}
+	}
 	return &genericConn{
+		QueryFormatter:        queryFormatter,
 		db:                    db,
 		config:                config,
 		defaultIsolationLevel: defaultIsolationLevel,
@@ -22,6 +34,7 @@ func NewGenericConn(db *sql.DB, config *ConnConfig, defaultIsolationLevel sql.Is
 }
 
 type genericConn struct {
+	QueryFormatter
 	db                    *sql.DB
 	config                *ConnConfig
 	defaultIsolationLevel sql.IsolationLevel

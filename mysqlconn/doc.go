@@ -19,7 +19,7 @@ Basic usage:
 		Database: "mydb",
 	}
 
-	conn, err := mysqlconn.ConnectExt(ctx, config, sqldb.NewTaggedStructReflector())
+	conn, err := mysqlconn.Connect(ctx, config)
 	if err != nil {
 		panic(err)
 	}

@@ -5,12 +5,6 @@ import (
 	"strings"
 )
 
-// DefaultQueryBuilder is the default [QueryBuilder] used by all driver
-// [ConnectExt] and [NewConnExt] functions when no custom query builder is
-// needed. It can be replaced globally to change how INSERT, UPSERT, UPDATE,
-// and SELECT-by-PK queries are generated across the entire application.
-var DefaultQueryBuilder QueryBuilder = StdQueryBuilder{}
-
 type QueryBuilder interface {
 	QueryRowWithPK(formatter QueryFormatter, table string, pkColumns []string) (query string, err error)
 	Insert(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error)

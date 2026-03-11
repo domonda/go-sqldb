@@ -22,8 +22,7 @@ func TestExec(t *testing.T) {
 			gotArgs = args
 			return nil
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := Exec(ctx, "DELETE FROM users WHERE id = $1", 42)
 		require.NoError(t, err)
@@ -40,8 +39,7 @@ func TestExec(t *testing.T) {
 			execCount++
 			return testErr
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		err := Exec(ctx, "DELETE FROM users WHERE id = $1", 42)
 		require.ErrorIs(t, err, testErr)
@@ -61,8 +59,7 @@ func TestExecStmt(t *testing.T) {
 			gotAllArgs = append(gotAllArgs, args)
 			return nil
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		execFunc, closeStmt, err := ExecStmt(ctx, "DELETE FROM users WHERE id = $1")
 		require.NoError(t, err)
@@ -87,8 +84,7 @@ func TestExecStmt(t *testing.T) {
 			prepareCount++
 			return nil, prepErr
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		_, _, err := ExecStmt(ctx, "DELETE FROM users WHERE id = $1")
 		require.ErrorIs(t, err, prepErr)
@@ -103,8 +99,7 @@ func TestExecStmt(t *testing.T) {
 			execCount++
 			return testErr
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		execFunc, closeStmt, err := ExecStmt(ctx, "DELETE FROM users WHERE id = $1")
 		require.NoError(t, err)
@@ -115,4 +110,3 @@ func TestExecStmt(t *testing.T) {
 		require.Equal(t, 1, execCount, "MockExec call count")
 	})
 }
-

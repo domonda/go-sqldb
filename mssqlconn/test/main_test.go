@@ -25,6 +25,8 @@ var (
 	mssqlHost     = envOrDefault("MSSQL_HOST", "localhost")
 	mssqlPort     = envOrDefaultInt("MSSQL_PORT", 1434)
 	dbName        = envOrDefault("MSSQL_DB", "testdb")
+
+	refl = sqldb.NewTaggedStructReflector()
 )
 
 func envOrDefault(key, defaultVal string) string {
@@ -147,21 +149,6 @@ func TestConnect(t *testing.T) {
 	require.NoError(t, rows.Close())
 }
 
-func TestConnectExt(t *testing.T) {
-	connExt, err := mssqlconn.ConnectExt(t.Context(), testConfig(), sqldb.NewTaggedStructReflector())
-	require.NoError(t, err)
-	defer connExt.Close()
-
-	rows := connExt.Query(t.Context(),
-		/*sql*/ `SELECT 1`,
-	)
-	require.True(t, rows.Next())
-	var result int
-	require.NoError(t, rows.Scan(&result))
-	assert.Equal(t, 1, result)
-	require.NoError(t, rows.Close())
-}
-
 func TestMustConnectPanics(t *testing.T) {
 	badConfig := &sqldb.ConnConfig{
 		Driver:   mssqlconn.Driver,
@@ -173,20 +160,6 @@ func TestMustConnectPanics(t *testing.T) {
 	}
 	assert.Panics(t, func() {
 		mssqlconn.MustConnect(t.Context(), badConfig)
-	})
-}
-
-func TestMustConnectExtPanics(t *testing.T) {
-	badConfig := &sqldb.ConnConfig{
-		Driver:   mssqlconn.Driver,
-		Host:     "invalid-host-that-does-not-exist",
-		Port:     9999,
-		User:     "nobody",
-		Password: "Nothing123!",
-		Database: "nodb",
-	}
-	assert.Panics(t, func() {
-		mssqlconn.MustConnectExt(t.Context(), badConfig, sqldb.NewTaggedStructReflector())
 	})
 }
 
@@ -380,20 +353,20 @@ func TestTransactionRollback(t *testing.T) {
 }
 
 func TestInsertRowStruct(t *testing.T) {
-	connExt, err := mssqlconn.ConnectExt(t.Context(), testConfig(), sqldb.NewTaggedStructReflector())
+	conn, err := mssqlconn.Connect(t.Context(), testConfig())
 	require.NoError(t, err)
-	defer connExt.Close()
+	defer conn.Close()
 
 	ctx := t.Context()
 
-	err = connExt.Exec(ctx,
+	err = conn.Exec(ctx,
 		/*sql*/ `
 		IF OBJECT_ID('test_insert_struct', 'U') IS NOT NULL DROP TABLE test_insert_struct;
 		CREATE TABLE test_insert_struct (id INT PRIMARY KEY, name NVARCHAR(255), score INT)
 	`,
 	)
 	require.NoError(t, err)
-	defer connExt.Exec(ctx, //nolint:errcheck
+	defer conn.Exec(ctx, //nolint:errcheck
 		/*sql*/ `DROP TABLE IF EXISTS test_insert_struct`,
 	)
 
@@ -406,11 +379,11 @@ func TestInsertRowStruct(t *testing.T) {
 	}
 
 	row := Row{ID: 1, Name: "alice", Score: 100}
-	err = sqldb.InsertRowStruct(ctx, connExt, connExt, connExt, connExt, &row)
+	err = sqldb.InsertRowStruct(ctx, conn, refl, sqldb.StdQueryBuilder{}, conn, &row)
 	require.NoError(t, err)
 
 	// Verify the inserted row
-	rows := connExt.Query(ctx,
+	rows := conn.Query(ctx,
 		/*sql*/ `SELECT id, name, score FROM test_insert_struct WHERE id = @p1`, 1,
 	)
 	require.True(t, rows.Next())
@@ -421,24 +394,24 @@ func TestInsertRowStruct(t *testing.T) {
 }
 
 func TestQueryRowScanStruct(t *testing.T) {
-	connExt, err := mssqlconn.ConnectExt(t.Context(), testConfig(), sqldb.NewTaggedStructReflector())
+	conn, err := mssqlconn.Connect(t.Context(), testConfig())
 	require.NoError(t, err)
-	defer connExt.Close()
+	defer conn.Close()
 
 	ctx := t.Context()
 
-	err = connExt.Exec(ctx,
+	err = conn.Exec(ctx,
 		/*sql*/ `
 		IF OBJECT_ID('test_scan_struct', 'U') IS NOT NULL DROP TABLE test_scan_struct;
 		CREATE TABLE test_scan_struct (id INT PRIMARY KEY, label NVARCHAR(255), amount INT)
 	`,
 	)
 	require.NoError(t, err)
-	defer connExt.Exec(ctx, //nolint:errcheck
+	defer conn.Exec(ctx, //nolint:errcheck
 		/*sql*/ `DROP TABLE IF EXISTS test_scan_struct`,
 	)
 
-	err = connExt.Exec(ctx,
+	err = conn.Exec(ctx,
 		/*sql*/ `INSERT INTO test_scan_struct (id, label, amount) VALUES (@p1, @p2, @p3)`, 42, "widgets", 99,
 	)
 	require.NoError(t, err)
@@ -452,7 +425,7 @@ func TestQueryRowScanStruct(t *testing.T) {
 	}
 
 	var got Row
-	err = sqldb.QueryRow(ctx, connExt, connExt, connExt,
+	err = sqldb.QueryRow(ctx, conn, refl, conn,
 		/*sql*/ `SELECT id, label, amount FROM test_scan_struct WHERE id = @p1`, 42,
 	).Scan(&got)
 	require.NoError(t, err)

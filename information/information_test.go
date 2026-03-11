@@ -39,8 +39,8 @@ func envOrDefaultInt(key string, defaultVal int) int {
 }
 
 var (
-	testCtx     context.Context
-	testConnExt sqldb.ConnExt
+	testCtx  context.Context
+	testConn sqldb.ConnectionQueryFormatter
 )
 
 func TestMain(m *testing.M) {
@@ -65,7 +65,7 @@ func TestMain(m *testing.M) {
 	// before PostgreSQL is ready to accept connections
 	var err error
 	for range 30 {
-		testConnExt, err = pqconn.ConnectExt(ctx, config, sqldb.NewTaggedStructReflector())
+		testConn, err = pqconn.Connect(ctx, config)
 		if err == nil {
 			break
 		}
@@ -76,7 +76,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// Create a test table for the information schema tests
-	err = testConnExt.Exec(ctx,
+	err = testConn.Exec(ctx,
 		/*sql*/ `
 			DROP TABLE IF EXISTS information_test_child;
 			DROP TABLE IF EXISTS information_test;
@@ -100,7 +100,7 @@ func TestMain(m *testing.M) {
 	m.Run()
 
 	// Cleanup
-	cleanupErr := testConnExt.Exec(ctx,
+	cleanupErr := testConn.Exec(ctx,
 		/*sql*/ `
 			DROP TABLE IF EXISTS information_test_child;
 			DROP TABLE IF EXISTS information_test;
@@ -112,7 +112,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestTableExists(t *testing.T) {
-	exists, err := TableExists(testCtx, testConnExt, "information_test")
+	exists, err := TableExists(testCtx, testConn, "information_test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +120,7 @@ func TestTableExists(t *testing.T) {
 		t.Error("expected information_test to exist")
 	}
 
-	exists, err = TableExists(testCtx, testConnExt, "nonexistent_table_xyz")
+	exists, err = TableExists(testCtx, testConn, "nonexistent_table_xyz")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -130,7 +130,7 @@ func TestTableExists(t *testing.T) {
 }
 
 func TestTableExists_WithSchema(t *testing.T) {
-	exists, err := TableExists(testCtx, testConnExt, "public.information_test")
+	exists, err := TableExists(testCtx, testConn, "public.information_test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,7 +140,7 @@ func TestTableExists_WithSchema(t *testing.T) {
 }
 
 func TestColumnExists(t *testing.T) {
-	exists, err := ColumnExists(testCtx, testConnExt, "information_test", "name")
+	exists, err := ColumnExists(testCtx, testConn, "information_test", "name")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestColumnExists(t *testing.T) {
 		t.Error("expected column 'name' to exist in information_test")
 	}
 
-	exists, err = ColumnExists(testCtx, testConnExt, "information_test", "nonexistent_col")
+	exists, err = ColumnExists(testCtx, testConn, "information_test", "nonexistent_col")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -158,7 +158,7 @@ func TestColumnExists(t *testing.T) {
 }
 
 func TestColumnExists_WithSchema(t *testing.T) {
-	exists, err := ColumnExists(testCtx, testConnExt, "public.information_test", "id")
+	exists, err := ColumnExists(testCtx, testConn, "public.information_test", "id")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -168,7 +168,7 @@ func TestColumnExists_WithSchema(t *testing.T) {
 }
 
 func TestGetTable(t *testing.T) {
-	table, err := GetTable(testCtx, testConnExt, dbName, "public", "information_test")
+	table, err := GetTable(testCtx, testConn, dbName, "public", "information_test")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,7 +190,7 @@ func TestGetTable(t *testing.T) {
 }
 
 func TestGetAllTables(t *testing.T) {
-	tables, err := GetAllTables(testCtx, testConnExt)
+	tables, err := GetAllTables(testCtx, testConn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +211,7 @@ func TestGetAllTables(t *testing.T) {
 }
 
 func TestGetPrimaryKeyColumns(t *testing.T) {
-	cols, err := GetPrimaryKeyColumns(testCtx, testConnExt)
+	cols, err := GetPrimaryKeyColumns(testCtx, testConn)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +247,7 @@ func TestGetPrimaryKeyColumns(t *testing.T) {
 
 func TestGetTableRowsWithPrimaryKey(t *testing.T) {
 	// Insert a row into the parent table only
-	err := testConnExt.Exec(testCtx,
+	err := testConn.Exec(testCtx,
 		/*sql*/ `
 			DELETE FROM information_test_child;
 			DELETE FROM information_test;
@@ -258,7 +258,7 @@ func TestGetTableRowsWithPrimaryKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
-		testConnExt.Exec(testCtx,
+		testConn.Exec(testCtx,
 			/*sql*/ `DELETE FROM information_test_child; DELETE FROM information_test`,
 		)
 	})
@@ -272,7 +272,7 @@ func TestGetTableRowsWithPrimaryKey(t *testing.T) {
 	t.Run("matching row in one table, no rows in other", func(t *testing.T) {
 		// pk=42 exists in information_test but not in information_test_child
 		// The function should skip information_test_child (sql.ErrNoRows / len < 2 path)
-		tableRows, err := GetTableRowsWithPrimaryKey(testCtx, testConnExt, pkCols, 42)
+		tableRows, err := GetTableRowsWithPrimaryKey(testCtx, testConn, pkCols, 42)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -292,7 +292,7 @@ func TestGetTableRowsWithPrimaryKey(t *testing.T) {
 
 	t.Run("no matching rows in any table", func(t *testing.T) {
 		// pk=999 doesn't exist in any table — all tables should be skipped
-		tableRows, err := GetTableRowsWithPrimaryKey(testCtx, testConnExt, pkCols, 999)
+		tableRows, err := GetTableRowsWithPrimaryKey(testCtx, testConn, pkCols, 999)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -302,7 +302,7 @@ func TestGetTableRowsWithPrimaryKey(t *testing.T) {
 	})
 
 	t.Run("empty pk columns slice", func(t *testing.T) {
-		tableRows, err := GetTableRowsWithPrimaryKey(testCtx, testConnExt, nil, 42)
+		tableRows, err := GetTableRowsWithPrimaryKey(testCtx, testConn, nil, 42)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -313,7 +313,7 @@ func TestGetTableRowsWithPrimaryKey(t *testing.T) {
 }
 
 func TestGetPrimaryKeyColumnsOfType(t *testing.T) {
-	cols, err := GetPrimaryKeyColumnsOfType(testCtx, testConnExt, "integer")
+	cols, err := GetPrimaryKeyColumnsOfType(testCtx, testConn, "integer")
 	if err != nil {
 		t.Fatal(err)
 	}

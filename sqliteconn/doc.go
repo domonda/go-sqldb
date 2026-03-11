@@ -23,13 +23,9 @@ Basic usage:
 	}
 	defer conn.Close()
 
-	// Create ConnExt with StdQueryFormatter for SQLite (uses ? placeholders)
-	connExt := sqldb.NewConnExt(
-		conn,
-		sqldb.NewTaggedStructReflector(),
-		sqldb.StdQueryFormatter{}, // Empty PlaceholderPosPrefix uses ? for SQLite
-		sqldb.StdQueryBuilder{},
-	)
+	// conn implements sqldb.ConnectionQueryFormatter
+	// and can be used directly with the db package:
+	db.SetConn(conn)
 
 The connection automatically:
   - Enables foreign key constraints (PRAGMA foreign_keys = ON)

@@ -7,7 +7,7 @@ import (
 	"slices"
 )
 
-// Update table rows(s) with values using the where statement with passed in args starting at $1.
+// Update table row(s) with values using the where statement with passed in args starting at $1.
 func Update(ctx context.Context, conn Executor, builder QueryBuilder, fmtr QueryFormatter, table string, values Values, where string, args ...any) error {
 	if len(values) == 0 {
 		return fmt.Errorf("Update table %s: no values passed", table)
@@ -56,9 +56,8 @@ func UpdateReturningRows(ctx context.Context, conn Querier, builder QueryBuilder
 
 // UpdateRowStruct updates a row in a table using the exported fields
 // of rowStruct which have a `db` tag that is not "-".
-// If restrictToColumns are provided, then only struct fields with a `db` tag
-// matching any of the passed column names will be used.
-// The struct must have at least one field with a `db` tag value having a ",pk" suffix
+// Struct fields can be filtered with options like [IgnoreColumns] or [OnlyColumns].
+// The struct must have at least one field with a `db` tag value having a ",primarykey" suffix
 // to mark primary key column(s).
 func UpdateRowStruct(ctx context.Context, conn Executor, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, table string, rowStruct any, options ...QueryOption) error {
 	v := reflect.ValueOf(rowStruct)

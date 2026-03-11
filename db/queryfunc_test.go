@@ -30,8 +30,7 @@ func TestQueryRow_DB(t *testing.T) {
 			gotArgs = args
 			return sqldb.NewMockRows("id", "name").WithRow(int64(1), "Alice")
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		row := QueryRow(ctx, "SELECT id, name FROM users WHERE id = $1", 1)
 		var id int64
@@ -56,8 +55,7 @@ func TestQueryRowAsStmt_DB(t *testing.T) {
 			gotArgs = args
 			return sqldb.NewMockRows("name").WithRow("Alice")
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		queryFunc, closeStmt, err := QueryRowAsStmt[string](ctx, "SELECT name FROM users WHERE id = $1")
 		require.NoError(t, err)
@@ -78,8 +76,7 @@ func TestQueryRowAsStmt_DB(t *testing.T) {
 			prepareCount++
 			return nil, prepErr
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		_, _, err := QueryRowAsStmt[string](ctx, "SELECT name FROM users WHERE id = $1")
 		require.ErrorIs(t, err, prepErr)
@@ -99,8 +96,7 @@ func TestQueryRowByPK_DB(t *testing.T) {
 			gotArgs = args
 			return sqldb.NewMockRows("id", "name", "active").WithRow(int64(1), "Alice", true)
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		row, err := QueryRowByPK[testUserRow](ctx, int64(1))
 		require.NoError(t, err)
@@ -119,8 +115,7 @@ func TestQueryRowByPK_DB(t *testing.T) {
 			queryCount++
 			return sqldb.NewMockRows("id", "name", "active")
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		_, err := QueryRowByPK[testUserRow](ctx, int64(999))
 		require.ErrorIs(t, err, sql.ErrNoRows)
@@ -136,8 +131,7 @@ func TestQueryRowByPKOr_DB(t *testing.T) {
 			queryCount++
 			return sqldb.NewMockRows("id", "name", "active").WithRow(int64(1), "Alice", true)
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		defaultVal := testUserRow{ID: 0, Name: "default"}
 		row, err := QueryRowByPKOr(ctx, defaultVal, int64(1))
@@ -154,8 +148,7 @@ func TestQueryRowByPKOr_DB(t *testing.T) {
 			queryCount++
 			return sqldb.NewMockRows("id", "name", "active")
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		defaultVal := testUserRow{ID: 0, Name: "default"}
 		row, err := QueryRowByPKOr(ctx, defaultVal, int64(999))
@@ -177,8 +170,7 @@ func TestQueryRowAsMap_DB(t *testing.T) {
 			gotArgs = args
 			return sqldb.NewMockRows("id", "name").WithRow(int64(1), "Alice")
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		m, err := QueryRowAsMap[string, any](ctx, "SELECT id, name FROM users WHERE id = $1", 1)
 		require.NoError(t, err)
@@ -197,8 +189,7 @@ func TestQueryRowAsMap_DB(t *testing.T) {
 			queryCount++
 			return sqldb.NewMockRows("id")
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		_, err := QueryRowAsMap[string, any](ctx, "SELECT id FROM users WHERE id = $1", 999)
 		require.ErrorIs(t, err, sql.ErrNoRows)
@@ -216,8 +207,7 @@ func TestQueryRowsAsSlice_DB(t *testing.T) {
 			gotQuery = query
 			return sqldb.NewMockRows("name").WithRow("Alice").WithRow("Bob").WithRow("Charlie")
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		names, err := QueryRowsAsSlice[string](ctx, "SELECT name FROM users")
 		require.NoError(t, err)
@@ -233,8 +223,7 @@ func TestQueryRowsAsSlice_DB(t *testing.T) {
 			queryCount++
 			return sqldb.NewMockRows("name")
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		names, err := QueryRowsAsSlice[string](ctx, "SELECT name FROM users WHERE 1=0")
 		require.NoError(t, err)
@@ -251,8 +240,7 @@ func TestQueryRowsAsSlice_DB(t *testing.T) {
 				WithRow(int64(1), "Alice", true).
 				WithRow(int64(2), "Bob", false)
 		}
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
+		ctx := testContext(t, mock)
 
 		rows, err := QueryRowsAsSlice[testUserRow](ctx, "SELECT id, name, active FROM users")
 		require.NoError(t, err)

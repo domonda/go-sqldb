@@ -7,55 +7,124 @@ import (
 	"github.com/domonda/go-sqldb"
 )
 
-type connCtxKey struct{}
+type (
+	connCtxKey            struct{}
+	queryBuilderCtxKey    struct{}
+	structReflectorCtxKey struct{}
+)
 
 var (
-	globalConnMu sync.RWMutex
-	globalConn   = sqldb.NewErrConnExt(sqldb.ErrNoDatabaseConnection)
+	globalConn    Connection = sqldb.NewErrConn(sqldb.ErrNoDatabaseConnection)
+	globalConnMtx sync.RWMutex
+
+	globalQueryBuilder    sqldb.QueryBuilder = sqldb.StdQueryBuilder{}
+	globalQueryBuilderMtx sync.RWMutex
+
+	globalStructReflector    sqldb.StructReflector = sqldb.NewTaggedStructReflector()
+	globalStructReflectorMtx sync.RWMutex
 )
+
+// Connection is a database connection that combines
+// [sqldb.Connection] with [sqldb.QueryFormatter].
+type Connection = sqldb.ConnectionQueryFormatter
 
 // SetConn sets the global connection that will be returned by [Conn]
 // if there is no other connection in the context passed to [Conn].
-func SetConn(c sqldb.ConnExt) {
+func SetConn(c Connection) {
 	if c == nil {
-		panic("unable to set nil sqldb.ConnExt") // Prefer to panic early
+		panic("unable to set nil Connection") // Prefer to panic early
 	}
-	globalConnMu.Lock()
+	globalConnMtx.Lock()
 	globalConn = c
-	globalConnMu.Unlock()
+	globalConnMtx.Unlock()
+}
+
+// SetQueryBuilder sets the global [sqldb.QueryBuilder] that will be returned
+// by [QueryBuilder] if there is no other query builder in the context.
+func SetQueryBuilder(queryBuilder sqldb.QueryBuilder) {
+	globalQueryBuilderMtx.Lock()
+	globalQueryBuilder = queryBuilder
+	globalQueryBuilderMtx.Unlock()
+}
+
+// SetStructReflector sets the global [sqldb.StructReflector] that will be returned
+// by [StructReflector] if there is no other struct reflector in the context.
+func SetStructReflector(structReflector sqldb.StructReflector) {
+	globalStructReflectorMtx.Lock()
+	globalStructReflector = structReflector
+	globalStructReflectorMtx.Unlock()
 }
 
 // Conn returns the connection from the context
 // or the global connection that was configured with [SetConn].
-func Conn(ctx context.Context) sqldb.ConnExt {
-	if c, _ := ctx.Value(connCtxKey{}).(sqldb.ConnExt); c != nil {
+func Conn(ctx context.Context) Connection {
+	if c, _ := ctx.Value(connCtxKey{}).(Connection); c != nil {
 		return c
 	}
-	globalConnMu.RLock()
+	globalConnMtx.RLock()
 	c := globalConn
-	globalConnMu.RUnlock()
+	globalConnMtx.RUnlock()
 	return c
 }
 
-// ContextWithConn returns a new context with the passed sqldb.ConnExt
+// QueryBuilder returns the [sqldb.QueryBuilder] from the connection or context,
+// or the global query builder that was configured with [SetQueryBuilder].
+func QueryBuilder(ctx context.Context) sqldb.QueryBuilder {
+	if qb, _ := Conn(ctx).(sqldb.QueryBuilder); qb != nil {
+		return qb
+	}
+	if qb, _ := ctx.Value(queryBuilderCtxKey{}).(sqldb.QueryBuilder); qb != nil {
+		return qb
+	}
+	globalQueryBuilderMtx.RLock()
+	qb := globalQueryBuilder
+	globalQueryBuilderMtx.RUnlock()
+	return qb
+}
+
+// StructReflector returns the [sqldb.StructReflector] from the context,
+// or the global struct reflector that was configured with [SetStructReflector].
+func StructReflector(ctx context.Context) sqldb.StructReflector {
+	if sr, _ := ctx.Value(structReflectorCtxKey{}).(sqldb.StructReflector); sr != nil {
+		return sr
+	}
+	globalStructReflectorMtx.RLock()
+	sr := globalStructReflector
+	globalStructReflectorMtx.RUnlock()
+	return sr
+}
+
+// ContextWithConn returns a new context with the passed [Connection]
 // added as value so it can be retrieved again using [Conn].
-func ContextWithConn(ctx context.Context, conn sqldb.ConnExt) context.Context {
+func ContextWithConn(ctx context.Context, conn Connection) context.Context {
 	return context.WithValue(ctx, connCtxKey{}, conn)
+}
+
+// ContextWithQueryBuilder returns a new context with the passed sqldb.QueryBuilder
+// added as value so it can be retrieved again using [QueryBuilder].
+func ContextWithQueryBuilder(ctx context.Context, queryBuilder sqldb.QueryBuilder) context.Context {
+	return context.WithValue(ctx, queryBuilderCtxKey{}, queryBuilder)
+}
+
+// ContextWithStructReflector returns a new context with the passed sqldb.StructReflector
+// added as value so it can be retrieved again using [StructReflector].
+func ContextWithStructReflector(ctx context.Context, structReflector sqldb.StructReflector) context.Context {
+	return context.WithValue(ctx, structReflectorCtxKey{}, structReflector)
 }
 
 // ContextWithGlobalConn returns a new context with the global connection
 // added as value so it can be retrieved again using Conn(ctx).
 func ContextWithGlobalConn(ctx context.Context) context.Context {
-	globalConnMu.RLock()
+	globalConnMtx.RLock()
 	c := globalConn
-	globalConnMu.RUnlock()
+	globalConnMtx.RUnlock()
 	return ContextWithConn(ctx, c)
 }
 
 // Close the global connection that was configured with [SetConn].
 func Close() error {
-	globalConnMu.RLock()
+	globalConnMtx.RLock()
 	c := globalConn
-	globalConnMu.RUnlock()
+	globalConnMtx.RUnlock()
 	return c.Close()
 }

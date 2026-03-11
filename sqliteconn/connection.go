@@ -19,7 +19,7 @@ const Driver = "sqlite"
 
 // Connect establishes a new [sqldb.Connection] using the passed config
 // and zombiezen.com/go/sqlite as the underlying SQLite implementation.
-func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
+func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.ConnectionQueryFormatter, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -67,7 +67,7 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, e
 // MustConnect creates a new sqldb.Connection using the passed sqldb.ConnConfig
 // and zombiezen.com/go/sqlite as the underlying implementation.
 // Errors are panicked.
-func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
+func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.ConnectionQueryFormatter {
 	conn, err := Connect(ctx, config)
 	if err != nil {
 		panic(err)
@@ -75,37 +75,9 @@ func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection
 	return conn
 }
 
-// ConnectExt establishes a new [sqldb.ConnExt] using the passed config and structReflector
-// with the SQLite-specific [QueryFormatter] and [sqldb.DefaultQueryBuilder].
-func ConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) (sqldb.ConnExt, error) {
-	conn, err := Connect(ctx, config)
-	if err != nil {
-		return nil, err
-	}
-	return NewConnExt(conn, structReflector), nil
-}
-
-// MustConnectExt is like [ConnectExt] but panics on error.
-func MustConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) sqldb.ConnExt {
-	connExt, err := ConnectExt(ctx, config, structReflector)
-	if err != nil {
-		panic(err)
-	}
-	return connExt
-}
-
-// NewConnExt wraps conn and structReflector into a [sqldb.ConnExt]
-// using the SQLite-specific [QueryFormatter] and [sqldb.DefaultQueryBuilder].
-func NewConnExt(conn sqldb.Connection, structReflector sqldb.StructReflector) sqldb.ConnExt {
-	return sqldb.NewConnExt(
-		conn,
-		structReflector,
-		QueryFormatter{},
-		sqldb.DefaultQueryBuilder,
-	)
-}
-
 type connection struct {
+	QueryFormatter
+
 	conn   *sqlite.Conn
 	config *sqldb.ConnConfig
 	txOpts *sql.TxOptions

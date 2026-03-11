@@ -26,8 +26,7 @@ func TestQueryRowAs(t *testing.T) {
 			query,              // query
 			777,                // args
 		)
-	conn := mock.ConnExt()
-	ctx := ContextWithConn(t.Context(), conn)
+	ctx := testContext(t, mock)
 
 	// id 666 has a row with the value true
 	value, err := QueryRowAs[bool](ctx, query, 666)
@@ -54,8 +53,7 @@ func TestQueryRowAsOr(t *testing.T) {
 			query,              // query
 			777,                // args
 		)
-	conn := mock.ConnExt()
-	ctx := ContextWithConn(t.Context(), conn)
+	ctx := testContext(t, mock)
 
 	// id 666 has a row with the value true
 	value, err := QueryRowAsOr(ctx, false, query, 666)
@@ -114,8 +112,7 @@ func TestQueryStrings(t *testing.T) {
 			query,
 			1,
 		)
-	conn := mock.ConnExt()
-	ctx := ContextWithConn(t.Context(), conn)
+	ctx := testContext(t, mock)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			gotRows, err := QueryRowsAsStrings(ctx, tt.query, tt.args...)

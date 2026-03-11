@@ -13,7 +13,8 @@ import (
 )
 
 func setupQueryCallbackCtx(t *testing.T, mock *sqldb.MockConn) context.Context {
-	return ContextWithConn(t.Context(), mock.ConnExt())
+	t.Helper()
+	return testContext(t, mock)
 }
 
 func TestQueryCallback_ScalarSingle(t *testing.T) {

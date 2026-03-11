@@ -77,7 +77,7 @@ func IsolatedTransaction(ctx context.Context, txFunc func(context.Context) error
 	}
 	conn := Conn(ctx)
 	return sqldb.IsolatedTransaction(ctx, conn, nil, func(tx sqldb.Connection) error {
-		return txFunc(ContextWithConn(ctx, sqldb.NewConnExtWithConn(conn, tx)))
+		return txFunc(ContextWithConn(ctx, sqldb.SwapConnection(conn, tx)))
 	})
 }
 
@@ -107,13 +107,13 @@ func Transaction(ctx context.Context, txFunc func(context.Context) error) error 
 	}
 	conn := Conn(ctx)
 	return sqldb.Transaction(ctx, conn, nil, func(tx sqldb.Connection) error {
-		return txFunc(ContextWithConn(ctx, sqldb.NewConnExtWithConn(conn, tx)))
+		return txFunc(ContextWithConn(ctx, sqldb.SwapConnection(conn, tx)))
 	})
 }
 
 // TransactionResult executes txFunc within a database transaction and returns the result of txFunc.
 // Use db.Conn(ctx) to get the transaction connection within txFunc.
-// Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
+// TransactionResult returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
 // and no parentConn.Begin, Commit, or Rollback calls will occur within this TransactionResult call.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
@@ -150,9 +150,9 @@ func OptionalTransactionResult[T any](ctx context.Context, useTransaction bool, 
 
 // SerializedTransaction executes txFunc "serially" within a database transaction that is passed in to txFunc via the context.
 // Use db.Conn(ctx) to get the transaction connection within txFunc.
-// Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
+// SerializedTransaction returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
-// and no parentConn.Begin, Commit, or Rollback calls will occur within this Transaction call.
+// and no parentConn.Begin, Commit, or Rollback calls will occur within this SerializedTransaction call.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
 // Recovered panics are re-panicked and rollback errors after a panic are logged with [sqldb.ErrLogger].
 //
@@ -223,7 +223,7 @@ func TransactionOpts(ctx context.Context, opts *sql.TxOptions, txFunc func(conte
 	}
 	conn := Conn(ctx)
 	return sqldb.Transaction(ctx, conn, opts, func(tx sqldb.Connection) error {
-		return txFunc(ContextWithConn(ctx, sqldb.NewConnExtWithConn(conn, tx)))
+		return txFunc(ContextWithConn(ctx, sqldb.SwapConnection(conn, tx)))
 	})
 }
 
@@ -241,7 +241,7 @@ func TransactionReadOnly(ctx context.Context, txFunc func(context.Context) error
 	conn := Conn(ctx)
 	opts := sql.TxOptions{ReadOnly: true}
 	return sqldb.Transaction(ctx, conn, &opts, func(tx sqldb.Connection) error {
-		return txFunc(ContextWithConn(ctx, sqldb.NewConnExtWithConn(conn, tx)))
+		return txFunc(ContextWithConn(ctx, sqldb.SwapConnection(conn, tx)))
 	})
 }
 

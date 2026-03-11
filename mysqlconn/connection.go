@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"maps"
 	"net"
 	"strconv"
 
@@ -16,7 +17,7 @@ import (
 // and github.com/go-sql-driver/mysql as driver implementation.
 // The connection is pinged with the passed context and only returned
 // when there was no error from the ping.
-func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
+func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.ConnectionQueryFormatter, error) {
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
@@ -40,7 +41,13 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, e
 		}
 		return nil, err
 	}
-	return sqldb.NewGenericConn(db, config, sql.LevelRepeatableRead, wrapKnownErrors), nil
+	return sqldb.NewGenericConn(
+		db,
+		config,
+		sql.LevelRepeatableRead,
+		QueryFormatter{},
+		wrapKnownErrors,
+	), nil
 }
 
 // formatDSN converts a sqldb.ConnConfig to a MySQL DSN string
@@ -60,9 +67,7 @@ func formatDSN(config *sqldb.ConnConfig) string {
 		if mysqlCfg.Params == nil {
 			mysqlCfg.Params = make(map[string]string, len(config.Extra))
 		}
-		for key, val := range config.Extra {
-			mysqlCfg.Params[key] = val
-		}
+		maps.Copy(mysqlCfg.Params, config.Extra)
 	}
 	return mysqlCfg.FormatDSN()
 }
@@ -72,34 +77,10 @@ func formatDSN(config *sqldb.ConnConfig) string {
 // The connection is pinged with the passed context and only returned
 // when there was no error from the ping.
 // Errors are panicked.
-func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
+func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.ConnectionQueryFormatter {
 	conn, err := Connect(ctx, config)
 	if err != nil {
 		panic(err)
 	}
 	return conn
-}
-
-// ConnectExt establishes a new [sqldb.ConnExt] using the passed config and structReflector
-// with the MySQL-specific [QueryFormatter] and [sqldb.DefaultQueryBuilder].
-func ConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) (sqldb.ConnExt, error) {
-	conn, err := Connect(ctx, config)
-	if err != nil {
-		return nil, err
-	}
-	return sqldb.NewConnExt(
-		conn,
-		structReflector,
-		QueryFormatter{},
-		sqldb.DefaultQueryBuilder,
-	), nil
-}
-
-// MustConnectExt is like [ConnectExt] but panics on error.
-func MustConnectExt(ctx context.Context, config *sqldb.ConnConfig, structReflector sqldb.StructReflector) sqldb.ConnExt {
-	connExt, err := ConnectExt(ctx, config, structReflector)
-	if err != nil {
-		panic(err)
-	}
-	return connExt
 }

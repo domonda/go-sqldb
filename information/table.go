@@ -23,8 +23,8 @@ type Table struct {
 	CommitAction              String `db:"commit_action"`
 }
 
-func GetTable(ctx context.Context, conn sqldb.ConnExt, catalog, schema, name string) (table *Table, err error) {
-	return sqldb.QueryRowAs[*Table](ctx, conn, conn, conn,
+func GetTable(ctx context.Context, conn sqldb.ConnectionQueryFormatter, catalog, schema, name string) (table *Table, err error) {
+	return sqldb.QueryRowAs[*Table](ctx, conn, structReflector, conn,
 		/*sql*/ `
 			SELECT *
 			FROM information_schema.tables
@@ -41,13 +41,13 @@ func GetTable(ctx context.Context, conn sqldb.ConnExt, catalog, schema, name str
 // TableExists checks if a table exists in the database
 // qualifiedName is in the format "schema.table" or "table"
 // If no schema is provided, "public" is assumed.
-func TableExists(ctx context.Context, conn sqldb.ConnExt, qualifiedName string) (exists bool, err error) {
+func TableExists(ctx context.Context, conn sqldb.ConnectionQueryFormatter, qualifiedName string) (exists bool, err error) {
 	schema, table, ok := strings.Cut(qualifiedName, ".")
 	if !ok {
 		schema = "public"
 		table = qualifiedName
 	}
-	return sqldb.QueryRowAs[bool](ctx, conn, conn, conn,
+	return sqldb.QueryRowAs[bool](ctx, conn, structReflector, conn,
 		/*sql*/ `
 			SELECT EXISTS (
 				SELECT FROM information_schema.tables
@@ -60,8 +60,8 @@ func TableExists(ctx context.Context, conn sqldb.ConnExt, qualifiedName string) 
 	)
 }
 
-func GetAllTables(ctx context.Context, conn sqldb.ConnExt) (tables []*Table, err error) {
-	return sqldb.QueryRowsAsSlice[*Table](ctx, conn, conn, conn,
+func GetAllTables(ctx context.Context, conn sqldb.ConnectionQueryFormatter) (tables []*Table, err error) {
+	return sqldb.QueryRowsAsSlice[*Table](ctx, conn, structReflector, conn,
 		/*sql*/ `
 			SELECT * FROM information_schema.tables
 		`,

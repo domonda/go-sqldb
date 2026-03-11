@@ -37,9 +37,9 @@ func (m *StagedTypeMapper) ColumnType(t reflect.Type) string {
 }
 
 // CreateTableForStruct is mostly used to create tests.
-func CreateTableForStruct(ctx context.Context, conn ConnExt, typeMap TypeMapper, rowStruct StructWithTableName) error {
+func CreateTableForStruct(ctx context.Context, conn ConnectionQueryFormatter, refl StructReflector, typeMap TypeMapper, rowStruct StructWithTableName) error {
 	v := reflect.ValueOf(rowStruct)
-	tableName, err := conn.TableNameForStruct(v.Type())
+	tableName, err := refl.TableNameForStruct(v.Type())
 	if err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func CreateTableForStruct(ctx context.Context, conn ConnExt, typeMap TypeMapper,
 	if err != nil {
 		return err
 	}
-	columns, fields, err := ReflectStructColumnsAndFields(v, conn)
+	columns, fields, err := ReflectStructColumnsAndFields(v, refl)
 	if err != nil {
 		return err
 	}
@@ -83,17 +83,17 @@ func CreateTableForStruct(ctx context.Context, conn ConnExt, typeMap TypeMapper,
 }
 
 // CreateTablesAndInsertStructs is mostly used to create tests.
-func CreateTablesAndInsertStructs(ctx context.Context, conn ConnExt, typeMap TypeMapper, tables ...[]StructWithTableName) error {
+func CreateTablesAndInsertStructs(ctx context.Context, conn ConnectionQueryFormatter, refl StructReflector, builder QueryBuilder, typeMap TypeMapper, tables ...[]StructWithTableName) error {
 	for _, rows := range tables {
 		if len(rows) == 0 {
 			continue
 		}
-		err := CreateTableForStruct(ctx, conn, typeMap, rows[0])
+		err := CreateTableForStruct(ctx, conn, refl, typeMap, rows[0])
 		if err != nil {
 			return err
 		}
 		for _, row := range rows {
-			err := InsertRowStruct(ctx, conn, conn, conn, conn, row)
+			err := InsertRowStruct(ctx, conn, refl, builder, conn, row)
 			if err != nil {
 				return err
 			}

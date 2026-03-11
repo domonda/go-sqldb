@@ -19,7 +19,7 @@ func main() {
 
 	ctx := context.Background()
 
-	conn, err := pqconn.ConnectExt(ctx, config, sqldb.NewTaggedStructReflector())
+	conn, err := pqconn.Connect(ctx, config)
 	if err != nil {
 		panic(err)
 	}

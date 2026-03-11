@@ -6,8 +6,10 @@ import (
 	"time"
 )
 
-// ErrConn implements ListenerConnection
-var _ ListenerConnection = ErrConn{}
+var (
+	_ ListenerConnection       = ErrConn{}
+	_ ConnectionQueryFormatter = ErrConn{}
+)
 
 // NewErrConn returns an ErrConn with the passed error.
 func NewErrConn(err error) ErrConn {
@@ -17,25 +19,12 @@ func NewErrConn(err error) ErrConn {
 	return ErrConn{Err: err}
 }
 
-// NewErrConnExt returns a [ConnExt] that returns err from every operation.
-// It uses [NewTaggedStructReflector], [DefaultQueryFormatter], and [DefaultQueryBuilder]
-// so that the returned [ConnExt] satisfies the interface without requiring a real connection.
-// Useful as a sentinel or placeholder value when a connection could not be established.
-func NewErrConnExt(err error) ConnExt {
-	if err == nil {
-		panic("NewErrConnExt expects non nil error")
-	}
-	return NewConnExt(
-		NewErrConn(err),
-		NewTaggedStructReflector(),
-		DefaultQueryFormatter,
-		DefaultQueryBuilder,
-	)
-}
-
 // ErrConn is a dummy ListenerConnection
 // where all methods except Close return Err.
+// It embeds StdQueryFormatter to satisfy ConnectionQueryFormatter.
 type ErrConn struct {
+	StdQueryFormatter
+
 	Err error
 }
 

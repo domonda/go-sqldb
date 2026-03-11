@@ -13,8 +13,11 @@ import (
 	"time"
 )
 
-// MockConn implements ListenerConnection
-var _ ListenerConnection = new(MockConn)
+// MockConn implements ListenerConnection and QueryFormatter
+var (
+	_ ListenerConnection = new(MockConn)
+	_ QueryFormatter     = new(MockConn)
+)
 
 // QueryRecordings holds the recorded exec and query calls
 // made through a MockConn.
@@ -97,17 +100,6 @@ func (c *MockConn) WithQueryLog(w io.Writer) *MockConn {
 	return c
 }
 
-// ConnExt returns a ConnExt wrapping this MockConn as Connection
-// with a TaggedStructReflector, the MockConn's QueryFormatter,
-// and a StdQueryBuilder.
-func (c *MockConn) ConnExt() ConnExt {
-	qf := c.QueryFormatter
-	if qf == nil {
-		qf = StdQueryFormatter{}
-	}
-	return NewConnExt(c, NewTaggedStructReflector(), qf, StdQueryBuilder{})
-}
-
 // Clone returns a shallow copy of the MockConn
 // with cloned ListeningOn and MockQueryResults maps
 // and a new mutex.
@@ -141,16 +133,21 @@ func (c *MockConn) Clone() *MockConn {
 	}
 }
 
+// getQueryFormatter returns c.QueryFormatter
+// or StdQueryFormatter{} if nil.
+func (c *MockConn) getQueryFormatter() QueryFormatter {
+	if c.QueryFormatter != nil {
+		return c.QueryFormatter
+	}
+	return StdQueryFormatter{}
+}
+
 // WithQueryResult returns a clone of the MockConn with an additional
 // MockRows result registered for the given query and args.
 // The query is normalized and formatted using the connection's
 // NormalizeQuery and QueryFormatter before being used as lookup key.
 func (c *MockConn) WithQueryResult(columns []string, rows [][]driver.Value, forQuery string, args ...any) *MockConn {
-	queryFormatter := c.QueryFormatter
-	if queryFormatter == nil {
-		queryFormatter = StdQueryFormatter{}
-	}
-	normQuery := MustNormalizeAndFormatQuery(c.NormalizeQuery, queryFormatter, forQuery, args...)
+	normQuery := MustNormalizeAndFormatQuery(c.NormalizeQuery, c.getQueryFormatter(), forQuery, args...)
 
 	cc := c.Clone()
 	if cc.MockQueryResults == nil {
@@ -160,10 +157,29 @@ func (c *MockConn) WithQueryResult(columns []string, rows [][]driver.Value, forQ
 	return cc
 }
 
-// FormatStringLiteral implements Connection by returning
-// a single-quoted SQL string literal.
-func (*MockConn) FormatStringLiteral(str string) string {
-	return FormatSingleQuoteStringLiteral(str)
+// FormatTableName implements QueryFormatter.
+func (c *MockConn) FormatTableName(name string) (string, error) {
+	return c.getQueryFormatter().FormatTableName(name)
+}
+
+// FormatColumnName implements QueryFormatter.
+func (c *MockConn) FormatColumnName(name string) (string, error) {
+	return c.getQueryFormatter().FormatColumnName(name)
+}
+
+// FormatPlaceholder implements QueryFormatter.
+func (c *MockConn) FormatPlaceholder(paramIndex int) string {
+	return c.getQueryFormatter().FormatPlaceholder(paramIndex)
+}
+
+// FormatStringLiteral implements Connection and QueryFormatter.
+func (c *MockConn) FormatStringLiteral(str string) string {
+	return c.getQueryFormatter().FormatStringLiteral(str)
+}
+
+// MaxArgs implements QueryFormatter.
+func (c *MockConn) MaxArgs() int {
+	return c.getQueryFormatter().MaxArgs()
 }
 
 // Config implements Connection by returning MockConfig()
@@ -199,10 +215,7 @@ func (c *MockConn) Stats() sql.DBStats {
 // optionally logging it, and then calling MockExec
 // or returning the context error if MockExec is nil.
 func (c *MockConn) Exec(ctx context.Context, query string, args ...any) (err error) {
-	queryFormatter := c.QueryFormatter
-	if queryFormatter == nil {
-		queryFormatter = StdQueryFormatter{}
-	}
+	queryFormatter := c.getQueryFormatter()
 	queryData, err := NewQueryData(query, args, c.NormalizeQuery)
 	if err != nil {
 		return err
@@ -237,10 +250,7 @@ func (c *MockConn) Exec(ctx context.Context, query string, args ...any) (err err
 // If no matching result is found, it returns ErrRows wrapping
 // sql.ErrNoRows joined with the context error.
 func (c *MockConn) Query(ctx context.Context, query string, args ...any) Rows {
-	queryFormatter := c.QueryFormatter
-	if queryFormatter == nil {
-		queryFormatter = StdQueryFormatter{}
-	}
+	queryFormatter := c.getQueryFormatter()
 	queryData, err := NewQueryData(query, args, c.NormalizeQuery)
 	if err != nil {
 		return NewErrRows(err)

@@ -20,7 +20,7 @@ Basic usage:
 		Extra:    map[string]string{"sslmode": "disable"},
 	}
 
-	conn, err := pqconn.ConnectExt(ctx, config, sqldb.NewTaggedStructReflector())
+	conn, err := pqconn.Connect(ctx, config)
 	if err != nil {
 		panic(err)
 	}

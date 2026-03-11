@@ -23,7 +23,6 @@ func TestInsertRowStruct(t *testing.T) {
 		rowStruct sqldb.StructWithTableName
 		options   []sqldb.QueryOption
 		mock      *sqldb.MockConn
-		conn      sqldb.ConnExt
 		want      sqldb.QueryRecordings
 		wantErr   bool
 	}{
@@ -53,11 +52,8 @@ func TestInsertRowStruct(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		if tt.conn == nil {
-			tt.conn = tt.mock.ConnExt()
-		}
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := ContextWithConn(t.Context(), tt.conn)
+			ctx := testContext(t, tt.mock)
 			err := InsertRowStruct(ctx, tt.rowStruct, tt.options...)
 			if tt.wantErr {
 				require.Error(t, err, "error from InsertStruct")
@@ -80,8 +76,7 @@ func TestInsertRowStruct_CacheWithoutOptions(t *testing.T) {
 	}
 
 	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-	conn := mock.ConnExt()
-	ctx := ContextWithConn(t.Context(), conn)
+	ctx := testContext(t, mock)
 
 	// First call populates the cache
 	err := InsertRowStruct(ctx, &CacheTestStruct{ID: 1, Name: "first", Extra: "a"})
@@ -110,8 +105,7 @@ func TestInsertRowStruct_CacheBypassedWithOptions(t *testing.T) {
 	}
 
 	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-	conn := mock.ConnExt()
-	ctx := ContextWithConn(t.Context(), conn)
+	ctx := testContext(t, mock)
 
 	// First call without options — all columns
 	err := InsertRowStruct(ctx, &OptionsCacheTestStruct{ID: 1, Name: "first", Extra: "a"})
@@ -145,8 +139,7 @@ func TestInsertRowStruct_CacheNotPollutedByOptions(t *testing.T) {
 	}
 
 	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-	conn := mock.ConnExt()
-	ctx := ContextWithConn(t.Context(), conn)
+	ctx := testContext(t, mock)
 
 	// First call WITH options — should NOT populate the cache
 	err := InsertRowStruct(ctx, &PollutionTestStruct{ID: 1, Name: "first"}, sqldb.IgnoreColumns("extra"))
@@ -177,7 +170,6 @@ func TestInsert(t *testing.T) {
 		table   string
 		values  sqldb.Values
 		mock    *sqldb.MockConn
-		conn    sqldb.ConnExt
 		want    sqldb.QueryRecordings
 		wantErr bool
 	}{
@@ -211,11 +203,8 @@ func TestInsert(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		if tt.conn == nil {
-			tt.conn = tt.mock.ConnExt()
-		}
 		t.Run(tt.name, func(t *testing.T) {
-			ctx := ContextWithConn(t.Context(), tt.conn)
+			ctx := testContext(t, tt.mock)
 			err := Insert(ctx, tt.table, tt.values)
 			if tt.wantErr {
 				require.Error(t, err, "error from Insert")

@@ -7,13 +7,6 @@ import (
 	"testing"
 )
 
-// newTestConnExt creates a MockConn and ConnExt for testing.
-// Shared helper used across multiple test files.
-func newTestConnExt() (*MockConn, ConnExt) {
-	conn := NewMockConn(NewQueryFormatter("$"))
-	return conn, NewConnExt(conn, NewTaggedStructReflector(), NewQueryFormatter("$"), StdQueryBuilder{})
-}
-
 // newTestInterfaces creates a MockConn and separate interface values for testing.
 // Shared helper used across multiple test files.
 func newTestInterfaces() (conn *MockConn, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter) {

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -24,12 +23,6 @@ func ExampleErrConn_Config() {
 func TestNewErrConn_PanicsOnNil(t *testing.T) {
 	assert.Panics(t, func() {
 		NewErrConn(nil)
-	})
-}
-
-func TestNewErrConnExt_PanicsOnNil(t *testing.T) {
-	assert.Panics(t, func() {
-		NewErrConnExt(nil)
 	})
 }
 
@@ -149,24 +142,22 @@ func TestErrConn_ImplementsListenerConnection(t *testing.T) {
 	assert.True(t, ok, "ErrConn must implement ListenerConnection")
 }
 
-func TestNewErrConnExt_MethodsDelegateToErr(t *testing.T) {
-	// given
-	sentinel := errors.New("ext sentinel")
-	ext := NewErrConnExt(sentinel)
+func TestErrConn_QueryFormatterMethods(t *testing.T) {
+	conn := NewErrConn(errors.New("e"))
 
-	t.Run("Ping", func(t *testing.T) {
-		err := ext.Ping(t.Context(), time.Second)
-		require.ErrorIs(t, err, sentinel)
+	t.Run("FormatTableName", func(t *testing.T) {
+		name, err := conn.FormatTableName("my_table")
+		require.NoError(t, err)
+		assert.Equal(t, "my_table", name)
 	})
 
-	t.Run("Exec", func(t *testing.T) {
-		err := ext.Exec(t.Context(), "SELECT 1")
-		require.ErrorIs(t, err, sentinel)
+	t.Run("FormatColumnName", func(t *testing.T) {
+		name, err := conn.FormatColumnName("my_col")
+		require.NoError(t, err)
+		assert.Equal(t, "my_col", name)
 	})
 
-	t.Run("Query returns ErrRows", func(t *testing.T) {
-		rows := ext.Query(t.Context(), "SELECT 1")
-		require.NotNil(t, rows)
-		require.ErrorIs(t, rows.Err(), sentinel)
+	t.Run("FormatPlaceholder", func(t *testing.T) {
+		assert.Equal(t, "?", conn.FormatPlaceholder(0))
 	})
 }

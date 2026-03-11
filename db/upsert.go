@@ -16,7 +16,15 @@ import (
 // The struct must have at least one primary key field.
 func UpsertRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, options ...sqldb.QueryOption) error {
 	conn := Conn(ctx)
-	return sqldb.UpsertRowStruct(ctx, conn, conn, conn, conn, rowStruct, options...)
+	return sqldb.UpsertRowStruct(
+		ctx,
+		conn,
+		StructReflector(ctx),
+		QueryBuilder(ctx),
+		conn,
+		rowStruct,
+		options...,
+	)
 }
 
 // UpsertRowStructStmt prepares a statement for upserting rows of type S.
@@ -29,7 +37,14 @@ func UpsertRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, o
 // Returns an upsert function and a closeStmt function that must be called when done.
 func UpsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, options ...sqldb.QueryOption) (upsert func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
 	conn := Conn(ctx)
-	return sqldb.UpsertRowStructStmt[S](ctx, conn, conn, conn, conn, options...)
+	return sqldb.UpsertRowStructStmt[S](
+		ctx,
+		conn,
+		StructReflector(ctx),
+		QueryBuilder(ctx),
+		conn,
+		options...,
+	)
 }
 
 // UpsertRowStructs upserts a slice of structs within a transaction
@@ -41,5 +56,13 @@ func UpsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, optio
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
 func UpsertRowStructs[S sqldb.StructWithTableName](ctx context.Context, rowStructs []S, options ...sqldb.QueryOption) error {
 	conn := Conn(ctx)
-	return sqldb.UpsertRowStructs(ctx, conn, conn, conn, conn, rowStructs, options...)
+	return sqldb.UpsertRowStructs(
+		ctx,
+		conn,
+		StructReflector(ctx),
+		QueryBuilder(ctx),
+		conn,
+		rowStructs,
+		options...,
+	)
 }

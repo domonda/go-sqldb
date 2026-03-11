@@ -3,6 +3,7 @@ package sqldb
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 )
 
@@ -40,31 +41,6 @@ type Querier interface {
 	// Query queries rows with optional args.
 	// Any error will be returned by the Rows.Err method.
 	Query(ctx context.Context, query string, args ...any) Rows
-}
-
-type Transactioner interface {
-	// Transaction returns the transaction state of the connection
-	Transaction() TransactionState
-
-	// Begin a new transaction.
-	// If the connection is already a transaction then a brand
-	// new transaction will begin based on the connection
-	// that started this transaction.
-	// The passed id and opts will be returned from the transaction's
-	// Connection.Transaction method as TransactionState.
-	// Implementations should use the function NextTransactionID
-	// to acquire a new ID in a threadsafe way.
-	Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (Connection, error)
-
-	// Commit the current transaction.
-	// Returns ErrNotWithinTransaction if the connection
-	// is not within a transaction.
-	Commit() error
-
-	// Rollback the current transaction.
-	// Returns ErrNotWithinTransaction if the connection
-	// is not within a transaction.
-	Rollback() error
 }
 
 // Connection represents a database connection or transaction
@@ -144,4 +120,53 @@ type ListenerConnection interface {
 
 	// IsListeningOnChannel returns if a channel is listened to.
 	IsListeningOnChannel(channel string) bool
+}
+
+type ConnectionQueryFormatter interface {
+	Connection
+	QueryFormatter
+}
+
+// SwapConnection returns a ConnectionQueryFormatter using newConn as the Connection.
+// If newConn already implements ConnectionQueryFormatter, it is returned directly.
+// Otherwise, a wrapper is returned that combines newConn with the QueryFormatter from prev.
+func SwapConnection(prev ConnectionQueryFormatter, newConn Connection) ConnectionQueryFormatter {
+	if c, ok := newConn.(ConnectionQueryFormatter); ok {
+		return c
+	}
+	return &connectionQueryFormatter{
+		Connection:     newConn,
+		QueryFormatter: prev,
+	}
+}
+
+// connectionQueryFormatter wraps a Connection with a QueryFormatter
+// to satisfy the ConnectionQueryFormatter interface.
+// It also implements ListenerConnection, forwarding to the wrapped
+// Connection if it implements ListenerConnection,
+// or returning errors.ErrUnsupported otherwise.
+type connectionQueryFormatter struct {
+	Connection
+	QueryFormatter
+}
+
+func (c *connectionQueryFormatter) ListenOnChannel(channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error {
+	if listener, ok := c.Connection.(ListenerConnection); ok {
+		return listener.ListenOnChannel(channel, onNotify, onUnlisten)
+	}
+	return errors.ErrUnsupported
+}
+
+func (c *connectionQueryFormatter) UnlistenChannel(channel string) error {
+	if listener, ok := c.Connection.(ListenerConnection); ok {
+		return listener.UnlistenChannel(channel)
+	}
+	return errors.ErrUnsupported
+}
+
+func (c *connectionQueryFormatter) IsListeningOnChannel(channel string) bool {
+	if listener, ok := c.Connection.(ListenerConnection); ok {
+		return listener.IsListeningOnChannel(channel)
+	}
+	return false
 }

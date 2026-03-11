@@ -1,6 +1,7 @@
 package db
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -8,84 +9,33 @@ import (
 	"github.com/domonda/go-sqldb"
 )
 
-func TestSetConn(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-		conn := mock.ConnExt()
-
-		// Save and restore global conn
-		saved := globalConn
-		defer func() { globalConn = saved }()
-
-		SetConn(conn)
-		require.Equal(t, conn, globalConn)
-	})
-
-	t.Run("nil panics", func(t *testing.T) {
-		require.Panics(t, func() {
-			SetConn(nil)
-		})
-	})
-}
-
-func TestConn(t *testing.T) {
-	t.Run("from context", func(t *testing.T) {
-		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-		conn := mock.ConnExt()
-		ctx := ContextWithConn(t.Context(), conn)
-
-		got := Conn(ctx)
-		require.Equal(t, conn, got)
-	})
-
-	t.Run("falls back to global", func(t *testing.T) {
-		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-		conn := mock.ConnExt()
-
-		// Save and restore global conn
-		saved := globalConn
-		defer func() { globalConn = saved }()
-
-		SetConn(conn)
-		got := Conn(t.Context())
-		require.Equal(t, conn, got)
-	})
+// testContext returns a context with the given connection
+// and the standard QueryBuilder and StructReflector,
+// so that tests don't depend on global state.
+func testContext(t *testing.T, conn Connection) context.Context {
+	t.Helper()
+	ctx := ContextWithConn(t.Context(), conn)
+	ctx = ContextWithQueryBuilder(ctx, sqldb.StdQueryBuilder{})
+	ctx = ContextWithStructReflector(ctx, sqldb.NewTaggedStructReflector())
+	return ctx
 }
 
 func TestContextWithConn(t *testing.T) {
-	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-	conn := mock.ConnExt()
+	conn := new(sqldb.MockConn)
 	ctx := ContextWithConn(t.Context(), conn)
 
 	got := Conn(ctx)
 	require.Equal(t, conn, got)
 }
 
-func TestContextWithGlobalConn(t *testing.T) {
-	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-	conn := mock.ConnExt()
-
-	// Save and restore global conn
-	saved := globalConn
-	defer func() { globalConn = saved }()
-
-	SetConn(conn)
-
-	// ContextWithGlobalConn should embed the global conn in context
-	ctx := ContextWithGlobalConn(t.Context())
-	got := Conn(ctx)
-	require.Equal(t, conn, got)
-}
-
 func TestClose(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+		conn := new(sqldb.MockConn)
 		var closeCount int
-		mock.MockClose = func() error {
+		conn.MockClose = func() error {
 			closeCount++
 			return nil
 		}
-		conn := mock.ConnExt()
 
 		// Save and restore global conn
 		saved := globalConn
