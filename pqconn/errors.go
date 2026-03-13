@@ -1,7 +1,6 @@
 package pqconn
 
 import (
-	"context"
 	"errors"
 	"slices"
 
@@ -31,7 +30,7 @@ func wrapKnownErrors(err error) error {
 		case "23514":
 			return errors.Join(sqldb.ErrCheckViolation{Constraint: e.Constraint}, err)
 		case "57014":
-			return errors.Join(context.Canceled, err)
+			return errors.Join(sqldb.ErrQueryCanceled, err)
 		case "23P01":
 			return errors.Join(sqldb.ErrExclusionViolation{Constraint: e.Constraint}, err)
 		case "P0001":
@@ -77,6 +76,31 @@ func IsCheckViolation(err error) bool {
 func IsExclusionViolation(err error) bool {
 	var e *pq.Error
 	return errors.As(err, &e) && e.Code == "23P01" // exclusion_violation
+}
+
+// Class 25 — Invalid Transaction State
+
+// IsInFailedTransaction indicates if the error was caused by
+// executing a statement in a transaction that has already failed.
+// PostgreSQL rejects all commands in such a transaction until
+// it is rolled back.
+func IsInFailedTransaction(err error) bool {
+	var e *pq.Error
+	return errors.As(err, &e) && e.Code == "25P02" // in_failed_sql_transaction
+}
+
+// IsFailedTransaction returns true if conn is a transaction
+// that is in a failed state by executing a dummy query
+// and checking for the `in_failed_sql_transaction` error.
+func IsFailedTransaction(conn sqldb.Connection) bool {
+	return conn.IsTransaction() && IsInFailedTransaction(conn.Exec("SELECT 1"))
+}
+
+// IsTransactionTimeout indicates if the error was caused by
+// a transaction exceeding the configured transaction_timeout.
+func IsTransactionTimeout(err error) bool {
+	var e *pq.Error
+	return errors.As(err, &e) && e.Code == "25P04" // transaction_timeout
 }
 
 // Class 57 - Operator Intervention

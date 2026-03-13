@@ -42,6 +42,19 @@ func (s sentinelError) Error() string {
 	return string(s)
 }
 
+// ErrQueryCanceled is a sentinel error for a canceled query.
+// It unwraps to context.Canceled because query cancellation
+// is typically caused by a Go context cancellation.
+const ErrQueryCanceled = errQueryCanceled("query canceled")
+
+type errQueryCanceled string
+
+func (e errQueryCanceled) Error() string { return string(e) }
+
+func (e errQueryCanceled) Is(target error) bool {
+	return target == context.Canceled || target == ErrQueryCanceled
+}
+
 // Transaction errors
 
 const (
