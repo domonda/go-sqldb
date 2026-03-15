@@ -78,7 +78,7 @@ func TestUpdateRowStruct(t *testing.T) {
 			return nil
 		}
 		row := reflectTestStruct{ID: 1, Name: "Alice", Active: true}
-		err := UpdateRowStruct(t.Context(), conn, refl, builder, fmtr, "test_table", row)
+		err := UpdateRowStruct(t.Context(), conn, refl, builder, fmtr, row)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -103,7 +103,7 @@ func TestUpdateRowStruct(t *testing.T) {
 			return nil
 		}
 		row := &reflectTestStruct{ID: 2, Name: "Bob", Active: false}
-		err := UpdateRowStruct(t.Context(), conn, refl, builder, fmtr, "test_table", row)
+		err := UpdateRowStruct(t.Context(), conn, refl, builder, fmtr, row)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -116,31 +116,14 @@ func TestUpdateRowStruct(t *testing.T) {
 		assertArgs(t, gotArgs, []any{int64(2), "Bob", false})
 	})
 
-	t.Run("nil struct error", func(t *testing.T) {
-		conn, refl, builder, fmtr := newTestInterfaces()
-		_ = conn
-		err := UpdateRowStruct(t.Context(), conn, refl, builder, fmtr, "test_table", (*reflectTestStruct)(nil))
-		if err == nil {
-			t.Error("expected error for nil struct")
-		}
-	})
-
-	t.Run("non-struct error", func(t *testing.T) {
-		conn, refl, builder, fmtr := newTestInterfaces()
-		_ = conn
-		err := UpdateRowStruct(t.Context(), conn, refl, builder, fmtr, "test_table", "not a struct")
-		if err == nil {
-			t.Error("expected error for non-struct")
-		}
-	})
-
 	t.Run("no primary key error", func(t *testing.T) {
 		conn, refl, builder, fmtr := newTestInterfaces()
 		_ = conn
 		type noPK struct {
-			Name string `db:"name"`
+			TableName `db:"test_table"`
+			Name      string `db:"name"`
 		}
-		err := UpdateRowStruct(t.Context(), conn, refl, builder, fmtr, "test_table", noPK{Name: "test"})
+		err := UpdateRowStruct(t.Context(), conn, refl, builder, fmtr, noPK{Name: "test"})
 		if err == nil {
 			t.Error("expected error for struct without primary key")
 		}
@@ -155,7 +138,7 @@ func TestUpdateRowStruct(t *testing.T) {
 			return testErr
 		}
 		row := reflectTestStruct{ID: 1, Name: "Alice"}
-		err := UpdateRowStruct(t.Context(), conn, refl, builder, fmtr, "test_table", row)
+		err := UpdateRowStruct(t.Context(), conn, refl, builder, fmtr, row)
 		if !errors.Is(err, testErr) {
 			t.Errorf("expected error wrapping %v, got: %v", testErr, err)
 		}
@@ -333,7 +316,7 @@ func TestUpdateRowStructStmt(t *testing.T) {
 			gotQuery = query
 			return nil
 		}
-		updateFunc, closeStmt, err := UpdateRowStructStmt[reflectTestStruct](t.Context(), conn, refl, builder, fmtr, "test_table")
+		updateFunc, closeStmt, err := UpdateRowStructStmt[reflectTestStruct](t.Context(), conn, refl, builder, fmtr)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -364,7 +347,7 @@ func TestUpdateRowStructStmt(t *testing.T) {
 			gotQuery = query
 			return nil
 		}
-		updateFunc, closeStmt, err := UpdateRowStructStmt[*reflectTestStruct](t.Context(), conn, refl, builder, fmtr, "test_table")
+		updateFunc, closeStmt, err := UpdateRowStructStmt[*reflectTestStruct](t.Context(), conn, refl, builder, fmtr)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -388,7 +371,7 @@ func TestUpdateRowStructs(t *testing.T) {
 
 	t.Run("empty slice", func(t *testing.T) {
 		conn, refl, builder, fmtr := newTestInterfaces()
-		err := UpdateRowStructs[reflectTestStruct](t.Context(), conn, refl, builder, fmtr, "test_table", nil)
+		err := UpdateRowStructs[reflectTestStruct](t.Context(), conn, refl, builder, fmtr, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -404,7 +387,7 @@ func TestUpdateRowStructs(t *testing.T) {
 			return nil
 		}
 		items := []reflectTestStruct{{ID: 1, Name: "Alice", Active: true}}
-		err := UpdateRowStructs(t.Context(), conn, refl, builder, fmtr, "test_table", items)
+		err := UpdateRowStructs(t.Context(), conn, refl, builder, fmtr, items)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -427,7 +410,7 @@ func TestUpdateRowStructs(t *testing.T) {
 			{ID: 1, Name: "Alice", Active: true},
 			{ID: 2, Name: "Bob", Active: false},
 		}
-		err := UpdateRowStructs(t.Context(), conn, refl, builder, fmtr, "test_table", items)
+		err := UpdateRowStructs(t.Context(), conn, refl, builder, fmtr, items)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -449,7 +432,7 @@ func TestUpdateRowStructs(t *testing.T) {
 			return nil
 		}
 		items := []*reflectTestStruct{{ID: 1, Name: "Alice", Active: true}}
-		err := UpdateRowStructs(t.Context(), conn, refl, builder, fmtr, "test_table", items)
+		err := UpdateRowStructs(t.Context(), conn, refl, builder, fmtr, items)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -470,7 +453,7 @@ func TestUpdateRowStructs(t *testing.T) {
 			{ID: 1, Name: "Alice", Active: true},
 			{ID: 2, Name: "Bob", Active: false},
 		}
-		err := UpdateRowStructs(t.Context(), conn, refl, builder, fmtr, "test_table", items)
+		err := UpdateRowStructs(t.Context(), conn, refl, builder, fmtr, items)
 		if err != nil {
 			t.Fatal(err)
 		}
