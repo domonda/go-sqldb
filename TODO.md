@@ -1,12 +1,5 @@
 # go-sqldb TODO for v1.0
 
-## Dead Code
-
-- [ ] **db/foreachrow.go** — Entire file commented out
-- [ ] **db/multirowscanner.go** — Entire file commented out
-- [ ] **db/scanresult.go** — Entire file commented out
-- [ ] **db/foreachrow_test.go** — Test body entirely commented out
-
 ## API Design for v1.0
 
 ### Missing Symmetry
