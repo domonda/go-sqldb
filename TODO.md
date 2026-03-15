@@ -2,7 +2,7 @@
 
 ## Missing Features
 
-- [ ] **Batch insert** — `InsertRowStructs` processes rows one-by-one in a transaction with a prepared statement. Need optimized multi-row INSERT.
+- [x] **Batch insert** — `InsertRowStructs` now uses multi-row `INSERT INTO ... VALUES(...),(...),...` batched by `MaxArgs()` limit
 
 ## Dead Code
 
@@ -10,7 +10,7 @@
 - [ ] **db/multirowscanner.go** — Entire file commented out
 - [ ] **db/scanresult.go** — Entire file commented out
 - [ ] **db/foreachrow_test.go** — Test body entirely commented out
-- [ ] **db/transaction_test.go** — `TestSerializedTransaction` and `TestTransaction` entirely commented out
+- [x] **db/transaction_test.go** — `TestSerializedTransaction` and `TestTransaction` uncommented, updated to use `sqldb.MockConn`
 
 ## API Design for v1.0
 
@@ -29,6 +29,3 @@
 
 - what about testhelper.go ?
 
-### Missing Tests
-
-- [ ] `genericconn.go` / `generictx.go` — `NewGenericConn` and generic transaction types have no unit tests

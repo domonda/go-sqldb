@@ -1,17 +1,17 @@
 package db
 
-/*
 import (
 	"context"
 	"errors"
-	"os"
 	"testing"
 
-	"github.com/domonda/go-sqldb/mockconn"
+	"github.com/stretchr/testify/require"
+
+	"github.com/domonda/go-sqldb"
 )
 
 func TestSerializedTransaction(t *testing.T) {
-	globalConn = mockconn.New(context.Background(), os.Stdout, nil)
+	ctx := testContext(t, new(sqldb.MockConn))
 
 	expectSerialized := func(ctx context.Context) error {
 		if !IsTransaction(ctx) {
@@ -50,22 +50,25 @@ func TestSerializedTransaction(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{name: "flat call", args: args{ctx: context.Background(), txFunc: expectSerialized}, wantErr: false},
-		{name: "expect error", args: args{ctx: context.Background(), txFunc: expectSerializedWithError}, wantErr: true},
-		{name: "nested call", args: args{ctx: context.Background(), txFunc: nestedSerializedTransaction}, wantErr: false},
-		{name: "nested tx call", args: args{ctx: context.Background(), txFunc: okNestedTransaction}, wantErr: false},
+		{name: "flat call", args: args{ctx: ctx, txFunc: expectSerialized}, wantErr: false},
+		{name: "expect error", args: args{ctx: ctx, txFunc: expectSerializedWithError}, wantErr: true},
+		{name: "nested call", args: args{ctx: ctx, txFunc: nestedSerializedTransaction}, wantErr: false},
+		{name: "nested tx call", args: args{ctx: ctx, txFunc: okNestedTransaction}, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := SerializedTransaction(tt.args.ctx, tt.args.txFunc); (err != nil) != tt.wantErr {
-				t.Errorf("SerializedTransaction() error = %v, wantErr %v", err, tt.wantErr)
+			err := SerializedTransaction(tt.args.ctx, tt.args.txFunc)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
 }
 
 func TestTransaction(t *testing.T) {
-	globalConn = mockconn.New(context.Background(), os.Stdout, nil)
+	ctx := testContext(t, new(sqldb.MockConn))
 
 	expectNonSerialized := func(ctx context.Context) error {
 		if !IsTransaction(ctx) {
@@ -104,17 +107,19 @@ func TestTransaction(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{name: "flat call", args: args{ctx: context.Background(), txFunc: expectNonSerialized}, wantErr: false},
-		{name: "expected error", args: args{ctx: context.Background(), txFunc: expectNonSerializedWithError}, wantErr: true},
-		{name: "nested call", args: args{ctx: context.Background(), txFunc: nestedTransaction}, wantErr: false},
-		{name: "nested serialized", args: args{ctx: context.Background(), txFunc: nestedSerializedTransaction}, wantErr: true},
+		{name: "flat call", args: args{ctx: ctx, txFunc: expectNonSerialized}, wantErr: false},
+		{name: "expected error", args: args{ctx: ctx, txFunc: expectNonSerializedWithError}, wantErr: true},
+		{name: "nested call", args: args{ctx: ctx, txFunc: nestedTransaction}, wantErr: false},
+		{name: "nested serialized", args: args{ctx: ctx, txFunc: nestedSerializedTransaction}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := Transaction(tt.args.ctx, tt.args.txFunc); (err != nil) != tt.wantErr {
-				t.Errorf("Transaction() error = %v, wantErr %v", err, tt.wantErr)
+			err := Transaction(tt.args.ctx, tt.args.txFunc)
+			if tt.wantErr {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
 			}
 		})
 	}
 }
-*/

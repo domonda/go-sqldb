@@ -97,6 +97,9 @@ func UpsertRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 // function that must be called when done to close the prepared statement.
 func UpsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Preparer, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, options ...QueryOption) (upsert func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
 	structType := reflect.TypeFor[S]()
+	for structType.Kind() == reflect.Pointer {
+		structType = structType.Elem()
+	}
 	table, err := refl.TableNameForStruct(structType)
 	if err != nil {
 		return nil, nil, err

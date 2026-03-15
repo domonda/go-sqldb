@@ -101,6 +101,9 @@ func UpdateRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 // The returned closeStmt function must be called to release the prepared statement.
 func UpdateRowStructStmt[S any](ctx context.Context, conn Preparer, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, table string, options ...QueryOption) (updateFunc func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
 	structType := reflect.TypeFor[S]()
+	for structType.Kind() == reflect.Pointer {
+		structType = structType.Elem()
+	}
 	options = append(options, IgnoreReadOnly)
 	columns, err := ReflectStructColumns(structType, refl, options...)
 	if err != nil {

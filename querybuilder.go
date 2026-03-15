@@ -8,6 +8,10 @@ import (
 type QueryBuilder interface {
 	QueryRowWithPK(formatter QueryFormatter, table string, pkColumns []string) (query string, err error)
 	Insert(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error)
+	// InsertRows builds a multi-row INSERT INTO query with numRows value tuples:
+	//   INSERT INTO table(col1,col2) VALUES($1,$2),($3,$4),($5,$6)
+	// numRows must be >= 1.
+	InsertRows(formatter QueryFormatter, table string, columns []ColumnInfo, numRows int) (query string, err error)
 	InsertUnique(formatter QueryFormatter, table string, columns []ColumnInfo, onConflict string) (query string, err error)
 	Upsert(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error)
 	// Update updates a table rows with the passed values using the
@@ -72,6 +76,46 @@ func (StdQueryBuilder) Insert(formatter QueryFormatter, table string, columns []
 		q.WriteString(formatter.FormatPlaceholder(i))
 	}
 	q.WriteString(`)`)
+	return q.String(), nil
+}
+
+// InsertRows builds a multi-row INSERT INTO query with numRows value tuples.
+// numRows must be >= 1.
+func (StdQueryBuilder) InsertRows(formatter QueryFormatter, table string, columns []ColumnInfo, numRows int) (query string, err error) {
+	if numRows < 1 {
+		return "", fmt.Errorf("InsertRows: numRows must be >= 1, got %d", numRows)
+	}
+	numCols := len(columns)
+	var q strings.Builder
+	table, err = formatter.FormatTableName(table)
+	if err != nil {
+		return "", err
+	}
+	fmt.Fprintf(&q, `INSERT INTO %s(`, table)
+	for i := range columns {
+		column, err := formatter.FormatColumnName(columns[i].Name)
+		if err != nil {
+			return "", err
+		}
+		if i > 0 {
+			q.WriteByte(',')
+		}
+		q.WriteString(column)
+	}
+	q.WriteString(`) VALUES`)
+	for row := range numRows {
+		if row > 0 {
+			q.WriteByte(',')
+		}
+		q.WriteByte('(')
+		for col := range numCols {
+			if col > 0 {
+				q.WriteByte(',')
+			}
+			q.WriteString(formatter.FormatPlaceholder(row*numCols + col))
+		}
+		q.WriteByte(')')
+	}
 	return q.String(), nil
 }
 

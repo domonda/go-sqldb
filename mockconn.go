@@ -49,9 +49,10 @@ type QueryRecordings struct {
 // and a non-zero value simulates a transaction.
 type MockConn struct {
 	// Configuration
-	QueryFormatter QueryFormatter     // StdQueryFormatter{} is used if nil
-	NormalizeQuery NormalizeQueryFunc // nil means no normalization
-	QueryLog       io.Writer          // nil means no writing of queries
+	QueryFormatter  QueryFormatter     // StdQueryFormatter{} is used if nil
+	NormalizeQuery  NormalizeQueryFunc // nil means no normalization
+	QueryLog        io.Writer          // nil means no writing of queries
+	MockMaxArgs     int                // overrides QueryFormatter.MaxArgs() if > 0
 
 	// Connection state
 	TxID        uint64 // Returned by TransactionState
@@ -111,6 +112,7 @@ func (c *MockConn) Clone() *MockConn {
 		QueryFormatter:           c.QueryFormatter,
 		NormalizeQuery:           c.NormalizeQuery,
 		QueryLog:                 c.QueryLog,
+		MockMaxArgs:              c.MockMaxArgs,
 		TxID:                     c.TxID,
 		StmtNo:                   c.StmtNo,
 		ListeningOn:              maps.Clone(c.ListeningOn),
@@ -178,7 +180,11 @@ func (c *MockConn) FormatStringLiteral(str string) string {
 }
 
 // MaxArgs implements QueryFormatter.
+// Returns MockMaxArgs if > 0, otherwise delegates to the QueryFormatter.
 func (c *MockConn) MaxArgs() int {
+	if c.MockMaxArgs > 0 {
+		return c.MockMaxArgs
+	}
 	return c.getQueryFormatter().MaxArgs()
 }
 

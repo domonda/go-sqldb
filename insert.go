@@ -142,6 +142,9 @@ func InsertRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 // The returned closeStmt function must be called to release the prepared statement.
 func InsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Preparer, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, options ...QueryOption) (insertFunc func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
 	structType := reflect.TypeFor[S]()
+	for structType.Kind() == reflect.Pointer {
+		structType = structType.Elem()
+	}
 	table, err := refl.TableNameForStruct(structType)
 	if err != nil {
 		return nil, nil, err
@@ -222,32 +225,142 @@ func InsertUniqueRowStruct(ctx context.Context, conn Querier, refl StructReflect
 }
 
 // InsertRowStructs inserts a slice of structs as new rows into the table for the given struct type.
+// Rows are batched into multi-row INSERT statements respecting the driver's MaxArgs() limit.
 // The table name is derived from the `db` struct tag of an embedded sqldb.TableName field
 // (e.g., sqldb.TableName `db:"my_table"`).
 // Column names are derived from the `db` struct tags of the struct's fields.
 // Optional QueryOption can be passed to ignore mapped columns.
 func InsertRowStructs[S StructWithTableName](ctx context.Context, conn Connection, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, rowStructs []S, options ...QueryOption) error {
-	// TODO optimized version that combines multiple structs in one query depending or maxArgs
-	switch len(rowStructs) {
+	numTotalRows := len(rowStructs)
+	switch numTotalRows {
 	case 0:
 		return nil
 	case 1:
 		return InsertRowStruct(ctx, conn, refl, builder, fmtr, rowStructs[0], options...)
 	}
-	return Transaction(ctx, conn, nil, func(tx Connection) (err error) {
-		insertFunc, closeStmt, stmtErr := InsertRowStructStmt[S](ctx, tx, refl, builder, fmtr, options...)
-		if stmtErr != nil {
-			return stmtErr
-		}
-		defer func() {
-			err = errors.Join(err, closeStmt())
-		}()
 
-		for _, rowStruct := range rowStructs {
-			err = insertFunc(ctx, rowStruct)
+	options = append(options, IgnoreReadOnly)
+	structType := reflect.TypeFor[S]()
+	for structType.Kind() == reflect.Pointer {
+		structType = structType.Elem()
+	}
+	columns, err := ReflectStructColumns(structType, refl, options...)
+	if err != nil {
+		return err
+	}
+	table, err := refl.TableNameForStruct(structType)
+	if err != nil {
+		return err
+	}
+
+	numCols := len(columns)
+	if numCols == 0 {
+		return fmt.Errorf("InsertRowStructs: no columns mapped for struct %s", structType)
+	}
+	rowsPerBatch := fmtr.MaxArgs() / numCols
+	if rowsPerBatch < 1 {
+		return fmt.Errorf("InsertRowStructs: MaxArgs() %d is less than number of columns %d", fmtr.MaxArgs(), numCols)
+	}
+	if rowsPerBatch > numTotalRows {
+		rowsPerBatch = numTotalRows
+	}
+
+	numFullBatches := numTotalRows / rowsPerBatch
+	numRemainderRows := numTotalRows % rowsPerBatch
+
+	collectValues := func(start, end int) ([]any, error) {
+		vals := make([]any, 0, (end-start)*numCols)
+		for i := start; i < end; i++ {
+			structVal, err := derefStruct(reflect.ValueOf(rowStructs[i]))
+			if err != nil {
+				return nil, err
+			}
+			rowVals, err := ReflectStructValues(structVal, refl, options...)
+			if err != nil {
+				return nil, err
+			}
+			vals = append(vals, rowVals...)
+		}
+		return vals, nil
+	}
+
+	// All rows fit in a single batch: no transaction, no prepare
+	if numFullBatches <= 1 && numRemainderRows == 0 {
+		query, err := builder.InsertRows(fmtr, table, columns, numTotalRows)
+		if err != nil {
+			return fmt.Errorf("failed to create INSERT query: %w", err)
+		}
+		vals, err := collectValues(0, numTotalRows)
+		if err != nil {
+			return err
+		}
+		err = conn.Exec(ctx, query, vals...)
+		if err != nil {
+			return WrapErrorWithQuery(err, query, vals, fmtr)
+		}
+		return nil
+	}
+
+	// Multiple batches: wrap in a transaction
+	return Transaction(ctx, conn, nil, func(tx Connection) error {
+		fullBatchQuery, err := builder.InsertRows(fmtr, table, columns, rowsPerBatch)
+		if err != nil {
+			return fmt.Errorf("failed to create INSERT query: %w", err)
+		}
+
+		switch {
+		case numFullBatches >= 2:
+			// Prepare the full-batch query for repeated execution
+			stmt, err := tx.Prepare(ctx, fullBatchQuery)
+			if err != nil {
+				return fmt.Errorf("failed to prepare INSERT query: %w", err)
+			}
+			var execErr error
+			for batch := range numFullBatches {
+				start := batch * rowsPerBatch
+				vals, err := collectValues(start, start+rowsPerBatch)
+				if err != nil {
+					execErr = err
+					break
+				}
+				err = stmt.Exec(ctx, vals...)
+				if err != nil {
+					execErr = WrapErrorWithQuery(err, fullBatchQuery, vals, fmtr)
+					break
+				}
+			}
+			if err := errors.Join(execErr, stmt.Close()); err != nil {
+				return err
+			}
+
+		case numFullBatches == 1:
+			// Single full batch: execute without preparing
+			vals, err := collectValues(0, rowsPerBatch)
 			if err != nil {
 				return err
 			}
+			err = tx.Exec(ctx, fullBatchQuery, vals...)
+			if err != nil {
+				return WrapErrorWithQuery(err, fullBatchQuery, vals, fmtr)
+			}
+		}
+
+		if numRemainderRows == 0 {
+			return nil
+		}
+
+		remainderQuery, err := builder.InsertRows(fmtr, table, columns, numRemainderRows)
+		if err != nil {
+			return fmt.Errorf("failed to create INSERT query: %w", err)
+		}
+		start := numFullBatches * rowsPerBatch
+		vals, err := collectValues(start, start+numRemainderRows)
+		if err != nil {
+			return err
+		}
+		err = tx.Exec(ctx, remainderQuery, vals...)
+		if err != nil {
+			return WrapErrorWithQuery(err, remainderQuery, vals, fmtr)
 		}
 		return nil
 	})

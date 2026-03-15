@@ -320,3 +320,162 @@ func TestUpdateReturningRows(t *testing.T) {
 		require.ErrorIs(t, rows.Err(), queryErr)
 	})
 }
+
+func TestUpdateRowStructStmt(t *testing.T) {
+	wantQuery := "UPDATE test_table SET name=$2, active=$3 WHERE id = $1"
+
+	t.Run("success", func(t *testing.T) {
+		conn, refl, builder, fmtr := newTestInterfaces()
+		var execCount int
+		var gotQuery string
+		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
+			execCount++
+			gotQuery = query
+			return nil
+		}
+		updateFunc, closeStmt, err := UpdateRowStructStmt[reflectTestStruct](t.Context(), conn, refl, builder, fmtr, "test_table")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer closeStmt()
+
+		err = updateFunc(t.Context(), reflectTestStruct{ID: 1, Name: "Alice", Active: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = updateFunc(t.Context(), reflectTestStruct{ID: 2, Name: "Bob", Active: false})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if execCount != 2 {
+			t.Errorf("MockExec called %d times, want 2", execCount)
+		}
+		if gotQuery != wantQuery {
+			t.Errorf("query = %q, want %q", gotQuery, wantQuery)
+		}
+	})
+
+	t.Run("with pointer type param", func(t *testing.T) {
+		conn, refl, builder, fmtr := newTestInterfaces()
+		var execCount int
+		var gotQuery string
+		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
+			execCount++
+			gotQuery = query
+			return nil
+		}
+		updateFunc, closeStmt, err := UpdateRowStructStmt[*reflectTestStruct](t.Context(), conn, refl, builder, fmtr, "test_table")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer closeStmt()
+
+		err = updateFunc(t.Context(), &reflectTestStruct{ID: 1, Name: "Alice", Active: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if execCount != 1 {
+			t.Errorf("MockExec called %d times, want 1", execCount)
+		}
+		if gotQuery != wantQuery {
+			t.Errorf("query = %q, want %q", gotQuery, wantQuery)
+		}
+	})
+}
+
+func TestUpdateRowStructs(t *testing.T) {
+	wantQuery := "UPDATE test_table SET name=$2, active=$3 WHERE id = $1"
+
+	t.Run("empty slice", func(t *testing.T) {
+		conn, refl, builder, fmtr := newTestInterfaces()
+		err := UpdateRowStructs[reflectTestStruct](t.Context(), conn, refl, builder, fmtr, "test_table", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("single item", func(t *testing.T) {
+		conn, refl, builder, fmtr := newTestInterfaces()
+		var gotQuery string
+		var gotArgs []any
+		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
+			gotQuery = query
+			gotArgs = args
+			return nil
+		}
+		items := []reflectTestStruct{{ID: 1, Name: "Alice", Active: true}}
+		err := UpdateRowStructs(t.Context(), conn, refl, builder, fmtr, "test_table", items)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if gotQuery != wantQuery {
+			t.Errorf("query = %q, want %q", gotQuery, wantQuery)
+		}
+		assertArgs(t, gotArgs, []any{int64(1), "Alice", true})
+	})
+
+	t.Run("multiple items uses transaction", func(t *testing.T) {
+		conn, refl, builder, fmtr := newTestInterfaces()
+		var execCount int
+		var gotQuery string
+		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
+			execCount++
+			gotQuery = query
+			return nil
+		}
+		items := []reflectTestStruct{
+			{ID: 1, Name: "Alice", Active: true},
+			{ID: 2, Name: "Bob", Active: false},
+		}
+		err := UpdateRowStructs(t.Context(), conn, refl, builder, fmtr, "test_table", items)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if execCount != 2 {
+			t.Errorf("MockExec called %d times, want 2", execCount)
+		}
+		if gotQuery != wantQuery {
+			t.Errorf("query = %q, want %q", gotQuery, wantQuery)
+		}
+	})
+
+	t.Run("single pointer item", func(t *testing.T) {
+		conn, refl, builder, fmtr := newTestInterfaces()
+		var gotQuery string
+		var gotArgs []any
+		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
+			gotQuery = query
+			gotArgs = args
+			return nil
+		}
+		items := []*reflectTestStruct{{ID: 1, Name: "Alice", Active: true}}
+		err := UpdateRowStructs(t.Context(), conn, refl, builder, fmtr, "test_table", items)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if gotQuery != wantQuery {
+			t.Errorf("query = %q, want %q", gotQuery, wantQuery)
+		}
+		assertArgs(t, gotArgs, []any{int64(1), "Alice", true})
+	})
+
+	t.Run("multiple pointer items", func(t *testing.T) {
+		conn, refl, builder, fmtr := newTestInterfaces()
+		var execCount int
+		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
+			execCount++
+			return nil
+		}
+		items := []*reflectTestStruct{
+			{ID: 1, Name: "Alice", Active: true},
+			{ID: 2, Name: "Bob", Active: false},
+		}
+		err := UpdateRowStructs(t.Context(), conn, refl, builder, fmtr, "test_table", items)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if execCount != 2 {
+			t.Errorf("MockExec called %d times, want 2", execCount)
+		}
+	})
+}
