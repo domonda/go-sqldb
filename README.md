@@ -25,6 +25,32 @@ The design patterns evolved mostly through discovery led by the desire to minimi
 | [sqliteconn](https://pkg.go.dev/github.com/domonda/go-sqldb/sqliteconn)         | [zombiezen.com/go/sqlite](https://pkg.go.dev/zombiezen.com/go/sqlite)                          | `?, ?, ...`       |
 
 
+### Feature matrix
+
+| Feature                       | pqconn              | mysqlconn           | mssqlconn           | sqliteconn          | MockConn          | ErrConn             |
+| ----------------------------- | ------------------- | ------------------- | ------------------- | ------------------- | ----------------- | ------------------- |
+| Underlying driver             | lib/pq              | go-sql-driver/mysql | go-mssqldb          | zombiezen.com/sqlite| —                 | —                   |
+| Placeholder style             | `$1`, `$2`, …       | `?`, `?`, …         | `@p1`, `@p2`, …     | `?`, `?`, …         | configurable      | `?`, `?`, …         |
+| Max query arguments           | 65 535              | 65 535              | 2 100               | 32 766              | 65 535            | 65 535              |
+| Identifier quoting            | `"double quotes"`   | `` `backticks` ``   | `[brackets]`        | `"double quotes"`   | configurable      | none                |
+| Default isolation level       | Read Committed      | Repeatable Read     | Read Committed      | Serializable        | Default           | Default             |
+| `Connection`                  | yes                 | yes                 | yes                 | yes                 | yes               | yes (returns error) |
+| `ListenerConnection`          | yes                 | —                   | —                   | —                   | yes (mock)        | yes (returns error) |
+| Transactions                  | yes                 | yes                 | yes                 | yes                 | yes (mock)        | —                   |
+| Nested `Begin` uses savepoint | —                   | —                   | —                   | yes                 | —                 | —                   |
+| `db.TransactionSavepoint`     | yes                 | yes                 | yes                 | yes                 | yes               | —                   |
+| Constraint error mapping      | yes                 | yes                 | yes                 | yes                 | —                 | —                   |
+| Array column support          | yes                 | —                   | —                   | —                   | —                 | —                   |
+| Prepared statements           | yes                 | yes                 | yes                 | yes                 | yes (mock)        | —                   |
+| Query recording               | —                   | —                   | —                   | —                   | yes               | —                   |
+
+**Notes:**
+- **Nested `Begin` uses savepoint**: Only `sqliteconn` converts nested `Begin` calls into SQL `SAVEPOINT` / `RELEASE` commands. All other real drivers start a new independent transaction on the underlying connection.
+- **`db.TransactionSavepoint`**: Works with any driver by issuing raw `SAVEPOINT` SQL within an existing transaction (see [Transactions](#transactions)).
+- **MockConn**: In-memory mock for unit testing without a running database. Supports configurable query results, exec callbacks, and records all queries and execs for inspection.
+- **ErrConn**: Dummy connection where every method except `Close` returns a stored error. Useful for testing error-handling paths.
+
+
 ## Generic errors
 
 Each driver maps its database-specific constraint errors to typed values defined in the root `sqldb` package:
