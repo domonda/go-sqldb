@@ -66,6 +66,12 @@ func DebugNoTransaction(ctx context.Context, nonTxFunc func(context.Context) err
 	return nonTxFunc(ctx)
 }
 
+// DebugNoTransactionResult executes nonTxFunc without a database transaction and returns the result.
+// Useful to temporarily replace TransactionResult to debug the same code without using a transaction.
+func DebugNoTransactionResult[T any](ctx context.Context, nonTxFunc func(context.Context) (T, error)) (T, error) {
+	return nonTxFunc(ctx)
+}
+
 // IsolatedTransaction executes txFunc within a database transaction that is passed in to txFunc as tx [Connection].
 // IsolatedTransaction returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, a brand new transaction will begin on the parent's connection.
@@ -208,6 +214,16 @@ func SerializedTransaction(ctx context.Context, txFunc func(context.Context) err
 	return errors.New("SerializedTransaction retried too many times")
 }
 
+// SerializedTransactionResult executes txFunc within a serialized database transaction and returns the result of txFunc.
+// See [SerializedTransaction] for more details.
+func SerializedTransactionResult[T any](ctx context.Context, txFunc func(context.Context) (T, error)) (result T, err error) {
+	err = SerializedTransaction(ctx, func(ctx context.Context) error {
+		result, err = txFunc(ctx)
+		return err
+	})
+	return result, err
+}
+
 // TransactionOpts executes txFunc within a database transaction with sql.TxOptions that is passed in to txFunc via the context.
 // Use db.Conn(ctx) to get the transaction connection within txFunc.
 // TransactionOpts returns all errors from txFunc or transaction commit errors happening after txFunc.
@@ -222,6 +238,16 @@ func TransactionOpts(ctx context.Context, opts *sql.TxOptions, txFunc func(conte
 	return sqldb.Transaction(ctx, Conn(ctx), opts, func(tx sqldb.Connection) error {
 		return txFunc(ContextWithConn(ctx, tx))
 	})
+}
+
+// TransactionOptsResult executes txFunc within a database transaction with sql.TxOptions and returns the result of txFunc.
+// See [TransactionOpts] for more details.
+func TransactionOptsResult[T any](ctx context.Context, opts *sql.TxOptions, txFunc func(context.Context) (T, error)) (result T, err error) {
+	err = TransactionOpts(ctx, opts, func(ctx context.Context) error {
+		result, err = txFunc(ctx)
+		return err
+	})
+	return result, err
 }
 
 // TransactionReadOnly executes txFunc within a read-only database transaction that is passed in to txFunc via the context.
@@ -296,6 +322,16 @@ func TransactionSavepoint(ctx context.Context, txFunc func(context.Context) erro
 	}
 
 	return conn.Exec(ctx, "release savepoint "+savepoint)
+}
+
+// TransactionSavepointResult executes txFunc within a database transaction savepoint and returns the result of txFunc.
+// See [TransactionSavepoint] for more details.
+func TransactionSavepointResult[T any](ctx context.Context, txFunc func(context.Context) (T, error)) (result T, err error) {
+	err = TransactionSavepoint(ctx, func(ctx context.Context) error {
+		result, err = txFunc(ctx)
+		return err
+	})
+	return result, err
 }
 
 type savepointFuncCtxKey struct{}

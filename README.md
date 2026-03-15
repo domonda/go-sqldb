@@ -64,6 +64,8 @@ The recommended way to use this library is through the [github.com/domonda/go-sq
 package. Every function just takes a `ctx` and the `db` package retrieves the right connection automatically:
 first from the context (e.g. a transaction injected by `db.Transaction`), then falling back to the global connection set with `db.SetConn`.
 
+See the [db package README](db/README.md) for a complete function reference and usage patterns.
+
 ### Creating a connection
 
 ```go

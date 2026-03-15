@@ -52,9 +52,9 @@ func InsertReturning(ctx context.Context, table string, values sqldb.Values, ret
 }
 
 // InsertRowStruct inserts a new row into the table for the given struct.
-// The table name is derived from the `db` struct tag of an embedded sqldb.TableName field
-// (e.g., sqldb.TableName `db:"my_table"`).
-// Column names are derived from the `db` struct tags of the struct's fields.
+// Table name and column names are determined by the [StructReflector] from the context.
+// The default reflector uses `db` struct tags
+// (e.g., sqldb.TableName `db:"my_table"`, field `db:"column"`).
 // Optional QueryOption can be passed to ignore mapped columns.
 func InsertRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, options ...sqldb.QueryOption) error {
 	conn := Conn(ctx)
@@ -70,9 +70,9 @@ func InsertRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, o
 }
 
 // InsertRowStructStmt prepares a statement for inserting rows of type S.
-// The table name is derived from the `db` struct tag of an embedded sqldb.TableName field
-// (e.g., sqldb.TableName `db:"my_table"`).
-// Column names are derived from the `db` struct tags of the struct's fields.
+// Table name and column names are determined by the [StructReflector] from the context.
+// The default reflector uses `db` struct tags
+// (e.g., sqldb.TableName `db:"my_table"`, field `db:"column"`).
 // Returns an insertFunc to insert individual rows and a closeStmt
 // function that must be called when done.
 func InsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, options ...sqldb.QueryOption) (insertFunc func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
@@ -89,9 +89,9 @@ func InsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, optio
 
 // InsertUniqueRowStruct inserts a new row or does nothing if the onConflict statement applies.
 // Returns true if a row was inserted.
-// The table name is derived from the `db` struct tag of an embedded sqldb.TableName field
-// (e.g., sqldb.TableName `db:"my_table"`).
-// Column names are derived from the `db` struct tags of the struct's fields.
+// Table name and column names are determined by the [StructReflector] from the context.
+// The default reflector uses `db` struct tags
+// (e.g., sqldb.TableName `db:"my_table"`, field `db:"column"`).
 // Optional QueryOption can be passed to ignore mapped columns.
 func InsertUniqueRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, onConflict string, options ...sqldb.QueryOption) (inserted bool, err error) {
 	conn := Conn(ctx)
@@ -108,9 +108,9 @@ func InsertUniqueRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableN
 }
 
 // InsertRowStructs inserts a slice of structs as new rows into the table for the given struct type.
-// The table name is derived from the `db` struct tag of an embedded sqldb.TableName field
-// (e.g., sqldb.TableName `db:"my_table"`).
-// Column names are derived from the `db` struct tags of the struct's fields.
+// Table name and column names are determined by the [StructReflector] from the context.
+// The default reflector uses `db` struct tags
+// (e.g., sqldb.TableName `db:"my_table"`, field `db:"column"`).
 // Optional QueryOption can be passed to ignore mapped columns.
 func InsertRowStructs[S sqldb.StructWithTableName](ctx context.Context, rowStructs []S, options ...sqldb.QueryOption) error {
 	conn := Conn(ctx)

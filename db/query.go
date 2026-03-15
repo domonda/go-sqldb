@@ -81,10 +81,9 @@ func QueryRowAsStmt[T any](ctx context.Context, query string) (queryFunc func(ct
 }
 
 // QueryRowByPK queries a table row by primary key and scans it into a struct of type S.
-// The table name is derived from the `db` struct tag of an embedded sqldb.TableName field
-// (e.g., sqldb.TableName `db:"my_table"`).
-// Primary key columns are identified by fields with the "primarykey" option
-// in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
+// Table name and primary key columns are determined by
+// the [StructReflector] from the context. The default reflector uses `db` struct tags
+// (e.g., sqldb.TableName `db:"my_table"`, field `db:"id,primarykey"`).
 // The number of pkValue+pkValues must match the number of primary key columns.
 func QueryRowByPK[S sqldb.StructWithTableName](ctx context.Context, pkValue any, pkValues ...any) (S, error) {
 	conn := Conn(ctx)
@@ -101,10 +100,9 @@ func QueryRowByPK[S sqldb.StructWithTableName](ctx context.Context, pkValue any,
 
 // QueryRowByPKOr queries a table row by primary key and scans it into a struct of type S.
 // Returns defaultVal and no error if no row was found.
-// The table name is derived from the `db` struct tag of an embedded sqldb.TableName field
-// (e.g., sqldb.TableName `db:"my_table"`).
-// Primary key columns are identified by fields with the "primarykey" option
-// in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
+// Table name and primary key columns are determined by
+// the [StructReflector] from the context. The default reflector uses `db` struct tags
+// (e.g., sqldb.TableName `db:"my_table"`, field `db:"id,primarykey"`).
 // The number of pkValue+pkValues must match the number of primary key columns.
 func QueryRowByPKOr[S sqldb.StructWithTableName](ctx context.Context, defaultVal S, pkValue any, pkValues ...any) (S, error) {
 	conn := Conn(ctx)
@@ -133,8 +131,9 @@ func QueryRowAsMap[K ~string, V any](ctx context.Context, query string, args ...
 	)
 }
 
-// QueryRowsAsSlice returns queried rows as slice of the generic type T
-// using a reflector from the context to scan column values as struct fields.
+// QueryRowsAsSlice returns queried rows as slice of the generic type T.
+// If T is a struct, column values are scanned into fields
+// using the [StructReflector] from the context.
 func QueryRowsAsSlice[T any](ctx context.Context, query string, args ...any) (rows []T, err error) {
 	conn := Conn(ctx)
 	return sqldb.QueryRowsAsSlice[T](
@@ -168,8 +167,8 @@ func QueryRowsAsStrings(ctx context.Context, query string, args ...any) (rows []
 }
 
 // QueryCallback calls the passed callback
-// with scanned values or a struct for every row
-// using a reflector from the context to scan column values as struct fields.
+// with scanned values or a struct for every row.
+// Struct arguments are scanned using the [StructReflector] from the context.
 //
 // If the callback function has a single struct or struct pointer argument,
 // then RowScanner.ScanStruct will be used per row,

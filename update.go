@@ -2,6 +2,7 @@ package sqldb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"slices"
@@ -91,4 +92,81 @@ func UpdateRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 		return WrapErrorWithQuery(err, query, vals, fmtr)
 	}
 	return nil
+}
+
+// UpdateRowStructStmt prepares an UPDATE statement for the struct type S
+// and returns a function that executes the update for each row struct.
+// The struct must have at least one field with a `db` tag value having a ",primarykey" suffix
+// to mark primary key column(s).
+// The returned closeStmt function must be called to release the prepared statement.
+func UpdateRowStructStmt[S any](ctx context.Context, conn Preparer, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, table string, options ...QueryOption) (updateFunc func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
+	structType := reflect.TypeFor[S]()
+	options = append(options, IgnoreReadOnly)
+	columns, err := ReflectStructColumns(structType, refl, options...)
+	if err != nil {
+		return nil, nil, err
+	}
+	hasPK := slices.ContainsFunc(columns, func(col ColumnInfo) bool {
+		return col.PrimaryKey
+	})
+	if !hasPK {
+		return nil, nil, fmt.Errorf("UpdateRowStructStmt of table %s: %s has no mapped primary key field", table, structType)
+	}
+
+	query, err := builder.UpdateColumns(fmtr, table, columns)
+	if err != nil {
+		return nil, nil, fmt.Errorf("UpdateRowStructStmt of table %s: failed to create UPDATE query: %w", table, err)
+	}
+
+	stmt, err := conn.Prepare(ctx, query)
+	if err != nil {
+		return nil, nil, fmt.Errorf("UpdateRowStructStmt of table %s: failed to prepare UPDATE statement: %w", table, err)
+	}
+
+	updateFunc = func(ctx context.Context, rowStruct S) error {
+		v, err := derefStruct(reflect.ValueOf(rowStruct))
+		if err != nil {
+			return err
+		}
+		vals, err := ReflectStructValues(v, refl, options...)
+		if err != nil {
+			return err
+		}
+		err = stmt.Exec(ctx, vals...)
+		if err != nil {
+			return WrapErrorWithQuery(err, query, vals, fmtr)
+		}
+		return nil
+	}
+	return updateFunc, stmt.Close, nil
+}
+
+// UpdateRowStructs updates a slice of structs within a transaction
+// using a prepared statement for efficiency.
+// The struct must have at least one field with a `db` tag value having a ",primarykey" suffix
+// to mark primary key column(s).
+func UpdateRowStructs[S any](ctx context.Context, conn Connection, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, table string, rowStructs []S, options ...QueryOption) error {
+	switch len(rowStructs) {
+	case 0:
+		return nil
+	case 1:
+		return UpdateRowStruct(ctx, conn, refl, builder, fmtr, table, rowStructs[0], options...)
+	}
+	return Transaction(ctx, conn, nil, func(tx Connection) (err error) {
+		updateFunc, closeStmt, stmtErr := UpdateRowStructStmt[S](ctx, tx, refl, builder, fmtr, table, options...)
+		if stmtErr != nil {
+			return stmtErr
+		}
+		defer func() {
+			err = errors.Join(err, closeStmt())
+		}()
+
+		for _, rowStruct := range rowStructs {
+			err = updateFunc(ctx, rowStruct)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }

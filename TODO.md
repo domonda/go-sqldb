@@ -20,21 +20,9 @@
 
 ### Missing Symmetry
 
-- [ ] **No `UpdateRowStruct`** matching `InsertRowStruct`/`UpsertRowStruct` — `UpdateRowStruct` takes `(table string, rowStruct any)` while Insert/Upsert take `StructWithTableName` and derive the table
+- [ ] **`UpdateRowStruct` signature differs** from `InsertRowStruct`/`UpsertRowStruct` — `UpdateRowStruct` takes `(table string, rowStruct any)` while Insert/Upsert take `StructWithTableName` and derive the table
 - [ ] **No `Delete`/`DeleteRowStruct`** — Insert, Update, Upsert exist but Delete is missing from CRUD family
 
-### Driver Feature Parity
-
-| Feature                           | pqconn | mysqlconn | mssqlconn | sqliteconn |
-| --------------------------------- | ------ | --------- | --------- | ---------- |
-| Custom error wrapping             | Yes    | Yes       | Yes       | Yes        |
-| Identifier escaping               | Yes    | Yes       | Yes       | Yes        |
-| `Connect` takes `context.Context` | Yes    | Yes       | Yes       | Yes        |
-| `driver.Valuer`/`sql.Scanner`     | Yes    | Yes       | Yes       | Yes        |
-| LISTEN/NOTIFY                     | Yes    | N/A       | N/A       | N/A        |
-| Drop schema queries               | Yes    | Yes       | Yes       | Yes        |
-| README                            | Yes    | Yes       | Yes       | Yes        |
-| Package doc comment               | Yes    | Yes       | Yes       | Yes        |
 
 
 ## Testing
