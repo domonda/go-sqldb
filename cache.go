@@ -42,6 +42,9 @@ var (
 	upsertRowStructQueryCache    = make(map[reflect.Type]map[StructReflector]map[QueryBuilder]map[QueryFormatter]queryCache)
 	upsertRowStructQueryCacheMtx sync.RWMutex
 
+	deleteRowStructQueryCache    = make(map[reflect.Type]map[StructReflector]map[QueryBuilder]map[QueryFormatter]queryCache)
+	deleteRowStructQueryCacheMtx sync.RWMutex
+
 	queryRowByPKCache    = make(map[reflect.Type]map[StructReflector]map[QueryBuilder]map[QueryFormatter]queryRowByPKCacheEntry)
 	queryRowByPKCacheMtx sync.RWMutex
 )
@@ -130,6 +133,10 @@ func ClearQueryCaches() {
 	upsertRowStructQueryCacheMtx.Lock()
 	clear(upsertRowStructQueryCache)
 	upsertRowStructQueryCacheMtx.Unlock()
+
+	deleteRowStructQueryCacheMtx.Lock()
+	clear(deleteRowStructQueryCache)
+	deleteRowStructQueryCacheMtx.Unlock()
 
 	queryRowByPKCacheMtx.Lock()
 	clear(queryRowByPKCache)

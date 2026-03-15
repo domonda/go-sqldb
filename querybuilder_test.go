@@ -219,6 +219,51 @@ func TestStdQueryBuilder_Update(t *testing.T) {
 	}
 }
 
+func TestStdQueryBuilder_DeleteColumns(t *testing.T) {
+	b := StdQueryBuilder{}
+
+	tests := []struct {
+		name    string
+		table   string
+		columns []ColumnInfo
+		want    string
+	}{
+		{
+			name:    "single column",
+			table:   "users",
+			columns: []ColumnInfo{{Name: "id", PrimaryKey: true}},
+			want:    `DELETE FROM users WHERE id = $1`,
+		},
+		{
+			name:  "composite PK",
+			table: "order_items",
+			columns: []ColumnInfo{
+				{Name: "order_id", PrimaryKey: true},
+				{Name: "item_id", PrimaryKey: true},
+			},
+			want: `DELETE FROM order_items WHERE order_id = $1 AND item_id = $2`,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := b.Delete(testFormatter, tt.table, tt.columns)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("got:\n  %s\nwant:\n  %s", got, tt.want)
+			}
+		})
+	}
+
+	t.Run("no columns error", func(t *testing.T) {
+		_, err := b.Delete(testFormatter, "users", nil)
+		if err == nil {
+			t.Error("expected error for empty columns")
+		}
+	})
+}
+
 func TestStdQueryBuilder_UpdateColumns(t *testing.T) {
 	b := StdQueryBuilder{}
 

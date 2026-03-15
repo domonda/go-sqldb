@@ -21,6 +21,7 @@ type QueryBuilder interface {
 	// that combine the passed whereArgs with the passed values.
 	Update(formatter QueryFormatter, table string, values Values, where string, whereArgs []any) (query string, queryArgs []any, err error)
 	UpdateColumns(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error)
+	Delete(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error)
 }
 
 // StdQueryBuilder is the default [QueryBuilder] implementation
@@ -269,6 +270,35 @@ func (StdQueryBuilder) UpdateColumns(formatter QueryFormatter, table string, col
 		if first {
 			first = false
 		} else {
+			q.WriteString(` AND `)
+		}
+		columnName, err := formatter.FormatColumnName(columns[i].Name)
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(&q, `%s = %s`, columnName, formatter.FormatPlaceholder(i))
+	}
+
+	return q.String(), nil
+}
+
+// Delete builds a DELETE FROM ... WHERE query using column metadata.
+// All provided columns form the WHERE clause.
+func (StdQueryBuilder) Delete(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error) {
+	if len(columns) == 0 {
+		return "", fmt.Errorf("DeleteColumns requires at least one column")
+	}
+
+	var q strings.Builder
+	table, err = formatter.FormatTableName(table)
+	if err != nil {
+		return "", err
+	}
+
+	fmt.Fprintf(&q, `DELETE FROM %s WHERE `, table)
+
+	for i := range columns {
+		if i > 0 {
 			q.WriteString(` AND `)
 		}
 		columnName, err := formatter.FormatColumnName(columns[i].Name)

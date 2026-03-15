@@ -49,6 +49,10 @@ var IgnoreReadOnly = IgnoreColumnFunc(func(column *ColumnInfo) bool {
 	return column.ReadOnly
 })
 
+var OnlyPrimaryKey = IgnoreColumnFunc(func(column *ColumnInfo) bool {
+	return !column.PrimaryKey
+})
+
 func IgnoreColumns(names ...string) IgnoreColumnFunc {
 	return func(column *ColumnInfo) bool {
 		return slices.Contains(names, column.Name)

@@ -93,7 +93,7 @@ func MyValueFromContext(ctx context.Context) string {
 - Remove build artefacts after testing
 
 ### Testing
-- **Run tests for all modules**: `./test-workspace.sh` 
+- **Acceptance tests for workspace**: `./test-workspace.sh` 
 - Use `t.Context()` instead of `context.Background()` in tests
 - Use `github.com/stretchr/testify` for tests
 - Import `github.com/stretchr/testify/require` for required conditions
