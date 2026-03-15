@@ -166,6 +166,29 @@ func QueryRowsAsStrings(ctx context.Context, query string, args ...any) (rows []
 	)
 }
 
+// QueryStructCallback calls the passed callback with a scanned struct
+// for every row returned by the query.
+// S must be a struct or pointer to struct type.
+// Column values are scanned into struct fields
+// using the [StructReflector] from the context.
+//
+// If a non nil error is returned from the callback, then this error
+// is returned immediately without scanning further rows.
+//
+// In case of zero rows, no error will be returned.
+func QueryStructCallback[S any](ctx context.Context, callback func(S) error, query string, args ...any) error {
+	conn := Conn(ctx)
+	return sqldb.QueryStructCallback(
+		ctx,
+		conn,
+		StructReflector(ctx),
+		conn,
+		callback,
+		query,
+		args...,
+	)
+}
+
 // QueryCallback calls the passed callback
 // with scanned values or a struct for every row.
 // Struct arguments are scanned using the [StructReflector] from the context.

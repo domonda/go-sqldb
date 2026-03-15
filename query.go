@@ -270,6 +270,57 @@ func QueryRowsAsStrings(ctx context.Context, conn Querier, fmtr QueryFormatter, 
 	return rows, nil
 }
 
+// QueryStructCallback calls the passed callback with a scanned struct
+// for every row returned by the query.
+// S must be a struct or pointer to struct type.
+// Column values are scanned into struct fields using the provided StructReflector.
+//
+// If a non nil error is returned from the callback, then this error
+// is returned immediately without scanning further rows.
+//
+// In case of zero rows, no error will be returned.
+func QueryStructCallback[S any](ctx context.Context, conn Querier, refl StructReflector, fmtr QueryFormatter, callback func(S) error, query string, args ...any) (err error) {
+	defer func() {
+		if err != nil {
+			err = WrapErrorWithQuery(err, query, args, fmtr)
+		}
+	}()
+
+	t := reflect.TypeFor[S]()
+	st := t
+	if st.Kind() == reflect.Pointer {
+		st = st.Elem()
+	}
+	if st.Kind() != reflect.Struct {
+		return fmt.Errorf("QueryStructCallback expected struct or pointer to struct type parameter, got %s", t)
+	}
+
+	sqlRows := conn.Query(ctx, query, args...)
+	defer sqlRows.Close()
+
+	columns, err := sqlRows.Columns()
+	if err != nil {
+		return err
+	}
+
+	for sqlRows.Next() {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		var row S
+		err = scanStruct(sqlRows, columns, refl, &row)
+		if err != nil {
+			return err
+		}
+		err = callback(row)
+		if err != nil {
+			return err
+		}
+	}
+
+	return sqlRows.Err()
+}
+
 // QueryCallback calls the passed callback
 // with scanned values or a struct for every row.
 //
