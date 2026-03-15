@@ -2,11 +2,9 @@ package pqconn
 
 import (
 	"fmt"
-	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/domonda/go-sqldb"
 )
@@ -234,28 +232,4 @@ func (QueryFormatter) FormatStringLiteral(str string) string {
 
 func (QueryFormatter) MaxArgs() int {
 	return 65535
-}
-
-func NewTypeMapper() *sqldb.StagedTypeMapper {
-	return &sqldb.StagedTypeMapper{
-		Types: map[reflect.Type]string{
-			reflect.TypeFor[time.Time](): "timestamptz",
-		},
-		Kinds: map[reflect.Kind]string{
-			reflect.Bool:    "boolean",
-			reflect.Int:     "bigint",
-			reflect.Int8:    "smallint",
-			reflect.Int16:   "smallint",
-			reflect.Int32:   "integer",
-			reflect.Int64:   "bigint",
-			reflect.Uint:    "bigint",
-			reflect.Uint8:   "smallint",
-			reflect.Uint16:  "integer",
-			reflect.Uint32:  "bigint",
-			reflect.Uint64:  "bigint", // 64 unsigned integer does not fit completely into signed bigint
-			reflect.Float32: "float4",
-			reflect.Float64: "float8",
-			reflect.String:  "text",
-		},
-	}
 }

@@ -1,10 +1,8 @@
 package pqconn
 
 import (
-	"reflect"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/domonda/go-sqldb"
 )
@@ -177,49 +175,6 @@ func TestQueryFormatter_FormatStringLiteral(t *testing.T) {
 				t.Errorf("FormatStringLiteral(%q) = %q, want %q", tt.str, got, tt.want)
 			}
 		})
-	}
-}
-
-func TestNewTypeMapper(t *testing.T) {
-	tm := NewTypeMapper()
-	if tm == nil {
-		t.Fatal("NewTypeMapper returned nil")
-	}
-
-	// Check specific type mapping
-	if got := tm.ColumnType(reflect.TypeFor[time.Time]()); got != "timestamptz" {
-		t.Errorf("time.Time mapped to %q, want %q", got, "timestamptz")
-	}
-
-	// Check kind mappings
-	kindTests := []struct {
-		kind reflect.Kind
-		want string
-	}{
-		{reflect.Bool, "boolean"},
-		{reflect.Int, "bigint"},
-		{reflect.Int8, "smallint"},
-		{reflect.Int16, "smallint"},
-		{reflect.Int32, "integer"},
-		{reflect.Int64, "bigint"},
-		{reflect.Uint, "bigint"},
-		{reflect.Uint8, "smallint"},
-		{reflect.Uint16, "integer"},
-		{reflect.Uint32, "bigint"},
-		{reflect.Uint64, "bigint"},
-		{reflect.Float32, "float4"},
-		{reflect.Float64, "float8"},
-		{reflect.String, "text"},
-	}
-	for _, tt := range kindTests {
-		if got, ok := tm.Kinds[tt.kind]; !ok || got != tt.want {
-			t.Errorf("kind %v mapped to %q, want %q", tt.kind, got, tt.want)
-		}
-	}
-
-	// Unmapped kind should return empty
-	if got := tm.ColumnType(reflect.TypeFor[[]byte]()); got != "" {
-		t.Errorf("[]byte mapped to %q, want empty", got)
 	}
 }
 
