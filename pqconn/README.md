@@ -19,13 +19,7 @@ config := &sqldb.ConnConfig{
 conn, err := pqconn.Connect(ctx, config)
 ```
 
-`ConnectExt` wraps `Connect` and returns an `sqldb.ConnExt` with a struct reflector, PostgreSQL query formatter, and query builder:
-
-```go
-conn, err := pqconn.ConnectExt(ctx, config, sqldb.NewTaggedStructReflector())
-```
-
-`MustConnect` and `MustConnectExt` panic on error.
+`MustConnect` panics on error.
 
 ## Read-Only Connections
 
@@ -39,23 +33,28 @@ The connection supports PostgreSQL `LISTEN`/`NOTIFY` via `ListenOnChannel`, `Unl
 
 PostgreSQL error codes are wrapped into typed `sqldb` errors. Helper functions check specific error classes:
 
-| Function                             | PostgreSQL Code | Description                                  |
-| ------------------------------------ | --------------- | -------------------------------------------- |
-| `IsInvalidTextRepresentation(err)`   |           22P02 | Invalid input for type (e.g. bad UUID)       |
-| `IsStringDataRightTruncation(err)`   |           22001 | Value too long for column type               |
-| `IsRestrictViolation(err)`           |           23001 | RESTRICT constraint violated                 |
-| `IsNotNullViolation(err)`            |           23502 | NOT NULL constraint violated                 |
-| `IsForeignKeyViolation(err, ...)`    |           23503 | Foreign key constraint violated              |
-| `IsUniqueViolation(err)`             |           23505 | Unique constraint violated                   |
-| `IsCheckViolation(err)`              |           23514 | CHECK constraint violated                    |
-| `IsExclusionViolation(err)`          |           23P01 | Exclusion constraint violated                |
-| `IsSerializationFailure(err)`        |           40001 | Serialization conflict (retry transaction)   |
-| `IsDeadlockDetected(err)`            |           40P01 | Deadlock detected (retry transaction)        |
-| `IsInsufficientPrivilege(err)`       |           42501 | Permission denied                            |
-| `IsLockNotAvailable(err)`            |           55P03 | Lock not acquired (e.g. FOR UPDATE NOWAIT)   |
-| `IsQueryCanceled(err)`               |           57014 | Query canceled (e.g. context cancellation)   |
-| `IsRaisedException(err)`             |           P0001 | PL/pgSQL RAISE EXCEPTION                    |
-| `GetRaisedException(err)`            |           P0001 | Returns the exception message                |
+| Function                                    | PostgreSQL Code | Description                                  |
+| ------------------------------------------- | --------------- | -------------------------------------------- |
+| `IsInvalidTextRepresentation(err)`          |           22P02 | Invalid input for type (e.g. bad UUID)       |
+| `IsStringDataRightTruncation(err)`          |           22001 | Value too long for column type               |
+| `IsIntegrityConstraintViolationClass(err)`  |        23 class | Any integrity constraint violation           |
+| `IsRestrictViolation(err)`                  |           23001 | RESTRICT constraint violated                 |
+| `IsNotNullViolation(err)`                   |           23502 | NOT NULL constraint violated                 |
+| `IsForeignKeyViolation(err, ...)`           |           23503 | Foreign key constraint violated              |
+| `IsUniqueViolation(err)`                    |           23505 | Unique constraint violated                   |
+| `IsCheckViolation(err)`                     |           23514 | CHECK constraint violated                    |
+| `IsExclusionViolation(err)`                 |           23P01 | Exclusion constraint violated                |
+| `IsInFailedTransaction(err)`                |           25P02 | Statement in a failed transaction            |
+| `IsFailedTransaction(ctx, conn)`            |           25P02 | Connection is in a failed transaction        |
+| `IsTransactionTimeout(err)`                 |           25P04 | Transaction exceeded timeout                 |
+| `IsSerializationFailure(err)`               |           40001 | Serialization conflict (retry transaction)   |
+| `IsDeadlockDetected(err)`                   |           40P01 | Deadlock detected (retry transaction)        |
+| `IsInsufficientPrivilege(err)`              |           42501 | Permission denied                            |
+| `IsLockNotAvailable(err)`                   |           55P03 | Lock not acquired (e.g. FOR UPDATE NOWAIT)   |
+| `IsQueryCanceled(err)`                      |           57014 | Query canceled (e.g. context cancellation)   |
+| `IsPLPGSQLErrorClass(err)`                  |        P0 class | Any PL/pgSQL error                           |
+| `IsRaisedException(err)`                    |           P0001 | PL/pgSQL RAISE EXCEPTION                    |
+| `GetRaisedException(err)`                   |           P0001 | Returns the exception message                |
 
 Constraint errors (codes 23xxx) are also wrapped as generic `sqldb` error types and can be inspected with `errors.As`:
 
@@ -78,7 +77,6 @@ if errors.As(err, &fkErr) {
 - Table and column names are escaped using PostgreSQL identifier quoting rules
 - Placeholders use `$1`, `$2`, ... syntax
 - `EscapeIdentifier` quotes identifiers that contain special characters or are reserved words
-- `NewTypeMapper` returns a Go-to-PostgreSQL type mapper (e.g. `time.Time` -> `timestamptz`, `int64` -> `bigint`)
 
 ## Drop Queries for Testing
 
@@ -122,7 +120,7 @@ func TestMain(m *testing.M) {
         Database: "myapp_test",
         Extra:    map[string]string{"sslmode": "disable"},
     }
-    conn, err := pqconn.ConnectExt(ctx, config, sqldb.NewTaggedStructReflector())
+    conn, err := pqconn.Connect(ctx, config)
     if err != nil {
         log.Fatal(err)
     }

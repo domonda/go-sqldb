@@ -18,13 +18,7 @@ config := &sqldb.ConnConfig{
 conn, err := mysqlconn.Connect(ctx, config)
 ```
 
-`ConnectExt` wraps `Connect` and returns an `sqldb.ConnExt` with a struct reflector, MySQL query formatter, and query builder:
-
-```go
-conn, err := mysqlconn.ConnectExt(ctx, config, sqldb.NewTaggedStructReflector())
-```
-
-`MustConnect` and `MustConnectExt` panic on error.
+`MustConnect` panics on error.
 
 Extra DSN parameters can be passed via `config.Extra`:
 
@@ -62,12 +56,13 @@ MySQL-specific constraint errors are automatically wrapped with the correspondin
 
 Helper functions are also available for direct inspection:
 
-| Function                              | MySQL Error | Description                          |
-| ------------------------------------- | ----------- | ------------------------------------ |
-| `IsNotNullViolation(err)`             |        1048 | NULL inserted into NOT NULL column   |
-| `IsUniqueViolation(err)`              |        1062 | Duplicate entry for unique key       |
-| `IsForeignKeyViolation(err, ...)`     | 1216/1217/1451/1452 | Foreign key constraint failed |
-| `IsCheckViolation(err)`               |        3819 | CHECK constraint violated            |
+| Function                              | MySQL Error         | Description                          |
+| ------------------------------------- | ------------------- | ------------------------------------ |
+| `IsNotNullViolation(err)`             |                1048 | NULL inserted into NOT NULL column   |
+| `IsUniqueViolation(err)`              |                1062 | Duplicate entry for unique key       |
+| `IsDeadlockDetected(err)`             |                1213 | Deadlock detected                    |
+| `IsForeignKeyViolation(err, ...)`     | 1216/1217/1451/1452 | Foreign key constraint failed        |
+| `IsCheckViolation(err)`               |                3819 | CHECK constraint violated            |
 
 ```go
 err := db.Exec(ctx, "INSERT INTO orders ...")
@@ -109,7 +104,7 @@ func TestMain(m *testing.M) {
         Password: "secret",
         Database: "myapp_test",
     }
-    conn, err := mysqlconn.ConnectExt(ctx, config, sqldb.NewTaggedStructReflector())
+    conn, err := mysqlconn.Connect(ctx, config)
     if err != nil {
         log.Fatal(err)
     }

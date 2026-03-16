@@ -18,13 +18,7 @@ config := &sqldb.ConnConfig{
 conn, err := mssqlconn.Connect(ctx, config)
 ```
 
-`ConnectExt` wraps `Connect` and returns an `sqldb.ConnExt` with a struct reflector, SQL Server query formatter, and query builder:
-
-```go
-conn, err := mssqlconn.ConnectExt(ctx, config, sqldb.NewTaggedStructReflector())
-```
-
-`MustConnect` and `MustConnectExt` panic on error.
+`MustConnect` panics on error.
 
 Extra connection parameters can be passed via `config.Extra` and are appended as URL query parameters to the connection string:
 
@@ -113,7 +107,7 @@ func TestMain(m *testing.M) {
         Password: "secret",
         Database: "myapp_test",
     }
-    conn, err := mssqlconn.ConnectExt(ctx, config, sqldb.NewTaggedStructReflector())
+    conn, err := mssqlconn.Connect(ctx, config)
     if err != nil {
         log.Fatal(err)
     }

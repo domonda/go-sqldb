@@ -252,7 +252,15 @@ err = db.QueryCallback(ctx,
 
 // With context and error return
 err = db.QueryCallback(ctx,
-    func(ctx context.Context, user User) error {
+    func(ctx context.Context, user *User) error {
+        return processUser(ctx, user)
+    },
+    /*sql*/ `SELECT * FROM public.user`,
+)
+
+// Typed struct callback (generic, no reflection on the callback signature)
+err = db.QueryStructCallback[User](ctx,
+    func(user User) error {
         return processUser(ctx, user)
     },
     /*sql*/ `SELECT * FROM public.user`,

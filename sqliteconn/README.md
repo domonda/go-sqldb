@@ -82,15 +82,7 @@ if err != nil {
     panic(err)
 }
 
-// Create ConnExt with StdQueryFormatter (uses ? placeholders for SQLite)
-connExt := sqldb.NewConnExt(
-    conn,
-    sqldb.NewTaggedStructReflector(),
-    sqldb.StdQueryFormatter{}, // Empty PlaceholderPosPrefix uses ? for SQLite
-    sqldb.StdQueryBuilder{},
-)
-
-db.SetConn(connExt)
+db.SetConn(conn)
 
 // Now use db package functions
 err = db.Exec(ctx, "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT)")
