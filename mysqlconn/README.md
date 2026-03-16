@@ -74,7 +74,21 @@ if mysqlconn.IsForeignKeyViolation(err) {
 }
 ```
 
-Or using the generic `sqldb` error types:
+### Generic `sqldb` errors
+
+- [ ] `ErrIntegrityConstraintViolation`
+- [x] `ErrNotNullViolation`
+- [x] `ErrUniqueViolation`
+- [x] `ErrForeignKeyViolation`
+- [x] `ErrCheckViolation`
+- [ ] `ErrRestrictViolation`
+- [ ] `ErrExclusionViolation`
+- [x] `ErrDeadlock`
+- [x] `ErrRaisedException`
+- [ ] `ErrQueryCanceled`
+- [ ] `ErrNullValueNotAllowed`
+
+These are wrapped automatically and can be inspected with `errors.As`:
 
 ```go
 var uniqueErr sqldb.ErrUniqueViolation

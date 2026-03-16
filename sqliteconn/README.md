@@ -103,11 +103,19 @@ The connection automatically sets:
 
 ### Constraint Violations
 
-SQLite constraint violations are automatically wrapped with the appropriate `sqldb.Err*` types:
-- `sqldb.ErrForeignKeyViolation`
-- `sqldb.ErrUniqueViolation`
-- `sqldb.ErrNotNullViolation`
-- `sqldb.ErrCheckViolation`
+### Generic `sqldb` errors
+
+- [x] `ErrIntegrityConstraintViolation`
+- [x] `ErrNotNullViolation`
+- [x] `ErrUniqueViolation`
+- [x] `ErrForeignKeyViolation`
+- [x] `ErrCheckViolation`
+- [ ] `ErrRestrictViolation`
+- [ ] `ErrExclusionViolation`
+- [ ] `ErrDeadlock`
+- [ ] `ErrRaisedException`
+- [ ] `ErrQueryCanceled`
+- [ ] `ErrNullValueNotAllowed`
 
 ### Limitations
 

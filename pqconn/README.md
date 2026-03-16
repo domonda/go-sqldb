@@ -56,7 +56,21 @@ PostgreSQL error codes are wrapped into typed `sqldb` errors. Helper functions c
 | `IsRaisedException(err)`                    |           P0001 | PL/pgSQL RAISE EXCEPTION                    |
 | `GetRaisedException(err)`                   |           P0001 | Returns the exception message                |
 
-Constraint errors (codes 23xxx) are also wrapped as generic `sqldb` error types and can be inspected with `errors.As`:
+### Generic `sqldb` errors
+
+- [x] `ErrIntegrityConstraintViolation`
+- [x] `ErrNotNullViolation`
+- [x] `ErrUniqueViolation`
+- [x] `ErrForeignKeyViolation`
+- [x] `ErrCheckViolation`
+- [x] `ErrRestrictViolation`
+- [x] `ErrExclusionViolation`
+- [x] `ErrDeadlock`
+- [x] `ErrRaisedException`
+- [x] `ErrQueryCanceled`
+- [x] `ErrNullValueNotAllowed`
+
+These are wrapped automatically and can be inspected with `errors.As`:
 
 ```go
 err := db.Exec(ctx, "INSERT INTO orders ...")
