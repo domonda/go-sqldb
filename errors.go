@@ -66,6 +66,11 @@ const (
 	ErrNullValueNotAllowed sentinelError = "null value not allowed"
 )
 
+// ErrDeadlock indicates that a deadlock was detected
+// between concurrent transactions.
+// The caller should retry the transaction.
+const ErrDeadlock sentinelError = "deadlock detected"
+
 type ErrRaisedException struct {
 	Message string
 }

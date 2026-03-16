@@ -47,17 +47,19 @@
 
 ## Generic errors
 
-Each driver maps its database-specific constraint errors to typed values defined in the root `sqldb` package:
+Each driver maps its database-specific errors to typed values defined in the root `sqldb` package:
 
-| Type                              | `Constraint` field | Description                                   |
-| --------------------------------- | ------------------ | --------------------------------------------- |
-| `ErrIntegrityConstraintViolation` | constraint name    | Base type for all constraint violations       |
-| `ErrNotNullViolation`             | column name        | NULL inserted into a NOT NULL column          |
-| `ErrUniqueViolation`              | index/constraint   | Duplicate value for a unique key              |
-| `ErrForeignKeyViolation`          | constraint name    | Referential integrity violation               |
-| `ErrCheckViolation`               | constraint name    | CHECK constraint violated                     |
-| `ErrRestrictViolation`            | constraint name    | RESTRICT constraint violated (PostgreSQL)     |
-| `ErrExclusionViolation`           | constraint name    | Exclusion constraint violated (PostgreSQL)    |
+| Type                              | Field        | Description                                   |
+| --------------------------------- | ------------ | --------------------------------------------- |
+| `ErrIntegrityConstraintViolation` | `Constraint` | Base type for all constraint violations       |
+| `ErrNotNullViolation`             | `Constraint` | NULL inserted into a NOT NULL column          |
+| `ErrUniqueViolation`              | `Constraint` | Duplicate value for a unique key              |
+| `ErrForeignKeyViolation`          | `Constraint` | Referential integrity violation               |
+| `ErrCheckViolation`               | `Constraint` | CHECK constraint violated                     |
+| `ErrRestrictViolation`            | `Constraint` | RESTRICT constraint violated (PostgreSQL)     |
+| `ErrExclusionViolation`           | `Constraint` | Exclusion constraint violated (PostgreSQL)    |
+| `ErrDeadlock`                     | —            | Deadlock detected between transactions        |
+| `ErrRaisedException`              | `Message`    | User-defined exception (RAISE/SIGNAL/THROW)   |
 
 All specific types unwrap to `ErrIntegrityConstraintViolation`, so `errors.As` traverses the chain and matches any subtype:
 
@@ -75,7 +77,21 @@ if errors.As(err, &uv) {
 }
 ```
 
-Driver packages also expose driver-specific helper functions (e.g. `pqconn.IsUniqueViolation`) for error conditions that have no generic `sqldb` type, such as deadlocks, query cancellations, or text-representation errors. See each driver's README for the full list.
+### Error mapping matrix
+
+| Error type                        | pqconn | mysqlconn | mssqlconn | sqliteconn |
+| --------------------------------- | ------ | --------- | --------- | ---------- |
+| `ErrIntegrityConstraintViolation` | yes    | —         | —         | yes        |
+| `ErrNotNullViolation`             | yes    | yes       | yes       | yes        |
+| `ErrUniqueViolation`              | yes    | yes       | yes       | yes        |
+| `ErrForeignKeyViolation`          | yes    | yes       | yes       | yes        |
+| `ErrCheckViolation`               | yes    | yes       | yes       | yes        |
+| `ErrRestrictViolation`            | yes    | —         | —         | —          |
+| `ErrExclusionViolation`           | yes    | —         | —         | —          |
+| `ErrDeadlock`                     | yes    | yes       | yes       | —          |
+| `ErrRaisedException`              | yes    | yes       | yes       | —          |
+
+Driver packages also expose driver-specific helper functions (e.g. `pqconn.IsUniqueViolation`) for error conditions that have no generic `sqldb` type, such as query cancellations or text-representation errors. See each driver's README for the full list.
 
 
 ## Usage

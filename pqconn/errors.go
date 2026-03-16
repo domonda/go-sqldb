@@ -30,6 +30,8 @@ func wrapKnownErrors(err error) error {
 			return errors.Join(sqldb.ErrUniqueViolation{Constraint: e.Constraint}, err)
 		case "23514":
 			return errors.Join(sqldb.ErrCheckViolation{Constraint: e.Constraint}, err)
+		case "40P01":
+			return errors.Join(sqldb.ErrDeadlock, err)
 		case "57014":
 			return errors.Join(sqldb.ErrQueryCanceled, err)
 		case "23P01":

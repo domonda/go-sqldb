@@ -13,10 +13,12 @@ import (
 // SQL Server error numbers for constraint violations.
 // https://learn.microsoft.com/en-us/sql/relational-databases/errors-events/database-engine-events-and-errors
 const (
-	errCannotInsertNull   int32 = 515  // Cannot insert NULL into column
-	errConstraintConflict int32 = 547  // Statement conflicted with FK or CHECK constraint
-	errDupKeyRow          int32 = 2601 // Cannot insert duplicate key row (unique index)
-	errUniqueConstraint   int32 = 2627 // Violation of UNIQUE KEY or PRIMARY KEY constraint
+	errCannotInsertNull   = 515   // Cannot insert NULL into column
+	errConstraintConflict = 547   // Statement conflicted with FK or CHECK constraint
+	errDeadlock           = 1205  // Deadlock detected
+	errDupKeyRow          = 2601  // Cannot insert duplicate key row (unique index)
+	errRaisedException    = 50000 // User-defined error from RAISERROR/THROW
+	errUniqueConstraint   = 2627  // Violation of UNIQUE KEY or PRIMARY KEY constraint
 )
 
 func wrapKnownErrors(err error) error {
@@ -40,6 +42,10 @@ func wrapKnownErrors(err error) error {
 			return errors.Join(sqldb.ErrForeignKeyViolation{Constraint: constraint}, err)
 		}
 		return errors.Join(sqldb.ErrCheckViolation{Constraint: constraint}, err)
+	case errDeadlock:
+		return errors.Join(sqldb.ErrDeadlock, err)
+	case errRaisedException:
+		return errors.Join(sqldb.ErrRaisedException{Message: msg}, err)
 	case errDupKeyRow:
 		// "Cannot insert duplicate key row in object 'schema.table' with unique index 'ix_name'."
 		return errors.Join(sqldb.ErrUniqueViolation{Constraint: nthSingleQuoted(msg, 1)}, err)
@@ -129,5 +135,5 @@ func IsCheckViolation(err error) bool {
 // (SQL Server error 1205).
 func IsDeadlockDetected(err error) bool {
 	var e mssql.Error
-	return errors.As(err, &e) && e.Number == 1205
+	return errors.As(err, &e) && e.Number == errDeadlock
 }

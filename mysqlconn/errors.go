@@ -13,13 +13,15 @@ import (
 // MySQL error numbers for constraint violations.
 // https://dev.mysql.com/doc/mysql-errors/8.0/en/server-error-reference.html
 const (
-	errBadNullError     uint16 = 1048 // Column '%s' cannot be null
-	errDupEntry         uint16 = 1062 // Duplicate entry '%s' for key '%s'
-	errNoReferencedRow  uint16 = 1216 // FK child-side insert/update failed (old)
-	errRowIsReferenced  uint16 = 1217 // FK parent-side delete/update failed (old)
-	errRowIsReferenced2 uint16 = 1451 // FK parent-side delete/update failed
-	errNoReferencedRow2 uint16 = 1452 // FK child-side insert/update failed
-	errCheckViolated    uint16 = 3819 // Check constraint '%s' is violated
+	errBadNullError     = 1048 // Column '%s' cannot be null
+	errDupEntry         = 1062 // Duplicate entry '%s' for key '%s'
+	errNoReferencedRow  = 1216 // FK child-side insert/update failed (old)
+	errRowIsReferenced  = 1217 // FK parent-side delete/update failed (old)
+	errDeadlock         = 1213 // Deadlock found when trying to get lock
+	errSignal           = 1644 // Unhandled user-defined exception (SIGNAL)
+	errRowIsReferenced2 = 1451 // FK parent-side delete/update failed
+	errNoReferencedRow2 = 1452 // FK child-side insert/update failed
+	errCheckViolated    = 3819 // Check constraint '%s' is violated
 )
 
 func wrapKnownErrors(err error) error {
@@ -32,6 +34,10 @@ func wrapKnownErrors(err error) error {
 	}
 	msg := e.Message
 	switch e.Number {
+	case errDeadlock:
+		return errors.Join(sqldb.ErrDeadlock, err)
+	case errSignal:
+		return errors.Join(sqldb.ErrRaisedException{Message: msg}, err)
 	case errBadNullError:
 		// "Column 'col_name' cannot be null"
 		return errors.Join(sqldb.ErrNotNullViolation{Constraint: nthSingleQuoted(msg, 0)}, err)
@@ -88,6 +94,13 @@ func nthBacktickQuoted(s string, n int) string {
 		s = s[start+1+end+1:]
 	}
 	return ""
+}
+
+// IsDeadlockDetected reports whether err was caused by a deadlock
+// (MySQL error 1213).
+func IsDeadlockDetected(err error) bool {
+	var e *mysqldriver.MySQLError
+	return errors.As(err, &e) && e.Number == errDeadlock
 }
 
 // IsNotNullViolation reports whether err was caused by inserting a NULL
