@@ -1,19 +1,13 @@
 # go-sqldb
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/domonda/go-sqldb.svg)](https://pkg.go.dev/github.com/domonda/go-sqldb) [![Go Report Card](https://goreportcard.com/badge/github.com/domonda/go-sqldb)](https://goreportcard.com/report/github.com/domonda/go-sqldb) [![Go](https://github.com/domonda/go-sqldb/actions/workflows/go.yml/badge.svg)](https://github.com/domonda/go-sqldb/actions/workflows/go.yml) [![Go version](https://img.shields.io/github/go-mod/go-version/domonda/go-sqldb)](https://github.com/domonda/go-sqldb) [![license](https://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://raw.githubusercontent.com/domonda/go-sqldb/master/LICENSE)
-
-This package started out as an extension wrapper of [github.com/jmoiron/sqlx](https://github.com/jmoiron/sqlx) but turned into a complete rewrite using the same philosophy of representing table rows as Go structs.
-
-It has been used and refined for years in production by [domonda](https://domonda.com) using the database driver [github.com/lib/pq](https://github.com/lib/pq).
-
-The design patterns evolved mostly through discovery led by the desire to minimize boilerplate code while maintaining the full power of SQL.
+[![Go Reference](https://pkg.go.dev/badge/github.com/domonda/go-sqldb.svg)](https://pkg.go.dev/github.com/domonda/go-sqldb) [![Go Report Card](https://goreportcard.com/badge/github.com/domonda/go-sqldb)](https://goreportcard.com/report/github.com/domonda/go-sqldb) [![Go](https://github.com/domonda/go-sqldb/actions/workflows/go.yml/badge.svg)](https://github.com/domonda/go-sqldb/actions/workflows/go.yml) [![Go version](https://img.shields.io/github/go-mod/go-version/domonda/go-sqldb)](https://github.com/domonda/go-sqldb) [![license](https://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://github.com/domonda/go-sqldb/blob/master/LICENSE)
 
 ## Philosophy
 
 * Use reflection to map db rows to structs, but not as full blown ORM that replaces SQL queries (just as much ORM to increase productivity but not alienate developers who like the full power of SQL)
 * Transactions are run in callback functions that can be nested
+* Driver-agnostic: write code against a common `Connection` interface, swap database drivers without changing business logic
 * Store the db connection and transactions in `context.Context` to pass them down into nested functions transparently
-
 
 ## Database drivers
 
@@ -291,10 +285,10 @@ err = db.Update(ctx, "public.user", sqldb.Values{"name": "New Name"},
 )
 
 // Update using a struct (WHERE clause built from primarykey fields)
-err = db.UpdateRowStruct(ctx, "public.user", &user)
+err = db.UpdateRowStruct(ctx, &user)
 
 // Update only specific columns
-err = db.UpdateRowStruct(ctx, "public.user", &user, sqldb.OnlyColumns("name", "email"))
+err = db.UpdateRowStruct(ctx, &user, sqldb.OnlyColumns("name", "email"))
 ```
 
 ### Upsert
@@ -406,7 +400,7 @@ Filter which struct fields are included in insert, update, and upsert operations
 db.InsertRowStruct(ctx, &user, sqldb.IgnoreColumns("id", "created_at"))
 
 // Include only specific columns
-db.UpdateRowStruct(ctx, "public.user", &user, sqldb.OnlyColumns("name", "email"))
+db.UpdateRowStruct(ctx, &user, sqldb.OnlyColumns("name", "email"))
 
 // Ignore by struct field name
 db.InsertRowStruct(ctx, &user, sqldb.IgnoreStructFields("Internal"))
@@ -626,3 +620,16 @@ After changing a database version in `docker-compose.yml`, reset the data direct
 ./mysqlconn/test/reset-mariadb-data.sh
 ./mssqlconn/test/reset-mssql-data.sh
 ```
+
+## History
+
+This package started out as an extension wrapper of [github.com/jmoiron/sqlx](https://github.com/jmoiron/sqlx) but turned into a complete rewrite using the same philosophy of representing table rows as Go structs.
+
+It has been used and refined for years in production by [domonda](https://domonda.com) using the database driver [github.com/lib/pq](https://github.com/lib/pq).
+
+The design patterns evolved mostly through discovery led by the desire to minimize boilerplate code while maintaining the full power of SQL.
+
+## License
+
+[MIT](LICENSE)
+
