@@ -64,6 +64,7 @@ var (
 	stdColumnNameRegexp = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 )
 
+// FormatTableName implements the QueryFormatter interface.
 func (StdQueryFormatter) FormatTableName(name string) (string, error) {
 	if !stdTableNameRegexp.MatchString(name) {
 		return "", fmt.Errorf("invalid table name %q", name)
@@ -71,6 +72,7 @@ func (StdQueryFormatter) FormatTableName(name string) (string, error) {
 	return name, nil
 }
 
+// FormatColumnName implements the QueryFormatter interface.
 func (StdQueryFormatter) FormatColumnName(name string) (string, error) {
 	if !stdColumnNameRegexp.MatchString(name) {
 		return "", fmt.Errorf("invalid column name %q", name)
@@ -78,6 +80,7 @@ func (StdQueryFormatter) FormatColumnName(name string) (string, error) {
 	return name, nil
 }
 
+// FormatPlaceholder implements the QueryFormatter interface.
 func (f StdQueryFormatter) FormatPlaceholder(paramIndex int) string {
 	if paramIndex < 0 {
 		panic("paramIndex must be greater or equal zero")
@@ -88,14 +91,18 @@ func (f StdQueryFormatter) FormatPlaceholder(paramIndex int) string {
 	return f.PlaceholderPosPrefix + strconv.Itoa(paramIndex+1)
 }
 
+// FormatStringLiteral implements the QueryFormatter interface.
 func (StdQueryFormatter) FormatStringLiteral(str string) string {
 	return FormatSingleQuoteStringLiteral(str)
 }
 
+// MaxArgs implements the QueryFormatter interface.
 func (StdQueryFormatter) MaxArgs() int {
 	return 65535
 }
 
+// FormatSingleQuoteStringLiteral formats a string as an ANSI SQL single-quoted literal,
+// doubling any embedded single quotes.
 func FormatSingleQuoteStringLiteral(str string) string {
 	return "'" + strings.ReplaceAll(str, "'", "''") + "'"
 }

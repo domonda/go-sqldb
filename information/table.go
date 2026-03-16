@@ -23,6 +23,7 @@ type Table struct {
 	CommitAction              String `db:"commit_action"`
 }
 
+// GetTable returns the information_schema.tables row for the given catalog, schema, and table name.
 func GetTable(ctx context.Context, conn sqldb.Connection, catalog, schema, name string) (table *Table, err error) {
 	return sqldb.QueryRowAs[*Table](ctx, conn, structReflector, conn,
 		/*sql*/ `
@@ -60,6 +61,7 @@ func TableExists(ctx context.Context, conn sqldb.Connection, qualifiedName strin
 	)
 }
 
+// GetAllTables returns all rows from information_schema.tables.
 func GetAllTables(ctx context.Context, conn sqldb.Connection) (tables []*Table, err error) {
 	return sqldb.QueryRowsAsSlice[*Table](ctx, conn, structReflector, conn,
 		/*sql*/ `

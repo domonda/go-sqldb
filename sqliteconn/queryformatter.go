@@ -18,6 +18,7 @@ type QueryFormatter struct {
 	sqldb.StdQueryFormatter
 }
 
+// MaxArgs implements [sqldb.QueryFormatter.MaxArgs].
 func (QueryFormatter) MaxArgs() int {
 	return 32766
 }

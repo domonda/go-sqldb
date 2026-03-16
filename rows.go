@@ -30,6 +30,7 @@ type Rows interface {
 	Err() error
 }
 
+// NewErrRows returns a Rows implementation where all operations return the given error.
 func NewErrRows(err error) Rows {
 	return errRows{err}
 }

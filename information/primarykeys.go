@@ -25,6 +25,8 @@ type PrimaryKeyColumn struct {
 	ForeignKey bool   `db:"foreign_key"`
 }
 
+// GetPrimaryKeyColumns returns all primary key columns across all tables,
+// including whether each column is also a foreign key.
 func GetPrimaryKeyColumns(ctx context.Context, conn sqldb.Connection) (cols []PrimaryKeyColumn, err error) {
 	return sqldb.QueryRowsAsSlice[PrimaryKeyColumn](ctx, conn, structReflector, conn,
 		/*sql*/ `
@@ -60,6 +62,8 @@ func GetPrimaryKeyColumns(ctx context.Context, conn sqldb.Connection) (cols []Pr
 	)
 }
 
+// GetPrimaryKeyColumnsOfType returns all primary key columns with the given data type,
+// including whether each column is also a foreign key.
 func GetPrimaryKeyColumnsOfType(ctx context.Context, conn sqldb.Connection, pkType string) (cols []PrimaryKeyColumn, err error) {
 	return sqldb.QueryRowsAsSlice[PrimaryKeyColumn](ctx, conn, structReflector, conn,
 		/*sql*/ `
@@ -97,12 +101,16 @@ func GetPrimaryKeyColumnsOfType(ctx context.Context, conn sqldb.Connection, pkTy
 	)
 }
 
+// TableRowWithPrimaryKey holds a table row that matched a primary key lookup,
+// along with the column headers and the primary key column metadata.
 type TableRowWithPrimaryKey struct {
 	PrimaryKeyColumn
 	Header []string
 	Row    []string
 }
 
+// GetTableRowsWithPrimaryKey queries each table identified by pkCols for a row
+// matching pk and returns the results with their column headers.
 func GetTableRowsWithPrimaryKey(ctx context.Context, conn sqldb.Connection, pkCols []PrimaryKeyColumn, pk any) (tableRows []TableRowWithPrimaryKey, err error) {
 	for _, col := range pkCols {
 		query := fmt.Sprintf(`SELECT * FROM %s WHERE "%s" = $1`, col.Table, col.Column)
@@ -125,6 +133,8 @@ func GetTableRowsWithPrimaryKey(ctx context.Context, conn sqldb.Connection, pkCo
 	return tableRows, nil
 }
 
+// RenderUUIDPrimaryKeyRefsHTML returns an http.Handler that renders an HTML page
+// for looking up all table rows referencing a given UUID primary key.
 func RenderUUIDPrimaryKeyRefsHTML(conn sqldb.Connection) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		var (
@@ -275,8 +285,11 @@ var htmlTemplate = /*html*/ `<!DOCTYPE html>
 </body>
 </html>`
 
+// StyleAllMonospace is an HTML style snippet that sets all elements to a monospace font.
 const StyleAllMonospace = /*html*/ `<style>* { font-family: "Lucida Console", Monaco, monospace; }</style>`
 
+// StyleDefaultTable is an HTML style snippet for rendering tables with borders,
+// sticky headers, alternating row colors, and monospace cell text.
 const StyleDefaultTable = /*html*/ `<style>
 	table {
 		margin-top: 1em;

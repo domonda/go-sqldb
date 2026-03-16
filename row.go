@@ -16,10 +16,12 @@ type Row struct {
 	args      []any          // for error wrapping
 }
 
+// NewRow returns a new Row that wraps the given Rows for single-row scanning.
 func NewRow(rows Rows, reflector StructReflector, queryFmt QueryFormatter, query string, args []any) *Row {
 	return &Row{rows, reflector, queryFmt, query, args}
 }
 
+// Columns returns the column names of the underlying Rows.
 func (r *Row) Columns() ([]string, error) {
 	cols, err := r.rows.Columns()
 	if err != nil {

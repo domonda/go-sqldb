@@ -26,16 +26,19 @@ func (ts TransactionState) Active() bool {
 	return ts.ID != 0
 }
 
+// Preparer is an interface for preparing SQL statements.
 type Preparer interface {
 	// Prepare a statement for execution.
 	Prepare(ctx context.Context, query string) (Stmt, error)
 }
 
+// Executor is an interface for executing SQL statements.
 type Executor interface {
 	// Exec executes a query with optional args.
 	Exec(ctx context.Context, query string, args ...any) error
 }
 
+// Querier is an interface for querying rows from the database.
 type Querier interface {
 	// Query queries rows with optional args.
 	// Any error will be returned by the Rows.Err method.
@@ -102,6 +105,7 @@ type Connection interface {
 	Close() error
 }
 
+// ListenerConnection extends Connection with channel notification support.
 type ListenerConnection interface {
 	Connection
 

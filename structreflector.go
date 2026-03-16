@@ -56,10 +56,12 @@ type TaggedStructReflector struct {
 	UntaggedNameFunc func(fieldName string) string
 }
 
+// TableNameForStruct implements StructReflector.TableNameForStruct.
 func (m *TaggedStructReflector) TableNameForStruct(t reflect.Type) (table string, err error) {
 	return TableNameForStruct(t, m.NameTag)
 }
 
+// MapStructField implements StructReflector.MapStructField.
 func (m *TaggedStructReflector) MapStructField(field reflect.StructField) (column ColumnInfo, use bool) {
 	if field.Anonymous {
 		tag, hasTag := field.Tag.Lookup(m.NameTag)

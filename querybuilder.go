@@ -5,6 +5,7 @@ import (
 	"strings"
 )
 
+// QueryBuilder builds SQL queries for common CRUD operations.
 type QueryBuilder interface {
 	QueryRowWithPK(formatter QueryFormatter, table string, pkColumns []string) (query string, err error)
 	Insert(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error)

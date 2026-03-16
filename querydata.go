@@ -2,12 +2,16 @@ package sqldb
 
 import "github.com/DataDog/go-sqllexer"
 
+// NormalizeQueryFunc is a function type that normalizes an SQL query string.
 type NormalizeQueryFunc func(query string) (string, error)
 
+// NoChangeNormalizeQuery is a NormalizeQueryFunc that returns the query unchanged.
 func NoChangeNormalizeQuery(query string) (string, error) {
 	return query, nil
 }
 
+// NewQueryNormalizer returns a NormalizeQueryFunc that normalizes SQL queries
+// using the sqllexer package with sensible defaults.
 func NewQueryNormalizer() NormalizeQueryFunc {
 	normalizer := sqllexer.NewNormalizer(
 		sqllexer.WithCollectCommands(true),
@@ -32,6 +36,7 @@ type QueryData struct {
 	Args []any
 }
 
+// NewQueryData returns a QueryData with the query optionally normalized by the given function.
 func NewQueryData(query string, args []any, normalize NormalizeQueryFunc) (QueryData, error) {
 	var err error
 	if normalize != nil {
@@ -43,6 +48,7 @@ func NewQueryData(query string, args []any, normalize NormalizeQueryFunc) (Query
 	}, err
 }
 
+// Format returns the query with its arguments substituted using the given formatter.
 func (q *QueryData) Format(formatter QueryFormatter) string {
 	return FormatQuery(formatter, q.Query, q.Args...)
 }

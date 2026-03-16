@@ -9,6 +9,8 @@ type ColumnInfo struct {
 	ReadOnly   bool
 }
 
+// IsEmbeddedField reports whether this ColumnInfo represents an embedded struct field,
+// indicated by an empty Name.
 func (c *ColumnInfo) IsEmbeddedField() bool {
 	return c.Name == ""
 }

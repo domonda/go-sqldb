@@ -48,9 +48,9 @@ func (e errQueryCanceled) Is(target error) bool {
 	return target == context.Canceled || target == ErrQueryCanceled
 }
 
-// Transaction errors
-
+// Connection and transaction sentinel errors.
 const (
+	// ErrNoDatabaseConnection is returned when no database connection is available.
 	ErrNoDatabaseConnection sentinelError = "no database connection"
 
 	// ErrWithinTransaction is returned by methods
@@ -63,6 +63,8 @@ const (
 	// when the DB connection is not a transaction.
 	ErrNotWithinTransaction sentinelError = "not within a transaction"
 
+	// ErrNullValueNotAllowed is returned when a null value
+	// is encountered where one is not permitted.
 	ErrNullValueNotAllowed sentinelError = "null value not allowed"
 )
 
@@ -71,6 +73,7 @@ const (
 // The caller should retry the transaction.
 const ErrDeadlock sentinelError = "deadlock detected"
 
+// ErrRaisedException represents an exception explicitly raised by the database.
 type ErrRaisedException struct {
 	Message string
 }
@@ -79,6 +82,8 @@ func (e ErrRaisedException) Error() string {
 	return "raised exception: " + e.Message
 }
 
+// ErrIntegrityConstraintViolation indicates a general integrity constraint violation.
+// More specific violations like ErrUniqueViolation unwrap to this type.
 type ErrIntegrityConstraintViolation struct {
 	Constraint string
 }
@@ -90,6 +95,8 @@ func (e ErrIntegrityConstraintViolation) Error() string {
 	return "integrity constraint violation of constraint: " + e.Constraint
 }
 
+// ErrRestrictViolation indicates a RESTRICT constraint violation.
+// It unwraps to ErrIntegrityConstraintViolation.
 type ErrRestrictViolation struct {
 	Constraint string
 }
@@ -105,6 +112,8 @@ func (e ErrRestrictViolation) Unwrap() error {
 	return ErrIntegrityConstraintViolation{Constraint: e.Constraint}
 }
 
+// ErrNotNullViolation indicates a NOT NULL constraint violation.
+// It unwraps to ErrIntegrityConstraintViolation.
 type ErrNotNullViolation struct {
 	Constraint string
 }
@@ -120,6 +129,8 @@ func (e ErrNotNullViolation) Unwrap() error {
 	return ErrIntegrityConstraintViolation{Constraint: e.Constraint}
 }
 
+// ErrForeignKeyViolation indicates a foreign key constraint violation.
+// It unwraps to ErrIntegrityConstraintViolation.
 type ErrForeignKeyViolation struct {
 	Constraint string
 }
@@ -135,6 +146,8 @@ func (e ErrForeignKeyViolation) Unwrap() error {
 	return ErrIntegrityConstraintViolation{Constraint: e.Constraint}
 }
 
+// ErrUniqueViolation indicates a UNIQUE constraint violation.
+// It unwraps to ErrIntegrityConstraintViolation.
 type ErrUniqueViolation struct {
 	Constraint string
 }
@@ -150,6 +163,8 @@ func (e ErrUniqueViolation) Unwrap() error {
 	return ErrIntegrityConstraintViolation{Constraint: e.Constraint}
 }
 
+// ErrCheckViolation indicates a CHECK constraint violation.
+// It unwraps to ErrIntegrityConstraintViolation.
 type ErrCheckViolation struct {
 	Constraint string
 }
@@ -165,6 +180,8 @@ func (e ErrCheckViolation) Unwrap() error {
 	return ErrIntegrityConstraintViolation{Constraint: e.Constraint}
 }
 
+// ErrExclusionViolation indicates an EXCLUSION constraint violation.
+// It unwraps to ErrIntegrityConstraintViolation.
 type ErrExclusionViolation struct {
 	Constraint string
 }

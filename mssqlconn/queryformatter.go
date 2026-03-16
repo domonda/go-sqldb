@@ -247,8 +247,11 @@ func EscapeIdentifier(ident string) string {
 	return ident
 }
 
+// QueryFormatter is the [sqldb.QueryFormatter] implementation for SQL Server.
+// Uses bracket identifier escaping, @pN placeholders, and standard single-quote string literals.
 type QueryFormatter struct{}
 
+// FormatTableName implements [sqldb.QueryFormatter.FormatTableName].
 func (QueryFormatter) FormatTableName(name string) (string, error) {
 	if !tableNameRegex.MatchString(name) {
 		return "", fmt.Errorf("invalid table name %q", name)
@@ -259,6 +262,7 @@ func (QueryFormatter) FormatTableName(name string) (string, error) {
 	return EscapeIdentifier(name), nil
 }
 
+// FormatColumnName implements [sqldb.QueryFormatter.FormatColumnName].
 func (QueryFormatter) FormatColumnName(name string) (string, error) {
 	if !columnNameRegex.MatchString(name) {
 		return "", fmt.Errorf("invalid column name %q", name)
@@ -266,6 +270,7 @@ func (QueryFormatter) FormatColumnName(name string) (string, error) {
 	return EscapeIdentifier(name), nil
 }
 
+// FormatPlaceholder implements [sqldb.QueryFormatter.FormatPlaceholder].
 func (f QueryFormatter) FormatPlaceholder(paramIndex int) string {
 	if paramIndex < 0 {
 		panic("paramIndex must be greater or equal zero")
@@ -273,10 +278,12 @@ func (f QueryFormatter) FormatPlaceholder(paramIndex int) string {
 	return "@p" + strconv.Itoa(paramIndex+1)
 }
 
+// FormatStringLiteral implements [sqldb.QueryFormatter.FormatStringLiteral].
 func (QueryFormatter) FormatStringLiteral(str string) string {
 	return sqldb.FormatSingleQuoteStringLiteral(str)
 }
 
+// MaxArgs implements [sqldb.QueryFormatter.MaxArgs].
 func (QueryFormatter) MaxArgs() int {
 	return 2100
 }

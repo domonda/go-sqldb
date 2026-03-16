@@ -106,6 +106,7 @@ func EscapeIdentifier(ident string) string {
 // Uses backtick identifier quoting, ? placeholders, and backslash+quote escaping for strings.
 type QueryFormatter struct{}
 
+// FormatTableName implements [sqldb.QueryFormatter.FormatTableName].
 func (QueryFormatter) FormatTableName(name string) (string, error) {
 	if !tableNameRegex.MatchString(name) {
 		return "", fmt.Errorf("invalid MySQL table name %q", name)
@@ -116,6 +117,7 @@ func (QueryFormatter) FormatTableName(name string) (string, error) {
 	return EscapeIdentifier(name), nil
 }
 
+// FormatColumnName implements [sqldb.QueryFormatter.FormatColumnName].
 func (QueryFormatter) FormatColumnName(name string) (string, error) {
 	if !columnNameRegex.MatchString(name) {
 		return "", fmt.Errorf("invalid MySQL column name %q", name)
@@ -123,6 +125,7 @@ func (QueryFormatter) FormatColumnName(name string) (string, error) {
 	return EscapeIdentifier(name), nil
 }
 
+// FormatPlaceholder implements [sqldb.QueryFormatter.FormatPlaceholder].
 func (QueryFormatter) FormatPlaceholder(paramIndex int) string {
 	if paramIndex < 0 {
 		panic("paramIndex must be greater or equal zero")
@@ -138,6 +141,7 @@ func (QueryFormatter) FormatStringLiteral(str string) string {
 	return "'" + strings.ReplaceAll(str, "'", "''") + "'"
 }
 
+// MaxArgs implements [sqldb.QueryFormatter.MaxArgs].
 func (QueryFormatter) MaxArgs() int {
 	return 65535
 }

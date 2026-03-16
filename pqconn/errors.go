@@ -61,37 +61,46 @@ func IsStringDataRightTruncation(err error) bool {
 
 // Class 23 — Integrity Constraint Violation
 
+// IsIntegrityConstraintViolationClass indicates if the error belongs to
+// the PostgreSQL integrity constraint violation class (23xxx).
 func IsIntegrityConstraintViolationClass(err error) bool {
 	var e *pq.Error
 	return errors.As(err, &e) && e.Code.Class() == "23"
 }
 
+// IsRestrictViolation indicates if the error was caused by a restrict violation.
 func IsRestrictViolation(err error) bool {
 	var e *pq.Error
 	return errors.As(err, &e) && e.Code == "23001" // restrict_violation
 }
 
+// IsNotNullViolation indicates if the error was caused by a NOT NULL constraint violation.
 func IsNotNullViolation(err error) bool {
 	var e *pq.Error
 	return errors.As(err, &e) && e.Code == "23502" // not_null_violation
 }
 
+// IsForeignKeyViolation indicates if the error was caused by a foreign key constraint violation.
+// If violatedConstraints are provided, it also checks that the violated constraint name matches one of them.
 func IsForeignKeyViolation(err error, violatedConstraints ...string) bool {
 	var e *pq.Error
 	return errors.As(err, &e) && e.Code == "23503" && // foreign_key_violation
 		(len(violatedConstraints) == 0 || slices.Contains(violatedConstraints, e.Constraint))
 }
 
+// IsUniqueViolation indicates if the error was caused by a unique constraint violation.
 func IsUniqueViolation(err error) bool {
 	var e *pq.Error
 	return errors.As(err, &e) && e.Code == "23505" // unique_violation
 }
 
+// IsCheckViolation indicates if the error was caused by a check constraint violation.
 func IsCheckViolation(err error) bool {
 	var e *pq.Error
 	return errors.As(err, &e) && e.Code == "23514" // check_violation
 }
 
+// IsExclusionViolation indicates if the error was caused by an exclusion constraint violation.
 func IsExclusionViolation(err error) bool {
 	var e *pq.Error
 	return errors.As(err, &e) && e.Code == "23P01" // exclusion_violation
@@ -172,11 +181,13 @@ func IsQueryCanceled(err error) bool {
 
 // Class P0 — PL/pgSQL Error
 
+// IsPLPGSQLErrorClass indicates if the error belongs to the PL/pgSQL error class (P0xxx).
 func IsPLPGSQLErrorClass(err error) bool {
 	var e *pq.Error
 	return errors.As(err, &e) && e.Code.Class() == "P0"
 }
 
+// IsRaisedException indicates if the error was caused by a PL/pgSQL RAISE statement.
 func IsRaisedException(err error) bool {
 	var e *pq.Error
 	return errors.As(err, &e) && e.Code == "P0001"

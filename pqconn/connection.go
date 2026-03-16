@@ -10,6 +10,7 @@ import (
 	"github.com/domonda/go-sqldb"
 )
 
+// Driver is the database/sql driver name used for PostgreSQL connections.
 const Driver = "postgres"
 
 // Connect establishes a new [sqldb.Connection] using the passed config

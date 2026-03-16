@@ -14,9 +14,15 @@ var (
 	globalListeners    = make(map[string]*listener)
 	globalListenersMtx sync.RWMutex
 
+	// ListenerMinReconnectInterval is the minimum interval between reconnection attempts
+	// for the PostgreSQL LISTEN/NOTIFY listener.
 	ListenerMinReconnectInterval = time.Second * 10
+	// ListenerMaxReconnectInterval is the maximum interval between reconnection attempts
+	// for the PostgreSQL LISTEN/NOTIFY listener.
 	ListenerMaxReconnectInterval = time.Second * 60
-	ListenerPingInterval         = time.Second * 90
+	// ListenerPingInterval is the interval between keep-alive pings
+	// for the PostgreSQL LISTEN/NOTIFY listener.
+	ListenerPingInterval = time.Second * 90
 )
 
 type listener struct {

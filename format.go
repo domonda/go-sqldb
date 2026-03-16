@@ -78,6 +78,8 @@ func FormatValue(val any) (string, error) {
 	return fmt.Sprint(val), nil
 }
 
+// NormalizeAndFormatQuery normalizes the query using the given function, then
+// substitutes argument placeholders using the formatter for display purposes.
 func NormalizeAndFormatQuery(normalize NormalizeQueryFunc, formatter QueryFormatter, query string, args ...any) (string, error) {
 	if normalize == nil {
 		normalize = NoChangeNormalizeQuery
@@ -92,6 +94,7 @@ func NormalizeAndFormatQuery(normalize NormalizeQueryFunc, formatter QueryFormat
 	return FormatQuery(formatter, query, args...), nil
 }
 
+// MustNormalizeAndFormatQuery is like NormalizeAndFormatQuery but panics on error.
 func MustNormalizeAndFormatQuery(normalize NormalizeQueryFunc, formatter QueryFormatter, query string, args ...any) string {
 	query, err := NormalizeAndFormatQuery(normalize, formatter, query, args...)
 	if err != nil {
@@ -100,6 +103,8 @@ func MustNormalizeAndFormatQuery(normalize NormalizeQueryFunc, formatter QueryFo
 	return query
 }
 
+// FormatQuery substitutes argument placeholders in the query with formatted values
+// using the given QueryFormatter, returning a human-readable SQL string.
 func FormatQuery(f QueryFormatter, query string, args ...any) string {
 	if len(args) > 0 {
 		if placeholder := f.FormatPlaceholder(0); f.FormatPlaceholder(1) == placeholder {

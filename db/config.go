@@ -2,6 +2,6 @@ package db
 
 type serializedTransactionCtxKey struct{}
 
-// Number of retries used for a SerializedTransaction
-// before it fails.
+// SerializedTransactionRetries is the number of retries
+// for a SerializedTransaction before it fails.
 var SerializedTransactionRetries = 10

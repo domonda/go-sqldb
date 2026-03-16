@@ -7,6 +7,8 @@ import (
 	"strings"
 )
 
+// PrimaryKeyColumnsOfStruct returns the column names of the primary key fields
+// for the given struct type using the provided reflector.
 func PrimaryKeyColumnsOfStruct(reflector StructReflector, t reflect.Type) (columns []string, err error) {
 	rs, err := reflectStruct(reflector, t)
 	if err != nil {
@@ -20,6 +22,8 @@ func PrimaryKeyColumnsOfStruct(reflector StructReflector, t reflect.Type) (colum
 	return columns, nil
 }
 
+// ReflectStructColumnsAndValues returns the column metadata and corresponding field values
+// for the given struct value, filtered by the provided query options.
 func ReflectStructColumnsAndValues(structVal reflect.Value, reflector StructReflector, options ...QueryOption) (columns []ColumnInfo, values []any, err error) {
 	rs, err := reflectStruct(reflector, structVal.Type())
 	if err != nil {
@@ -37,6 +41,8 @@ func ReflectStructColumnsAndValues(structVal reflect.Value, reflector StructRefl
 	return columns, values, nil
 }
 
+// ReflectStructColumnsFieldIndicesAndValues returns the column metadata, struct field indices,
+// and corresponding field values for the given struct value, filtered by the provided query options.
 func ReflectStructColumnsFieldIndicesAndValues(structVal reflect.Value, reflector StructReflector, options ...QueryOption) (columns []ColumnInfo, indices [][]int, values []any, err error) {
 	rs, err := reflectStruct(reflector, structVal.Type())
 	if err != nil {
@@ -55,6 +61,8 @@ func ReflectStructColumnsFieldIndicesAndValues(structVal reflect.Value, reflecto
 	return columns, indices, values, nil
 }
 
+// ReflectStructValues returns the field values of the given struct value
+// for mapped columns, filtered by the provided query options.
 func ReflectStructValues(structVal reflect.Value, reflector StructReflector, options ...QueryOption) (values []any, err error) {
 	rs, err := reflectStruct(reflector, structVal.Type())
 	if err != nil {
@@ -71,6 +79,8 @@ func ReflectStructValues(structVal reflect.Value, reflector StructReflector, opt
 	return values, nil
 }
 
+// ReflectStructColumns returns the column metadata for the given struct type,
+// filtered by the provided query options.
 func ReflectStructColumns(structType reflect.Type, reflector StructReflector, options ...QueryOption) (columns []ColumnInfo, err error) {
 	rs, err := reflectStruct(reflector, structType)
 	if err != nil {
@@ -87,6 +97,8 @@ func ReflectStructColumns(structType reflect.Type, reflector StructReflector, op
 	return columns, nil
 }
 
+// ReflectStructColumnsAndFields returns the column metadata and corresponding field types
+// for the given struct value, filtered by the provided query options.
 func ReflectStructColumnsAndFields(structVal reflect.Value, reflector StructReflector, options ...QueryOption) (columns []ColumnInfo, fields []reflect.Type, err error) {
 	rs, err := reflectStruct(reflector, structVal.Type())
 	if err != nil {
@@ -104,6 +116,8 @@ func ReflectStructColumnsAndFields(structVal reflect.Value, reflector StructRefl
 	return columns, fields, nil
 }
 
+// ReflectStructColumnPointers returns addressable pointers to the struct fields
+// corresponding to the given column names, suitable for use with Rows.Scan.
 func ReflectStructColumnPointers(structVal reflect.Value, namer StructReflector, columns []string) (pointers []any, err error) {
 	if len(columns) == 0 {
 		return nil, errors.New("no columns")

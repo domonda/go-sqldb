@@ -56,10 +56,12 @@ func NewMockStructRows[S any](reflector StructReflector, rows ...S) *MockStructR
 	}
 }
 
+// Columns implements the Rows interface.
 func (m *MockStructRows[S]) Columns() ([]string, error) {
 	return m.columns, nil
 }
 
+// Next implements the Rows interface.
 func (m *MockStructRows[S]) Next() bool {
 	if m.closed || m.err != nil {
 		return false
@@ -68,6 +70,7 @@ func (m *MockStructRows[S]) Next() bool {
 	return m.current < len(m.rows)
 }
 
+// Scan implements the Rows interface.
 func (m *MockStructRows[S]) Scan(dest ...any) error {
 	if m.err != nil {
 		return m.err
@@ -101,10 +104,12 @@ func (m *MockStructRows[S]) Scan(dest ...any) error {
 	return nil
 }
 
+// Err implements the Rows interface.
 func (m *MockStructRows[S]) Err() error {
 	return m.err
 }
 
+// Close implements the Rows interface.
 func (m *MockStructRows[S]) Close() error {
 	m.closed = true
 	return nil

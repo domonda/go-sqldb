@@ -179,6 +179,10 @@ var (
 	}
 )
 
+// EscapeIdentifier wraps a PostgreSQL identifier in double-quotes when necessary,
+// escaping any embedded double-quote characters as "".
+// Quoting is applied when the identifier contains non-lowercase/non-underscore
+// characters or is a PostgreSQL reserved word.
 func EscapeIdentifier(ident string) string {
 	// See https://doxygen.postgresql.org/ruleutils_8c.html#a8c18b3ffb8863e7740b32ef5f4c05ddc
 	escaped := strings.ReplaceAll(ident, `"`, `""`)
@@ -200,8 +204,11 @@ func EscapeIdentifier(ident string) string {
 	return ident
 }
 
+// QueryFormatter is the [sqldb.QueryFormatter] implementation for PostgreSQL.
+// Uses double-quote identifier escaping, $N placeholders, and standard single-quote string literals.
 type QueryFormatter struct{}
 
+// FormatTableName implements [sqldb.QueryFormatter.FormatTableName].
 func (QueryFormatter) FormatTableName(name string) (string, error) {
 	if !tableNameRegexp.MatchString(name) {
 		return "", fmt.Errorf("invalid table name %q", name)
@@ -212,6 +219,7 @@ func (QueryFormatter) FormatTableName(name string) (string, error) {
 	return EscapeIdentifier(name), nil
 }
 
+// FormatColumnName implements [sqldb.QueryFormatter.FormatColumnName].
 func (QueryFormatter) FormatColumnName(name string) (string, error) {
 	if !columnNameRegexp.MatchString(name) {
 		return "", fmt.Errorf("invalid column name %q", name)
@@ -219,6 +227,7 @@ func (QueryFormatter) FormatColumnName(name string) (string, error) {
 	return EscapeIdentifier(name), nil
 }
 
+// FormatPlaceholder implements [sqldb.QueryFormatter.FormatPlaceholder].
 func (f QueryFormatter) FormatPlaceholder(paramIndex int) string {
 	if paramIndex < 0 {
 		panic("paramIndex must be greater or equal zero")
@@ -226,10 +235,12 @@ func (f QueryFormatter) FormatPlaceholder(paramIndex int) string {
 	return "$" + strconv.Itoa(paramIndex+1)
 }
 
+// FormatStringLiteral implements [sqldb.QueryFormatter.FormatStringLiteral].
 func (QueryFormatter) FormatStringLiteral(str string) string {
 	return sqldb.FormatSingleQuoteStringLiteral(str)
 }
 
+// MaxArgs implements [sqldb.QueryFormatter.MaxArgs].
 func (QueryFormatter) MaxArgs() int {
 	return 65535
 }

@@ -68,6 +68,9 @@ type KeyColumnUsage struct {
 	PositionInUniqueConstraint *int   `db:"position_in_unique_constraint"`
 }
 
+// ColumnExists checks if a column exists in the given table.
+// The table name can be schema-qualified as "schema.table";
+// if no schema is provided, "public" is assumed.
 func ColumnExists(ctx context.Context, conn sqldb.Connection, table, column string) (bool, error) {
 	tableSchema, tableName, ok := strings.Cut(table, ".")
 	if !ok {

@@ -16,6 +16,7 @@ type YesNo bool
 // 	}
 // }
 
+// Scan implements the sql.Scanner interface for YesNo.
 func (y *YesNo) Scan(value any) error {
 	switch x := value.(type) {
 	case bool:
@@ -41,6 +42,7 @@ func (y *YesNo) Scan(value any) error {
 // interface to scan strings with SQL NULL as empty string.
 type String string
 
+// Scan implements the sql.Scanner interface for String.
 func (y *String) Scan(value any) error {
 	switch value := value.(type) {
 	case nil:

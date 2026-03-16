@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"net/url"
 
-	_ "github.com/microsoft/go-mssqldb"
+	_ "github.com/microsoft/go-mssqldb" // register "sqlserver" database/sql driver
 
 	"github.com/domonda/go-sqldb"
 )
 
+// Driver is the database/sql driver name used for SQL Server connections.
 const Driver = "sqlserver"
 
 // Connect establishes a new [sqldb.Connection] using the passed config
