@@ -1,5 +1,6 @@
 package information
 
+// Schema maps a row from information_schema.schemata.
 type Schema struct {
 	CatalogName                String `db:"catalog_name"`
 	SchemaName                 String `db:"schema_name"`

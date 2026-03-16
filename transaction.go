@@ -1,6 +1,7 @@
 package sqldb
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -9,53 +10,54 @@ import (
 
 var txCounter atomic.Uint64
 
-// NextTransactionNo returns the next globally unique number
+// NextTransactionID returns the next globally unique number
 // for a new transaction in a threadsafe way.
 //
-// Use Connection.TransactionNo() to get the number
+// Use Connection.Transaction().ID to get the number
 // from a transaction connection.
-func NextTransactionNo() uint64 {
+func NextTransactionID() uint64 {
 	return txCounter.Add(1)
 }
 
 // Transaction executes txFunc within a database transaction that is passed in to txFunc as tx Connection.
 // Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx Connection
-// and no parentConn.Begin, Commit, or Rollback calls will occour within this Transaction call.
+// and no parentConn.Begin, Commit, or Rollback calls will occur within this Transaction call.
 // An error is returned, if the requested transaction options passed via opts
 // are stricter than the options of the parent transaction.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
-// Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
-func Transaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Connection) error) (err error) {
-	if parentOpts, parentIsTx := parentConn.TransactionOptions(); parentIsTx {
-		err = CheckTxOptionsCompatibility(parentOpts, opts, parentConn.Config().DefaultIsolationLevel)
+// Recovered panics are re-panicked and rollback errors after a panic are logged with ErrLogger.
+func Transaction(ctx context.Context, parentConn Connection, opts *sql.TxOptions, txFunc func(tx Connection) error) error {
+	if tx := parentConn.Transaction(); tx.Active() {
+		// Don't start a new transaction if the parent is already a transaction
+		err := CheckTxOptionsCompatibility(tx.Opts, opts, parentConn.DefaultIsolationLevel())
 		if err != nil {
 			return err
 		}
 		return txFunc(parentConn)
 	}
-	return IsolatedTransaction(parentConn, opts, txFunc)
+	return IsolatedTransaction(ctx, parentConn, opts, txFunc)
 }
 
 // IsolatedTransaction executes txFunc within a database transaction that is passed in to txFunc as tx Connection.
 // IsolatedTransaction returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, a brand new transaction will begin on the parent's connection.
 // Errors and panics from txFunc will rollback the transaction.
-// Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
-func IsolatedTransaction(parentConn Connection, opts *sql.TxOptions, txFunc func(tx Connection) error) (err error) {
-	txNo := NextTransactionNo()
-	tx, e := parentConn.Begin(opts, txNo)
+// Recovered panics are re-panicked and rollback errors after a panic are logged with ErrLogger.
+func IsolatedTransaction(ctx context.Context, parentConn Connection, opts *sql.TxOptions, txFunc func(tx Connection) error) (err error) {
+	id := NextTransactionID()
+	tx, e := parentConn.Begin(ctx, id, opts)
 	if e != nil {
-		return fmt.Errorf("Transaction %d Begin error: %w", txNo, e)
+		return fmt.Errorf("Transaction %d Begin error: %w", id, e)
 	}
 
 	defer func() {
 		if r := recover(); r != nil {
-			// txFunc paniced
+			// txFunc panicked
 			e := tx.Rollback()
 			if e != nil && !errors.Is(e, sql.ErrTxDone) {
 				// Double error situation, log e so it doesn't get lost
-				ErrLogger.Printf("Transaction %d error (%s) from rollback after panic: %+v", txNo, e, r)
+				ErrLogger.Printf("Transaction %d error (%s) from rollback after panic: %+v", id, e, r)
 			}
 			panic(r) // re-throw panic after Rollback
 		}
@@ -65,7 +67,7 @@ func IsolatedTransaction(parentConn Connection, opts *sql.TxOptions, txFunc func
 			e := tx.Rollback()
 			if e != nil && !errors.Is(e, sql.ErrTxDone) {
 				// Double error situation, wrap err with e so it doesn't get lost
-				err = fmt.Errorf("Transaction %d error (%s) from rollback after error: %w", txNo, e, err)
+				err = fmt.Errorf("Transaction %d error (%s) from rollback after error: %w", id, e, err)
 			}
 			return
 		}
@@ -73,7 +75,7 @@ func IsolatedTransaction(parentConn Connection, opts *sql.TxOptions, txFunc func
 		e := tx.Commit()
 		if e != nil {
 			// Set Commit error as function return value
-			err = fmt.Errorf("Transaction %d Commit error: %w", txNo, e)
+			err = fmt.Errorf("Transaction %d Commit error: %w", id, e)
 		}
 	}()
 
@@ -106,7 +108,7 @@ func CheckTxOptionsCompatibility(parent, child *sql.TxOptions, defaultIsolation 
 		return errors.New("parent transaction is read-only but child is not")
 	}
 	if parentIsolation < childIsolation {
-		return fmt.Errorf("parent transaction isolation level '%s' is less strict child level '%s'", parentIsolation, childIsolation)
+		return fmt.Errorf("parent transaction isolation level '%s' is less strict than child level '%s'", parentIsolation, childIsolation)
 	}
 	return nil
 }

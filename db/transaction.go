@@ -2,56 +2,87 @@ package db
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 
 	"github.com/domonda/go-sqldb"
 )
 
-// ValidateWithinTransaction returns sqldb.ErrNotWithinTransaction
+type noTransactionsCtxKey struct{}
+
+// ContextWithoutTransactions returns a context that signals
+// to [IsTransaction] and related functions that no transaction
+// should be used, even if the connection is within a transaction.
+func ContextWithoutTransactions(ctx context.Context) context.Context {
+	return context.WithValue(ctx, noTransactionsCtxKey{}, struct{}{})
+}
+
+// IsContextWithoutTransactions returns true if the context
+// was created with [ContextWithoutTransactions].
+func IsContextWithoutTransactions(ctx context.Context) bool {
+	return ctx.Value(noTransactionsCtxKey{}) != nil
+}
+
+// IsTransaction indicates if the connection from the context,
+// or the default connection if the context has none,
+// is a transaction.
+func IsTransaction(ctx context.Context) bool {
+	if IsContextWithoutTransactions(ctx) {
+		return false
+	}
+	return Conn(ctx).Transaction().Active()
+}
+
+// ValidateWithinTransaction returns [sqldb.ErrNotWithinTransaction]
 // if the database connection from the context is not a transaction.
 func ValidateWithinTransaction(ctx context.Context) error {
-	conn := Conn(ctx)
-	if err := conn.Config().Err; err != nil {
-		return err
+	if IsContextWithoutTransactions(ctx) {
+		return sqldb.ErrNotWithinTransaction
 	}
-	if !conn.IsTransaction() {
+	if !Conn(ctx).Transaction().Active() {
 		return sqldb.ErrNotWithinTransaction
 	}
 	return nil
 }
 
-// ValidateNotWithinTransaction returns sqldb.ErrWithinTransaction
+// ValidateNotWithinTransaction returns [sqldb.ErrWithinTransaction]
 // if the database connection from the context is a transaction.
 func ValidateNotWithinTransaction(ctx context.Context) error {
-	conn := Conn(ctx)
-	if err := conn.Config().Err; err != nil {
-		return err
+	if IsContextWithoutTransactions(ctx) {
+		return nil
 	}
-	if conn.IsTransaction() {
+	if Conn(ctx).Transaction().Active() {
 		return sqldb.ErrWithinTransaction
 	}
 	return nil
 }
 
 // DebugNoTransaction executes nonTxFunc without a database transaction.
-// Useful to temporarely replace Transaction to debug the same code without using a transaction.
+// Useful to temporarily replace Transaction to debug the same code without using a transaction.
 func DebugNoTransaction(ctx context.Context, nonTxFunc func(context.Context) error) error {
 	return nonTxFunc(ctx)
 }
 
-// IsolatedTransaction executes txFunc within a database transaction that is passed in to txFunc as tx Connection.
+// DebugNoTransactionResult executes nonTxFunc without a database transaction and returns the result.
+// Useful to temporarily replace TransactionResult to debug the same code without using a transaction.
+func DebugNoTransactionResult[T any](ctx context.Context, nonTxFunc func(context.Context) (T, error)) (T, error) {
+	return nonTxFunc(ctx)
+}
+
+// IsolatedTransaction executes txFunc within a database transaction that is passed in to txFunc as tx [Connection].
 // IsolatedTransaction returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, a brand new transaction will begin on the parent's connection.
 // Errors and panics from txFunc will rollback the transaction.
-// Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
+// Recovered panics are re-panicked and rollback errors after a panic are logged with [ErrLogger].
 func IsolatedTransaction(ctx context.Context, txFunc func(context.Context) error) error {
-	return sqldb.IsolatedTransaction(Conn(ctx), nil, func(tx sqldb.Connection) error {
-		return txFunc(context.WithValue(ctx, &globalConnCtxKey, tx))
+	if IsContextWithoutTransactions(ctx) {
+		return txFunc(ctx)
+	}
+	return sqldb.IsolatedTransaction(ctx, Conn(ctx), nil, func(tx sqldb.Connection) error {
+		return txFunc(ContextWithConn(ctx, tx))
 	})
 }
 
@@ -59,7 +90,7 @@ func IsolatedTransaction(ctx context.Context, txFunc func(context.Context) error
 // IsolatedTransactionResult returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, a brand new transaction will begin on the parent's connection.
 // Errors and panics from txFunc will rollback the transaction.
-// Recovered panics are re-paniced and rollback errors after a panic are logged with ErrLogger.
+// Recovered panics are re-panicked and rollback errors after a panic are logged with ErrLogger.
 func IsolatedTransactionResult[T any](ctx context.Context, txFunc func(context.Context) (T, error)) (result T, err error) {
 	err = IsolatedTransaction(ctx, func(ctx context.Context) error {
 		result, err = txFunc(ctx)
@@ -71,23 +102,26 @@ func IsolatedTransactionResult[T any](ctx context.Context, txFunc func(context.C
 // Transaction executes txFunc within a database transaction that is passed in to txFunc via the context.
 // Use db.Conn(ctx) to get the transaction connection within txFunc.
 // Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
-// If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
-// and no parentConn.Begin, Commit, or Rollback calls will occour within this Transaction call.
+// If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx [sqldb.Connection].
+// and no parentConn.Begin, Commit, or Rollback calls will occur within this Transaction call.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
-// Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
+// Recovered panics are re-panicked and rollback errors after a panic are logged with [sqldb.ErrLogger].
 func Transaction(ctx context.Context, txFunc func(context.Context) error) error {
-	return sqldb.Transaction(Conn(ctx), nil, func(tx sqldb.Connection) error {
-		return txFunc(context.WithValue(ctx, &globalConnCtxKey, tx))
+	if IsContextWithoutTransactions(ctx) {
+		return txFunc(ctx)
+	}
+	return sqldb.Transaction(ctx, Conn(ctx), nil, func(tx sqldb.Connection) error {
+		return txFunc(ContextWithConn(ctx, tx))
 	})
 }
 
 // TransactionResult executes txFunc within a database transaction and returns the result of txFunc.
 // Use db.Conn(ctx) to get the transaction connection within txFunc.
-// Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
+// TransactionResult returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
-// and no parentConn.Begin, Commit, or Rollback calls will occour within this TransactionResult call.
+// and no parentConn.Begin, Commit, or Rollback calls will occur within this TransactionResult call.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
-// Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
+// Recovered panics are re-panicked and rollback errors after a panic are logged with sqldb.ErrLogger.
 func TransactionResult[T any](ctx context.Context, txFunc func(context.Context) (T, error)) (result T, err error) {
 	err = Transaction(ctx, func(ctx context.Context) error {
 		result, err = txFunc(ctx)
@@ -120,11 +154,11 @@ func OptionalTransactionResult[T any](ctx context.Context, useTransaction bool, 
 
 // SerializedTransaction executes txFunc "serially" within a database transaction that is passed in to txFunc via the context.
 // Use db.Conn(ctx) to get the transaction connection within txFunc.
-// Transaction returns all errors from txFunc or transaction commit errors happening after txFunc.
+// SerializedTransaction returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
-// and no parentConn.Begin, Commit, or Rollback calls will occour within this Transaction call.
+// and no parentConn.Begin, Commit, or Rollback calls will occur within this SerializedTransaction call.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
-// Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
+// Recovered panics are re-panicked and rollback errors after a panic are logged with [sqldb.ErrLogger].
 //
 // Serialized transactions are typically necessary when an insert depends on a previous select within
 // the transaction, but that pre-insert select can't lock the table like it's possible with SELECT FOR UPDATE.
@@ -150,20 +184,24 @@ func OptionalTransactionResult[T any](ctx context.Context, useTransaction bool, 
 // txFunc within the parent's serialized transaction.
 // It's not valid to nest a SerializedTransaction within a normal Transaction function
 // because in this case serialization retries can't be delegated up to the
-// partent transaction that doesn't know anything about serialization.
+// parent transaction that doesn't know anything about serialization.
 //
 // Because of the retryable nature, please be careful with the size of the transaction and the retry cost.
 func SerializedTransaction(ctx context.Context, txFunc func(context.Context) error) error {
+	if IsContextWithoutTransactions(ctx) {
+		return txFunc(ctx)
+	}
+
 	// Pass nested serialized transactions through
-	if Conn(ctx).IsTransaction() {
-		if ctx.Value(&serializedTransactionCtxKey) == nil {
+	if IsTransaction(ctx) {
+		if ctx.Value(serializedTransactionCtxKey{}) == nil {
 			return errors.New("SerializedTransaction called from within a non-serialized transaction")
 		}
 		return txFunc(ctx)
 	}
 
 	// Add value to context to check for nested serialized transactions
-	ctx = context.WithValue(ctx, &serializedTransactionCtxKey, struct{}{})
+	ctx = context.WithValue(ctx, serializedTransactionCtxKey{}, struct{}{})
 
 	opts := sql.TxOptions{Isolation: sql.LevelSerializable}
 	for i := 0; i < SerializedTransactionRetries; i++ {
@@ -176,30 +214,56 @@ func SerializedTransaction(ctx context.Context, txFunc func(context.Context) err
 	return errors.New("SerializedTransaction retried too many times")
 }
 
+// SerializedTransactionResult executes txFunc within a serialized database transaction and returns the result of txFunc.
+// See [SerializedTransaction] for more details.
+func SerializedTransactionResult[T any](ctx context.Context, txFunc func(context.Context) (T, error)) (result T, err error) {
+	err = SerializedTransaction(ctx, func(ctx context.Context) error {
+		result, err = txFunc(ctx)
+		return err
+	})
+	return result, err
+}
+
 // TransactionOpts executes txFunc within a database transaction with sql.TxOptions that is passed in to txFunc via the context.
 // Use db.Conn(ctx) to get the transaction connection within txFunc.
 // TransactionOpts returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
-// and no parentConn.Begin, Commit, or Rollback calls will occour within this TransactionOpts call.
+// and no parentConn.Begin, Commit, or Rollback calls will occur within this TransactionOpts call.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
-// Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
+// Recovered panics are re-panicked and rollback errors after a panic are logged with sqldb.ErrLogger.
 func TransactionOpts(ctx context.Context, opts *sql.TxOptions, txFunc func(context.Context) error) error {
-	return sqldb.Transaction(Conn(ctx), opts, func(tx sqldb.Connection) error {
-		return txFunc(context.WithValue(ctx, &globalConnCtxKey, tx))
+	if IsContextWithoutTransactions(ctx) {
+		return txFunc(ctx)
+	}
+	return sqldb.Transaction(ctx, Conn(ctx), opts, func(tx sqldb.Connection) error {
+		return txFunc(ContextWithConn(ctx, tx))
 	})
+}
+
+// TransactionOptsResult executes txFunc within a database transaction with sql.TxOptions and returns the result of txFunc.
+// See [TransactionOpts] for more details.
+func TransactionOptsResult[T any](ctx context.Context, opts *sql.TxOptions, txFunc func(context.Context) (T, error)) (result T, err error) {
+	err = TransactionOpts(ctx, opts, func(ctx context.Context) error {
+		result, err = txFunc(ctx)
+		return err
+	})
+	return result, err
 }
 
 // TransactionReadOnly executes txFunc within a read-only database transaction that is passed in to txFunc via the context.
 // Use db.Conn(ctx) to get the transaction connection within txFunc.
 // TransactionReadOnly returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
-// and no parentConn.Begin, Commit, or Rollback calls will occour within this TransactionReadOnly call.
+// and no parentConn.Begin, Commit, or Rollback calls will occur within this TransactionReadOnly call.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
-// Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
+// Recovered panics are re-panicked and rollback errors after a panic are logged with sqldb.ErrLogger.
 func TransactionReadOnly(ctx context.Context, txFunc func(context.Context) error) error {
+	if IsContextWithoutTransactions(ctx) {
+		return txFunc(ctx)
+	}
 	opts := sql.TxOptions{ReadOnly: true}
-	return sqldb.Transaction(Conn(ctx), &opts, func(tx sqldb.Connection) error {
-		return txFunc(context.WithValue(ctx, &globalConnCtxKey, tx))
+	return sqldb.Transaction(ctx, Conn(ctx), &opts, func(tx sqldb.Connection) error {
+		return txFunc(ContextWithConn(ctx, tx))
 	})
 }
 
@@ -207,9 +271,9 @@ func TransactionReadOnly(ctx context.Context, txFunc func(context.Context) error
 // Use db.Conn(ctx) to get the transaction connection within txFunc.
 // TransactionReadOnlyResult returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
-// and no parentConn.Begin, Commit, or Rollback calls will occour within this TransactionReadOnlyResult call.
+// and no parentConn.Begin, Commit, or Rollback calls will occur within this TransactionReadOnlyResult call.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
-// Recovered panics are re-paniced and rollback errors after a panic are logged with sqldb.ErrLogger.
+// Recovered panics are re-panicked and rollback errors after a panic are logged with sqldb.ErrLogger.
 func TransactionReadOnlyResult[T any](ctx context.Context, txFunc func(context.Context) (T, error)) (result T, err error) {
 	err = TransactionReadOnly(ctx, func(ctx context.Context) error {
 		result, err = txFunc(ctx)
@@ -220,7 +284,8 @@ func TransactionReadOnlyResult[T any](ctx context.Context, txFunc func(context.C
 
 // TransactionSavepoint executes txFunc within a database transaction or uses savepoints for rollback.
 // If the passed context already has a database transaction connection,
-// then a savepoint with a random name is created before the execution of txFunc.
+// then a uniquely named savepoint (sp1, sp2, ...) is created before the execution of txFunc.
+// A custom savepoint naming function can be injected via [ContextWithSavepointFunc].
 // If txFunc returns an error, then the transaction is rolled back to the savepoint
 // but the transaction from the context is not rolled back.
 // If the passed context does not have a database transaction connection,
@@ -228,27 +293,27 @@ func TransactionReadOnlyResult[T any](ctx context.Context, txFunc func(context.C
 // Use db.Conn(ctx) to get the transaction connection within txFunc.
 // TransactionSavepoint returns all errors from txFunc, transaction, savepoint, and rollback errors.
 // Panics from txFunc are not recovered to rollback to the savepoint,
-// they should behandled by the parent Transaction function.
+// they should be handled by the parent Transaction function.
 func TransactionSavepoint(ctx context.Context, txFunc func(context.Context) error) error {
+	if IsContextWithoutTransactions(ctx) {
+		return txFunc(ctx)
+	}
+
 	conn := Conn(ctx)
-	if !conn.IsTransaction() {
+	if !conn.Transaction().Active() {
 		// If not already in a transaction, then execute txFunc
-		// within a as transaction instead of using savepoints:
+		// within a transaction instead of using savepoints:
 		return Transaction(ctx, txFunc)
 	}
 
-	savepoint, err := randomSavepoint()
-	if err != nil {
-		return err
-	}
-	err = conn.Exec("savepoint " + savepoint)
-	if err != nil {
+	savepoint := nextSavepoint(ctx)
+	if err := conn.Exec(ctx, "savepoint "+savepoint); err != nil {
 		return err
 	}
 
-	err = txFunc(ctx)
+	err := txFunc(ctx)
 	if err != nil {
-		e := conn.Exec("rollback to " + savepoint)
+		e := conn.Exec(ctx, "rollback to "+savepoint)
 		if e != nil && !errors.Is(e, sql.ErrTxDone) {
 			// Double error situation, wrap err with e so it doesn't get lost
 			err = fmt.Errorf("TransactionSavepoint error (%s) from rollback after error: %w", e, err)
@@ -256,14 +321,38 @@ func TransactionSavepoint(ctx context.Context, txFunc func(context.Context) erro
 		return err
 	}
 
-	return conn.Exec("release savepoint " + savepoint)
+	return conn.Exec(ctx, "release savepoint "+savepoint)
 }
 
-func randomSavepoint() (string, error) {
-	b := make([]byte, 8)
-	_, err := rand.Read(b)
-	if err != nil {
-		return "", err
+// TransactionSavepointResult executes txFunc within a database transaction savepoint and returns the result of txFunc.
+// See [TransactionSavepoint] for more details.
+func TransactionSavepointResult[T any](ctx context.Context, txFunc func(context.Context) (T, error)) (result T, err error) {
+	err = TransactionSavepoint(ctx, func(ctx context.Context) error {
+		result, err = txFunc(ctx)
+		return err
+	})
+	return result, err
+}
+
+type savepointFuncCtxKey struct{}
+
+// ContextWithSavepointFunc returns a context with a custom function
+// for generating savepoint names used by [TransactionSavepoint].
+// This is useful for testing to inject deterministic savepoint names.
+func ContextWithSavepointFunc(ctx context.Context, savepointFunc func() string) context.Context {
+	return context.WithValue(ctx, savepointFuncCtxKey{}, savepointFunc)
+}
+
+// savepointCounter is an atomic counter used to generate
+// unique savepoint names (sp1, sp2, ...) in a threadsafe way.
+var savepointCounter atomic.Uint64
+
+// nextSavepoint returns the next savepoint name.
+// If the context has a custom savepoint function set via
+// [ContextWithSavepointFunc], it is used instead of the global atomic counter.
+func nextSavepoint(ctx context.Context) string {
+	if fn, _ := ctx.Value(savepointFuncCtxKey{}).(func() string); fn != nil {
+		return fn()
 	}
-	return "SP" + hex.EncodeToString(b), nil
+	return fmt.Sprintf("sp%d", savepointCounter.Add(1))
 }

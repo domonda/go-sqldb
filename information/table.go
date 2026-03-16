@@ -2,10 +2,12 @@ package information
 
 import (
 	"context"
+	"strings"
 
-	"github.com/domonda/go-sqldb/db"
+	"github.com/domonda/go-sqldb"
 )
 
+// Table maps a row from information_schema.tables.
 type Table struct {
 	TableCatalog              String `db:"table_catalog"`
 	TableSchema               String `db:"table_schema"`
@@ -21,29 +23,47 @@ type Table struct {
 	CommitAction              String `db:"commit_action"`
 }
 
-func GetTable(ctx context.Context, catalog, schema, name string) (table *Table, err error) {
-	err = db.QueryRow(ctx,
-		`select *
-			from information_schema.tables
-			where table_catalog = $1
-				and table_schema = $2
-				and table_name = $3`,
-		catalog,
-		schema,
-		name,
-	).ScanStruct(&table)
-	if err != nil {
-		return nil, err
-	}
-	return table, nil
+func GetTable(ctx context.Context, conn sqldb.Connection, catalog, schema, name string) (table *Table, err error) {
+	return sqldb.QueryRowAs[*Table](ctx, conn, structReflector, conn,
+		/*sql*/ `
+			SELECT *
+			FROM information_schema.tables
+			WHERE table_catalog = $1
+				AND table_schema = $2
+				AND table_name = $3
+		`,
+		catalog, // $1
+		schema,  // $2
+		name,    // $3
+	)
 }
 
-func GetAllTables(ctx context.Context) (tables []*Table, err error) {
-	err = db.QueryRows(ctx,
-		`select * from information_schema.tables`,
-	).ScanStructSlice(&tables)
-	if err != nil {
-		return nil, err
+// TableExists checks if a table exists in the database
+// qualifiedName is in the format "schema.table" or "table"
+// If no schema is provided, "public" is assumed.
+func TableExists(ctx context.Context, conn sqldb.Connection, qualifiedName string) (exists bool, err error) {
+	schema, table, ok := strings.Cut(qualifiedName, ".")
+	if !ok {
+		schema = "public"
+		table = qualifiedName
 	}
-	return tables, nil
+	return sqldb.QueryRowAs[bool](ctx, conn, structReflector, conn,
+		/*sql*/ `
+			SELECT EXISTS (
+				SELECT FROM information_schema.tables
+				WHERE table_schema = $1
+					AND table_name = $2
+			)
+		`,
+		schema, // $1
+		table,  // $2
+	)
+}
+
+func GetAllTables(ctx context.Context, conn sqldb.Connection) (tables []*Table, err error) {
+	return sqldb.QueryRowsAsSlice[*Table](ctx, conn, structReflector, conn,
+		/*sql*/ `
+			SELECT * FROM information_schema.tables
+		`,
+	)
 }

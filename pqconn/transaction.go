@@ -3,133 +3,87 @@ package pqconn
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"time"
 
 	"github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/impl"
 )
 
 type transaction struct {
+	QueryFormatter
+
 	// The parent non-transaction connection is needed
-	// for its ctx, Ping(), Stats(), and Config()
-	parent           *connection
-	tx               *sql.Tx
-	opts             *sql.TxOptions
-	no               uint64
-	structFieldNamer sqldb.StructFieldMapper
+	// for Ping() and Stats()
+	parent *connection
+	tx     *sql.Tx
+	opts   *sql.TxOptions
+	id     uint64
 }
 
-func newTransaction(parent *connection, tx *sql.Tx, opts *sql.TxOptions, no uint64) *transaction {
+func newTransaction(parent *connection, tx *sql.Tx, opts *sql.TxOptions, id uint64) *transaction {
 	return &transaction{
-		parent:           parent,
-		tx:               tx,
-		opts:             opts,
-		no:               no,
-		structFieldNamer: parent.structFieldNamer,
+		parent: parent,
+		tx:     tx,
+		opts:   opts,
+		id:     id,
 	}
 }
 
-func (conn *transaction) clone() *transaction {
-	c := *conn
-	return &c
+func (conn *transaction) Config() *sqldb.ConnConfig {
+	return conn.parent.config
 }
 
-func (conn *transaction) Context() context.Context { return conn.parent.ctx }
-
-func (conn *transaction) WithContext(ctx context.Context) sqldb.Connection {
-	if ctx == conn.parent.ctx {
-		return conn
-	}
-	parent := conn.parent.clone()
-	parent.ctx = ctx
-	return newTransaction(parent, conn.tx, conn.opts, conn.no)
+func (conn *transaction) Ping(ctx context.Context, timeout time.Duration) error {
+	return conn.parent.Ping(ctx, timeout)
 }
+func (conn *transaction) Stats() sql.DBStats { return conn.parent.Stats() }
 
-func (conn *transaction) WithStructFieldMapper(namer sqldb.StructFieldMapper) sqldb.Connection {
-	c := conn.clone()
-	c.structFieldNamer = namer
-	return c
-}
-
-func (conn *transaction) StructFieldMapper() sqldb.StructFieldMapper {
-	return conn.structFieldNamer
-}
-
-func (conn *transaction) Ping(timeout time.Duration) error { return conn.parent.Ping(timeout) }
-func (conn *transaction) Stats() sql.DBStats               { return conn.parent.Stats() }
-func (conn *transaction) Config() *sqldb.Config            { return conn.parent.Config() }
-func (conn *transaction) Placeholder(paramIndex int) string {
-	return conn.parent.Placeholder(paramIndex)
-}
-
-func (conn *transaction) ValidateColumnName(name string) error {
-	return validateColumnName(name)
-}
-
-func (conn *transaction) Exec(query string, args ...any) error {
-	impl.WrapArrayArgs(args)
-	_, err := conn.tx.Exec(query, args...)
-	return impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
-}
-
-func (conn *transaction) Update(table string, values sqldb.Values, where string, args ...any) error {
-	return impl.Update(conn, table, values, where, argFmt, args)
-}
-
-func (conn *transaction) UpdateReturningRow(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowScanner {
-	return impl.UpdateReturningRow(conn, table, values, returning, where, args)
-}
-
-func (conn *transaction) UpdateReturningRows(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowsScanner {
-	return impl.UpdateReturningRows(conn, table, values, returning, where, args)
-}
-
-func (conn *transaction) UpdateStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns)
-}
-
-func (conn *transaction) UpsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns)
-}
-
-func (conn *transaction) QueryRow(query string, args ...any) sqldb.RowScanner {
-	impl.WrapArrayArgs(args)
-	rows, err := conn.tx.QueryContext(conn.parent.ctx, query, args...)
+func (conn *transaction) Exec(ctx context.Context, query string, args ...any) error {
+	wrapArrayArgs(args)
+	_, err := conn.tx.ExecContext(ctx, query, args...)
 	if err != nil {
-		err = impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
-		return sqldb.RowScannerWithError(err)
+		return wrapKnownErrors(err)
 	}
-	return impl.NewRowScanner(rows, conn.structFieldNamer, query, argFmt, args)
+	return nil
 }
 
-func (conn *transaction) QueryRows(query string, args ...any) sqldb.RowsScanner {
-	impl.WrapArrayArgs(args)
-	rows, err := conn.tx.QueryContext(conn.parent.ctx, query, args...)
+func (conn *transaction) Query(ctx context.Context, query string, args ...any) sqldb.Rows {
+	wrapArrayArgs(args)
+	sqlRows, err := conn.tx.QueryContext(ctx, query, args...)
 	if err != nil {
-		err = impl.WrapNonNilErrorWithQuery(err, query, argFmt, args)
-		return sqldb.RowsScannerWithError(err)
+		return sqldb.NewErrRows(wrapKnownErrors(err))
 	}
-	return impl.NewRowsScanner(conn.parent.ctx, rows, conn.structFieldNamer, query, argFmt, args)
+	return rows{sqlRows}
 }
 
-func (conn *transaction) IsTransaction() bool {
-	return true
-}
-
-func (conn *transaction) TransactionNo() uint64 {
-	return conn.no
-}
-
-func (conn *transaction) TransactionOptions() (*sql.TxOptions, bool) {
-	return conn.opts, true
-}
-
-func (conn *transaction) Begin(opts *sql.TxOptions, no uint64) (sqldb.Connection, error) {
-	tx, err := conn.parent.db.BeginTx(conn.parent.ctx, opts)
+func (conn *transaction) Prepare(ctx context.Context, query string) (sqldb.Stmt, error) {
+	s, err := conn.tx.PrepareContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-	return newTransaction(conn.parent, tx, opts, no), nil
+	return stmt{query, s}, nil
+}
+
+func (*transaction) DefaultIsolationLevel() sql.IsolationLevel {
+	return sql.LevelReadCommitted // postgres default
+}
+
+func (conn *transaction) Transaction() sqldb.TransactionState {
+	return sqldb.TransactionState{
+		ID:   conn.id,
+		Opts: conn.opts,
+	}
+}
+
+func (conn *transaction) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
+	if id == 0 {
+		return nil, errors.New("transaction ID must not be zero")
+	}
+	tx, err := conn.parent.db.BeginTx(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	return newTransaction(conn.parent, tx, opts, id), nil
 }
 
 func (conn *transaction) Commit() error {

@@ -12,7 +12,7 @@ import (
 // ScanDriverValue scans a driver.Value into destPtr.
 func ScanDriverValue(destPtr any, value driver.Value) error {
 	if destPtr == nil {
-		return errors.New("can't scan nil destPtr")
+		return errors.New("unable to scan nil destPtr")
 	}
 
 	if destScanner, ok := destPtr.(sql.Scanner); ok {
@@ -20,8 +20,8 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 	}
 
 	dest := reflect.ValueOf(destPtr)
-	if dest.Kind() != reflect.Ptr {
-		return fmt.Errorf("can't scan non-pointer %s", dest.Type())
+	if dest.Kind() != reflect.Pointer {
+		return fmt.Errorf("unable to scan non-pointer %s", dest.Type())
 	}
 	dest = dest.Elem()
 
@@ -43,9 +43,9 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 			return nil
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 			if src < 0 {
-				return fmt.Errorf("can't scan negative int64 %d into %s", src, dest.Type())
+				return fmt.Errorf("unable to scan negative int64 value %d into %s", src, dest.Type())
 			}
-			dest.SetUint(uint64(src)) //#nosec G115 -- bounds checked above
+			dest.SetUint(uint64(src))
 			return nil
 		case reflect.Float32, reflect.Float64:
 			dest.SetFloat(float64(src))
@@ -67,7 +67,7 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 
 	case bool:
 		if dest.Kind() == reflect.Bool {
-			reflect.ValueOf(destPtr).SetBool(src)
+			dest.SetBool(src)
 			return nil
 		}
 
@@ -103,11 +103,11 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 			return nil
 		}
 		switch dest.Kind() {
-		case reflect.Ptr, reflect.Slice, reflect.Map:
+		case reflect.Pointer, reflect.Slice, reflect.Map:
 			dest.SetZero()
 			return nil
 		}
 	}
 
-	return fmt.Errorf("can't scan %#v as %T", value, destPtr)
+	return fmt.Errorf("unable to scan %#v as %T", value, destPtr)
 }

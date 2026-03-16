@@ -12,24 +12,90 @@ The design patterns evolved mostly through discovery led by the desire to minimi
 
 * Use reflection to map db rows to structs, but not as full blown ORM that replaces SQL queries (just as much ORM to increase productivity but not alienate developers who like the full power of SQL)
 * Transactions are run in callback functions that can be nested
-* Option to store the db connection and transactions in the context argument to pass it down into nested functions
+* Store the db connection and transactions in `context.Context` to pass them down into nested functions transparently
 
 
 ## Database drivers
 
-* [pqconn](https://pkg.go.dev/github.com/domonda/go-sqldb/pqconn) using [github.com/lib/pq](https://github.com/lib/pq) 
-* [mysqlconn](https://pkg.go.dev/github.com/domonda/go-sqldb/mysqlconn) using [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)
+| Package                                                                          | Underlying driver                                                                              | Placeholder style |
+| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ----------------- |
+| [pqconn](https://pkg.go.dev/github.com/domonda/go-sqldb/pqconn)                 | [github.com/lib/pq](https://github.com/lib/pq)                                                | `$1, $2, ...`     |
+| [mysqlconn](https://pkg.go.dev/github.com/domonda/go-sqldb/mysqlconn)           | [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)                      | `?, ?, ...`       |
+| [mssqlconn](https://pkg.go.dev/github.com/domonda/go-sqldb/mssqlconn)           | [github.com/microsoft/go-mssqldb](https://github.com/microsoft/go-mssqldb)                    | `@p1, @p2, ...`   |
+| [sqliteconn](https://pkg.go.dev/github.com/domonda/go-sqldb/sqliteconn)         | [zombiezen.com/go/sqlite](https://pkg.go.dev/zombiezen.com/go/sqlite)                          | `?, ?, ...`       |
+
+
+### Feature matrix
+
+| Feature                       | pqconn              | mysqlconn           | mssqlconn           | sqliteconn          | MockConn          | ErrConn             |
+| ----------------------------- | ------------------- | ------------------- | ------------------- | ------------------- | ----------------- | ------------------- |
+| Underlying driver             | lib/pq              | go-sql-driver/mysql | go-mssqldb          | zombiezen.com/sqlite| —                 | —                   |
+| Placeholder style             | `$1`, `$2`, …       | `?`, `?`, …         | `@p1`, `@p2`, …     | `?`, `?`, …         | configurable      | `?`, `?`, …         |
+| Max query arguments           | 65 535              | 65 535              | 2 100               | 32 766              | 65 535            | 65 535              |
+| Identifier quoting            | `"double quotes"`   | `` `backticks` ``   | `[brackets]`        | `"double quotes"`   | configurable      | none                |
+| Default isolation level       | Read Committed      | Repeatable Read     | Read Committed      | Serializable        | Default           | Default             |
+| `Connection`                  | yes                 | yes                 | yes                 | yes                 | yes               | yes (returns error) |
+| `ListenerConnection`          | yes                 | —                   | —                   | —                   | yes (mock)        | yes (returns error) |
+| Transactions                  | yes                 | yes                 | yes                 | yes                 | yes (mock)        | —                   |
+| Nested `Begin` uses savepoint | —                   | —                   | —                   | yes                 | —                 | —                   |
+| `db.TransactionSavepoint`     | yes                 | yes                 | yes                 | yes                 | yes               | —                   |
+| Constraint error mapping      | yes                 | yes                 | yes                 | yes                 | —                 | —                   |
+| Array column support          | yes                 | —                   | —                   | —                   | —                 | —                   |
+| Prepared statements           | yes                 | yes                 | yes                 | yes                 | yes (mock)        | —                   |
+| Query recording               | —                   | —                   | —                   | —                   | yes               | —                   |
+
+**Notes:**
+- **Nested `Begin` uses savepoint**: Only `sqliteconn` converts nested `Begin` calls into SQL `SAVEPOINT` / `RELEASE` commands. All other real drivers start a new independent transaction on the underlying connection.
+- **`db.TransactionSavepoint`**: Works with any driver by issuing raw `SAVEPOINT` SQL within an existing transaction (see [Transactions](#transactions)).
+- **MockConn**: In-memory mock for unit testing without a running database. Supports configurable query results, exec callbacks, and records all queries and execs for inspection.
+- **ErrConn**: Dummy connection where every method except `Close` returns a stored error. Useful for testing error-handling paths.
+
+
+## Generic errors
+
+Each driver maps its database-specific constraint errors to typed values defined in the root `sqldb` package:
+
+| Type                              | `Constraint` field | Description                                   |
+| --------------------------------- | ------------------ | --------------------------------------------- |
+| `ErrIntegrityConstraintViolation` | constraint name    | Base type for all constraint violations       |
+| `ErrNotNullViolation`             | column name        | NULL inserted into a NOT NULL column          |
+| `ErrUniqueViolation`              | index/constraint   | Duplicate value for a unique key              |
+| `ErrForeignKeyViolation`          | constraint name    | Referential integrity violation               |
+| `ErrCheckViolation`               | constraint name    | CHECK constraint violated                     |
+| `ErrRestrictViolation`            | constraint name    | RESTRICT constraint violated (PostgreSQL)     |
+| `ErrExclusionViolation`           | constraint name    | Exclusion constraint violated (PostgreSQL)    |
+
+All specific types unwrap to `ErrIntegrityConstraintViolation`, so `errors.As` traverses the chain and matches any subtype:
+
+```go
+// catch any constraint violation and read the constraint name
+var cv sqldb.ErrIntegrityConstraintViolation
+if errors.As(err, &cv) {
+    fmt.Println("constraint violated:", cv.Constraint)
+}
+
+// catch a specific violation type
+var uv sqldb.ErrUniqueViolation
+if errors.As(err, &uv) {
+    fmt.Println("unique constraint violated:", uv.Constraint)
+}
+```
+
+Driver packages also expose driver-specific helper functions (e.g. `pqconn.IsUniqueViolation`) for error conditions that have no generic `sqldb` type, such as deadlocks, query cancellations, or text-representation errors. See each driver's README for the full list.
 
 
 ## Usage
 
+The recommended way to use this library is through the [github.com/domonda/go-sqldb/db](https://pkg.go.dev/github.com/domonda/go-sqldb/db)
+package. Every function just takes a `ctx` and the `db` package retrieves the right connection automatically:
+first from the context (e.g. a transaction injected by `db.Transaction`), then falling back to the global connection set with `db.SetConn`.
+
+See the [db package README](db/README.md) for a complete function reference and usage patterns.
+
 ### Creating a connection
 
-The connection is pinged with the passed context
-and only returned when there was no error from the ping:
-
 ```go
-config := &sqldb.Config{
+config := &sqldb.ConnConfig{
     Driver:   "postgres",
     Host:     "localhost",
     User:     "postgres",
@@ -37,223 +103,526 @@ config := &sqldb.Config{
     Extra:    map[string]string{"sslmode": "disable"},
 }
 
-fmt.Println("Connecting to:", config.ConnectURL())
+conn, err := pqconn.Connect(ctx, config)
+if err != nil {
+    panic(err)
+}
+defer conn.Close()
 
-conn, err := pqconn.New(context.Background(), config)
+// Set as the global connection used by the db package
+db.SetConn(conn)
 ```
 
 ### Struct field mapping
 
-Every new connection initially uses `DefaultStructFieldTagNaming`
-
-```go
-package sqldb
-
-// DefaultStructFieldTagNaming provides the default StructFieldTagNaming
-// using "db" as NameTag and IgnoreStructField as UntaggedNameFunc.
-// Implements StructFieldNamer.
-var DefaultStructFieldTagNaming = StructFieldTagNaming{
-	NameTag:          "db",
-	IgnoreName:       "-",
-	UntaggedNameFunc: IgnoreStructField,
-}
-```
-
-Use a different mapping:
-
-```go
-conn = conn.WithStructFieldNamer(sqldb.StructFieldTagNaming{
-    NameTag:          "col",
-    IgnoreName:       "_ignore_",
-    UntaggedNameFunc: sqldb.ToSnakeCase,
-})
-```
-
-### Exec SQL without reading rows
-
-```go
-err = conn.Exec(`delete from public.user where id = $1`, userID)
-```
-
-### Single row query
+The default `StructReflector` maps struct fields to database columns using the `db` struct tag:
 
 ```go
 type User struct {
-	ID    uu.ID  `db:"id,pk"`
-	Email string `db:"email"`
-	Name  string `db:"name"`
+    ID    uu.ID  `db:"id,primarykey"`
+    Email string `db:"email"`
+    Name  string `db:"name"`
+    // Field with tag "-" will be ignored
+    Internal string `db:"-"`
 }
-
-var user User
-err = conn.QueryRow(`select * from public.user where id = $1`, userID).ScanStruct(&user)
-
-var userExists bool
-err = conn.QueryRow(`select exists(select from public.user where email = $1)`, userEmail).Scan(&userExists)
 ```
 
-### Multi rows query
+Available tag options:
+
+| Tag                            | Meaning                                             |
+| ------------------------------ | --------------------------------------------------- |
+| `db:"column_name"`             | Map field to column                                 |
+| `db:"column_name,primarykey"`  | Mark as primary key (required for update and upsert)|
+| `db:"column_name,readonly"`    | Excluded from INSERT and UPDATE                     |
+| `db:"column_name,default"`     | Has a database default, can be ignored on INSERT    |
+| `db:"-"`                       | Ignore field entirely                               |
+
+For struct-based insert, update, and upsert operations the struct must embed `sqldb.TableName`
+with a `db` tag to specify the target table:
 
 ```go
-var users []*User
-err = conn.QueryRows(`select * from public.user`).ScanStructSlice(&users)
+type User struct {
+    sqldb.TableName `db:"public.user"`
 
-var userEmails []string
-err = conn.QueryRows(`select email from public.user`).ScanSlice(&userEmails)
+    ID        uu.ID  `db:"id,primarykey,default"`
+    Email     string `db:"email"`
+    Name      string `db:"name"`
+    CreatedAt time.Time `db:"created_at,readonly,default"`
+}
+```
 
-// Use reflection for callback function arguments
-err = conn.QueryRows(`select name, email from public.user`).ForEachRowCall(
+You can customize the struct reflector globally or per context:
+
+```go
+reflector := &sqldb.TaggedStructReflector{
+    NameTag:          "col",           // Use "col" tag instead of "db"
+    Ignore:           "_ignore_",      // Ignore fields with this value
+    PrimaryKey:       "pk",
+    ReadOnly:         "readonly",
+    Default:          "default",
+    UntaggedNameFunc: sqldb.ToSnakeCase, // Convert untagged fields to snake_case
+}
+
+// Set globally
+db.SetStructReflector(reflector)
+
+// Or set per context
+ctx = db.ContextWithStructReflector(ctx, reflector)
+```
+
+### Slice and array column handling
+
+Slice and array column handling (like PostgreSQL arrays) is handled transparently by driver implementations. For example, the `pqconn` driver automatically wraps Go slices and arrays with `pq.Array()` for both query arguments and row scanning, so you can use native Go slices in structs mapped to PostgreSQL array columns without any manual conversion.
+
+### Exec
+
+```go
+err = db.Exec(ctx, /*sql*/ `DELETE FROM public.user WHERE id = $1`, userID)
+```
+
+### Querying a single row
+
+```go
+// Scan into a struct
+user, err := db.QueryRowAs[User](ctx,
+    /*sql*/ `SELECT * FROM public.user WHERE id = $1`,
+    userID,
+)
+
+// Scan a scalar value
+var count int64
+count, err = db.QueryRowAs[int64](ctx, /*sql*/ `SELECT count(*) FROM public.user`)
+
+// Return a default value instead of sql.ErrNoRows
+user, err = db.QueryRowAsOr(ctx, defaultUser,
+    /*sql*/ `SELECT * FROM public.user WHERE id = $1`,
+    userID,
+)
+
+// Low-level: scan into individual variables
+var name string
+var email string
+err = db.QueryRow(ctx,
+    /*sql*/ `SELECT name, email FROM public.user WHERE id = $1`,
+    userID,
+).Scan(&name, &email)
+```
+
+### Querying a single row by primary key
+
+For structs with an embedded `sqldb.TableName`, you can query by primary key directly:
+
+```go
+user, err := db.QueryRowByPK[User](ctx, userID)
+
+// Return a default value instead of sql.ErrNoRows
+user, err = db.QueryRowByPKOr(ctx, defaultUser, userID)
+```
+
+### Querying multiple rows
+
+```go
+// Query into a slice of structs
+users, err := db.QueryRowsAsSlice[User](ctx, /*sql*/ `SELECT * FROM public.user`)
+
+// Query a single column into a scalar slice
+emails, err := db.QueryRowsAsSlice[string](ctx, /*sql*/ `SELECT email FROM public.user`)
+```
+
+### QueryCallback for per-row processing
+
+```go
+// Callback arguments are scanned from columns via reflection
+err = db.QueryCallback(ctx,
     func(name, email string) {
         fmt.Printf("%q <%s>\n", name, email)
     },
+    /*sql*/ `SELECT name, email FROM public.user`,
 )
 
-err = conn.QueryRows(`select name, email from public.user`).ForEachRow(
-    func(row sqldb.RowScanner) error {
-        var name, email string
-        err := row.Scan(&name, &email)
-        if err != nil {
-            return err
-        }
-        _, err = fmt.Printf("%q <%s>\n", name, email)
-        return err
+// With context and error return
+err = db.QueryCallback(ctx,
+    func(ctx context.Context, user User) error {
+        return processUser(ctx, user)
     },
+    /*sql*/ `SELECT * FROM public.user`,
 )
 ```
 
-### Insert rows
+### Insert
 
 ```go
-newUser := &User{ /* ... */ }
+// Insert a struct (table name from embedded sqldb.TableName)
+newUser := &User{Name: "Alice", Email: "alice@example.com"}
+err = db.InsertRowStruct(ctx, newUser)
 
-err = conn.InsertStruct("public.user", newUser)
+// Ignore columns with database defaults
+err = db.InsertRowStruct(ctx, newUser, sqldb.IgnoreColumns("id", "created_at"))
 
-// Use column defaults for insert instead of struct fields
-err = conn.InsertStructIgnoreColumns("public.user", newUser, "id", "created_at")
-
-// Upsert uses columns marked as primary key like `db:"id,pk"`
-err = conn.UpsertStructIgnoreColumns("public.user", newUser, "created_at")
-
-// Without structs
-err = conn.Insert("public.user", sqldb.Values{
+// Insert using a values map
+err = db.Insert(ctx, "public.user", sqldb.Values{
     "name":  "Erik Unger",
     "email": "erik@domonda.com",
 })
+
+// Insert with RETURNING clause
+var id uu.ID
+err = db.InsertReturning(ctx, "public.user", sqldb.Values{
+    "name":  "Erik Unger",
+    "email": "erik@domonda.com",
+}, "id").Scan(&id)
+
+// Insert or do nothing on conflict
+inserted, err := db.InsertUnique(ctx, "public.user", sqldb.Values{
+    "email": "erik@domonda.com",
+    "name":  "Erik Unger",
+}, "ON CONFLICT (email) DO NOTHING")
+
+// Batch insert a slice of structs (uses a transaction + prepared statement)
+err = db.InsertRowStructs(ctx, users)
+```
+
+### Update
+
+```go
+// Update with a values map and WHERE clause
+err = db.Update(ctx, "public.user", sqldb.Values{"name": "New Name"},
+    /*sql*/ `WHERE id = $1`, userID,
+)
+
+// Update using a struct (WHERE clause built from primarykey fields)
+err = db.UpdateRowStruct(ctx, "public.user", &user)
+
+// Update only specific columns
+err = db.UpdateRowStruct(ctx, "public.user", &user, sqldb.OnlyColumns("name", "email"))
+```
+
+### Upsert
+
+Insert or update on primary key conflict:
+
+```go
+// Upsert a struct
+err = db.UpsertRowStruct(ctx, &user)
+
+// Upsert ignoring certain columns
+err = db.UpsertRowStruct(ctx, &user, sqldb.IgnoreColumns("created_at"))
+
+// Batch upsert a slice of structs
+err = db.UpsertRowStructs(ctx, users)
 ```
 
 ### Transactions
 
-```go
-txOpts := &sql.TxOptions{Isolation: sql.LevelWriteCommitted}
-
-err = sqldb.Transaction(conn, txOpts, func(tx sqldb.Connection) error {
-    err := tx.Exec("...")
-    if err != nil {
-        return err // roll back tx
-    }
-    return tx.Exec("...")
-})
-```
-
-### Using the context
-
-Saving a context in a struct is an antipattern in Go
-but it turns out that it allows neat call chaining pattern.
-
-```go
-ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-defer cancel()
-
-// Note that this timout is a deadline and does not restart for every query
-err = conn.WithContext(ctx).Exec("...")
-
-// Usually the context comes from some top-level handler
-_ = http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-    // Pass request cancellation through to db query
-    err := conn.WithContext(request.Context()).Exec("...")
-    if err != nil {
-        http.Error(response, err.Error(), http.StatusInternalServerError)
-        return
-    }
-    response.Write([]byte("OK"))
-})
-```
-
-### Putting it all together with the db package
-
-The [github.com/domonda/go-sqldb/db](https://pkg.go.dev/github.com/domonda/go-sqldb/db)
-package enables a design pattern where a "current" db connection or transaction
-can be stored in the context and then retrieved by nested functions
-from the context without having to know if this connection is a transaction or not.
-This allows re-using the same functions within transactions or standalone.
-
-```go
-// Configure the global parent connection
-db.SetConn(conn)
-
-// db.Conn(ctx) is the standard pattern
-// to retrieve a connection anywhere in the code base
-err = db.Conn(ctx).Exec("...")
-```
-
-Here if `GetUserOrNil` will use the global db connection if
-no other connection is stored in the context.
-
-But when called from within the function passed to `db.Transaction`
-it will re-use the transaction saved in the context.
-
+Functions called within a transaction automatically use the transaction connection
+via `db.Conn(ctx)`, without needing to know whether they are inside a transaction or not.
 
 ```go
 func GetUserOrNil(ctx context.Context, userID uu.ID) (user *User, err error) {
-	err = db.Conn(ctx).QueryRow(
-		`select * from public.user where id = $1`,
-		userID,
-	).ScanStruct(&user)
-	if err != nil {
-		return nil, db.ReplaceErrNoRows(err, nil)
-	}
-	return user, nil
+    err = db.QueryRow(ctx,
+        /*sql*/ `SELECT * FROM public.user WHERE id = $1`,
+        userID,
+    ).Scan(&user)
+    if err != nil {
+        return nil, db.ReplaceErrNoRows(err, nil)
+    }
+    return user, nil
 }
 
-func DoStuffWithinTransation(ctx context.Context, userID uu.ID) error {
-	return db.Transaction(ctx, func(ctx context.Context) error {
-		user, err := GetUserOrNil(ctx, userID)
-		if err != nil {
-			return err
-		}
-		if user == nil {
-			return db.Conn(ctx).Exec("...")
-		}
-		return db.Conn(ctx).Exec("...")
-	})
+func CreateOrUpdateUser(ctx context.Context, userID uu.ID) error {
+    // GetUserOrNil transparently uses the transaction connection
+    return db.Transaction(ctx, func(ctx context.Context) error {
+        user, err := GetUserOrNil(ctx, userID)
+        if err != nil {
+            return err
+        }
+        if user == nil {
+            return db.InsertRowStruct(ctx, &User{ID: userID, Name: "New"})
+        }
+        return db.Exec(ctx, /*sql*/ `UPDATE public.user SET name = $1 WHERE id = $2`, "Updated", userID)
+    })
 }
 ```
 
-Small helpers:
+Transaction variants:
 
 ```go
-err = db.TransactionOpts(ctx, &sql.TxOptions{ReadOnly: true}, func(context.Context) error { ... })
+// With explicit options
+err = db.TransactionOpts(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable}, func(ctx context.Context) error { ... })
 
-err = db.TransactionReadOnly(ctx, func(context.Context) error { ... })
+// Read-only
+err = db.TransactionReadOnly(ctx, func(ctx context.Context) error { ... })
 
-// Execute the passed function without transaction
-err = db.DebugNoTransaction(ctx, func(context.Context) error { ... })
+// Return a value from a transaction
+user, err := db.TransactionResult[User](ctx, func(ctx context.Context) (User, error) { ... })
+
+// Serialized with automatic retry on serialization failure
+err = db.SerializedTransaction(ctx, func(ctx context.Context) error { ... })
+
+// Savepoints for nested partial rollback
+err = db.TransactionSavepoint(ctx, func(ctx context.Context) error { ... })
+
+// Skip the transaction (useful for debugging)
+err = db.DebugNoTransaction(ctx, func(ctx context.Context) error { ... })
 ```
 
-More sophisticated transactions:
+### Prepared statements
 
-Serialized transactions are typically necessary when an insert depends on a previous select within
-the transaction, but that pre-insert select can't lock the table like it's possible with `SELECT FOR UPDATE`.
 ```go
-err = db.SerializedTransaction(ctx, func(context.Context) error { ... })
+// Prepared query statement
+queryUser, closeStmt, err := db.QueryRowAsStmt[User](ctx, /*sql*/ `SELECT * FROM public.user WHERE id = $1`)
+if err != nil {
+    return err
+}
+defer closeStmt()
+
+user, err := queryUser(ctx, userID)
 ```
 
-`TransactionSavepoint` executes `txFunc` within a database transaction or uses savepoints for rollback.
-If the passed context already has a database transaction connection,
-then a savepoint with a random name is created before the execution of `txFunc`.
-If `txFunc` returns an error, then the transaction is rolled back to the savepoint
-but the transaction from the context is not rolled back.
-If the passed context does not have a database transaction connection,
-then `Transaction(ctx, txFunc)` is called without savepoints.
+### LISTEN/NOTIFY (PostgreSQL)
+
 ```go
-err = db.TransactionSavepoint(ctx, func(context.Context) error { ... })
+err = db.ListenOnChannel(ctx, "user_changes",
+    func(channel, payload string) {
+        fmt.Printf("Notification on %s: %s\n", channel, payload)
+    },
+    func(channel string) {
+        fmt.Printf("Unlistened from %s\n", channel)
+    },
+)
+
+// Later...
+err = db.UnlistenChannel(ctx, "user_changes")
+```
+
+Returns `errors.ErrUnsupported` if the connection does not implement `ListenerConnection`.
+
+### Query options
+
+Filter which struct fields are included in insert, update, and upsert operations:
+
+```go
+// Ignore specific columns
+db.InsertRowStruct(ctx, &user, sqldb.IgnoreColumns("id", "created_at"))
+
+// Include only specific columns
+db.UpdateRowStruct(ctx, "public.user", &user, sqldb.OnlyColumns("name", "email"))
+
+// Ignore by struct field name
+db.InsertRowStruct(ctx, &user, sqldb.IgnoreStructFields("Internal"))
+
+// Built-in filters
+sqldb.IgnoreHasDefault  // Ignore columns with the "default" tag option
+sqldb.IgnorePrimaryKey  // Ignore primary key columns
+sqldb.IgnoreReadOnly    // Ignore read-only columns (applied automatically for insert/update)
+```
+
+
+## Low-level API
+
+The root `sqldb` package exposes the same operations as the `db` package but with explicit connection, reflector, builder, and formatter arguments. This is useful when you need full control or are building your own abstractions:
+
+```go
+user, err := sqldb.QueryRowAs[User](ctx, conn, reflector, conn, /*sql*/ `SELECT * FROM public.user WHERE id = $1`, userID)
+
+err = sqldb.InsertRowStruct(ctx, conn, reflector, queryBuilder, conn, &user)
+
+err = sqldb.Transaction(ctx, conn, &sql.TxOptions{ReadOnly: true}, func(tx sqldb.Connection) error {
+    return tx.Exec(ctx, /*sql*/ `UPDATE public.user SET name = $1 WHERE id = $2`, "Alice", userID)
+})
+```
+
+Driver `Connect` functions return `ConnectionQueryFormatter` which combines `Connection` with `QueryFormatter`, so `conn` can be passed for both the connection and formatter arguments.
+
+
+## Internal caching
+
+The package internally caches struct reflection data and generated SQL queries to avoid repeated reflection and string building on every call. Caches are keyed by struct type, `StructReflector`, `QueryBuilder`, and `QueryFormatter` and are protected by `sync.RWMutex` for concurrent use.
+
+Cached data includes:
+- **Struct reflection**: Flattened field metadata (column names, flags, field indices) for each struct type and reflector combination.
+- **INSERT queries**: The generated SQL query string and struct field indices, cached per struct type and connection configuration.
+- **UPSERT queries**: Same as INSERT caching for upsert operations.
+- **QueryRowByPK queries**: The generated SELECT query and primary key column count.
+
+Query caches are bypassed when `QueryOption` arguments are provided, since options like `ColumnFilter` change which columns are included and are not part of the cache key.
+
+All caches can be cleared with `ClearQueryCaches()` which is useful for testing and debugging.
+
+
+## Testing
+
+### MockConn for unit tests
+
+`MockConn` implements `ListenerConnection` and `QueryFormatter` entirely in memory, allowing you to unit test database-dependent code without a running database.
+
+#### Creating a MockConn
+
+```go
+// Create a MockConn for PostgreSQL-style $1, $2, ... placeholders.
+mockConn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+```
+
+Use builder methods to configure further:
+- `WithNormalizeQuery`: set a `NormalizeQueryFunc` to normalize SQL whitespace before matching
+- `WithQueryLog`: set an `io.Writer` to log all executed SQL statements
+
+#### Registering mock query results
+
+Use `WithQueryResult` to register expected results for specific queries. It returns a cloned `MockConn` so you can chain calls:
+
+```go
+mockConn = mockConn.WithQueryResult(
+    []string{"id", "email", "name"},               // column names
+    [][]driver.Value{                               // rows
+        {"550e8400-e29b-41d4-a716-446655440000", "alice@example.com", "Alice"},
+        {"6ba7b810-9dad-11d1-80b4-00c04fd430c8", "bob@example.com", "Bob"},
+    },
+    `SELECT id, email, name FROM public.user`,      // the query to match
+    // args... (if the query has placeholders)
+)
+```
+
+For queries with arguments:
+
+```go
+mockConn = mockConn.WithQueryResult(
+    []string{"id", "email", "name"},
+    [][]driver.Value{
+        {"550e8400-e29b-41d4-a716-446655440000", "alice@example.com", "Alice"},
+    },
+    `SELECT id, email, name FROM public.user WHERE id = $1`,
+    "550e8400-e29b-41d4-a716-446655440000",         // matches $1
+)
+```
+
+If a query has no matching result registered, the returned `Rows` will have an error wrapping `sql.ErrNoRows`.
+
+#### Using MockConn with the db package
+
+`MockConn` implements `ConnectionQueryFormatter`, so it can be used directly with the `db` package:
+
+```go
+func TestGetUser(t *testing.T) {
+    mockConn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
+        WithQueryResult(
+            []string{"id", "email", "name"},
+            [][]driver.Value{
+                {"550e8400-e29b-41d4-a716-446655440000", "alice@example.com", "Alice"},
+            },
+            `SELECT id, email, name FROM public.user WHERE id = $1`,
+            "550e8400-e29b-41d4-a716-446655440000",
+        )
+
+    ctx := db.ContextWithConn(t.Context(), mockConn)
+
+    user, err := GetUser(ctx, uu.IDFrom("550e8400-e29b-41d4-a716-446655440000"))
+    require.NoError(t, err)
+    assert.Equal(t, "Alice", user.Name)
+    assert.Equal(t, "alice@example.com", user.Email)
+}
+```
+
+#### Mocking Exec calls
+
+By default, `Exec` returns the context error (nil for non-canceled contexts). To customize:
+
+```go
+mockConn.MockExec = func(ctx context.Context, query string, args ...any) error {
+    if strings.Contains(query, "DELETE") {
+        return errs.New("delete not allowed in test")
+    }
+    return nil
+}
+```
+
+#### Custom query handling with MockQuery
+
+For dynamic query responses, set the `MockQuery` function instead of using `WithQueryResult`:
+
+```go
+mockConn.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
+    if strings.Contains(query, "public.user") {
+        return sqldb.NewMockRows("id", "name").
+            WithRow("some-id", "Alice")
+    }
+    return sqldb.NewErrRows(sql.ErrNoRows)
+}
+```
+
+Note: when `MockQuery` is set, `WithQueryResult` results are not consulted.
+
+#### Mocking transactions
+
+Transactions work out of the box. `Begin` returns a copy of the `MockConn` with the transaction ID set, and `Commit`/`Rollback` return nil:
+
+```go
+func TestWithTransaction(t *testing.T) {
+    mockConn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
+        WithQueryResult(
+            []string{"count"},
+            [][]driver.Value{{int64(42)}},
+            `SELECT count(*) FROM public.user`,
+        )
+
+    ctx := db.ContextWithConn(t.Context(), mockConn)
+
+    err := db.Transaction(ctx, func(ctx context.Context) error {
+        count, err := db.QueryRowAs[int64](ctx, `SELECT count(*) FROM public.user`)
+        require.NoError(t, err)
+        assert.Equal(t, int64(42), count)
+        return nil
+    })
+    require.NoError(t, err)
+}
+```
+
+#### Inspecting recorded queries
+
+All queries and exec calls are recorded in the `Recordings` field:
+
+```go
+// After running code under test...
+require.Len(t, mockConn.Recordings.Queries, 1)
+assert.Equal(t, `SELECT id FROM public.user WHERE email = $1`, mockConn.Recordings.Queries[0].Query)
+
+require.Len(t, mockConn.Recordings.Execs, 1)
+assert.Contains(t, mockConn.Recordings.Execs[0].Query, "UPDATE")
+```
+
+#### Logging SQL for debugging
+
+Pass an `io.Writer` to log all SQL statements:
+
+```go
+var buf strings.Builder
+mockConn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
+    WithQueryLog(&buf)
+
+// ... run code under test ...
+
+t.Log("Executed SQL:\n" + buf.String())
+```
+
+### Integration tests
+
+Integration tests use dockerized database instances to avoid conflicts with local installations:
+
+| Driver    | Database        | Port | Docker Compose                         |
+| --------- | --------------- | ---- | -------------------------------------- |
+| pqconn    | PostgreSQL 17   | 5433 | `pqconn/test/docker-compose.yml`       |
+| mysqlconn | MariaDB 11.7    | 3307 | `mysqlconn/test/docker-compose.yml`    |
+| mssqlconn | SQL Server 2022 | 1434 | `mssqlconn/test/docker-compose.yml`    |
+
+Start a test database and run all tests:
+```bash
+docker compose -f pqconn/test/docker-compose.yml up -d
+./test-workspace.sh
+```
+
+After changing a database version in `docker-compose.yml`, reset the data directory:
+```bash
+./pqconn/test/reset-postgres-data.sh
+./mysqlconn/test/reset-mariadb-data.sh
+./mssqlconn/test/reset-mssql-data.sh
 ```

@@ -1,6 +1,7 @@
 package pqconn
 
 import (
+	"context"
 	"errors"
 	"slices"
 
@@ -38,6 +39,22 @@ func wrapKnownErrors(err error) error {
 		}
 	}
 	return err
+}
+
+// Class 22 — Data Exception
+
+// IsInvalidTextRepresentation indicates if the error was caused by
+// an invalid input value for a type, e.g. passing "not-a-uuid" to a uuid column.
+func IsInvalidTextRepresentation(err error) bool {
+	var e *pq.Error
+	return errors.As(err, &e) && e.Code == "22P02" // invalid_text_representation
+}
+
+// IsStringDataRightTruncation indicates if the error was caused by
+// a value being too long for the target column type.
+func IsStringDataRightTruncation(err error) bool {
+	var e *pq.Error
+	return errors.As(err, &e) && e.Code == "22001" // string_data_right_truncation
 }
 
 // Class 23 — Integrity Constraint Violation
@@ -92,8 +109,8 @@ func IsInFailedTransaction(err error) bool {
 // IsFailedTransaction returns true if conn is a transaction
 // that is in a failed state by executing a dummy query
 // and checking for the `in_failed_sql_transaction` error.
-func IsFailedTransaction(conn sqldb.Connection) bool {
-	return conn.IsTransaction() && IsInFailedTransaction(conn.Exec("SELECT 1"))
+func IsFailedTransaction(ctx context.Context, conn sqldb.Connection) bool {
+	return conn.Transaction().Active() && IsInFailedTransaction(conn.Exec(ctx, "SELECT 1"))
 }
 
 // IsTransactionTimeout indicates if the error was caused by
@@ -101,6 +118,43 @@ func IsFailedTransaction(conn sqldb.Connection) bool {
 func IsTransactionTimeout(err error) bool {
 	var e *pq.Error
 	return errors.As(err, &e) && e.Code == "25P04" // transaction_timeout
+}
+
+// Class 40 — Transaction Rollback
+
+// IsSerializationFailure indicates if the error was caused by
+// a transaction serialization failure. This typically occurs when using
+// SERIALIZABLE or REPEATABLE READ isolation levels and concurrent
+// transactions conflict. The caller should retry the transaction.
+func IsSerializationFailure(err error) bool {
+	var e *pq.Error
+	return errors.As(err, &e) && e.Code == "40001" // serialization_failure
+}
+
+// IsDeadlockDetected indicates if the error was caused by
+// a deadlock between concurrent transactions.
+// The caller should retry the transaction.
+func IsDeadlockDetected(err error) bool {
+	var e *pq.Error
+	return errors.As(err, &e) && e.Code == "40P01" // deadlock_detected
+}
+
+// Class 42 — Syntax Error or Access Rule Violation
+
+// IsInsufficientPrivilege indicates if the error was caused by
+// the current user lacking the required permissions for the operation.
+func IsInsufficientPrivilege(err error) bool {
+	var e *pq.Error
+	return errors.As(err, &e) && e.Code == "42501" // insufficient_privilege
+}
+
+// Class 55 — Object Not In Prerequisite State
+
+// IsLockNotAvailable indicates if the error was caused by
+// a lock that could not be acquired, e.g. from SELECT ... FOR UPDATE NOWAIT.
+func IsLockNotAvailable(err error) bool {
+	var e *pq.Error
+	return errors.As(err, &e) && e.Code == "55P03" // lock_not_available
 }
 
 // Class 57 - Operator Intervention
@@ -127,7 +181,7 @@ func IsRaisedException(err error) bool {
 }
 
 // GetRaisedException returns the message
-// of an PL/pgSQL exception or and empty string
+// of a PL/pgSQL exception or an empty string
 // if the error is nil or not an exception.
 func GetRaisedException(err error) string {
 	var e *pq.Error

@@ -2,11 +2,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
-	"errors"
-	"fmt"
-	"reflect"
-	"strings"
 	"time"
 
 	"github.com/domonda/go-sqldb"
@@ -21,192 +16,204 @@ import (
 // Useful for getting the timestamp of a
 // SQL transaction for use in Go code.
 func CurrentTimestamp(ctx context.Context) time.Time {
-	t, err := QueryValue[time.Time](ctx, "SELECT CURRENT_TIMESTAMP")
+	t, err := QueryRowAs[time.Time](ctx, `SELECT CURRENT_TIMESTAMP`)
 	if err != nil {
 		return time.Now()
 	}
 	return t
 }
 
-// Exec executes a query with optional args.
-func Exec(ctx context.Context, query string, args ...any) error {
-	return Conn(ctx).Exec(query, args...)
-}
-
-// QueryRow queries a single row and returns a RowScanner for the results.
-func QueryRow(ctx context.Context, query string, args ...any) sqldb.RowScanner {
-	return Conn(ctx).QueryRow(query, args...)
-}
-
-// QueryRows queries multiple rows and returns a RowsScanner for the results.
-func QueryRows(ctx context.Context, query string, args ...any) sqldb.RowsScanner {
-	return Conn(ctx).QueryRows(query, args...)
-}
-
-// QueryValue queries a single value of type T.
-func QueryValue[T any](ctx context.Context, query string, args ...any) (value T, err error) {
-	err = Conn(ctx).QueryRow(query, args...).Scan(&value)
-	if err != nil {
-		return *new(T), err
-	}
-	return value, nil
-}
-
-// QueryValueReplaceErrNoRows queries a single value of type T.
-// In case of an sql.ErrNoRows error, errNoRows will be called
-// and its result returned together with the default value for T.
-func QueryValueReplaceErrNoRows[T any](ctx context.Context, errNoRows func() error, query string, args ...any) (value T, err error) {
-	err = Conn(ctx).QueryRow(query, args...).Scan(&value)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) && errNoRows != nil {
-			return *new(T), errNoRows()
-		}
-		return *new(T), err
-	}
-	return value, nil
-}
-
-// QueryValueOr queries a single value of type T
-// or returns the passed defaultValue in case of sql.ErrNoRows.
-func QueryValueOr[T any](ctx context.Context, defaultValue T, query string, args ...any) (value T, err error) {
-	err = Conn(ctx).QueryRow(query, args...).Scan(&value)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return defaultValue, nil
-		}
-		return *new(T), err
-	}
-	return value, err
-}
-
-// QueryRowStruct queries a row and scans it as struct.
-func QueryRowStruct[S any](ctx context.Context, query string, args ...any) (row *S, err error) {
-	err = Conn(ctx).QueryRow(query, args...).ScanStruct(&row)
-	if err != nil {
-		return nil, err
-	}
-	return row, nil
-}
-
-// QueryRowStructReplaceErrNoRows queries a row and scans it as struct.
-// In case of an sql.ErrNoRows error, errNoRows will be called
-// and its result returned as error together with nil as row.
-func QueryRowStructReplaceErrNoRows[S any](ctx context.Context, errNoRows func() error, query string, args ...any) (row *S, err error) {
-	err = Conn(ctx).QueryRow(query, args...).ScanStruct(&row)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) && errNoRows != nil {
-			return nil, errNoRows()
-		}
-		return nil, err
-	}
-	return row, nil
-}
-
-// QueryRowStructOrNil queries a row and scans it as struct
-// or returns nil in case of sql.ErrNoRows.
-func QueryRowStructOrNil[S any](ctx context.Context, query string, args ...any) (row *S, err error) {
-	err = Conn(ctx).QueryRow(query, args...).ScanStruct(&row)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return row, nil
-}
-
-// GetRow uses the passed pkValue+pkValues to query a table row
-// and scan it into a struct of type S that must have tagged fields
-// with primary key flags to identify the primary key column names
-// for the passed pkValue+pkValues and a table name.
-func GetRow[S any](ctx context.Context, pkValue any, pkValues ...any) (row *S, err error) {
-	// Using explicit first pkValue value
-	// to not be able to compile without any value
-	pkValues = append([]any{pkValue}, pkValues...)
-	t := reflect.TypeOf(row).Elem()
-	if t.Kind() != reflect.Struct {
-		return nil, fmt.Errorf("expected struct template type instead of %s", t)
-	}
+// QueryRow queries a single row and returns a Row for the results.
+func QueryRow(ctx context.Context, query string, args ...any) *sqldb.Row {
 	conn := Conn(ctx)
-	table, pkColumns, err := pkColumnsOfStruct(conn, t)
-	if err != nil {
-		return nil, err
-	}
-	if len(pkColumns) != len(pkValues) {
-		return nil, fmt.Errorf("got %d primary key values, but struct %s has %d primary key fields", len(pkValues), t, len(pkColumns))
-	}
-	var query strings.Builder
-	fmt.Fprintf(&query, `SELECT * FROM %s WHERE "%s" = $1`, table, pkColumns[0]) //#nosec G104
-	for i := 1; i < len(pkColumns); i++ {
-		fmt.Fprintf(&query, ` AND "%s" = $%d`, pkColumns[i], i+1) //#nosec G104
-	}
-	err = conn.QueryRow(query.String(), pkValues...).ScanStruct(&row)
-	if err != nil {
-		return nil, err
-	}
-	return row, nil
+	return sqldb.QueryRow(
+		ctx,
+		conn,
+		StructReflector(ctx),
+		conn,
+		query,
+		args...,
+	)
 }
 
-// GetRowOrNil uses the passed pkValue+pkValues to query a table row
-// and scan it into a struct of type S that must have tagged fields
-// with primary key flags to identify the primary key column names
-// for the passed pkValue+pkValues and a table name.
-// Returns nil as row and error if no row could be found with the
-// passed pkValue+pkValues.
-func GetRowOrNil[S any](ctx context.Context, pkValue any, pkValues ...any) (row *S, err error) {
-	row, err = GetRow[S](ctx, pkValue, pkValues...)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	return row, nil
+// QueryRowAs queries a single row and scans it as the type T.
+// If T is a struct that does not implement sql.Scanner,
+// the column values are scanned into the struct fields.
+func QueryRowAs[T any](ctx context.Context, query string, args ...any) (val T, err error) {
+	conn := Conn(ctx)
+	return sqldb.QueryRowAs[T](
+		ctx,
+		conn,
+		StructReflector(ctx),
+		conn,
+		query,
+		args...,
+	)
 }
 
-func pkColumnsOfStruct(conn sqldb.Connection, t reflect.Type) (table string, columns []string, err error) {
-	mapper := conn.StructFieldMapper()
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
-		fieldTable, column, flags, ok := mapper.MapStructField(field)
-		if !ok {
-			continue
-		}
-		if fieldTable != "" && fieldTable != table {
-			if table != "" {
-				return "", nil, fmt.Errorf("table name not unique (%s vs %s) in struct %s", table, fieldTable, t)
-			}
-			table = fieldTable
-		}
-
-		if column == "" {
-			fieldTable, columnsEmbed, err := pkColumnsOfStruct(conn, field.Type)
-			if err != nil {
-				return "", nil, err
-			}
-			if fieldTable != "" && fieldTable != table {
-				if table != "" {
-					return "", nil, fmt.Errorf("table name not unique (%s vs %s) in struct %s", table, fieldTable, t)
-				}
-				table = fieldTable
-			}
-			columns = append(columns, columnsEmbed...)
-		} else if flags.PrimaryKey() {
-			if err = conn.ValidateColumnName(column); err != nil {
-				return "", nil, fmt.Errorf("%w in struct field %s.%s", err, t, field.Name)
-			}
-			columns = append(columns, column)
-		}
-	}
-	return table, columns, nil
+// QueryRowAsOr queries a single row and scans it as the type T,
+// or returns the passed defaultVal in case of sql.ErrNoRows.
+func QueryRowAsOr[T any](ctx context.Context, defaultVal T, query string, args ...any) (val T, err error) {
+	conn := Conn(ctx)
+	return sqldb.QueryRowAsOr(
+		ctx,
+		conn,
+		StructReflector(ctx),
+		conn,
+		defaultVal,
+		query,
+		args...,
+	)
 }
 
-// QueryStructSlice returns queried rows as slice of the generic type S
-// which must be a struct or a pointer to a struct.
-func QueryStructSlice[S any](ctx context.Context, query string, args ...any) (rows []S, err error) {
-	err = Conn(ctx).QueryRows(query, args...).ScanStructSlice(&rows)
-	if err != nil {
-		return nil, err
-	}
-	return rows, nil
+// QueryRowAsStmt prepares a statement that queries a single row and scans it as the type T.
+// Returns a queryFunc to execute the query with different args each time
+// and a closeStmt function that must be called when done.
+func QueryRowAsStmt[T any](ctx context.Context, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
+	conn := Conn(ctx)
+	return sqldb.QueryRowAsStmt[T](
+		ctx,
+		conn,
+		StructReflector(ctx),
+		conn,
+		query,
+	)
+}
+
+// QueryRowByPK queries a table row by primary key and scans it into a struct of type S.
+// Table name and primary key columns are determined by
+// the [StructReflector] from the context. The default reflector uses `db` struct tags
+// (e.g., sqldb.TableName `db:"my_table"`, field `db:"id,primarykey"`).
+// The number of pkValue+pkValues must match the number of primary key columns.
+func QueryRowByPK[S sqldb.StructWithTableName](ctx context.Context, pkValue any, pkValues ...any) (S, error) {
+	conn := Conn(ctx)
+	return sqldb.QueryRowByPK[S](
+		ctx,
+		conn,
+		StructReflector(ctx),
+		QueryBuilder(ctx),
+		conn,
+		pkValue,
+		pkValues...,
+	)
+}
+
+// QueryRowByPKOr queries a table row by primary key and scans it into a struct of type S.
+// Returns defaultVal and no error if no row was found.
+// Table name and primary key columns are determined by
+// the [StructReflector] from the context. The default reflector uses `db` struct tags
+// (e.g., sqldb.TableName `db:"my_table"`, field `db:"id,primarykey"`).
+// The number of pkValue+pkValues must match the number of primary key columns.
+func QueryRowByPKOr[S sqldb.StructWithTableName](ctx context.Context, defaultVal S, pkValue any, pkValues ...any) (S, error) {
+	conn := Conn(ctx)
+	return sqldb.QueryRowByPKOr(
+		ctx,
+		conn,
+		StructReflector(ctx),
+		QueryBuilder(ctx),
+		conn,
+		defaultVal,
+		pkValue,
+		pkValues...,
+	)
+}
+
+// QueryRowAsMap queries a single row and returns the columns as map
+// using the column names as keys.
+func QueryRowAsMap[K ~string, V any](ctx context.Context, query string, args ...any) (m map[K]V, err error) {
+	conn := Conn(ctx)
+	return sqldb.QueryRowAsMap[K, V](
+		ctx,
+		conn,
+		conn,
+		query,
+		args...,
+	)
+}
+
+// QueryRowsAsSlice returns queried rows as slice of the generic type T.
+// If T is a struct, column values are scanned into fields
+// using the [StructReflector] from the context.
+func QueryRowsAsSlice[T any](ctx context.Context, query string, args ...any) (rows []T, err error) {
+	conn := Conn(ctx)
+	return sqldb.QueryRowsAsSlice[T](
+		ctx,
+		conn,
+		StructReflector(ctx),
+		conn,
+		query,
+		args...,
+	)
+}
+
+// QueryRowsAsStrings scans the query result into a table of strings
+// where the first row is a header row with the column names.
+//
+// Byte slices will be interpreted as strings,
+// nil (SQL NULL) will be converted to an empty string,
+// all other types are converted with `fmt.Sprint`.
+//
+// If the query result has no rows, then only the header row
+// and no error will be returned.
+func QueryRowsAsStrings(ctx context.Context, query string, args ...any) (rows [][]string, err error) {
+	conn := Conn(ctx)
+	return sqldb.QueryRowsAsStrings(
+		ctx,
+		conn,
+		conn,
+		query,
+		args...,
+	)
+}
+
+// QueryStructCallback calls the passed callback with a scanned struct
+// for every row returned by the query.
+// S must be a struct or pointer to struct type.
+// Column values are scanned into struct fields
+// using the [StructReflector] from the context.
+//
+// If a non nil error is returned from the callback, then this error
+// is returned immediately without scanning further rows.
+//
+// In case of zero rows, no error will be returned.
+func QueryStructCallback[S any](ctx context.Context, callback func(S) error, query string, args ...any) error {
+	conn := Conn(ctx)
+	return sqldb.QueryStructCallback(
+		ctx,
+		conn,
+		StructReflector(ctx),
+		conn,
+		callback,
+		query,
+		args...,
+	)
+}
+
+// QueryCallback calls the passed callback
+// with scanned values or a struct for every row.
+// Struct arguments are scanned using the [StructReflector] from the context.
+//
+// If the callback function has a single struct or struct pointer argument,
+// then RowScanner.ScanStruct will be used per row,
+// else RowScanner.Scan will be used for all arguments of the callback.
+// If the function has a context.Context as first argument,
+// then the passed ctx will be passed on.
+//
+// The callback can have no result or a single error result value.
+//
+// If a non nil error is returned from the callback, then this error
+// is returned immediately by this function without scanning further rows.
+//
+// In case of zero rows, no error will be returned.
+func QueryCallback(ctx context.Context, callback any, query string, args ...any) error {
+	conn := Conn(ctx)
+	return sqldb.QueryCallback(
+		ctx,
+		conn,
+		StructReflector(ctx),
+		conn,
+		callback,
+		query,
+		args...,
+	)
 }

@@ -3,48 +3,59 @@ package pqconn
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/impl"
 )
 
-const (
-	Driver = "postgres"
+const Driver = "postgres"
 
-	argFmt = "$%d"
-)
-
-// New creates a new sqldb.Connection using the passed sqldb.Config
+// Connect establishes a new [sqldb.Connection] using the passed config
 // and github.com/lib/pq as driver implementation.
-// The connection is pinged with the passed context
-// and only returned when there was no error from the ping.
-func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
+// The returned connection also implements [sqldb.ListenerConnection].
+// The connection is pinged with the passed context and only returned
+// when there was no error from the ping.
+func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
-	config.DefaultIsolationLevel = sql.LevelReadCommitted // postgres default
 
 	db, err := config.Connect(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	if config.ReadOnly {
+		_, err = db.ExecContext(ctx, `SET default_transaction_read_only = on`)
+		if err != nil {
+			return nil, fmt.Errorf("failed to set default_transaction_read_only: %w", err)
+		}
+		// transaction_read_only should be on after setting default_transaction_read_only
+		var readOnlyMode string
+		err = db.QueryRowContext(ctx, `SHOW transaction_read_only`).Scan(&readOnlyMode)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check read-only mode: %w", err)
+		}
+		if readOnlyMode != "on" {
+			return nil, errors.New("read-only mode is not enabled")
+		}
+	}
+
 	return &connection{
-		ctx:              ctx,
-		db:               db,
-		config:           config,
-		structFieldNamer: sqldb.DefaultStructFieldMapping,
+		db:     db,
+		config: config,
 	}, nil
 }
 
-// MustNew creates a new sqldb.Connection using the passed sqldb.Config
+// MustConnect creates a new sqldb.Connection using the passed sqldb.Config
 // and github.com/lib/pq as driver implementation.
-// The connection is pinged with the passed context,
-// and only returned when there was no error from the ping.
-// Errors are paniced.
-func MustNew(ctx context.Context, config *sqldb.Config) sqldb.Connection {
-	conn, err := New(ctx, config)
+// The connection is pinged with the passed context and only returned
+// when there was no error from the ping.
+// Errors are panicked.
+func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
+	conn, err := Connect(ctx, config)
 	if err != nil {
 		panic(err)
 	}
@@ -52,40 +63,17 @@ func MustNew(ctx context.Context, config *sqldb.Config) sqldb.Connection {
 }
 
 type connection struct {
-	ctx              context.Context
-	db               *sql.DB
-	config           *sqldb.Config
-	structFieldNamer sqldb.StructFieldMapper
+	QueryFormatter
+
+	db     *sql.DB
+	config *sqldb.ConnConfig
 }
 
-func (conn *connection) clone() *connection {
-	c := *conn
-	return &c
+func (conn *connection) Config() *sqldb.ConnConfig {
+	return conn.config
 }
 
-func (conn *connection) Context() context.Context { return conn.ctx }
-
-func (conn *connection) WithContext(ctx context.Context) sqldb.Connection {
-	if ctx == conn.ctx {
-		return conn
-	}
-	c := conn.clone()
-	c.ctx = ctx
-	return c
-}
-
-func (conn *connection) WithStructFieldMapper(namer sqldb.StructFieldMapper) sqldb.Connection {
-	c := conn.clone()
-	c.structFieldNamer = namer
-	return c
-}
-
-func (conn *connection) StructFieldMapper() sqldb.StructFieldMapper {
-	return conn.structFieldNamer
-}
-
-func (conn *connection) Ping(timeout time.Duration) error {
-	ctx := conn.ctx
+func (conn *connection) Ping(ctx context.Context, timeout time.Duration) error {
 	if timeout > 0 {
 		var cancel func()
 		ctx, cancel = context.WithTimeout(ctx, timeout)
@@ -98,85 +86,52 @@ func (conn *connection) Stats() sql.DBStats {
 	return conn.db.Stats()
 }
 
-func (conn *connection) Config() *sqldb.Config {
-	return conn.config
-}
-
-func (conn *connection) Placeholder(paramIndex int) string {
-	return fmt.Sprintf(argFmt, paramIndex+1)
-}
-
-func (conn *connection) ValidateColumnName(name string) error {
-	return validateColumnName(name)
-}
-
-func (conn *connection) Exec(query string, args ...any) error {
-	impl.WrapArrayArgs(args)
-	_, err := conn.db.ExecContext(conn.ctx, query, args...)
+func (conn *connection) Exec(ctx context.Context, query string, args ...any) error {
+	wrapArrayArgs(args)
+	_, err := conn.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return wrapKnownErrors(err)
 	}
 	return nil
 }
 
-func (conn *connection) Update(table string, values sqldb.Values, where string, args ...any) error {
-	return impl.Update(conn, table, values, where, argFmt, args)
-}
-
-func (conn *connection) UpdateReturningRow(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowScanner {
-	return impl.UpdateReturningRow(conn, table, values, returning, where, args)
-}
-
-func (conn *connection) UpdateReturningRows(table string, values sqldb.Values, returning, where string, args ...any) sqldb.RowsScanner {
-	return impl.UpdateReturningRows(conn, table, values, returning, where, args)
-}
-
-func (conn *connection) UpdateStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.UpdateStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns)
-}
-
-func (conn *connection) UpsertStruct(table string, rowStruct any, ignoreColumns ...sqldb.ColumnFilter) error {
-	return impl.UpsertStruct(conn, table, rowStruct, conn.structFieldNamer, argFmt, ignoreColumns)
-}
-
-func (conn *connection) QueryRow(query string, args ...any) sqldb.RowScanner {
-	impl.WrapArrayArgs(args)
-	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
+func (conn *connection) Query(ctx context.Context, query string, args ...any) sqldb.Rows {
+	wrapArrayArgs(args)
+	sqlRows, err := conn.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		err = wrapKnownErrors(err)
-		return sqldb.RowScannerWithError(err)
+		return sqldb.NewErrRows(wrapKnownErrors(err))
 	}
-	return impl.NewRowScanner(rows, conn.structFieldNamer, query, argFmt, args)
+	return rows{sqlRows}
 }
 
-func (conn *connection) QueryRows(query string, args ...any) sqldb.RowsScanner {
-	impl.WrapArrayArgs(args)
-	rows, err := conn.db.QueryContext(conn.ctx, query, args...)
-	if err != nil {
-		err = wrapKnownErrors(err)
-		return sqldb.RowsScannerWithError(err)
-	}
-	return impl.NewRowsScanner(conn.ctx, rows, conn.structFieldNamer, query, argFmt, args)
-}
-
-func (conn *connection) IsTransaction() bool {
-	return false
-}
-
-func (conn *connection) TransactionNo() uint64 {
-	return 0
-}
-
-func (conn *connection) TransactionOptions() (*sql.TxOptions, bool) {
-	return nil, false
-}
-
-func (conn *connection) Begin(opts *sql.TxOptions, no uint64) (sqldb.Connection, error) {
-	tx, err := conn.db.BeginTx(conn.ctx, opts)
+func (conn *connection) Prepare(ctx context.Context, query string) (sqldb.Stmt, error) {
+	s, err := conn.db.PrepareContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-	return newTransaction(conn, tx, opts, no), nil
+	return stmt{query, s}, nil
+}
+
+func (*connection) DefaultIsolationLevel() sql.IsolationLevel {
+	return sql.LevelReadCommitted // postgres default
+}
+
+func (conn *connection) Transaction() sqldb.TransactionState {
+	return sqldb.TransactionState{
+		ID:   0,
+		Opts: nil,
+	}
+}
+
+func (conn *connection) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
+	if id == 0 {
+		return nil, errors.New("transaction ID must not be zero")
+	}
+	tx, err := conn.db.BeginTx(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	return newTransaction(conn, tx, opts, id), nil
 }
 
 func (conn *connection) Commit() error {

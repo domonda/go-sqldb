@@ -1,0 +1,120 @@
+package sqldb
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"time"
+)
+
+// NewGenericConn returns a generic [Connection] implementation
+// wrapping an existing [sql.DB].
+//
+// The config parameter holds connection metadata like the driver name and DSN.
+//
+// defaultIsolationLevel is used when beginning a transaction without explicit options.
+//
+// queryFormatter formats queries before they are sent to the driver;
+// if nil, [StdQueryFormatter] is used.
+//
+// wrapErr is an optional function called on every error returned from
+// [Connection.Exec] and [Connection.Query] — use it to map
+// driver-specific errors to generic sqldb error types like [ErrUniqueViolation].
+func NewGenericConn(db *sql.DB, config *ConnConfig, defaultIsolationLevel sql.IsolationLevel, queryFormatter QueryFormatter, wrapErr func(error) error) Connection {
+	if queryFormatter == nil {
+		queryFormatter = StdQueryFormatter{}
+	}
+	return &genericConn{
+		QueryFormatter:        queryFormatter,
+		db:                    db,
+		config:                config,
+		defaultIsolationLevel: defaultIsolationLevel,
+		wrapErr:               wrapErr,
+	}
+}
+
+type genericConn struct {
+	QueryFormatter
+	db                    *sql.DB
+	config                *ConnConfig
+	defaultIsolationLevel sql.IsolationLevel
+	wrapErr               func(error) error // optional; wraps Exec/Query errors
+}
+
+func (conn *genericConn) Config() *ConnConfig {
+	return conn.config
+}
+
+func (conn *genericConn) Ping(ctx context.Context, timeout time.Duration) error {
+	if timeout > 0 {
+		var cancel func()
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
+	return conn.db.PingContext(ctx)
+}
+
+func (conn *genericConn) Stats() sql.DBStats {
+	return conn.db.Stats()
+}
+
+func (conn *genericConn) Exec(ctx context.Context, query string, args ...any) error {
+	_, err := conn.db.ExecContext(ctx, query, args...)
+	if err != nil && conn.wrapErr != nil {
+		return conn.wrapErr(err)
+	}
+	return err
+}
+
+func (conn *genericConn) Query(ctx context.Context, query string, args ...any) Rows {
+	rows, err := conn.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		if conn.wrapErr != nil {
+			err = conn.wrapErr(err)
+		}
+		return NewErrRows(err)
+	}
+	return rows
+}
+
+func (conn *genericConn) Prepare(ctx context.Context, query string) (Stmt, error) {
+	stmt, err := conn.db.PrepareContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	return NewStmt(stmt, query), nil
+}
+
+func (conn *genericConn) DefaultIsolationLevel() sql.IsolationLevel {
+	return conn.defaultIsolationLevel
+}
+
+func (conn *genericConn) Transaction() TransactionState {
+	return TransactionState{
+		ID:   0,
+		Opts: nil,
+	}
+}
+
+func (conn *genericConn) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (Connection, error) {
+	if id == 0 {
+		return nil, errors.New("transaction ID must not be zero")
+	}
+	tx, err := conn.db.BeginTx(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	return newGenericTx(conn, tx, opts, id), nil
+}
+
+func (conn *genericConn) Commit() error {
+	return ErrNotWithinTransaction
+}
+
+func (conn *genericConn) Rollback() error {
+	return ErrNotWithinTransaction
+}
+
+func (conn *genericConn) Close() error {
+	return conn.db.Close()
+}

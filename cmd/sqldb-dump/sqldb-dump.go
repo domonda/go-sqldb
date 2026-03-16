@@ -5,30 +5,32 @@ import (
 
 	"github.com/domonda/go-pretty"
 	"github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/db"
 	"github.com/domonda/go-sqldb/information"
 	"github.com/domonda/go-sqldb/pqconn"
 )
 
 func main() {
-	config := &sqldb.Config{
+	config := &sqldb.ConnConfig{
 		Driver: "postgres",
 		Host:   "localhost",
 		User:   "postgres",
 		Extra:  map[string]string{"sslmode": "disable"},
 	}
 
-	conn, err := pqconn.New(context.Background(), config)
+	ctx := context.Background()
+
+	conn, err := pqconn.Connect(ctx, config)
 	if err != nil {
 		panic(err)
 	}
 
-	ctx := db.ContextWithConn(context.Background(), conn)
-
-	tables, err := information.GetAllTables(ctx)
+	tables, err := information.GetAllTables(ctx, conn)
 	if err != nil {
 		panic(err)
 	}
 
-	pretty.Println(tables, "  ")
+	_, err = pretty.Println(tables, "  ")
+	if err != nil {
+		panic(err)
+	}
 }

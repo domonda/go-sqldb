@@ -1,0 +1,74 @@
+name: Go
+
+on:
+  push:
+    branches: [ "master", "slim-conn" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpassword
+          POSTGRES_DB: testdb
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U testuser -d testdb"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      mariadb:
+        image: mariadb:11.7
+        env:
+          MARIADB_USER: testuser
+          MARIADB_PASSWORD: testpassword
+          MARIADB_DATABASE: testdb
+          MARIADB_ROOT_PASSWORD: rootpassword
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "TestPass123!"
+        ports:
+          - 1433:1433
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: '1.24'
+
+    - name: Build all modules
+      run: go list -f '{{.Dir}}' -m | xargs -I {} go build -v {}/...
+
+    - name: Vet all modules
+      run: go list -f '{{.Dir}}' -m | xargs -I {} go vet {}/...
+
+    - name: Gosec all modules
+      run: go list -f '{{.Dir}}' -m | grep -v /cmd/ | xargs -I {} go tool gosec {}/...
+
+    - name: Test all modules
+      env:
+        POSTGRES_PORT: "5432"
+        MYSQL_PORT: "3306"
+        MSSQL_PORT: "1433"
+      run: go list -f '{{.Dir}}' -m | xargs -I {} go test -p 1 -count=1 -v {}/...

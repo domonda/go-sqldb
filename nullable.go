@@ -5,6 +5,9 @@ import (
 	"reflect"
 )
 
+// Nullable wraps a value of type T that may be NULL in SQL.
+// Valid is true when Val holds a non-NULL scanned value.
+// Implements [sql.Scanner] and [driver.Valuer].
 type Nullable[T any] struct {
 	Val   T
 	Valid bool
@@ -24,7 +27,7 @@ func (n *Nullable[T]) Scan(value any) error {
 	return nil
 }
 
-// Value implements the driver sql/driver.Valuer interface.
+// Value implements the sql/driver.Valuer interface.
 func (n Nullable[T]) Value() (driver.Value, error) {
 	if !n.Valid {
 		return nil, nil
@@ -35,17 +38,20 @@ func (n Nullable[T]) Value() (driver.Value, error) {
 // IsNull returns if val would be interpreted as NULL by a SQL driver.
 // It checks if val is nil, implements driver.Valuer or is a nil pointer, slice, or map.
 func IsNull(val any) bool {
-	if val == nil {
+	switch val := val.(type) {
+	case nil:
 		return true
-	}
 
-	if valuer, ok := val.(driver.Valuer); ok {
-		v, err := valuer.Value()
+	case driver.Valuer:
+		v, err := val.Value()
 		return v == nil && err == nil
+
+	case interface{ IsNull() bool }:
+		return val.IsNull()
 	}
 
 	switch v := reflect.ValueOf(val); v.Kind() {
-	case reflect.Ptr, reflect.Slice, reflect.Map:
+	case reflect.Pointer, reflect.Slice, reflect.Map:
 		return v.IsNil()
 	}
 
@@ -56,25 +62,23 @@ func IsNull(val any) bool {
 // or if it is the types zero value
 // or if it implements interface{ IsZero() bool } returning true.
 func IsNullOrZero(val any) bool {
-	if val == nil {
+	if IsNull(val) {
 		return true
 	}
-
 	if v, ok := val.(interface{ IsZero() bool }); ok && v.IsZero() {
 		return true
 	}
-
 	if uuid, ok := val.([16]byte); ok {
 		var zero [16]byte
 		if uuid == zero {
 			return true
 		}
 	}
-
-	if valuer, ok := val.(driver.Valuer); ok {
-		v, err := valuer.Value()
-		return v == nil && err == nil
-	}
-
 	return reflect.ValueOf(val).IsZero()
+}
+
+// IsNullable returns true if the zero value of t
+// would be interpreted as SQL NULL by [IsNull].
+func IsNullable(t reflect.Type) bool {
+	return IsNull(reflect.Zero(t).Interface())
 }

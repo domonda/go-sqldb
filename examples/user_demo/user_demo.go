@@ -16,7 +16,9 @@ import (
 )
 
 type User struct {
-	ID uu.ID `db:"id,pk,default"`
+	sqldb.TableName `db:"public.user"`
+
+	ID uu.ID `db:"id,primarykey,default"`
 
 	Email email.NullableAddress   `db:"email"`
 	Title nullable.NonEmptyString `db:"title"`
@@ -29,8 +31,12 @@ type User struct {
 	DisabledAt nullable.Time `db:"disabled_at"`
 }
 
-func setupDB() {
-	config := &sqldb.Config{
+var refl = sqldb.NewTaggedStructReflector()
+
+func main() {
+	ctx := context.Background()
+
+	config := &sqldb.ConnConfig{
 		Driver:   "postgres",
 		Host:     "localhost",
 		User:     "postgres",
@@ -38,75 +44,47 @@ func setupDB() {
 		Extra:    map[string]string{"sslmode": "disable"},
 	}
 
-	fmt.Println("Connecting to:", config.ConnectURL())
+	fmt.Println("Connecting to:", config)
 
-	conn, err := pqconn.New(context.Background(), config)
+	conn, err := pqconn.Connect(ctx, config)
 	if err != nil {
 		panic(err)
 	}
 
-	conn = conn.WithStructFieldMapper(&sqldb.TaggedStructFieldMapping{
-		NameTag:          "col",
-		Ignore:           "ignore",
-		UntaggedNameFunc: sqldb.ToSnakeCase,
-	})
-
-	db.SetConn(conn)
-}
-
-func main() {
-	setupDB()
-
-	ctx := context.Background()
-
-	var users []User
-	err := db.QueryRows(ctx, `select * from public.user`).ScanStructSlice(&users)
+	// Query all users as struct slice
+	users, err := sqldb.QueryRowsAsSlice[User](ctx, conn, refl, conn, `select * from public.user`)
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println(users)
 
-	var userEmails []string
-	err = db.QueryRows(ctx, `select email from public.user`).ScanSlice(&userEmails)
+	// Query single column as slice
+	userEmails, err := sqldb.QueryRowsAsSlice[string](ctx, conn, refl, conn, `select email from public.user`)
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println(userEmails)
 
-	err = db.QueryRows(ctx, `select name, email from public.user`).ForEachRow(
-		func(row sqldb.RowScanner) error {
-			var name, email string
-			err := row.Scan(&name, &email)
-			if err != nil {
-				return err
-			}
-			_, err = fmt.Printf("%q <%s>\n", name, email)
-			return err
-		},
-	)
-	if err != nil {
-		panic(err)
-	}
-
-	err = db.QueryRows(ctx, `select name, email from public.user`).ForEachRowCall(
+	// Callback with scanned values for each row
+	err = sqldb.QueryCallback(ctx, conn, refl, conn,
 		func(name, email string) {
 			fmt.Printf("%q <%s>\n", name, email)
 		},
+		`select name, email from public.user`,
 	)
 	if err != nil {
 		panic(err)
 	}
 
+	// Insert a struct with table name from struct tag
 	newUser := &User{ /* ... */ }
-	err = db.InsertStruct(ctx, "public.user", newUser)
+	err = sqldb.InsertRowStruct(ctx, conn, refl, sqldb.StdQueryBuilder{}, conn, newUser)
 	if err != nil {
 		panic(err)
 	}
 
-	err = db.InsertStruct(ctx, "public.user", newUser, sqldb.IgnoreNullOrZeroDefault)
-	if err != nil {
-		panic(err)
-	}
-
-	err = db.Insert(ctx, "public.user", sqldb.Values{
+	// Insert with values map
+	err = sqldb.Insert(ctx, conn, sqldb.StdQueryBuilder{}, conn, "public.user", sqldb.Values{
 		"name":  "Erik Unger",
 		"email": "erik@domonda.com",
 	})
@@ -114,15 +92,57 @@ func main() {
 		panic(err)
 	}
 
-	err = db.UpsertStruct(ctx, "public.user", newUser, sqldb.IgnoreColumns("created_at"))
+	// Upsert a struct
+	err = sqldb.UpsertRowStruct(ctx, conn, refl, sqldb.StdQueryBuilder{}, conn, newUser, sqldb.IgnoreColumns("created_at"))
+	if err != nil {
+		panic(err)
+	}
+
+	// Transaction
+	txOpts := &sql.TxOptions{Isolation: sql.LevelWriteCommitted}
+
+	err = sqldb.Transaction(ctx, conn, txOpts, func(tx sqldb.Connection) error {
+		err := tx.Exec(ctx, "...")
+		if err != nil {
+			return err
+		}
+		return tx.Exec(ctx, "...")
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	// Use context with timeout
+	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
+	defer cancel()
+
+	err = conn.Exec(ctxTimeout, "...")
+	if err != nil {
+		panic(err)
+	}
+
+	// HTTP handler using request context
+	_ = http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
+		err := conn.Exec(request.Context(), "...")
+		if err != nil {
+			http.Error(response, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		_, _ = response.Write([]byte("OK"))
+	})
+
+	// Full example with db package
+
+	db.SetConn(conn)
+
+	err = db.Exec(ctx, "...")
 	if err != nil {
 		panic(err)
 	}
 
 	userID := uu.IDFrom("b26200df-5973-4ea5-a284-24dd15b6b85b")
 
-	txOpts := &sql.TxOptions{Isolation: sql.LevelWriteCommitted}
-	err = db.TransactionOpts(ctx, txOpts, func(ctx context.Context) error {
+	err = db.Transaction(ctx, func(ctx context.Context) error {
 		user, err := GetUserOrNil(ctx, userID)
 		if err != nil {
 			return err
@@ -135,31 +155,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	defer cancel()
-
-	err = db.Exec(ctx, "...")
-	if err != nil {
-		panic(err)
-	}
-
-	_ = http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		err := db.Exec(request.Context(), "...")
-		if err != nil {
-			http.Error(response, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		_, _ = response.Write([]byte("OK"))
-	})
-
 }
 
 func GetUserOrNil(ctx context.Context, userID uu.ID) (user *User, err error) {
 	err = db.QueryRow(ctx,
 		`select * from public.user where id = $1`,
 		userID,
-	).ScanStruct(&user)
+	).Scan(&user)
 	if err != nil {
 		return nil, db.ReplaceErrNoRows(err, nil)
 	}

@@ -30,7 +30,7 @@ type listener struct {
 }
 
 func (conn *connection) getOrCreateListener() *listener {
-	connURL := conn.config.ConnectURL()
+	connURL := conn.config.String()
 
 	globalListenersMtx.Lock()
 	defer globalListenersMtx.Unlock()
@@ -59,7 +59,7 @@ func (conn *connection) getOrCreateListener() *listener {
 }
 
 func (conn *connection) getListenerOrNil() *listener {
-	connURL := conn.config.ConnectURL()
+	connURL := conn.config.String()
 
 	globalListenersMtx.RLock()
 	l := globalListeners[connURL]
@@ -152,7 +152,7 @@ func (l *listener) isListeningOnChannel(channel string) bool {
 func (l *listener) listenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
 	err = l.conn.Listen(channel)
 	if err != nil {
-		return fmt.Errorf("sqlxconn can't listenOnChannel %q because: %w", channel, err)
+		return fmt.Errorf("pqconn failed to listenOnChannel %q: %w", channel, err)
 	}
 
 	l.callbacksMtx.Lock()
@@ -171,12 +171,12 @@ func (l *listener) listenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, 
 // called on nil listener will return an error
 func (l *listener) unlistenChannel(channel string) (err error) {
 	if l == nil || l.conn == nil {
-		return fmt.Errorf("sqlxconn can't unlistenChannel %q because: no db connection", channel)
+		return fmt.Errorf("pqconn unable to unlistenChannel %q: no db connection", channel)
 	}
 
 	err = l.conn.Unlisten(channel)
 	if err != nil {
-		return fmt.Errorf("sqlxconn can't unlistenChannel %q because: %w", channel, err)
+		return fmt.Errorf("pqconn failed to unlistenChannel %q: %w", channel, err)
 	}
 
 	l.callbacksMtx.Lock()
@@ -195,10 +195,10 @@ func (l *listener) unlistenChannel(channel string) (err error) {
 func logListenerConnectionEvent(event pq.ListenerEventType, err error) {
 	switch {
 	case err != nil:
-		sqldb.ErrLogger.Printf("sqlxconn: got listener connection event=%q error=%v", connectionEvent(event), err)
+		sqldb.ErrLogger.Printf("pqconn: got listener connection event=%q error=%v", connectionEvent(event), err)
 
 	case ListenerEventLogger != nil:
-		ListenerEventLogger.Printf("sqlxconn: got listener connection event=%q", connectionEvent(event))
+		ListenerEventLogger.Printf("pqconn: got listener connection event=%q", connectionEvent(event))
 	}
 }
 

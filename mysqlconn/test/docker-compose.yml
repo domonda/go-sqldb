@@ -1,0 +1,22 @@
+name: go-sqldb-mysqlconn-test
+
+services:
+  mariadb:
+    image: mariadb:11.7
+    restart: unless-stopped
+    environment:
+      MARIADB_USER: testuser
+      MARIADB_PASSWORD: testpassword
+      MARIADB_DATABASE: testdb
+      MARIADB_ROOT_PASSWORD: rootpassword
+    ports:
+      # Use 3307 as the host port to avoid conflicts with
+      # a local MySQL/MariaDB using the default port 3306
+      - "3307:3306"
+    volumes:
+      - ./mariadb-data:/var/lib/mysql
+    # Performance settings for testing only (unsafe for production)
+    command:
+      - --innodb-flush-log-at-trx-commit=0
+      - --sync-binlog=0
+      - --innodb-doublewrite=0

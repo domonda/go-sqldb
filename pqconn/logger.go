@@ -12,9 +12,9 @@ func recoverAndLogListenerPanic(operation, channel string) {
 		return
 
 	case ListenerEventLogger != nil:
-		ListenerEventLogger.Printf("%s on channel %q paniced with: %+v", operation, channel, p)
+		ListenerEventLogger.Printf("%s on channel %q panicked with: %+v", operation, channel, p)
 
 	case sqldb.ErrLogger != nil:
-		sqldb.ErrLogger.Printf("%s on channel %q paniced with: %+v", operation, channel, p)
+		sqldb.ErrLogger.Printf("%s on channel %q panicked with: %+v", operation, channel, p)
 	}
 }

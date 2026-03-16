@@ -3,7 +3,6 @@ package sqldb
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"time"
 )
 
@@ -15,120 +14,78 @@ type (
 	OnUnlistenFunc func(channel string)
 )
 
-// PlaceholderFormatter is an interface for formatting query parameter placeholders
-// implemented by database connections.
-type PlaceholderFormatter interface {
-	// Placeholder formats a query parameter placeholder
-	// for the paramIndex starting at zero.
-	Placeholder(paramIndex int) string
+// TransactionState holds the state of a database transaction.
+// A zero value TransactionState means no active transaction.
+type TransactionState struct {
+	ID   uint64
+	Opts *sql.TxOptions
 }
 
-// ArgFmtPlaceholderFormatter implements PlaceholderFormatter
-// using a fmt.Sprintf format string with paramIndex+1 as argument.
-// For example, ArgFmtPlaceholderFormatter("$%d") produces "$1", "$2", etc.
-type ArgFmtPlaceholderFormatter string
+// Active returns true if there is an active transaction (ID != 0).
+func (ts TransactionState) Active() bool {
+	return ts.ID != 0
+}
 
-func (f ArgFmtPlaceholderFormatter) Placeholder(paramIndex int) string {
-	return fmt.Sprintf(string(f), paramIndex+1)
+type Preparer interface {
+	// Prepare a statement for execution.
+	Prepare(ctx context.Context, query string) (Stmt, error)
+}
+
+type Executor interface {
+	// Exec executes a query with optional args.
+	Exec(ctx context.Context, query string, args ...any) error
+}
+
+type Querier interface {
+	// Query queries rows with optional args.
+	// Any error will be returned by the Rows.Err method.
+	Query(ctx context.Context, query string, args ...any) Rows
 }
 
 // Connection represents a database connection or transaction
 type Connection interface {
-	PlaceholderFormatter
+	QueryFormatter
 
-	// Context that all connection operations use.
-	// See also WithContext.
-	Context() context.Context
+	// Config returns the configuration used to establish this connection.
+	Config() *ConnConfig
 
-	// WithContext returns a connection that uses the passed
-	// context for its operations.
-	WithContext(ctx context.Context) Connection
-
-	// WithStructFieldMapper returns a copy of the connection
-	// that will use the passed StructFieldMapper.
-	WithStructFieldMapper(StructFieldMapper) Connection
-
-	// StructFieldMapper used by methods of this Connection.
-	StructFieldMapper() StructFieldMapper
+	// Stats returns the sql.DBStats of this connection.
+	Stats() sql.DBStats
 
 	// Ping returns an error if the database
 	// does not answer on this connection
 	// with an optional timeout.
 	// The passed timeout has to be greater zero
 	// to be considered.
-	Ping(timeout time.Duration) error
+	Ping(ctx context.Context, timeout time.Duration) error
 
-	// Stats returns the sql.DBStats of this connection.
-	Stats() sql.DBStats
-
-	// Config returns the configuration used
-	// to create this connection.
-	Config() *Config
-
-	// ValidateColumnName returns an error
-	// if the passed name is not valid for a
-	// column of the connection's database.
-	ValidateColumnName(name string) error
+	// Prepare a statement for execution.
+	Prepare(ctx context.Context, query string) (Stmt, error)
 
 	// Exec executes a query with optional args.
-	Exec(query string, args ...any) error
+	Exec(ctx context.Context, query string, args ...any) error
 
-	// Update table rows(s) with values using the where statement with passed in args starting at $1.
-	Update(table string, values Values, where string, args ...any) error
+	// Query queries rows with optional args.
+	// Any error will be returned by the Rows.Err method.
+	Query(ctx context.Context, query string, args ...any) Rows
 
-	// UpdateReturningRow updates a table row with values using the where statement with passed in args starting at $1
-	// and returning a single row with the columns specified in returning argument.
-	UpdateReturningRow(table string, values Values, returning, where string, args ...any) RowScanner
+	// DefaultIsolationLevel returns the isolation level of the database
+	// driver that is used when no isolation level
+	// is specified when beginning a new transaction.
+	DefaultIsolationLevel() sql.IsolationLevel
 
-	// UpdateReturningRows updates table rows with values using the where statement with passed in args starting at $1
-	// and returning multiple rows with the columns specified in returning argument.
-	UpdateReturningRows(table string, values Values, returning, where string, args ...any) RowsScanner
-
-	// UpdateStruct updates a row in a table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// If restrictToColumns are provided, then only struct fields with a `db` tag
-	// matching any of the passed column names will be used.
-	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
-	// to mark primary key column(s).
-	UpdateStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error
-
-	// UpsertStruct upserts a row to table using the exported fields
-	// of rowStruct which have a `db` tag that is not "-".
-	// If restrictToColumns are provided, then only struct fields with a `db` tag
-	// matching any of the passed column names will be used.
-	// The struct must have at least one field with a `db` tag value having a ",pk" suffix
-	// to mark primary key column(s).
-	// If inserting conflicts on the primary key column(s), then an update is performed.
-	UpsertStruct(table string, rowStruct any, ignoreColumns ...ColumnFilter) error
-
-	// QueryRow queries a single row and returns a RowScanner for the results.
-	QueryRow(query string, args ...any) RowScanner
-
-	// QueryRows queries multiple rows and returns a RowsScanner for the results.
-	QueryRows(query string, args ...any) RowsScanner
-
-	// IsTransaction returns if the connection is a transaction
-	IsTransaction() bool
-
-	// TransactionNo returns the globally unique number of the transaction
-	// or zero if the connection is not a transaction.
-	// Implementations should use the package function NextTransactionNo
-	// to aquire a new number in a threadsafe way.
-	TransactionNo() uint64
-
-	// TransactionOptions returns the sql.TxOptions of the
-	// current transaction and true as second result value,
-	// or false if the connection is not a transaction.
-	TransactionOptions() (*sql.TxOptions, bool)
+	// Transaction returns the transaction state of the connection
+	Transaction() TransactionState
 
 	// Begin a new transaction.
 	// If the connection is already a transaction then a brand
-	// new transaction will begin on the parent's connection.
-	// The passed no will be returnd from the transaction's
-	// Connection.TransactionNo method.
-	// Implementations should use the package function NextTransactionNo
-	// to aquire a new number in a threadsafe way.
-	Begin(opts *sql.TxOptions, no uint64) (Connection, error)
+	// new transaction will begin based on the connection
+	// that started this transaction.
+	// The passed id and opts will be returned from the transaction's
+	// Connection.Transaction method as TransactionState.
+	// Implementations should use the function NextTransactionID
+	// to acquire a new ID in a threadsafe way.
+	Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (Connection, error)
 
 	// Commit the current transaction.
 	// Returns ErrNotWithinTransaction if the connection
@@ -139,6 +96,14 @@ type Connection interface {
 	// Returns ErrNotWithinTransaction if the connection
 	// is not within a transaction.
 	Rollback() error
+
+	// Close the connection.
+	// Transactions will be rolled back.
+	Close() error
+}
+
+type ListenerConnection interface {
+	Connection
 
 	// ListenOnChannel will call onNotify for every channel notification
 	// and onUnlisten if the channel gets unlistened
@@ -156,8 +121,4 @@ type Connection interface {
 
 	// IsListeningOnChannel returns if a channel is listened to.
 	IsListeningOnChannel(channel string) bool
-
-	// Close the connection.
-	// Transactions will be rolled back.
-	Close() error
 }

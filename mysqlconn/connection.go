@@ -4,35 +4,81 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"maps"
+	"net"
+	"strconv"
+
+	mysqldriver "github.com/go-sql-driver/mysql"
 
 	"github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/impl"
 )
 
-// New creates a new sqldb.Connection using the passed sqldb.Config
+// Connect establishes a new [sqldb.Connection] using the passed config
 // and github.com/go-sql-driver/mysql as driver implementation.
-// The connection is pinged with the passed context,
-// and only returned when there was no error from the ping.
-func New(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
+// The connection is pinged with the passed context and only returned
+// when there was no error from the ping.
+func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
-	config.DefaultIsolationLevel = sql.LevelRepeatableRead // mysql default
-
-	db, err := config.Connect(ctx)
+	err := config.Validate()
 	if err != nil {
 		return nil, err
 	}
-	return impl.Connection(ctx, db, config, validateColumnName, argFmt), nil
+
+	dsn := formatDSN(config)
+	db, err := sql.Open(Driver, dsn)
+	if err != nil {
+		return nil, fmt.Errorf("error opening database connection: %w", err)
+	}
+	db.SetMaxOpenConns(config.MaxOpenConns)
+	db.SetMaxIdleConns(config.MaxIdleConns)
+	db.SetConnMaxLifetime(config.ConnMaxLifetime)
+	err = db.PingContext(ctx)
+	if err != nil {
+		if e := db.Close(); e != nil {
+			err = fmt.Errorf("%w, then %w", err, e)
+		}
+		return nil, err
+	}
+	return sqldb.NewGenericConn(
+		db,
+		config,
+		sql.LevelRepeatableRead,
+		QueryFormatter{},
+		wrapKnownErrors,
+	), nil
 }
 
-// MustNew creates a new sqldb.Connection using the passed sqldb.Config
+// formatDSN converts a sqldb.ConnConfig to a MySQL DSN string
+// using the go-sql-driver/mysql Config.FormatDSN method.
+func formatDSN(config *sqldb.ConnConfig) string {
+	mysqlCfg := mysqldriver.NewConfig()
+	mysqlCfg.User = config.User
+	mysqlCfg.Passwd = config.Password
+	mysqlCfg.DBName = config.Database
+	mysqlCfg.Net = "tcp"
+	if config.Port != 0 {
+		mysqlCfg.Addr = net.JoinHostPort(config.Host, strconv.Itoa(int(config.Port)))
+	} else {
+		mysqlCfg.Addr = config.Host
+	}
+	if len(config.Extra) > 0 {
+		if mysqlCfg.Params == nil {
+			mysqlCfg.Params = make(map[string]string, len(config.Extra))
+		}
+		maps.Copy(mysqlCfg.Params, config.Extra)
+	}
+	return mysqlCfg.FormatDSN()
+}
+
+// MustConnect creates a new sqldb.Connection using the passed sqldb.Config
 // and github.com/go-sql-driver/mysql as driver implementation.
-// The connection is pinged with the passed context,
-// and only returned when there was no error from the ping.
-// Errors are paniced.
-func MustNew(ctx context.Context, config *sqldb.Config) sqldb.Connection {
-	conn, err := New(ctx, config)
+// The connection is pinged with the passed context and only returned
+// when there was no error from the ping.
+// Errors are panicked.
+func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
+	conn, err := Connect(ctx, config)
 	if err != nil {
 		panic(err)
 	}

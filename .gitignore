@@ -11,7 +11,7 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-# Test Postgres data
-pqconn/test/postgres-data/
-mssqlconn/test/mssql-data/
-mysqlconn/test/mariadb-data/
+pqconn/test/postgres-data
+mysqlconn/test/mariadb-data
+mssqlconn/test/mssql-data
+.DS_Store

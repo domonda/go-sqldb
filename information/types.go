@@ -26,34 +26,31 @@ func (y *YesNo) Scan(value any) error {
 		case "YES":
 			*y = true
 		case "NO":
-			*y = true
+			*y = false
 		default:
-			return fmt.Errorf("can't scan SQL value %q as YesNo", value)
+			return fmt.Errorf("unable to scan SQL value %q as YesNo", value)
 		}
 
 	default:
-		return fmt.Errorf("can't scan SQL value of type %T as YesNo", value)
+		return fmt.Errorf("unable to scan SQL value of type %T as YesNo", value)
 	}
 	return nil
 }
 
 // String is a string that implements the sql.Scanner
-// interface to scan NULL as an empty string.
+// interface to scan strings with SQL NULL as empty string.
 type String string
 
 func (y *String) Scan(value any) error {
-	switch x := value.(type) {
+	switch value := value.(type) {
 	case nil:
 		*y = ""
-
 	case string:
-		*y = String(x)
-
+		*y = String(value)
 	case []byte:
-		*y = String(x)
-
+		*y = String(value)
 	default:
-		return fmt.Errorf("can't scan SQL value of type %T as String", value)
+		return fmt.Errorf("unable to scan SQL value of type %T as String", value)
 	}
 	return nil
 }

@@ -3,24 +3,19 @@ package db
 import (
 	"context"
 
-	"github.com/domonda/go-sqldb/mockconn"
+	sqldb "github.com/domonda/go-sqldb"
 )
 
-// NewMockConn returns a new mockconn.Conn with the PlaceholderFormatter
-// and StructFieldMapper from the connection in the context
-// or the global connection.
-func NewMockConn(ctx context.Context) *mockconn.Conn {
-	conn := Conn(ctx)
-	mockConn := mockconn.New(conn)
-	mockConn.StructFieldNamer = conn.StructFieldMapper()
-	return mockConn
+// NewMockConn returns a new MockConn with the QueryFormatter
+// from the ConnExt in the context or the global ConnExt.
+func NewMockConn(ctx context.Context) *sqldb.MockConn {
+	return sqldb.NewMockConn(Conn(ctx))
 }
 
 // NewMockStructRows returns a new MockStructRows with column names
-// derived from the struct fields of S using the StructFieldMapper
-// from the connection in the context or the global connection and the given rows as data.
+// derived from the struct fields of S using the StructReflector
+// from the ConnExt in the context or the global ConnExt and the given rows as data.
 // Panics if S is not a struct or has no mapped columns.
-func NewMockStructRows[S any](ctx context.Context, rows ...S) *mockconn.MockStructRows[S] {
-	namer := Conn(ctx).StructFieldMapper()
-	return mockconn.NewMockStructRows(namer, rows...)
+func NewMockStructRows[S any](ctx context.Context, rows ...S) *sqldb.MockStructRows[S] {
+	return sqldb.NewMockStructRows(StructReflector(ctx), rows...)
 }
