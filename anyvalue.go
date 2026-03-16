@@ -18,19 +18,21 @@ var (
 // generic code that can handle unknown column types.
 //
 // AnyValue implements the following interfaces:
-//   database/sql.Scanner
-//   database/sql/driver.Valuer
-//   fmt.Stringer
-//   fmt.GoStringer
+//
+//	database/sql.Scanner
+//	database/sql/driver.Valuer
+//	fmt.Stringer
+//	fmt.GoStringer
 //
 // When scanned, Val can have one of the following underlying types:
-//   int64
-//   float64
-//   bool
-//   []byte
-//   string
-//   time.Time
-//   nil - for NULL values
+//
+//	int64
+//	float64
+//	bool
+//	[]byte
+//	string
+//	time.Time
+//	nil - for NULL values
 type AnyValue struct {
 	Val any
 }
