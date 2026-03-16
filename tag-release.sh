@@ -75,6 +75,19 @@ echo "Do you want to push tags to origin? (y/n)"
 read CONFIRM
 if [[ "$CONFIRM" == "y" || "$CONFIRM" == "Y" ]]; then
     git push origin --tags
+
+    # Fetch modules via Go proxy in background to update pkg.go.dev cache
+    MODULE_BASE="github.com/domonda/go-sqldb"
+    (
+        for PREFIX in "${MODULE_PATHS[@]}"; do
+            if [ -z "$PREFIX" ]; then
+                MODULE="$MODULE_BASE"
+            else
+                MODULE="$MODULE_BASE/${PREFIX%/}"
+            fi
+            GOPROXY=proxy.golang.org go list -m "$MODULE@$VERSION" 2>/dev/null
+        done
+    ) &>/dev/null &
 else
     for PREFIX in "${MODULE_PATHS[@]}"; do
         git tag -d "${PREFIX}${VERSION}"
