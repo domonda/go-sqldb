@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
-
-	"github.com/domonda/go-types/strutil"
 )
 
 // StructReflector is used to map struct type fields to column names
@@ -114,9 +112,4 @@ func (n TaggedStructReflector) String() string {
 // to ignore fields that don't have TaggedStructReflector.NameTag.
 func IgnoreStructField(string) string { return "" }
 
-// ToSnakeCase converts s to snake case
-// by lower casing everything and inserting '_'
-// before every new upper case character in s.
-// Whitespace, symbol, and punctuation characters
-// will be replaced by '_'.
-var ToSnakeCase = strutil.ToSnakeCase
+// ToSnakeCase is defined in snakecase.go
