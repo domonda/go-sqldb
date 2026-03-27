@@ -6,26 +6,64 @@ import (
 	"testing"
 
 	"github.com/lib/pq"
+	"github.com/lib/pq/pqerror"
 )
 
-func pqErr(code pq.ErrorCode) error {
+func pqErr(code pqerror.Code) error {
 	return &pq.Error{Code: code}
 }
 
-func pqErrWithConstraint(code pq.ErrorCode, constraint string) error {
+func pqErrWithConstraint(code pqerror.Code, constraint string) error {
 	return &pq.Error{Code: code, Constraint: constraint}
 }
 
-func pqErrWithMessage(code pq.ErrorCode, message string) error {
+func pqErrWithMessage(code pqerror.Code, message string) error {
 	return &pq.Error{Code: code, Message: message}
 }
 
-func TestIsInvalidTextRepresentation(t *testing.T) {
-	if !IsInvalidTextRepresentation(pqErr("22P02")) {
-		t.Error("expected true for 22P02")
+func TestIsConnectionExceptionClass(t *testing.T) {
+	codes := []pqerror.Code{
+		pqerror.ConnectionException,
+		pqerror.ConnectionDoesNotExist,
+		pqerror.ConnectionFailure,
+		pqerror.SQLClientUnableToEstablishSQLConnection,
+		pqerror.ProtocolViolation,
 	}
-	if IsInvalidTextRepresentation(pqErr("23505")) {
-		t.Error("expected false for 23505")
+	for _, code := range codes {
+		if !IsConnectionExceptionClass(pqErr(code)) {
+			t.Errorf("expected true for %s", code)
+		}
+	}
+	if IsConnectionExceptionClass(pqErr(pqerror.UniqueViolation)) {
+		t.Error("expected false for class 23")
+	}
+}
+
+func TestIsDataExceptionClass(t *testing.T) {
+	codes := []pqerror.Code{
+		pqerror.DataException,
+		pqerror.InvalidTextRepresentation,
+		pqerror.StringDataRightTruncation,
+		pqerror.NullValueNotAllowed,
+		pqerror.NumericValueOutOfRange,
+		pqerror.DivisionByZero,
+	}
+	for _, code := range codes {
+		if !IsDataExceptionClass(pqErr(code)) {
+			t.Errorf("expected true for %s", code)
+		}
+	}
+	if IsDataExceptionClass(pqErr(pqerror.UniqueViolation)) {
+		t.Error("expected false for class 23")
+	}
+}
+
+func TestIsInvalidTextRepresentation(t *testing.T) {
+	if !IsInvalidTextRepresentation(pqErr(pqerror.InvalidTextRepresentation)) {
+		t.Error("expected true for InvalidTextRepresentation")
+	}
+	if IsInvalidTextRepresentation(pqErr(pqerror.UniqueViolation)) {
+		t.Error("expected false for UniqueViolation")
 	}
 	if IsInvalidTextRepresentation(errors.New("other")) {
 		t.Error("expected false for non-pq error")
@@ -33,159 +71,239 @@ func TestIsInvalidTextRepresentation(t *testing.T) {
 }
 
 func TestIsStringDataRightTruncation(t *testing.T) {
-	if !IsStringDataRightTruncation(pqErr("22001")) {
-		t.Error("expected true for 22001")
+	if !IsStringDataRightTruncation(pqErr(pqerror.StringDataRightTruncation)) {
+		t.Error("expected true for StringDataRightTruncation")
 	}
-	if IsStringDataRightTruncation(pqErr("22P02")) {
-		t.Error("expected false for 22P02")
+	if IsStringDataRightTruncation(pqErr(pqerror.InvalidTextRepresentation)) {
+		t.Error("expected false for InvalidTextRepresentation")
 	}
 }
 
 func TestIsIntegrityConstraintViolationClass(t *testing.T) {
-	codes := []pq.ErrorCode{"23000", "23001", "23502", "23503", "23505", "23514", "23P01"}
+	codes := []pqerror.Code{
+		pqerror.IntegrityConstraintViolation,
+		pqerror.RestrictViolation,
+		pqerror.NotNullViolation,
+		pqerror.ForeignKeyViolation,
+		pqerror.UniqueViolation,
+		pqerror.CheckViolation,
+		pqerror.ExclusionViolation,
+	}
 	for _, code := range codes {
 		if !IsIntegrityConstraintViolationClass(pqErr(code)) {
 			t.Errorf("expected true for %s", code)
 		}
 	}
-	if IsIntegrityConstraintViolationClass(pqErr("42501")) {
+	if IsIntegrityConstraintViolationClass(pqErr(pqerror.InsufficientPrivilege)) {
 		t.Error("expected false for class 42")
 	}
 }
 
 func TestIsRestrictViolation(t *testing.T) {
-	if !IsRestrictViolation(pqErr("23001")) {
-		t.Error("expected true for 23001")
+	if !IsRestrictViolation(pqErr(pqerror.RestrictViolation)) {
+		t.Error("expected true for RestrictViolation")
 	}
-	if IsRestrictViolation(pqErr("23505")) {
-		t.Error("expected false for 23505")
+	if IsRestrictViolation(pqErr(pqerror.UniqueViolation)) {
+		t.Error("expected false for UniqueViolation")
 	}
 }
 
 func TestIsNotNullViolation(t *testing.T) {
-	if !IsNotNullViolation(pqErr("23502")) {
-		t.Error("expected true for 23502")
+	if !IsNotNullViolation(pqErr(pqerror.NotNullViolation)) {
+		t.Error("expected true for NotNullViolation")
 	}
-	if IsNotNullViolation(pqErr("23001")) {
-		t.Error("expected false for 23001")
+	if IsNotNullViolation(pqErr(pqerror.RestrictViolation)) {
+		t.Error("expected false for RestrictViolation")
 	}
 }
 
 func TestIsForeignKeyViolation(t *testing.T) {
-	if !IsForeignKeyViolation(pqErr("23503")) {
-		t.Error("expected true for 23503 without constraint filter")
+	if !IsForeignKeyViolation(pqErr(pqerror.ForeignKeyViolation)) {
+		t.Error("expected true for ForeignKeyViolation without constraint filter")
 	}
-	if !IsForeignKeyViolation(pqErrWithConstraint("23503", "fk_user"), "fk_user") {
+	if !IsForeignKeyViolation(pqErrWithConstraint(pqerror.ForeignKeyViolation, "fk_user"), "fk_user") {
 		t.Error("expected true when constraint matches")
 	}
-	if IsForeignKeyViolation(pqErrWithConstraint("23503", "fk_user"), "fk_order") {
+	if IsForeignKeyViolation(pqErrWithConstraint(pqerror.ForeignKeyViolation, "fk_user"), "fk_order") {
 		t.Error("expected false when constraint does not match")
 	}
-	if IsForeignKeyViolation(pqErr("23505")) {
-		t.Error("expected false for 23505")
+	if IsForeignKeyViolation(pqErr(pqerror.UniqueViolation)) {
+		t.Error("expected false for UniqueViolation")
 	}
 }
 
 func TestIsUniqueViolation(t *testing.T) {
-	if !IsUniqueViolation(pqErr("23505")) {
-		t.Error("expected true for 23505")
+	if !IsUniqueViolation(pqErr(pqerror.UniqueViolation)) {
+		t.Error("expected true for UniqueViolation")
 	}
-	if IsUniqueViolation(pqErr("23503")) {
-		t.Error("expected false for 23503")
+	if IsUniqueViolation(pqErr(pqerror.ForeignKeyViolation)) {
+		t.Error("expected false for ForeignKeyViolation")
 	}
 }
 
 func TestIsCheckViolation(t *testing.T) {
-	if !IsCheckViolation(pqErr("23514")) {
-		t.Error("expected true for 23514")
+	if !IsCheckViolation(pqErr(pqerror.CheckViolation)) {
+		t.Error("expected true for CheckViolation")
 	}
-	if IsCheckViolation(pqErr("23505")) {
-		t.Error("expected false for 23505")
+	if IsCheckViolation(pqErr(pqerror.UniqueViolation)) {
+		t.Error("expected false for UniqueViolation")
 	}
 }
 
 func TestIsExclusionViolation(t *testing.T) {
-	if !IsExclusionViolation(pqErr("23P01")) {
-		t.Error("expected true for 23P01")
+	if !IsExclusionViolation(pqErr(pqerror.ExclusionViolation)) {
+		t.Error("expected true for ExclusionViolation")
 	}
-	if IsExclusionViolation(pqErr("23505")) {
-		t.Error("expected false for 23505")
+	if IsExclusionViolation(pqErr(pqerror.UniqueViolation)) {
+		t.Error("expected false for UniqueViolation")
+	}
+}
+
+func TestIsIdleInTransactionSessionTimeout(t *testing.T) {
+	if !IsIdleInTransactionSessionTimeout(pqErr(pqerror.IdleInTransactionSessionTimeout)) {
+		t.Error("expected true for IdleInTransactionSessionTimeout")
+	}
+	if IsIdleInTransactionSessionTimeout(pqErr(pqerror.InFailedSQLTransaction)) {
+		t.Error("expected false for InFailedSQLTransaction")
+	}
+}
+
+func TestIsReadOnlySQLTransaction(t *testing.T) {
+	if !IsReadOnlySQLTransaction(pqErr(pqerror.ReadOnlySQLTransaction)) {
+		t.Error("expected true for ReadOnlySQLTransaction")
+	}
+	if IsReadOnlySQLTransaction(pqErr(pqerror.InFailedSQLTransaction)) {
+		t.Error("expected false for InFailedSQLTransaction")
+	}
+}
+
+func TestIsTransactionRollbackClass(t *testing.T) {
+	codes := []pqerror.Code{
+		pqerror.TransactionRollback,
+		pqerror.TRSerializationFailure,
+		pqerror.TRDeadlockDetected,
+		pqerror.TRIntegrityConstraintViolation,
+		pqerror.TRStatementCompletionUnknown,
+	}
+	for _, code := range codes {
+		if !IsTransactionRollbackClass(pqErr(code)) {
+			t.Errorf("expected true for %s", code)
+		}
+	}
+	if IsTransactionRollbackClass(pqErr(pqerror.UniqueViolation)) {
+		t.Error("expected false for class 23")
 	}
 }
 
 func TestIsSerializationFailure(t *testing.T) {
-	if !IsSerializationFailure(pqErr("40001")) {
-		t.Error("expected true for 40001")
+	if !IsSerializationFailure(pqErr(pqerror.TRSerializationFailure)) {
+		t.Error("expected true for TRSerializationFailure")
 	}
-	if IsSerializationFailure(pqErr("40P01")) {
-		t.Error("expected false for 40P01")
+	if IsSerializationFailure(pqErr(pqerror.TRDeadlockDetected)) {
+		t.Error("expected false for TRDeadlockDetected")
 	}
 }
 
 func TestIsDeadlockDetected(t *testing.T) {
-	if !IsDeadlockDetected(pqErr("40P01")) {
-		t.Error("expected true for 40P01")
+	if !IsDeadlockDetected(pqErr(pqerror.TRDeadlockDetected)) {
+		t.Error("expected true for TRDeadlockDetected")
 	}
-	if IsDeadlockDetected(pqErr("40001")) {
-		t.Error("expected false for 40001")
+	if IsDeadlockDetected(pqErr(pqerror.TRSerializationFailure)) {
+		t.Error("expected false for TRSerializationFailure")
 	}
 }
 
 func TestIsInsufficientPrivilege(t *testing.T) {
-	if !IsInsufficientPrivilege(pqErr("42501")) {
-		t.Error("expected true for 42501")
+	if !IsInsufficientPrivilege(pqErr(pqerror.InsufficientPrivilege)) {
+		t.Error("expected true for InsufficientPrivilege")
 	}
-	if IsInsufficientPrivilege(pqErr("42000")) {
-		t.Error("expected false for 42000")
+	if IsInsufficientPrivilege(pqErr(pqerror.SyntaxErrorOrAccessRuleViolation)) {
+		t.Error("expected false for SyntaxErrorOrAccessRuleViolation")
+	}
+}
+
+func TestIsUndefinedTable(t *testing.T) {
+	if !IsUndefinedTable(pqErr(pqerror.UndefinedTable)) {
+		t.Error("expected true for UndefinedTable")
+	}
+	if IsUndefinedTable(pqErr(pqerror.UndefinedColumn)) {
+		t.Error("expected false for UndefinedColumn")
+	}
+}
+
+func TestIsUndefinedColumn(t *testing.T) {
+	if !IsUndefinedColumn(pqErr(pqerror.UndefinedColumn)) {
+		t.Error("expected true for UndefinedColumn")
+	}
+	if IsUndefinedColumn(pqErr(pqerror.UndefinedTable)) {
+		t.Error("expected false for UndefinedTable")
+	}
+}
+
+func TestIsTooManyConnections(t *testing.T) {
+	if !IsTooManyConnections(pqErr(pqerror.TooManyConnections)) {
+		t.Error("expected true for TooManyConnections")
+	}
+	if IsTooManyConnections(pqErr(pqerror.InsufficientResources)) {
+		t.Error("expected false for InsufficientResources")
 	}
 }
 
 func TestIsLockNotAvailable(t *testing.T) {
-	if !IsLockNotAvailable(pqErr("55P03")) {
-		t.Error("expected true for 55P03")
+	if !IsLockNotAvailable(pqErr(pqerror.LockNotAvailable)) {
+		t.Error("expected true for LockNotAvailable")
 	}
-	if IsLockNotAvailable(pqErr("55000")) {
-		t.Error("expected false for 55000")
+	if IsLockNotAvailable(pqErr(pqerror.ObjectNotInPrerequisiteState)) {
+		t.Error("expected false for ObjectNotInPrerequisiteState")
 	}
 }
 
 func TestIsQueryCanceled(t *testing.T) {
-	if !IsQueryCanceled(pqErr("57014")) {
-		t.Error("expected true for 57014")
+	if !IsQueryCanceled(pqErr(pqerror.QueryCanceled)) {
+		t.Error("expected true for QueryCanceled")
 	}
-	if IsQueryCanceled(pqErr("57000")) {
-		t.Error("expected false for 57000")
+	if IsQueryCanceled(pqErr(pqerror.OperatorIntervention)) {
+		t.Error("expected false for OperatorIntervention")
+	}
+}
+
+func TestIsAdminShutdown(t *testing.T) {
+	if !IsAdminShutdown(pqErr(pqerror.AdminShutdown)) {
+		t.Error("expected true for AdminShutdown")
+	}
+	if IsAdminShutdown(pqErr(pqerror.QueryCanceled)) {
+		t.Error("expected false for QueryCanceled")
 	}
 }
 
 func TestIsPLPGSQLErrorClass(t *testing.T) {
-	if !IsPLPGSQLErrorClass(pqErr("P0001")) {
-		t.Error("expected true for P0001")
+	if !IsPLPGSQLErrorClass(pqErr(pqerror.RaiseException)) {
+		t.Error("expected true for RaiseException")
 	}
-	if !IsPLPGSQLErrorClass(pqErr("P0000")) {
-		t.Error("expected true for P0000")
+	if !IsPLPGSQLErrorClass(pqErr(pqerror.PLpgSQLError)) {
+		t.Error("expected true for PLpgSQLError")
 	}
-	if IsPLPGSQLErrorClass(pqErr("42501")) {
-		t.Error("expected false for 42501")
+	if IsPLPGSQLErrorClass(pqErr(pqerror.InsufficientPrivilege)) {
+		t.Error("expected false for InsufficientPrivilege")
 	}
 }
 
 func TestIsRaisedException(t *testing.T) {
-	if !IsRaisedException(pqErr("P0001")) {
-		t.Error("expected true for P0001")
+	if !IsRaisedException(pqErr(pqerror.RaiseException)) {
+		t.Error("expected true for RaiseException")
 	}
-	if IsRaisedException(pqErr("P0000")) {
-		t.Error("expected false for P0000")
+	if IsRaisedException(pqErr(pqerror.PLpgSQLError)) {
+		t.Error("expected false for PLpgSQLError")
 	}
 }
 
 func TestGetRaisedException(t *testing.T) {
-	msg := GetRaisedException(pqErrWithMessage("P0001", "custom error"))
+	msg := GetRaisedException(pqErrWithMessage(pqerror.RaiseException, "custom error"))
 	if msg != "custom error" {
 		t.Errorf("got %q, want %q", msg, "custom error")
 	}
-	if got := GetRaisedException(pqErr("P0000")); got != "" {
-		t.Errorf("expected empty for non-P0001, got %q", got)
+	if got := GetRaisedException(pqErr(pqerror.PLpgSQLError)); got != "" {
+		t.Errorf("expected empty for PLpgSQLError, got %q", got)
 	}
 	if got := GetRaisedException(nil); got != "" {
 		t.Errorf("expected empty for nil, got %q", got)
@@ -201,6 +319,8 @@ func TestErrorPredicates_NonPqError(t *testing.T) {
 		name string
 		fn   func(error) bool
 	}{
+		{"IsConnectionExceptionClass", IsConnectionExceptionClass},
+		{"IsDataExceptionClass", IsDataExceptionClass},
 		{"IsInvalidTextRepresentation", IsInvalidTextRepresentation},
 		{"IsStringDataRightTruncation", IsStringDataRightTruncation},
 		{"IsIntegrityConstraintViolationClass", IsIntegrityConstraintViolationClass},
@@ -209,11 +329,18 @@ func TestErrorPredicates_NonPqError(t *testing.T) {
 		{"IsUniqueViolation", IsUniqueViolation},
 		{"IsCheckViolation", IsCheckViolation},
 		{"IsExclusionViolation", IsExclusionViolation},
+		{"IsIdleInTransactionSessionTimeout", IsIdleInTransactionSessionTimeout},
+		{"IsReadOnlySQLTransaction", IsReadOnlySQLTransaction},
+		{"IsTransactionRollbackClass", IsTransactionRollbackClass},
 		{"IsSerializationFailure", IsSerializationFailure},
 		{"IsDeadlockDetected", IsDeadlockDetected},
 		{"IsInsufficientPrivilege", IsInsufficientPrivilege},
+		{"IsUndefinedTable", IsUndefinedTable},
+		{"IsUndefinedColumn", IsUndefinedColumn},
+		{"IsTooManyConnections", IsTooManyConnections},
 		{"IsLockNotAvailable", IsLockNotAvailable},
 		{"IsQueryCanceled", IsQueryCanceled},
+		{"IsAdminShutdown", IsAdminShutdown},
 		{"IsPLPGSQLErrorClass", IsPLPGSQLErrorClass},
 		{"IsRaisedException", IsRaisedException},
 	}
@@ -227,7 +354,7 @@ func TestErrorPredicates_NonPqError(t *testing.T) {
 }
 
 func TestErrorPredicates_WrappedError(t *testing.T) {
-	wrapped := fmt.Errorf("wrapped: %w", pqErr("23505"))
+	wrapped := fmt.Errorf("wrapped: %w", pqErr(pqerror.UniqueViolation))
 	if !IsUniqueViolation(wrapped) {
 		t.Error("IsUniqueViolation should detect wrapped pq.Error")
 	}

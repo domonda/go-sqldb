@@ -7,6 +7,7 @@ import (
 
 	"github.com/domonda/go-sqldb"
 	"github.com/lib/pq"
+	"github.com/lib/pq/pqerror"
 )
 
 func wrapKnownErrors(err error) error {
@@ -16,47 +17,63 @@ func wrapKnownErrors(err error) error {
 	var e *pq.Error
 	if errors.As(err, &e) {
 		switch e.Code {
-		case "22004":
+		case pqerror.NullValueNotAllowed:
 			return errors.Join(sqldb.ErrNullValueNotAllowed, err)
-		case "23000":
+		case pqerror.IntegrityConstraintViolation:
 			return errors.Join(sqldb.ErrIntegrityConstraintViolation{Constraint: e.Constraint}, err)
-		case "23001":
+		case pqerror.RestrictViolation:
 			return errors.Join(sqldb.ErrRestrictViolation{Constraint: e.Constraint}, err)
-		case "23502":
+		case pqerror.NotNullViolation:
 			return errors.Join(sqldb.ErrNotNullViolation{Constraint: e.Constraint}, err)
-		case "23503":
+		case pqerror.ForeignKeyViolation:
 			return errors.Join(sqldb.ErrForeignKeyViolation{Constraint: e.Constraint}, err)
-		case "23505":
+		case pqerror.UniqueViolation:
 			return errors.Join(sqldb.ErrUniqueViolation{Constraint: e.Constraint}, err)
-		case "23514":
+		case pqerror.CheckViolation:
 			return errors.Join(sqldb.ErrCheckViolation{Constraint: e.Constraint}, err)
-		case "40P01":
+		case pqerror.TRDeadlockDetected:
 			return errors.Join(sqldb.ErrDeadlock, err)
-		case "57014":
+		case pqerror.QueryCanceled:
 			return errors.Join(sqldb.ErrQueryCanceled, err)
-		case "23P01":
+		case pqerror.ExclusionViolation:
 			return errors.Join(sqldb.ErrExclusionViolation{Constraint: e.Constraint}, err)
-		case "P0001":
+		case pqerror.RaiseException:
 			return errors.Join(sqldb.ErrRaisedException{Message: e.Message}, err)
 		}
 	}
 	return err
 }
 
+// Class 08 — Connection Exception
+
+// IsConnectionExceptionClass indicates if the error belongs to
+// the PostgreSQL connection exception class (08xxx).
+func IsConnectionExceptionClass(err error) bool {
+	var e *pq.Error
+	return errors.As(err, &e) && e.Code.Class() == pqerror.ClassConnectionException
+}
+
 // Class 22 — Data Exception
+
+// IsDataExceptionClass indicates if the error belongs to
+// the PostgreSQL data exception class (22xxx).
+func IsDataExceptionClass(err error) bool {
+	var e *pq.Error
+	return errors.As(err, &e) && e.Code.Class() == pqerror.ClassDataException
+}
 
 // IsInvalidTextRepresentation indicates if the error was caused by
 // an invalid input value for a type, e.g. passing "not-a-uuid" to a uuid column.
 func IsInvalidTextRepresentation(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "22P02" // invalid_text_representation
+	return errors.As(err, &e) && e.Code == pqerror.InvalidTextRepresentation
 }
 
 // IsStringDataRightTruncation indicates if the error was caused by
 // a value being too long for the target column type.
 func IsStringDataRightTruncation(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "22001" // string_data_right_truncation
+	return errors.As(err, &e) && e.Code == pqerror.StringDataRightTruncation
 }
 
 // Class 23 — Integrity Constraint Violation
@@ -65,45 +82,45 @@ func IsStringDataRightTruncation(err error) bool {
 // the PostgreSQL integrity constraint violation class (23xxx).
 func IsIntegrityConstraintViolationClass(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code.Class() == "23"
+	return errors.As(err, &e) && e.Code.Class() == pqerror.ClassIntegrityConstraintViolation
 }
 
 // IsRestrictViolation indicates if the error was caused by a restrict violation.
 func IsRestrictViolation(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "23001" // restrict_violation
+	return errors.As(err, &e) && e.Code == pqerror.RestrictViolation
 }
 
 // IsNotNullViolation indicates if the error was caused by a NOT NULL constraint violation.
 func IsNotNullViolation(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "23502" // not_null_violation
+	return errors.As(err, &e) && e.Code == pqerror.NotNullViolation
 }
 
 // IsForeignKeyViolation indicates if the error was caused by a foreign key constraint violation.
 // If violatedConstraints are provided, it also checks that the violated constraint name matches one of them.
 func IsForeignKeyViolation(err error, violatedConstraints ...string) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "23503" && // foreign_key_violation
+	return errors.As(err, &e) && e.Code == pqerror.ForeignKeyViolation &&
 		(len(violatedConstraints) == 0 || slices.Contains(violatedConstraints, e.Constraint))
 }
 
 // IsUniqueViolation indicates if the error was caused by a unique constraint violation.
 func IsUniqueViolation(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "23505" // unique_violation
+	return errors.As(err, &e) && e.Code == pqerror.UniqueViolation
 }
 
 // IsCheckViolation indicates if the error was caused by a check constraint violation.
 func IsCheckViolation(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "23514" // check_violation
+	return errors.As(err, &e) && e.Code == pqerror.CheckViolation
 }
 
 // IsExclusionViolation indicates if the error was caused by an exclusion constraint violation.
 func IsExclusionViolation(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "23P01" // exclusion_violation
+	return errors.As(err, &e) && e.Code == pqerror.ExclusionViolation
 }
 
 // Class 25 — Invalid Transaction State
@@ -114,7 +131,7 @@ func IsExclusionViolation(err error) bool {
 // it is rolled back.
 func IsInFailedTransaction(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "25P02" // in_failed_sql_transaction
+	return errors.As(err, &e) && e.Code == pqerror.InFailedSQLTransaction
 }
 
 // IsFailedTransaction returns true if conn is a transaction
@@ -124,14 +141,38 @@ func IsFailedTransaction(ctx context.Context, conn sqldb.Connection) bool {
 	return conn.Transaction().Active() && IsInFailedTransaction(conn.Exec(ctx, "SELECT 1"))
 }
 
+// IsIdleInTransactionSessionTimeout indicates if the error was caused by
+// a transaction being idle longer than the configured idle_in_transaction_session_timeout.
+func IsIdleInTransactionSessionTimeout(err error) bool {
+	var e *pq.Error
+	return errors.As(err, &e) && e.Code == pqerror.IdleInTransactionSessionTimeout
+}
+
 // IsTransactionTimeout indicates if the error was caused by
 // a transaction exceeding the configured transaction_timeout.
 func IsTransactionTimeout(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "25P04" // transaction_timeout
+	return errors.As(err, &e) && e.Code == pqerror.TransactionTimeout
+}
+
+// IsReadOnlySQLTransaction indicates if the error was caused by
+// attempting a write operation on a read-only transaction or connection,
+// e.g. when connected to a read replica.
+func IsReadOnlySQLTransaction(err error) bool {
+	var e *pq.Error
+	return errors.As(err, &e) && e.Code == pqerror.ReadOnlySQLTransaction
 }
 
 // Class 40 — Transaction Rollback
+
+// IsTransactionRollbackClass indicates if the error belongs to
+// the PostgreSQL transaction rollback class (40xxx).
+// This covers serialization failures, deadlocks, and other
+// transaction rollback reasons. The caller should typically retry the transaction.
+func IsTransactionRollbackClass(err error) bool {
+	var e *pq.Error
+	return errors.As(err, &e) && e.Code.Class() == pqerror.ClassTransactionRollback
+}
 
 // IsSerializationFailure indicates if the error was caused by
 // a transaction serialization failure. This typically occurs when using
@@ -139,7 +180,7 @@ func IsTransactionTimeout(err error) bool {
 // transactions conflict. The caller should retry the transaction.
 func IsSerializationFailure(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "40001" // serialization_failure
+	return errors.As(err, &e) && e.Code == pqerror.TRSerializationFailure
 }
 
 // IsDeadlockDetected indicates if the error was caused by
@@ -147,7 +188,7 @@ func IsSerializationFailure(err error) bool {
 // The caller should retry the transaction.
 func IsDeadlockDetected(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "40P01" // deadlock_detected
+	return errors.As(err, &e) && e.Code == pqerror.TRDeadlockDetected
 }
 
 // Class 42 — Syntax Error or Access Rule Violation
@@ -156,7 +197,30 @@ func IsDeadlockDetected(err error) bool {
 // the current user lacking the required permissions for the operation.
 func IsInsufficientPrivilege(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "42501" // insufficient_privilege
+	return errors.As(err, &e) && e.Code == pqerror.InsufficientPrivilege
+}
+
+// IsUndefinedTable indicates if the error was caused by
+// referencing a table that does not exist.
+func IsUndefinedTable(err error) bool {
+	var e *pq.Error
+	return errors.As(err, &e) && e.Code == pqerror.UndefinedTable
+}
+
+// IsUndefinedColumn indicates if the error was caused by
+// referencing a column that does not exist.
+func IsUndefinedColumn(err error) bool {
+	var e *pq.Error
+	return errors.As(err, &e) && e.Code == pqerror.UndefinedColumn
+}
+
+// Class 53 — Insufficient Resources
+
+// IsTooManyConnections indicates if the error was caused by
+// exceeding the maximum number of allowed connections.
+func IsTooManyConnections(err error) bool {
+	var e *pq.Error
+	return errors.As(err, &e) && e.Code == pqerror.TooManyConnections
 }
 
 // Class 55 — Object Not In Prerequisite State
@@ -165,7 +229,7 @@ func IsInsufficientPrivilege(err error) bool {
 // a lock that could not be acquired, e.g. from SELECT ... FOR UPDATE NOWAIT.
 func IsLockNotAvailable(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "55P03" // lock_not_available
+	return errors.As(err, &e) && e.Code == pqerror.LockNotAvailable
 }
 
 // Class 57 - Operator Intervention
@@ -176,7 +240,14 @@ func IsLockNotAvailable(err error) bool {
 // even when it was caused by a context cancellation.
 func IsQueryCanceled(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "57014"
+	return errors.As(err, &e) && e.Code == pqerror.QueryCanceled
+}
+
+// IsAdminShutdown indicates if the error was caused by
+// the database server shutting down, e.g. during a restart or maintenance.
+func IsAdminShutdown(err error) bool {
+	var e *pq.Error
+	return errors.As(err, &e) && e.Code == pqerror.AdminShutdown
 }
 
 // Class P0 — PL/pgSQL Error
@@ -184,13 +255,13 @@ func IsQueryCanceled(err error) bool {
 // IsPLPGSQLErrorClass indicates if the error belongs to the PL/pgSQL error class (P0xxx).
 func IsPLPGSQLErrorClass(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code.Class() == "P0"
+	return errors.As(err, &e) && e.Code.Class() == pqerror.ClassPLpgSQLError
 }
 
 // IsRaisedException indicates if the error was caused by a PL/pgSQL RAISE statement.
 func IsRaisedException(err error) bool {
 	var e *pq.Error
-	return errors.As(err, &e) && e.Code == "P0001"
+	return errors.As(err, &e) && e.Code == pqerror.RaiseException
 }
 
 // GetRaisedException returns the message
@@ -198,7 +269,7 @@ func IsRaisedException(err error) bool {
 // if the error is nil or not an exception.
 func GetRaisedException(err error) string {
 	var e *pq.Error
-	if errors.As(err, &e) && e.Code == "P0001" {
+	if errors.As(err, &e) && e.Code == pqerror.RaiseException {
 		return e.Message
 	}
 	return ""

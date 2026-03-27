@@ -8,7 +8,7 @@ require github.com/domonda/go-sqldb v0.0.0-00010101000000-000000000000 // replac
 
 require (
 	github.com/domonda/go-types v0.0.0-20260309115647-9f91bea50929
-	github.com/lib/pq v1.11.2
+	github.com/lib/pq v1.12.0
 )
 
 require (
