@@ -36,10 +36,10 @@ func TableNameForStruct(t reflect.Type, tagKey string) (table string, err error)
 		structType = structType.Elem()
 	}
 	if structType.Kind() != reflect.Struct {
-		return "", fmt.Errorf("db.StructTable: %s is not a struct or pointer to a struct", t)
+		return "", fmt.Errorf("TableNameForStruct: %s is not a struct or pointer to a struct", t)
 	}
 	if tagKey == "" {
-		return "", fmt.Errorf("db.StructTable: tagKey is empty")
+		return "", fmt.Errorf("TableNameForStruct: tagKey is empty")
 	}
 	tableNameType := reflect.TypeFor[TableName]()
 	for i := 0; i < structType.NumField(); i++ {
@@ -47,10 +47,10 @@ func TableNameForStruct(t reflect.Type, tagKey string) (table string, err error)
 		if field.Anonymous && field.Type == tableNameType {
 			table = field.Tag.Get(tagKey)
 			if table == "" {
-				return "", fmt.Errorf("db.StructTable: embedded db.Table has no tag '%s'", tagKey)
+				return "", fmt.Errorf("TableNameForStruct: embedded TableName has no tag %q", tagKey)
 			}
 			return table, nil
 		}
 	}
-	return "", fmt.Errorf("db.StructTable: struct type %s has no embedded db.Table field", t)
+	return "", fmt.Errorf("TableNameForStruct: struct type %s has no embedded TableName field", t)
 }
