@@ -5,7 +5,9 @@ import (
 	"strings"
 )
 
-// QueryBuilder builds SQL queries for common CRUD operations.
+// QueryBuilder builds standard SQL queries for common CRUD operations.
+// For driver-specific operations, use type assertions to check
+// for [UpsertQueryBuilder] and [ReturningQueryBuilder] support.
 type QueryBuilder interface {
 	QueryRowWithPK(formatter QueryFormatter, table string, pkColumns []string) (query string, err error)
 	Insert(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error)
@@ -13,8 +15,6 @@ type QueryBuilder interface {
 	//   INSERT INTO table(col1,col2) VALUES($1,$2),($3,$4),($5,$6)
 	// numRows must be >= 1.
 	InsertRows(formatter QueryFormatter, table string, columns []ColumnInfo, numRows int) (query string, err error)
-	InsertUnique(formatter QueryFormatter, table string, columns []ColumnInfo, onConflict string) (query string, err error)
-	Upsert(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error)
 	// Update updates a table rows with the passed values using the
 	// passed where clause. That where clause can contain placeholders
 	// starting at $1 for the passed whereArgs.
@@ -25,8 +25,36 @@ type QueryBuilder interface {
 	Delete(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error)
 }
 
-// StdQueryBuilder is the default [QueryBuilder] implementation
-// that generates standard SQL queries.
+// UpsertQueryBuilder builds driver-specific upsert and insert-unique queries.
+// Not all databases support these operations with the same syntax:
+//   - PostgreSQL/SQLite: ON CONFLICT ... DO UPDATE SET / DO NOTHING
+//   - MySQL: ON DUPLICATE KEY UPDATE
+//   - MSSQL: MERGE
+//
+// Use a type assertion from [QueryBuilder] to check for support:
+//
+//	uqb, ok := builder.(UpsertQueryBuilder)
+type UpsertQueryBuilder interface {
+	Upsert(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error)
+	InsertUnique(formatter QueryFormatter, table string, columns []ColumnInfo, onConflict string) (query string, err error)
+}
+
+// ReturningQueryBuilder builds queries that return result rows
+// using driver-specific syntax (e.g. PostgreSQL/SQLite RETURNING clause).
+// Not all databases support RETURNING; use a type assertion
+// from [QueryBuilder] to check for support:
+//
+//	rqb, ok := builder.(ReturningQueryBuilder)
+type ReturningQueryBuilder interface {
+	InsertReturning(formatter QueryFormatter, table string, columns []ColumnInfo, returning string) (query string, err error)
+	UpdateReturning(formatter QueryFormatter, table string, values Values, returning, where string, whereArgs []any) (query string, queryArgs []any, err error)
+}
+
+// StdQueryBuilder implements [QueryBuilder]
+// using standard SQL for CRUD operations.
+// It does not implement [UpsertQueryBuilder] or [ReturningQueryBuilder];
+// those are provided by driver-specific builders
+// (e.g. pqconn.QueryBuilder, mysqlconn.QueryBuilder, mssqlconn.QueryBuilder).
 type StdQueryBuilder struct{}
 
 // QueryRowWithPK builds a SELECT * query filtered by primary key columns.
@@ -117,80 +145,6 @@ func (StdQueryBuilder) InsertRows(formatter QueryFormatter, table string, column
 			q.WriteString(formatter.FormatPlaceholder(row*numCols + col))
 		}
 		q.WriteByte(')')
-	}
-	return q.String(), nil
-}
-
-// InsertUnique builds an INSERT query with ON CONFLICT DO NOTHING.
-// The onConflict string specifies the conflict target columns.
-func (b StdQueryBuilder) InsertUnique(formatter QueryFormatter, table string, columns []ColumnInfo, onConflict string) (query string, err error) {
-	var q strings.Builder
-	insert, err := b.Insert(formatter, table, columns)
-	if err != nil {
-		return "", err
-	}
-	q.WriteString(insert)
-	if strings.HasPrefix(onConflict, "(") && strings.HasSuffix(onConflict, ")") {
-		onConflict = onConflict[1 : len(onConflict)-1]
-	}
-	fmt.Fprintf(&q, " ON CONFLICT (%s) DO NOTHING RETURNING TRUE", onConflict)
-	return q.String(), nil
-}
-
-// Upsert builds an INSERT ... ON CONFLICT DO UPDATE SET query.
-// Primary key columns are used as the conflict target,
-// non-primary key columns are updated on conflict.
-func (b StdQueryBuilder) Upsert(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error) {
-	hasNonPK := false
-	for i := range columns {
-		if !columns[i].PrimaryKey {
-			hasNonPK = true
-			break
-		}
-	}
-	if !hasNonPK {
-		return "", fmt.Errorf("Upsert requires at least one non-primary-key column")
-	}
-
-	var q strings.Builder
-	insert, err := b.Insert(formatter, table, columns)
-	if err != nil {
-		return "", err
-	}
-	q.WriteString(insert)
-	q.WriteString(` ON CONFLICT(`)
-	first := true
-	for i := range columns {
-		if !columns[i].PrimaryKey {
-			continue
-		}
-		if first {
-			first = false
-		} else {
-			q.WriteByte(',')
-		}
-		columnName, err := formatter.FormatColumnName(columns[i].Name)
-		if err != nil {
-			return "", err
-		}
-		q.WriteString(columnName)
-	}
-	q.WriteString(`) DO UPDATE SET`)
-	first = true
-	for i := range columns {
-		if columns[i].PrimaryKey {
-			continue
-		}
-		if first {
-			first = false
-		} else {
-			q.WriteByte(',')
-		}
-		columnName, err := formatter.FormatColumnName(columns[i].Name)
-		if err != nil {
-			return "", err
-		}
-		fmt.Fprintf(&q, ` %s=%s`, columnName, formatter.FormatPlaceholder(i))
 	}
 	return q.String(), nil
 }
@@ -310,4 +264,29 @@ func (StdQueryBuilder) Delete(formatter QueryFormatter, table string, columns []
 	}
 
 	return q.String(), nil
+}
+
+// StdReturningQueryBuilder extends [StdQueryBuilder] with
+// PostgreSQL/SQLite-compatible RETURNING clause support.
+// It implements [QueryBuilder], [UpsertQueryBuilder], and [ReturningQueryBuilder].
+type StdReturningQueryBuilder struct {
+	StdQueryBuilder
+}
+
+// InsertReturning builds an INSERT INTO query with a RETURNING clause.
+func (b StdReturningQueryBuilder) InsertReturning(formatter QueryFormatter, table string, columns []ColumnInfo, returning string) (query string, err error) {
+	query, err = b.Insert(formatter, table, columns)
+	if err != nil {
+		return "", err
+	}
+	return query + " RETURNING " + returning, nil
+}
+
+// UpdateReturning builds an UPDATE SET ... WHERE query with a RETURNING clause.
+func (b StdReturningQueryBuilder) UpdateReturning(formatter QueryFormatter, table string, values Values, returning, where string, whereArgs []any) (query string, queryArgs []any, err error) {
+	query, queryArgs, err = b.Update(formatter, table, values, where, whereArgs)
+	if err != nil {
+		return "", nil, err
+	}
+	return query + " RETURNING " + returning, queryArgs, nil
 }

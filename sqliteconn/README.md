@@ -7,6 +7,7 @@ This package provides a native wrapper around zombiezen.com/go/sqlite that imple
 ## Features
 
 - Implements `sqldb.Connection` interface
+- `QueryBuilder` implements `sqldb.QueryBuilder`, `sqldb.UpsertQueryBuilder`, and `sqldb.ReturningQueryBuilder`
 - Automatic foreign key constraint enforcement
 - WAL mode enabled by default for better concurrency
 - Read-only mode support

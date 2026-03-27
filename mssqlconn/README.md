@@ -28,6 +28,16 @@ config.Extra = map[string]string{
 }
 ```
 
+## Query Builder
+
+`QueryBuilder` implements `sqldb.QueryBuilder` and `sqldb.UpsertQueryBuilder`:
+
+- Standard CRUD via embedded `sqldb.StdQueryBuilder`
+- Upsert via `MERGE INTO ... USING ... WHEN MATCHED THEN UPDATE ... WHEN NOT MATCHED THEN INSERT`
+- `InsertUnique` uses `MERGE` with `OUTPUT $action` to detect whether a row was inserted
+
+It does not implement `sqldb.ReturningQueryBuilder`.
+
 ## Query Formatting
 
 `QueryFormatter` implements `sqldb.QueryFormatter` with SQL Server-specific formatting:

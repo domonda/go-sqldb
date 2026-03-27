@@ -39,7 +39,7 @@ var (
 	insertRowStructQueryCache    = make(map[reflect.Type]map[StructReflector]map[QueryBuilder]map[QueryFormatter]queryCache)
 	insertRowStructQueryCacheMtx sync.RWMutex
 
-	upsertRowStructQueryCache    = make(map[reflect.Type]map[StructReflector]map[QueryBuilder]map[QueryFormatter]queryCache)
+	upsertRowStructQueryCache    = make(map[reflect.Type]map[StructReflector]map[UpsertQueryBuilder]map[QueryFormatter]queryCache)
 	upsertRowStructQueryCacheMtx sync.RWMutex
 
 	deleteRowStructQueryCache    = make(map[reflect.Type]map[StructReflector]map[QueryBuilder]map[QueryFormatter]queryCache)

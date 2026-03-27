@@ -27,15 +27,14 @@ func Update(ctx context.Context, conn Executor, builder QueryBuilder, fmtr Query
 // UpdateReturningRow updates a table row with values using the where clause
 // with passed in args starting at $1 and returns a Row for scanning
 // the columns specified in the returning argument.
-func UpdateReturningRow(ctx context.Context, conn Querier, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, table string, values Values, returning, where string, args ...any) *Row {
+func UpdateReturningRow(ctx context.Context, conn Querier, refl StructReflector, builder ReturningQueryBuilder, fmtr QueryFormatter, table string, values Values, returning, where string, args ...any) *Row {
 	if len(values) == 0 {
 		return NewRow(NewErrRows(fmt.Errorf("UpdateReturningRow table %s: no values passed", table)), refl, fmtr, "", nil)
 	}
-	query, vals, err := builder.Update(fmtr, table, values, where, args)
+	query, vals, err := builder.UpdateReturning(fmtr, table, values, returning, where, args)
 	if err != nil {
-		return NewRow(NewErrRows(fmt.Errorf("failed to create UPDATE query: %w", err)), refl, fmtr, "", nil)
+		return NewRow(NewErrRows(fmt.Errorf("failed to create UPDATE RETURNING query: %w", err)), refl, fmtr, "", nil)
 	}
-	query += " RETURNING " + returning
 	rows := conn.Query(ctx, query, vals...)
 	return NewRow(rows, refl, fmtr, query, vals)
 }
@@ -43,15 +42,14 @@ func UpdateReturningRow(ctx context.Context, conn Querier, refl StructReflector,
 // UpdateReturningRows updates table rows with values using the where clause
 // with passed in args starting at $1 and returns Rows for scanning
 // the columns specified in the returning argument.
-func UpdateReturningRows(ctx context.Context, conn Querier, builder QueryBuilder, fmtr QueryFormatter, table string, values Values, returning, where string, args ...any) Rows {
+func UpdateReturningRows(ctx context.Context, conn Querier, builder ReturningQueryBuilder, fmtr QueryFormatter, table string, values Values, returning, where string, args ...any) Rows {
 	if len(values) == 0 {
 		return NewErrRows(fmt.Errorf("UpdateReturningRows table %s: no values passed", table))
 	}
-	query, vals, err := builder.Update(fmtr, table, values, where, args)
+	query, vals, err := builder.UpdateReturning(fmtr, table, values, returning, where, args)
 	if err != nil {
-		return NewErrRows(fmt.Errorf("failed to create UPDATE query: %w", err))
+		return NewErrRows(fmt.Errorf("failed to create UPDATE RETURNING query: %w", err))
 	}
-	query += " RETURNING " + returning
 	return conn.Query(ctx, query, vals...)
 }
 

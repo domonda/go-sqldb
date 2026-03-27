@@ -16,7 +16,7 @@ import (
 // Primary key columns are identified by the "primarykey" option
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
 // The struct must have at least one primary key field.
-func UpsertRowStruct(ctx context.Context, conn Executor, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, rowStruct StructWithTableName, options ...QueryOption) error {
+func UpsertRowStruct(ctx context.Context, conn Executor, refl StructReflector, builder UpsertQueryBuilder, fmtr QueryFormatter, rowStruct StructWithTableName, options ...QueryOption) error {
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return err
@@ -67,10 +67,10 @@ func UpsertRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 	if useCache {
 		upsertRowStructQueryCacheMtx.Lock()
 		if _, ok := upsertRowStructQueryCache[structType]; !ok {
-			upsertRowStructQueryCache[structType] = make(map[StructReflector]map[QueryBuilder]map[QueryFormatter]queryCache)
+			upsertRowStructQueryCache[structType] = make(map[StructReflector]map[UpsertQueryBuilder]map[QueryFormatter]queryCache)
 		}
 		if _, ok := upsertRowStructQueryCache[structType][refl]; !ok {
-			upsertRowStructQueryCache[structType][refl] = make(map[QueryBuilder]map[QueryFormatter]queryCache)
+			upsertRowStructQueryCache[structType][refl] = make(map[UpsertQueryBuilder]map[QueryFormatter]queryCache)
 		}
 		if _, ok := upsertRowStructQueryCache[structType][refl][builder]; !ok {
 			upsertRowStructQueryCache[structType][refl][builder] = make(map[QueryFormatter]queryCache)
@@ -95,7 +95,7 @@ func UpsertRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 // The struct must have at least one primary key field.
 // Returns an upsert function to upsert individual rows and a closeStmt
 // function that must be called when done to close the prepared statement.
-func UpsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Preparer, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, options ...QueryOption) (upsert func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
+func UpsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Preparer, refl StructReflector, builder UpsertQueryBuilder, fmtr QueryFormatter, options ...QueryOption) (upsert func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
 	structType := reflect.TypeFor[S]()
 	for structType.Kind() == reflect.Pointer {
 		structType = structType.Elem()
@@ -152,7 +152,7 @@ func UpsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 // Column names are derived from the `db` struct tags of the struct's fields.
 // Primary key columns are identified by the "primarykey" option
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
-func UpsertRowStructs[S StructWithTableName](ctx context.Context, conn Connection, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, rowStructs []S, options ...QueryOption) error {
+func UpsertRowStructs[S StructWithTableName](ctx context.Context, conn Connection, refl StructReflector, builder UpsertQueryBuilder, fmtr QueryFormatter, rowStructs []S, options ...QueryOption) error {
 	switch len(rowStructs) {
 	case 0:
 		return nil

@@ -4,14 +4,92 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 )
 
+// testUpsertBuilder implements [QueryBuilder], [UpsertQueryBuilder],
+// and [ReturningQueryBuilder] for tests using PostgreSQL/SQLite-compatible
+// ON CONFLICT syntax. This avoids importing driver packages from root tests.
+type testUpsertBuilder struct {
+	StdReturningQueryBuilder
+}
+
+func (b testUpsertBuilder) InsertUnique(formatter QueryFormatter, table string, columns []ColumnInfo, onConflict string) (query string, err error) {
+	var q strings.Builder
+	insert, err := b.Insert(formatter, table, columns)
+	if err != nil {
+		return "", err
+	}
+	q.WriteString(insert)
+	if strings.HasPrefix(onConflict, "(") && strings.HasSuffix(onConflict, ")") {
+		onConflict = onConflict[1 : len(onConflict)-1]
+	}
+	fmt.Fprintf(&q, " ON CONFLICT (%s) DO NOTHING RETURNING TRUE", onConflict)
+	return q.String(), nil
+}
+
+func (b testUpsertBuilder) Upsert(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error) {
+	hasNonPK := false
+	for i := range columns {
+		if !columns[i].PrimaryKey {
+			hasNonPK = true
+			break
+		}
+	}
+	if !hasNonPK {
+		return "", fmt.Errorf("Upsert requires at least one non-primary-key column")
+	}
+	var q strings.Builder
+	insert, err := b.Insert(formatter, table, columns)
+	if err != nil {
+		return "", err
+	}
+	q.WriteString(insert)
+	q.WriteString(` ON CONFLICT(`)
+	first := true
+	for i := range columns {
+		if !columns[i].PrimaryKey {
+			continue
+		}
+		if first {
+			first = false
+		} else {
+			q.WriteByte(',')
+		}
+		columnName, err := formatter.FormatColumnName(columns[i].Name)
+		if err != nil {
+			return "", err
+		}
+		q.WriteString(columnName)
+	}
+	q.WriteString(`) DO UPDATE SET`)
+	first = true
+	for i := range columns {
+		if columns[i].PrimaryKey {
+			continue
+		}
+		if first {
+			first = false
+		} else {
+			q.WriteByte(',')
+		}
+		columnName, err := formatter.FormatColumnName(columns[i].Name)
+		if err != nil {
+			return "", err
+		}
+		fmt.Fprintf(&q, ` %s=%s`, columnName, formatter.FormatPlaceholder(i))
+	}
+	return q.String(), nil
+}
+
 // newTestInterfaces creates a MockConn and separate interface values for testing.
 // Shared helper used across multiple test files.
-func newTestInterfaces() (conn *MockConn, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter) {
+// Returns a testUpsertBuilder which implements QueryBuilder, UpsertQueryBuilder,
+// and ReturningQueryBuilder using PostgreSQL/SQLite ON CONFLICT syntax.
+func newTestInterfaces() (conn *MockConn, refl StructReflector, builder testUpsertBuilder, fmtr QueryFormatter) {
 	conn = NewMockConn(NewQueryFormatter("$"))
-	return conn, NewTaggedStructReflector(), StdQueryBuilder{}, NewQueryFormatter("$")
+	return conn, NewTaggedStructReflector(), testUpsertBuilder{}, NewQueryFormatter("$")
 }
 
 func TestExec(t *testing.T) {

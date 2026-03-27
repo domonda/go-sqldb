@@ -1,4 +1,4 @@
-module github.com/domonda/go-sqldb/examples/user_demo
+module github.com/domonda/go-sqldb/examples/user-demo
 
 go 1.24.6
 

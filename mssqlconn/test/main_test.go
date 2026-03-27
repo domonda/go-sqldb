@@ -379,7 +379,7 @@ func TestInsertRowStruct(t *testing.T) {
 	}
 
 	row := Row{ID: 1, Name: "alice", Score: 100}
-	err = sqldb.InsertRowStruct(ctx, conn, refl, sqldb.StdQueryBuilder{}, conn, &row)
+	err = sqldb.InsertRowStruct(ctx, conn, refl, mssqlconn.QueryBuilder{}, conn, &row)
 	require.NoError(t, err)
 
 	// Verify the inserted row

@@ -10,12 +10,14 @@ import (
 // NewGenericConn returns a generic [Connection] implementation
 // wrapping an existing [sql.DB].
 //
-// The config parameter holds connection metadata like the driver name and DSN.
-//
-// defaultIsolationLevel is used when beginning a transaction without explicit options.
-//
 // queryFormatter formats queries before they are sent to the driver;
 // if nil, [StdQueryFormatter] is used.
+//
+// queryBuilder associates a driver-specific [QueryBuilder] with
+// the connection. If non-nil, the returned connection also implements
+// [UpsertQueryBuilder] and [ReturningQueryBuilder] by delegating
+// to the builder. Transactions created from this connection
+// carry the same builder. If nil, a plain connection is returned.
 //
 // wrapErr is an optional function called on every error returned from
 // [Connection.Exec] and [Connection.Query] — use it to map

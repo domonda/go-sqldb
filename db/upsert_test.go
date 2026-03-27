@@ -6,6 +6,7 @@ import (
 
 	"github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/db"
+	"github.com/domonda/go-sqldb/postgres"
 )
 
 func ExampleUpsertRowStructStmt() {
@@ -25,7 +26,7 @@ func ExampleUpsertRowStructStmt() {
 	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
 		WithQueryLog(os.Stdout)
 	ctx := db.ContextWithConn(context.Background(), mock)
-	ctx = db.ContextWithQueryBuilder(ctx, sqldb.StdQueryBuilder{})
+	ctx = db.ContextWithQueryBuilder(ctx, postgres.QueryBuilder{})
 	ctx = db.ContextWithStructReflector(ctx, sqldb.NewTaggedStructReflector())
 
 	err := db.Transaction(ctx, func(ctx context.Context) error {

@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/domonda/go-sqldb"
 )
@@ -22,12 +23,17 @@ func Insert(ctx context.Context, table string, values sqldb.Values) error {
 // InsertUnique inserts a new row into table using the passed values
 // or does nothing if the onConflict statement applies.
 // Returns if a row was inserted.
+// The configured [QueryBuilder] must implement [sqldb.UpsertQueryBuilder].
 func InsertUnique(ctx context.Context, table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
 	conn := Conn(ctx)
+	builder, ok := QueryBuilder(ctx).(sqldb.UpsertQueryBuilder)
+	if !ok {
+		return false, fmt.Errorf("db.InsertUnique: QueryBuilder %T does not implement sqldb.UpsertQueryBuilder", QueryBuilder(ctx))
+	}
 	return sqldb.InsertUnique(
 		ctx,
 		conn,
-		QueryBuilder(ctx),
+		builder,
 		conn,
 		table,
 		values,
@@ -37,13 +43,19 @@ func InsertUnique(ctx context.Context, table string, values sqldb.Values, onConf
 
 // InsertReturning inserts a new row into table using values
 // and returns values from the inserted row listed in returning.
+// The configured [QueryBuilder] must implement [sqldb.ReturningQueryBuilder].
 func InsertReturning(ctx context.Context, table string, values sqldb.Values, returning string) *sqldb.Row {
 	conn := Conn(ctx)
+	builder, ok := QueryBuilder(ctx).(sqldb.ReturningQueryBuilder)
+	if !ok {
+		conn := Conn(ctx)
+		return sqldb.NewRow(sqldb.NewErrRows(fmt.Errorf("db.InsertReturning: QueryBuilder %T does not implement sqldb.ReturningQueryBuilder", QueryBuilder(ctx))), StructReflector(ctx), conn, "", nil)
+	}
 	return sqldb.InsertReturning(
 		ctx,
 		conn,
 		StructReflector(ctx),
-		QueryBuilder(ctx),
+		builder,
 		conn,
 		table,
 		values,
@@ -93,13 +105,18 @@ func InsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, optio
 // The default reflector uses `db` struct tags
 // (e.g., sqldb.TableName `db:"my_table"`, field `db:"column"`).
 // Optional QueryOption can be passed to ignore mapped columns.
+// The configured [QueryBuilder] must implement [sqldb.UpsertQueryBuilder].
 func InsertUniqueRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, onConflict string, options ...sqldb.QueryOption) (inserted bool, err error) {
 	conn := Conn(ctx)
+	builder, ok := QueryBuilder(ctx).(sqldb.UpsertQueryBuilder)
+	if !ok {
+		return false, fmt.Errorf("db.InsertUniqueRowStruct: QueryBuilder %T does not implement sqldb.UpsertQueryBuilder", QueryBuilder(ctx))
+	}
 	return sqldb.InsertUniqueRowStruct(
 		ctx,
 		conn,
 		StructReflector(ctx),
-		QueryBuilder(ctx),
+		builder,
 		conn,
 		rowStruct,
 		onConflict,

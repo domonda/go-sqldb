@@ -78,6 +78,7 @@ func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection
 
 type connection struct {
 	QueryFormatter // SQLite specific implementation
+	QueryBuilder   // SQLite UpsertQueryBuilder and ReturningQueryBuilder
 
 	conn   *sqlite.Conn
 	config *sqldb.ConnConfig

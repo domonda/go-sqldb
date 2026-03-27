@@ -44,10 +44,7 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, e
 		}
 	}
 
-	return &connection{
-		db:     db,
-		config: config,
-	}, nil
+	return &connection{db: db, config: config}, nil
 }
 
 // MustConnect creates a new sqldb.Connection using the passed sqldb.Config
@@ -65,6 +62,7 @@ func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection
 
 type connection struct {
 	QueryFormatter
+	QueryBuilder
 
 	db     *sql.DB
 	config *sqldb.ConnConfig

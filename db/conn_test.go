@@ -7,15 +7,17 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/postgres"
 )
 
 // testContext returns a context with the given connection
-// and the standard QueryBuilder and StructReflector,
+// and the postgres QueryBuilder (which implements QueryBuilder,
+// UpsertQueryBuilder, and ReturningQueryBuilder) and StructReflector,
 // so that tests don't depend on global state.
 func testContext(t *testing.T, conn sqldb.Connection) context.Context {
 	t.Helper()
 	ctx := ContextWithConn(t.Context(), conn)
-	ctx = ContextWithQueryBuilder(ctx, sqldb.StdQueryBuilder{})
+	ctx = ContextWithQueryBuilder(ctx, postgres.QueryBuilder{})
 	ctx = ContextWithStructReflector(ctx, sqldb.NewTaggedStructReflector())
 	return ctx
 }

@@ -100,7 +100,7 @@ func TestArrayStructInsertAndQueryRow(t *testing.T) {
 		UUIDArray:  []string{id1, id2, id3},
 	}
 
-	err := sqldb.InsertRowStruct(ctx, c, refl, sqldb.StdQueryBuilder{}, c, input)
+	err := sqldb.InsertRowStruct(ctx, c, refl, pqconn.QueryBuilder{}, c, input)
 	if err != nil {
 		t.Fatalf("InsertRowStruct: %v", err)
 	}
@@ -141,7 +141,7 @@ func TestArrayStructQueryRowsAsSlice(t *testing.T) {
 		},
 	}
 	for i := range rows {
-		err := sqldb.InsertRowStruct(ctx, c, refl, sqldb.StdQueryBuilder{}, c, &rows[i])
+		err := sqldb.InsertRowStruct(ctx, c, refl, pqconn.QueryBuilder{}, c, &rows[i])
 		if err != nil {
 			t.Fatalf("InsertRowStruct[%d]: %v", i, err)
 		}
@@ -176,7 +176,7 @@ func TestArrayStructNullSlices(t *testing.T) {
 		UUIDArray:  nil,
 	}
 
-	err := sqldb.InsertRowStruct(ctx, c, refl, sqldb.StdQueryBuilder{}, c, input)
+	err := sqldb.InsertRowStruct(ctx, c, refl, pqconn.QueryBuilder{}, c, input)
 	if err != nil {
 		t.Fatalf("InsertRowStruct: %v", err)
 	}
@@ -220,12 +220,12 @@ func TestArrayStructQueryRowByPK(t *testing.T) {
 		TextArray: []string{"pk-test"},
 	}
 
-	err := sqldb.InsertRowStruct(ctx, c, refl, sqldb.StdQueryBuilder{}, c, input)
+	err := sqldb.InsertRowStruct(ctx, c, refl, pqconn.QueryBuilder{}, c, input)
 	if err != nil {
 		t.Fatalf("InsertRowStruct: %v", err)
 	}
 
-	got, err := sqldb.QueryRowByPK[testArraysRow](ctx, c, refl, sqldb.StdQueryBuilder{}, c, input.ID)
+	got, err := sqldb.QueryRowByPK[testArraysRow](ctx, c, refl, pqconn.QueryBuilder{}, c, input.ID)
 	if err != nil {
 		t.Fatalf("QueryRowByPK: %v", err)
 	}
@@ -245,7 +245,7 @@ func TestArrayStructTransaction(t *testing.T) {
 	}
 
 	err := sqldb.Transaction(ctx, c, nil, func(tx sqldb.Connection) error {
-		return sqldb.InsertRowStruct(ctx, tx, refl, sqldb.StdQueryBuilder{}, c, input)
+		return sqldb.InsertRowStruct(ctx, tx, refl, pqconn.QueryBuilder{}, c, input)
 	})
 	if err != nil {
 		t.Fatalf("Transaction insert: %v", err)
@@ -273,7 +273,7 @@ func TestArrayStructQueryCallback(t *testing.T) {
 		IntArray:  []int64{7, 8, 9},
 		TextArray: []string{"callback"},
 	}
-	err := sqldb.InsertRowStruct(ctx, c, refl, sqldb.StdQueryBuilder{}, c, input)
+	err := sqldb.InsertRowStruct(ctx, c, refl, pqconn.QueryBuilder{}, c, input)
 	if err != nil {
 		t.Fatalf("InsertRowStruct: %v", err)
 	}
@@ -313,7 +313,7 @@ func TestArrayStructSpecialStrings(t *testing.T) {
 		},
 	}
 
-	err := sqldb.InsertRowStruct(ctx, c, refl, sqldb.StdQueryBuilder{}, c, input)
+	err := sqldb.InsertRowStruct(ctx, c, refl, pqconn.QueryBuilder{}, c, input)
 	if err != nil {
 		t.Fatalf("InsertRowStruct: %v", err)
 	}
@@ -340,7 +340,7 @@ func TestArraySliceAsQueryArg(t *testing.T) {
 		{ID: id1, IntArray: []int64{10, 20, 30}, TextArray: []string{"a"}},
 		{ID: id2, IntArray: []int64{40, 50, 60}, TextArray: []string{"b"}},
 	} {
-		err := sqldb.InsertRowStruct(ctx, c, refl, sqldb.StdQueryBuilder{}, c, row)
+		err := sqldb.InsertRowStruct(ctx, c, refl, pqconn.QueryBuilder{}, c, row)
 		if err != nil {
 			t.Fatalf("InsertRowStruct: %v", err)
 		}
@@ -371,7 +371,7 @@ func TestArrayPreparedStmt(t *testing.T) {
 		IntArray:  []int64{11, 22},
 		TextArray: []string{"prepared"},
 	}
-	err := sqldb.InsertRowStruct(ctx, c, refl, sqldb.StdQueryBuilder{}, c, input)
+	err := sqldb.InsertRowStruct(ctx, c, refl, pqconn.QueryBuilder{}, c, input)
 	if err != nil {
 		t.Fatalf("InsertRowStruct: %v", err)
 	}

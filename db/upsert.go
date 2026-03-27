@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/domonda/go-sqldb"
 )
@@ -12,13 +13,18 @@ import (
 // the [StructReflector] from the context. The default reflector uses `db` struct tags
 // (e.g., sqldb.TableName `db:"my_table"`, field `db:"id,primarykey"`).
 // The struct must have at least one primary key field.
+// The configured [QueryBuilder] must implement [sqldb.UpsertQueryBuilder].
 func UpsertRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, options ...sqldb.QueryOption) error {
 	conn := Conn(ctx)
+	builder, ok := QueryBuilder(ctx).(sqldb.UpsertQueryBuilder)
+	if !ok {
+		return fmt.Errorf("db.UpsertRowStruct: QueryBuilder %T does not implement sqldb.UpsertQueryBuilder", QueryBuilder(ctx))
+	}
 	return sqldb.UpsertRowStruct(
 		ctx,
 		conn,
 		StructReflector(ctx),
-		QueryBuilder(ctx),
+		builder,
 		conn,
 		rowStruct,
 		options...,
@@ -31,13 +37,18 @@ func UpsertRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, o
 // (e.g., sqldb.TableName `db:"my_table"`, field `db:"id,primarykey"`).
 // The struct must have at least one primary key field.
 // Returns an upsert function and a closeStmt function that must be called when done.
+// The configured [QueryBuilder] must implement [sqldb.UpsertQueryBuilder].
 func UpsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, options ...sqldb.QueryOption) (upsert func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
 	conn := Conn(ctx)
+	builder, ok := QueryBuilder(ctx).(sqldb.UpsertQueryBuilder)
+	if !ok {
+		return nil, nil, fmt.Errorf("db.UpsertRowStructStmt: QueryBuilder %T does not implement sqldb.UpsertQueryBuilder", QueryBuilder(ctx))
+	}
 	return sqldb.UpsertRowStructStmt[S](
 		ctx,
 		conn,
 		StructReflector(ctx),
-		QueryBuilder(ctx),
+		builder,
 		conn,
 		options...,
 	)
@@ -48,13 +59,18 @@ func UpsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, optio
 // Table name, column names, and primary key columns are determined by
 // the [StructReflector] from the context. The default reflector uses `db` struct tags
 // (e.g., sqldb.TableName `db:"my_table"`, field `db:"id,primarykey"`).
+// The configured [QueryBuilder] must implement [sqldb.UpsertQueryBuilder].
 func UpsertRowStructs[S sqldb.StructWithTableName](ctx context.Context, rowStructs []S, options ...sqldb.QueryOption) error {
 	conn := Conn(ctx)
+	builder, ok := QueryBuilder(ctx).(sqldb.UpsertQueryBuilder)
+	if !ok {
+		return fmt.Errorf("db.UpsertRowStructs: QueryBuilder %T does not implement sqldb.UpsertQueryBuilder", QueryBuilder(ctx))
+	}
 	return sqldb.UpsertRowStructs(
 		ctx,
 		conn,
 		StructReflector(ctx),
-		QueryBuilder(ctx),
+		builder,
 		conn,
 		rowStructs,
 		options...,

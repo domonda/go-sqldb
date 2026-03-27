@@ -1,4 +1,4 @@
-package pqconn
+package mssqlconn
 
 import (
 	"context"
@@ -37,10 +37,10 @@ func (conn *transaction) Config() *sqldb.ConnConfig {
 func (conn *transaction) Ping(ctx context.Context, timeout time.Duration) error {
 	return conn.parent.Ping(ctx, timeout)
 }
+
 func (conn *transaction) Stats() sql.DBStats { return conn.parent.Stats() }
 
 func (conn *transaction) Exec(ctx context.Context, query string, args ...any) error {
-	wrapArrayArgs(args)
 	_, err := conn.tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		return wrapKnownErrors(err)
@@ -49,24 +49,23 @@ func (conn *transaction) Exec(ctx context.Context, query string, args ...any) er
 }
 
 func (conn *transaction) Query(ctx context.Context, query string, args ...any) sqldb.Rows {
-	wrapArrayArgs(args)
-	sqlRows, err := conn.tx.QueryContext(ctx, query, args...)
+	rows, err := conn.tx.QueryContext(ctx, query, args...)
 	if err != nil {
 		return sqldb.NewErrRows(wrapKnownErrors(err))
 	}
-	return rows{sqlRows}
+	return rows
 }
 
 func (conn *transaction) Prepare(ctx context.Context, query string) (sqldb.Stmt, error) {
-	s, err := conn.tx.PrepareContext(ctx, query)
+	stmt, err := conn.tx.PrepareContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
-	return stmt{query, s}, nil
+	return sqldb.NewStmt(stmt, query), nil
 }
 
 func (*transaction) DefaultIsolationLevel() sql.IsolationLevel {
-	return sql.LevelReadCommitted // postgres default
+	return sql.LevelReadCommitted // SQL Server default
 }
 
 func (conn *transaction) Transaction() sqldb.TransactionState {
@@ -93,18 +92,6 @@ func (conn *transaction) Commit() error {
 
 func (conn *transaction) Rollback() error {
 	return conn.tx.Rollback()
-}
-
-func (conn *transaction) ListenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
-	return sqldb.ErrWithinTransaction
-}
-
-func (conn *transaction) UnlistenChannel(channel string) (err error) {
-	return sqldb.ErrWithinTransaction
-}
-
-func (conn *transaction) IsListeningOnChannel(channel string) bool {
-	return false
 }
 
 func (conn *transaction) Close() error {

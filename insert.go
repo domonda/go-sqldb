@@ -27,16 +27,15 @@ func Insert(ctx context.Context, conn Executor, builder QueryBuilder, fmtr Query
 
 // InsertReturning inserts a new row into the table using values
 // and returns a Row for scanning the columns listed in the returning clause.
-func InsertReturning(ctx context.Context, conn Querier, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, table string, values Values, returning string) *Row {
+func InsertReturning(ctx context.Context, conn Querier, refl StructReflector, builder ReturningQueryBuilder, fmtr QueryFormatter, table string, values Values, returning string) *Row {
 	if len(values) == 0 {
 		return NewRow(NewErrRows(fmt.Errorf("InsertReturning into table %s: no values", table)), refl, fmtr, "", nil)
 	}
 	cols, vals := values.SortedColumnsAndValues()
-	query, err := builder.Insert(fmtr, table, cols)
+	query, err := builder.InsertReturning(fmtr, table, cols, returning)
 	if err != nil {
-		return NewRow(NewErrRows(fmt.Errorf("failed to create INSERT query: %w", err)), refl, fmtr, "", nil)
+		return NewRow(NewErrRows(fmt.Errorf("failed to create INSERT RETURNING query: %w", err)), refl, fmtr, "", nil)
 	}
-	query += " RETURNING " + returning
 	rows := conn.Query(ctx, query, vals...)
 	return NewRow(rows, refl, fmtr, query, vals)
 }
@@ -44,7 +43,7 @@ func InsertReturning(ctx context.Context, conn Querier, refl StructReflector, bu
 // InsertUnique inserts a new row into the table using the passed values
 // or does nothing if the onConflict statement applies.
 // Returns true if a row was inserted.
-func InsertUnique(ctx context.Context, conn Querier, builder QueryBuilder, fmtr QueryFormatter, table string, values Values, onConflict string) (inserted bool, err error) {
+func InsertUnique(ctx context.Context, conn Querier, builder UpsertQueryBuilder, fmtr QueryFormatter, table string, values Values, onConflict string) (inserted bool, err error) {
 	if len(values) == 0 {
 		return false, fmt.Errorf("InsertUnique into table %s: no values", table)
 	}
@@ -189,7 +188,7 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 // (e.g., sqldb.TableName `db:"my_table"`).
 // Column names are derived from the `db` struct tags of the struct's fields.
 // Optional QueryOption can be passed to ignore mapped columns.
-func InsertUniqueRowStruct(ctx context.Context, conn Querier, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, rowStruct StructWithTableName, onConflict string, options ...QueryOption) (inserted bool, err error) {
+func InsertUniqueRowStruct(ctx context.Context, conn Querier, refl StructReflector, builder UpsertQueryBuilder, fmtr QueryFormatter, rowStruct StructWithTableName, onConflict string, options ...QueryOption) (inserted bool, err error) {
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return false, err

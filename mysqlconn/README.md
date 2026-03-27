@@ -29,6 +29,16 @@ config.Extra = map[string]string{
 }
 ```
 
+## Query Builder
+
+`QueryBuilder` implements `sqldb.QueryBuilder` and `sqldb.UpsertQueryBuilder`:
+
+- Standard CRUD via embedded `sqldb.StdQueryBuilder`
+- Upsert via `INSERT ... ON DUPLICATE KEY UPDATE col=VALUES(col)`
+- `InsertUnique` returns an error because MySQL has no `RETURNING` clause
+
+It does not implement `sqldb.ReturningQueryBuilder` because MySQL does not support `RETURNING`.
+
 ## Query Formatting
 
 `QueryFormatter` implements `sqldb.QueryFormatter` with MySQL/MariaDB-specific formatting:

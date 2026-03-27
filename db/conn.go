@@ -17,7 +17,7 @@ var (
 	globalConn    sqldb.Connection = sqldb.NewErrConn(sqldb.ErrNoDatabaseConnection)
 	globalConnMtx sync.RWMutex
 
-	globalQueryBuilder    sqldb.QueryBuilder = sqldb.StdQueryBuilder{}
+	globalQueryBuilder    sqldb.QueryBuilder = sqldb.StdReturningQueryBuilder{}
 	globalQueryBuilderMtx sync.RWMutex
 
 	globalStructReflector    sqldb.StructReflector = sqldb.NewTaggedStructReflector()
@@ -74,7 +74,7 @@ func QueryBuilder(ctx context.Context) sqldb.QueryBuilder {
 	if qb, _ := ctx.Value(queryBuilderCtxKey{}).(sqldb.QueryBuilder); qb != nil {
 		return qb
 	}
-	if qb, _ := Conn(ctx).(sqldb.QueryBuilder); qb != nil {
+	if qb, ok := Conn(ctx).(sqldb.QueryBuilder); ok {
 		return qb
 	}
 	globalQueryBuilderMtx.RLock()

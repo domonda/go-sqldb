@@ -84,6 +84,15 @@ if errors.As(err, &fkErr) {
 }
 ```
 
+## Query Builder
+
+`QueryBuilder` implements `sqldb.QueryBuilder`, `sqldb.UpsertQueryBuilder`, and `sqldb.ReturningQueryBuilder`:
+
+- Standard CRUD via embedded `sqldb.StdReturningQueryBuilder`
+- Upsert via `INSERT ... ON CONFLICT(...) DO UPDATE SET`
+- Insert unique via `INSERT ... ON CONFLICT(...) DO NOTHING RETURNING TRUE`
+- Insert/update returning via `... RETURNING`
+
 ## Query Formatting
 
 `QueryFormatter` implements `sqldb.QueryFormatter` with PostgreSQL-specific formatting:

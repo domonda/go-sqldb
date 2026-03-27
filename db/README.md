@@ -47,7 +47,7 @@ Nested `Transaction` calls reuse the parent transaction (no additional BEGIN/COM
 
 Besides the connection, the `db` package manages two more components with the same global-plus-context pattern:
 
-- **QueryBuilder** generates SQL for struct-based operations (insert, update, upsert, query by primary key). The default `StdQueryBuilder` produces standard SQL. Resolution order:
+- **QueryBuilder** generates SQL for struct-based operations (insert, update, upsert, query by primary key). The default `StdReturningQueryBuilder` produces standard SQL for CRUD and RETURNING operations. For upsert and insert-unique operations, the builder must also implement `UpsertQueryBuilder` — driver connections provide this automatically (e.g. `pqconn`, `mysqlconn`). Resolution order:
   1. Context value via `ContextWithQueryBuilder`
   2. The connection itself, if it implements `QueryBuilder`
   3. Global value set via `SetQueryBuilder`

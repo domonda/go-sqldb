@@ -13,6 +13,8 @@ import (
 )
 
 type transaction struct {
+	QueryBuilder // SQLite UpsertQueryBuilder and ReturningQueryBuilder
+
 	parent        *connection
 	txOpts        *sql.TxOptions
 	txID          uint64

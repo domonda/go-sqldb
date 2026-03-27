@@ -3,10 +3,12 @@ package mysqlconn
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"maps"
 	"net"
 	"strconv"
+	"time"
 
 	mysqldriver "github.com/go-sql-driver/mysql"
 
@@ -41,13 +43,8 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, e
 		}
 		return nil, err
 	}
-	return sqldb.NewGenericConn(
-		db,
-		config,
-		sql.LevelRepeatableRead,
-		QueryFormatter{},
-		wrapKnownErrors,
-	), nil
+	return &connection{db: db, config: config}, nil
+
 }
 
 // formatDSN converts a sqldb.ConnConfig to a MySQL DSN string
@@ -83,4 +80,87 @@ func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection
 		panic(err)
 	}
 	return conn
+}
+
+type connection struct {
+	QueryFormatter
+	QueryBuilder
+
+	db     *sql.DB
+	config *sqldb.ConnConfig
+}
+
+func (conn *connection) Config() *sqldb.ConnConfig {
+	return conn.config
+}
+
+func (conn *connection) Ping(ctx context.Context, timeout time.Duration) error {
+	if timeout > 0 {
+		var cancel func()
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
+	return conn.db.PingContext(ctx)
+}
+
+func (conn *connection) Stats() sql.DBStats {
+	return conn.db.Stats()
+}
+
+func (conn *connection) Exec(ctx context.Context, query string, args ...any) error {
+	_, err := conn.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return wrapKnownErrors(err)
+	}
+	return nil
+}
+
+func (conn *connection) Query(ctx context.Context, query string, args ...any) sqldb.Rows {
+	rows, err := conn.db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return sqldb.NewErrRows(wrapKnownErrors(err))
+	}
+	return rows
+}
+
+func (conn *connection) Prepare(ctx context.Context, query string) (sqldb.Stmt, error) {
+	stmt, err := conn.db.PrepareContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	return sqldb.NewStmt(stmt, query), nil
+}
+
+func (*connection) DefaultIsolationLevel() sql.IsolationLevel {
+	return sql.LevelRepeatableRead // MySQL default
+}
+
+func (conn *connection) Transaction() sqldb.TransactionState {
+	return sqldb.TransactionState{
+		ID:   0,
+		Opts: nil,
+	}
+}
+
+func (conn *connection) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (sqldb.Connection, error) {
+	if id == 0 {
+		return nil, errors.New("transaction ID must not be zero")
+	}
+	tx, err := conn.db.BeginTx(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	return newTransaction(conn, tx, opts, id), nil
+}
+
+func (conn *connection) Commit() error {
+	return sqldb.ErrNotWithinTransaction
+}
+
+func (conn *connection) Rollback() error {
+	return sqldb.ErrNotWithinTransaction
+}
+
+func (conn *connection) Close() error {
+	return conn.db.Close()
 }

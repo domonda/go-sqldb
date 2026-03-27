@@ -31,10 +31,10 @@ type User struct {
 	DisabledAt nullable.Time `db:"disabled_at"`
 }
 
-var refl = sqldb.NewTaggedStructReflector()
-
 func main() {
 	ctx := context.Background()
+
+	refl := sqldb.NewTaggedStructReflector()
 
 	config := &sqldb.ConnConfig{
 		Driver:   "postgres",
@@ -78,13 +78,14 @@ func main() {
 
 	// Insert a struct with table name from struct tag
 	newUser := &User{ /* ... */ }
-	err = sqldb.InsertRowStruct(ctx, conn, refl, sqldb.StdQueryBuilder{}, conn, newUser)
+	builder := pqconn.QueryBuilder{}
+	err = sqldb.InsertRowStruct(ctx, conn, refl, builder, conn, newUser)
 	if err != nil {
 		panic(err)
 	}
 
 	// Insert with values map
-	err = sqldb.Insert(ctx, conn, sqldb.StdQueryBuilder{}, conn, "public.user", sqldb.Values{
+	err = sqldb.Insert(ctx, conn, builder, conn, "public.user", sqldb.Values{
 		"name":  "Erik Unger",
 		"email": "erik@domonda.com",
 	})
@@ -93,7 +94,7 @@ func main() {
 	}
 
 	// Upsert a struct
-	err = sqldb.UpsertRowStruct(ctx, conn, refl, sqldb.StdQueryBuilder{}, conn, newUser, sqldb.IgnoreColumns("created_at"))
+	err = sqldb.UpsertRowStruct(ctx, conn, refl, builder, conn, newUser, sqldb.IgnoreColumns("created_at"))
 	if err != nil {
 		panic(err)
 	}

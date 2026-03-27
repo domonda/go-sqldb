@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -118,4 +119,60 @@ func (conn *genericTx) MaxArgs() int {
 
 func (conn *genericTx) Close() error {
 	return conn.Rollback()
+}
+
+// genericTxWithQueryBuilder wraps a [genericTx] with a non-nil [QueryBuilder].
+// Implements [QueryBuilder], [UpsertQueryBuilder], and [ReturningQueryBuilder]
+// via delegation, mirroring [genericConnQueryBuilder].
+type genericTxWithQueryBuilder struct {
+	*genericTx
+	QueryBuilder
+}
+
+func (conn *genericTxWithQueryBuilder) InsertUnique(formatter QueryFormatter, table string, columns []ColumnInfo, onConflict string) (string, error) {
+	uqb, ok := conn.QueryBuilder.(UpsertQueryBuilder)
+	if !ok {
+		return "", fmt.Errorf("genericTxWithQueryBuilder: QueryBuilder %T does not implement UpsertQueryBuilder", conn.QueryBuilder)
+	}
+	return uqb.InsertUnique(formatter, table, columns, onConflict)
+}
+
+func (conn *genericTxWithQueryBuilder) Upsert(formatter QueryFormatter, table string, columns []ColumnInfo) (string, error) {
+	uqb, ok := conn.QueryBuilder.(UpsertQueryBuilder)
+	if !ok {
+		return "", fmt.Errorf("genericTxWithQueryBuilder: QueryBuilder %T does not implement UpsertQueryBuilder", conn.QueryBuilder)
+	}
+	return uqb.Upsert(formatter, table, columns)
+}
+
+func (conn *genericTxWithQueryBuilder) InsertReturning(formatter QueryFormatter, table string, columns []ColumnInfo, returning string) (string, error) {
+	rqb, ok := conn.QueryBuilder.(ReturningQueryBuilder)
+	if !ok {
+		return "", fmt.Errorf("genericTxWithQueryBuilder: QueryBuilder %T does not implement ReturningQueryBuilder", conn.QueryBuilder)
+	}
+	return rqb.InsertReturning(formatter, table, columns, returning)
+}
+
+func (conn *genericTxWithQueryBuilder) UpdateReturning(formatter QueryFormatter, table string, values Values, returning, where string, whereArgs []any) (string, []any, error) {
+	rqb, ok := conn.QueryBuilder.(ReturningQueryBuilder)
+	if !ok {
+		return "", nil, fmt.Errorf("genericTxWithQueryBuilder: QueryBuilder %T does not implement ReturningQueryBuilder", conn.QueryBuilder)
+	}
+	return rqb.UpdateReturning(formatter, table, values, returning, where, whereArgs)
+}
+
+// Begin overrides [genericTx.Begin] to propagate the [QueryBuilder]
+// to nested transactions.
+func (conn *genericTxWithQueryBuilder) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (Connection, error) {
+	if id == 0 {
+		return nil, errors.New("transaction ID must not be zero")
+	}
+	tx, err := conn.genericTx.parent.db.BeginTx(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	return &genericTxWithQueryBuilder{
+		genericTx:    newGenericTx(conn.genericTx.parent, tx, opts, id),
+		QueryBuilder: conn.QueryBuilder,
+	}, nil
 }

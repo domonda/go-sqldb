@@ -37,12 +37,69 @@
 | Array column support          | yes                 | —                   | —                   | —                   | —                 | —                   |
 | Prepared statements           | yes                 | yes                 | yes                 | yes                 | yes (mock)        | —                   |
 | Query recording               | —                   | —                   | —                   | —                   | yes               | —                   |
+| `QueryBuilder`                | yes                 | yes                 | yes                 | yes                 | —                 | —                   |
+| `UpsertQueryBuilder`          | yes                 | yes                 | yes                 | yes                 | —                 | —                   |
+| `ReturningQueryBuilder`       | yes                 | —                   | —                   | yes                 | —                 | —                   |
 
 **Notes:**
 - **Nested `Begin` uses savepoint**: Only `sqliteconn` converts nested `Begin` calls into SQL `SAVEPOINT` / `RELEASE` commands. All other real drivers start a new independent transaction on the underlying connection.
 - **`db.TransactionSavepoint`**: Works with any driver by issuing raw `SAVEPOINT` SQL within an existing transaction (see [Transactions](#transactions)).
 - **MockConn**: In-memory mock for unit testing without a running database. Supports configurable query results, exec callbacks, and records all queries and execs for inspection.
 - **ErrConn**: Dummy connection where every method except `Close` returns a stored error. Useful for testing error-handling paths.
+
+
+## Query builders
+
+Query generation is split into three interfaces to separate standard SQL from driver-specific syntax:
+
+### `QueryBuilder` — standard SQL
+
+Implemented by all drivers via `StdQueryBuilder`. Generates portable SQL for:
+- `SELECT * FROM ... WHERE pk = $1` (QueryRowWithPK)
+- `INSERT INTO ... VALUES(...)` (Insert, InsertRows)
+- `UPDATE ... SET ... WHERE ...` (Update, UpdateColumns)
+- `DELETE FROM ... WHERE ...` (Delete)
+
+### `UpsertQueryBuilder` — driver-specific upsert
+
+Not all databases use the same upsert syntax. Each driver provides its own implementation:
+
+| Driver     | Implementation             | Syntax                                                |
+| ---------- | -------------------------- | ----------------------------------------------------- |
+| PostgreSQL | `pqconn.QueryBuilder`      | `INSERT ... ON CONFLICT(...) DO UPDATE SET` / `DO NOTHING RETURNING TRUE` |
+| SQLite     | `sqliteconn.QueryBuilder`  | Same as PostgreSQL                                    |
+| MySQL      | `mysqlconn.QueryBuilder`   | `INSERT ... ON DUPLICATE KEY UPDATE col=VALUES(col)`  |
+| MSSQL      | `mssqlconn.QueryBuilder`   | `MERGE INTO ... USING ... WHEN MATCHED THEN UPDATE ... WHEN NOT MATCHED THEN INSERT ...;` |
+
+MySQL's `InsertUnique` returns an error because MySQL has no `RETURNING` clause to report whether a row was inserted. MSSQL uses `OUTPUT $action` for `InsertUnique`.
+
+### `ReturningQueryBuilder` — RETURNING clause
+
+Only PostgreSQL and SQLite support the `RETURNING` clause. `StdReturningQueryBuilder` extends `StdQueryBuilder` with:
+- `InsertReturning` — `INSERT ... RETURNING ...`
+- `UpdateReturning` — `UPDATE ... SET ... WHERE ... RETURNING ...`
+
+MySQL and MSSQL query builders do not implement this interface. Functions accepting `ReturningQueryBuilder` will not compile if passed a builder that lacks support.
+
+### Configuring the query builder
+
+The `db` package resolves the query builder in this order:
+1. Context-level override via `db.ContextWithQueryBuilder`
+2. The connection from `db.Conn(ctx)` if it implements `QueryBuilder`
+3. The global default set with `db.SetQueryBuilder`
+
+All driver connections implement `QueryBuilder` automatically, so `db.SetQueryBuilder` is typically not needed:
+
+| Connection   | Mechanism                           | `UpsertQueryBuilder` | `ReturningQueryBuilder` |
+| ------------ | ----------------------------------- | :---: | :---: |
+| `pqconn`     | embeds `pqconn.QueryBuilder`        | yes | yes |
+| `sqliteconn` | embeds `sqliteconn.QueryBuilder`    | yes | yes |
+| `mysqlconn`  | `NewGenericConn` with `mysqlconn.QueryBuilder` | yes | no |
+| `mssqlconn`  | `NewGenericConn` with `mssqlconn.QueryBuilder` | yes | no |
+
+PostgreSQL and SQLite connections embed their driver-specific `QueryBuilder`, which extends `StdReturningQueryBuilder` with `ON CONFLICT` upsert syntax, so the connection itself satisfies all three interfaces. MySQL and MSSQL pass their driver-specific builder to `NewGenericConn`, which wraps the connection so it implements `QueryBuilder`, `UpsertQueryBuilder`, and `ReturningQueryBuilder` — delegating to the underlying builder and returning errors for unsupported operations (e.g. `ReturningQueryBuilder` on MySQL).
+
+Driver-specific builders embed `StdQueryBuilder` and override only the methods that differ, so standard SQL operations work identically across all drivers.
 
 
 ## Generic errors
