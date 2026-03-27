@@ -1,4 +1,4 @@
-module github.com/domonda/go-sqldb/information/postgres_information_test
+module github.com/domonda/go-sqldb/cmd/sqldb-dump
 
 go 1.24.6
 
@@ -8,8 +8,9 @@ replace (
 )
 
 require (
-	github.com/domonda/go-sqldb v0.0.0-00010101000000-000000000000
-	github.com/domonda/go-sqldb/pqconn v0.0.0-00010101000000-000000000000
+	github.com/domonda/go-pretty v1.0.0
+	github.com/domonda/go-sqldb v0.0.0-00010101000000-000000000000 // replaced
+	github.com/domonda/go-sqldb/pqconn v0.0.0-00010101000000-000000000000 // replaced
 )
 
 require (

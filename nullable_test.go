@@ -8,10 +8,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/domonda/go-types/date"
-	"github.com/domonda/go-types/notnull"
-	"github.com/domonda/go-types/nullable"
 )
 
 func TestIsNull(t *testing.T) {
@@ -30,33 +26,15 @@ func TestIsNull(t *testing.T) {
 	iptr = new(int)
 	assert.False(t, IsNull(iptr))
 
-	d := date.Date("2000-01-01")
-	assert.False(t, IsNull(d))
+	var ns sql.NullString
+	assert.True(t, IsNull(ns))
+	ns = sql.NullString{String: "hello", Valid: true}
+	assert.False(t, IsNull(ns))
 
-	nd := date.Null
-	assert.True(t, IsNull(nd))
-	nd = "2000-01-01"
-	assert.False(t, IsNull(nd))
-
-	var nj nullable.JSON
-	assert.True(t, IsNull(nj))
-	nj = nullable.JSON("{}")
-	assert.False(t, IsNull(nj))
-
-	var na nullable.IntArray
-	assert.True(t, IsNull(na))
-	na = []int64{}
-	assert.False(t, IsNull(na))
-
-	var nnj notnull.JSON
-	assert.False(t, IsNull(nnj))
-	nnj = notnull.JSON("{}")
-	assert.False(t, IsNull(nnj))
-
-	var nna notnull.IntArray
-	assert.False(t, IsNull(nna))
-	nna = []int64{}
-	assert.False(t, IsNull(nna))
+	var nt sql.NullTime
+	assert.True(t, IsNull(nt))
+	nt = sql.NullTime{Time: time.Now(), Valid: true}
+	assert.False(t, IsNull(nt))
 }
 
 func TestNullable_Scan(t *testing.T) {

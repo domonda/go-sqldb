@@ -15,7 +15,6 @@ require (
 	github.com/DataDog/go-sqllexer v0.1.13 // indirect
 	github.com/corazawaf/libinjection-go v0.3.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/domonda/go-types v0.0.0-20260309115647-9f91bea50929 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect

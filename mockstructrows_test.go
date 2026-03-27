@@ -1,11 +1,9 @@
 package sqldb
 
 import (
+	"database/sql"
 	"testing"
 	"time"
-
-	"github.com/domonda/go-types/nullable"
-	"github.com/domonda/go-types/uu"
 )
 
 type mockSimpleRow struct {
@@ -21,8 +19,8 @@ type mockTimeRow struct {
 }
 
 type mockValuerRow struct {
-	ID   uu.ID                  `db:"id"`
-	Name nullable.TrimmedString `db:"name"`
+	ID   sql.NullString `db:"id"`
+	Name sql.NullString `db:"name"`
 }
 
 type mockEmbeddedBase struct {
@@ -148,8 +146,10 @@ func TestNewMockStructRows_ScanTime(t *testing.T) {
 }
 
 func TestNewMockStructRows_ScanValuer(t *testing.T) {
-	id := uu.IDMust("01234567-89ab-cdef-0123-456789abcdef")
-	rows := NewMockStructRows(nil, mockValuerRow{ID: id, Name: "  hello  "})
+	rows := NewMockStructRows(nil, mockValuerRow{
+		ID:   sql.NullString{String: "abc", Valid: true},
+		Name: sql.NullString{String: "hello", Valid: true},
+	})
 
 	if !rows.Next() {
 		t.Fatal("expected Next() to return true")
@@ -159,8 +159,8 @@ func TestNewMockStructRows_ScanValuer(t *testing.T) {
 	if err := rows.Scan(&gotID, &gotName); err != nil {
 		t.Fatal(err)
 	}
-	if gotID != id.String() {
-		t.Errorf("expected %q, got %q", id.String(), gotID)
+	if gotID != "abc" {
+		t.Errorf("expected %q, got %q", "abc", gotID)
 	}
 	if gotName != "hello" {
 		t.Errorf("expected %q, got %q", "hello", gotName)

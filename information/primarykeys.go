@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"html"
@@ -13,8 +14,23 @@ import (
 	"text/template"
 
 	"github.com/domonda/go-sqldb"
-	"github.com/domonda/go-types/uu"
 )
+
+// parseUUID validates and normalizes a UUID string
+// to lowercase with dashes (8-4-4-4-12 format).
+func parseUUID(s string) (string, error) {
+	s = strings.TrimSpace(s)
+	// Remove dashes for validation
+	raw := strings.ReplaceAll(s, "-", "")
+	if len(raw) != 32 {
+		return "", fmt.Errorf("invalid UUID: %q", s)
+	}
+	b, err := hex.DecodeString(raw)
+	if err != nil {
+		return "", fmt.Errorf("invalid UUID: %q", s)
+	}
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16]), nil
+}
 
 // PrimaryKeyColumn holds information about a primary key column
 // including whether it is also a foreign key.
@@ -146,7 +162,7 @@ func RenderUUIDPrimaryKeyRefsHTML(conn sqldb.Connection) http.Handler {
 				`<style>h1 {color:red}</style>`,
 			}
 		)
-		pk, err := uu.IDFromString(request.URL.Query().Get("pk"))
+		pk, err := parseUUID(request.URL.Query().Get("pk"))
 		if err != nil {
 			title = "Primary Key UUID"
 			mainContent = /*html*/ `
@@ -155,7 +171,7 @@ func RenderUUIDPrimaryKeyRefsHTML(conn sqldb.Connection) http.Handler {
 				<input type="submit" value="Look up"/>
 			</form>`
 		} else {
-			title = pk.String()
+			title = pk
 			ctx := request.Context()
 			cols, err := GetPrimaryKeyColumnsOfType(ctx, conn, "uuid")
 			if err != nil {
@@ -171,13 +187,13 @@ func RenderUUIDPrimaryKeyRefsHTML(conn sqldb.Connection) http.Handler {
 				return !tableRows[i].ForeignKey && tableRows[j].ForeignKey
 			})
 			var b strings.Builder
-			fmt.Fprintf(&b, "<h2><button onclick='navigator.clipboard.writeText(%q)'>Copy UUID</button></h2>", pk) //#nosec G705 -- pk is a validated uu.ID UUID
+			fmt.Fprintf(&b, "<h2><button onclick='navigator.clipboard.writeText(%q)'>Copy UUID</button></h2>", pk) //#nosec G705 -- pk is a validated UUID string
 			for _, tableRow := range tableRows {                                                                   //#nosec
 				fmt.Fprintf(&b, "<h3>%s</h3>", html.EscapeString(tableRow.Table))
 				fmt.Fprintf(&b, "<table>")
 				for colIdx, title := range tableRow.Header {
 					val := tableRow.Row[colIdx]
-					id, err := uu.IDFromString(val)
+					id, err := parseUUID(val)
 					if err == nil {
 						if id == pk {
 							var fk string

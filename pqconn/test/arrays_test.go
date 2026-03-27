@@ -2,13 +2,25 @@ package pqconn
 
 import (
 	"context"
+	"crypto/rand"
+	"fmt"
 	"strconv"
 	"testing"
 
 	"github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/pqconn"
-	"github.com/domonda/go-types/uu"
 )
+
+func newTestUUID(t *testing.T) string {
+	t.Helper()
+	var b [16]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		t.Fatal(err)
+	}
+	b[6] = (b[6] & 0x0f) | 0x40 // version 4
+	b[8] = (b[8] & 0x3f) | 0x80 // variant 2
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:16])
+}
 
 var refl = sqldb.NewTaggedStructReflector()
 
@@ -25,12 +37,12 @@ CREATE TABLE IF NOT EXISTS test_arrays (
 type testArraysRow struct {
 	sqldb.TableName `db:"test_arrays"`
 
-	ID         uu.ID      `db:"id,primarykey"`
-	IntArray   []int64    `db:"int_array"`
-	TextArray  []string   `db:"text_array"`
-	FloatArray []float64  `db:"float_array"`
-	BoolArray  []bool     `db:"bool_array"`
-	UUIDArray  uu.IDSlice `db:"uuid_array"`
+	ID         string    `db:"id,primarykey"`
+	IntArray   []int64   `db:"int_array"`
+	TextArray  []string  `db:"text_array"`
+	FloatArray []float64 `db:"float_array"`
+	BoolArray  []bool    `db:"bool_array"`
+	UUIDArray  []string  `db:"uuid_array"`
 }
 
 func testConn(t *testing.T) sqldb.Connection {
@@ -75,17 +87,17 @@ func TestArrayStructInsertAndQueryRow(t *testing.T) {
 	ctx := context.Background()
 	c := testConn(t)
 
-	id1 := uu.IDv4()
-	id2 := uu.IDv4()
-	id3 := uu.IDv4()
+	id1 := newTestUUID(t)
+	id2 := newTestUUID(t)
+	id3 := newTestUUID(t)
 
 	input := &testArraysRow{
-		ID:         uu.IDv4(),
+		ID:         newTestUUID(t),
 		IntArray:   []int64{10, 20, 30},
 		TextArray:  []string{"hello", "world"},
 		FloatArray: []float64{1.5, 2.5, 3.5},
 		BoolArray:  []bool{true, false, true},
-		UUIDArray:  uu.IDSlice{id1, id2, id3},
+		UUIDArray:  []string{id1, id2, id3},
 	}
 
 	err := sqldb.InsertRowStruct(ctx, c, refl, sqldb.StdQueryBuilder{}, c, input)
@@ -118,12 +130,12 @@ func TestArrayStructQueryRowsAsSlice(t *testing.T) {
 
 	rows := []testArraysRow{
 		{
-			ID:        uu.IDv4(),
+			ID:        newTestUUID(t),
 			IntArray:  []int64{1, 2},
 			TextArray: []string{"a"},
 		},
 		{
-			ID:        uu.IDv4(),
+			ID:        newTestUUID(t),
 			IntArray:  []int64{3, 4, 5},
 			TextArray: []string{"b", "c"},
 		},
@@ -156,7 +168,7 @@ func TestArrayStructNullSlices(t *testing.T) {
 	c := testConn(t)
 
 	input := &testArraysRow{
-		ID:         uu.IDv4(),
+		ID:         newTestUUID(t),
 		IntArray:   []int64{},
 		TextArray:  []string{},
 		FloatArray: nil,
@@ -203,7 +215,7 @@ func TestArrayStructQueryRowByPK(t *testing.T) {
 	c := testConn(t)
 
 	input := &testArraysRow{
-		ID:        uu.IDv4(),
+		ID:        newTestUUID(t),
 		IntArray:  []int64{42},
 		TextArray: []string{"pk-test"},
 	}
@@ -227,7 +239,7 @@ func TestArrayStructTransaction(t *testing.T) {
 	c := testConn(t)
 
 	input := &testArraysRow{
-		ID:        uu.IDv4(),
+		ID:        newTestUUID(t),
 		IntArray:  []int64{100, 200},
 		TextArray: []string{"tx-test"},
 	}
@@ -257,7 +269,7 @@ func TestArrayStructQueryCallback(t *testing.T) {
 	c := testConn(t)
 
 	input := &testArraysRow{
-		ID:        uu.IDv4(),
+		ID:        newTestUUID(t),
 		IntArray:  []int64{7, 8, 9},
 		TextArray: []string{"callback"},
 	}
@@ -289,7 +301,7 @@ func TestArrayStructSpecialStrings(t *testing.T) {
 	c := testConn(t)
 
 	input := &testArraysRow{
-		ID:       uu.IDv4(),
+		ID:       newTestUUID(t),
 		IntArray: []int64{},
 		TextArray: []string{
 			"with spaces",
@@ -322,8 +334,8 @@ func TestArraySliceAsQueryArg(t *testing.T) {
 	ctx := context.Background()
 	c := testConn(t)
 
-	id1 := uu.IDv4()
-	id2 := uu.IDv4()
+	id1 := newTestUUID(t)
+	id2 := newTestUUID(t)
 	for _, row := range []*testArraysRow{
 		{ID: id1, IntArray: []int64{10, 20, 30}, TextArray: []string{"a"}},
 		{ID: id2, IntArray: []int64{40, 50, 60}, TextArray: []string{"b"}},
@@ -355,7 +367,7 @@ func TestArrayPreparedStmt(t *testing.T) {
 	c := testConn(t)
 
 	input := &testArraysRow{
-		ID:        uu.IDv4(),
+		ID:        newTestUUID(t),
 		IntArray:  []int64{11, 22},
 		TextArray: []string{"prepared"},
 	}
@@ -436,7 +448,7 @@ func assertBoolSlice(t *testing.T, name string, got, want []bool) {
 	}
 }
 
-func assertUUIDSlice(t *testing.T, name string, got, want uu.IDSlice) {
+func assertUUIDSlice(t *testing.T, name string, got, want []string) {
 	t.Helper()
 	if len(got) != len(want) {
 		t.Errorf("%s: len = %d, want %d (got %v)", name, len(got), len(want), got)

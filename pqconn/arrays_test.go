@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"reflect"
 	"testing"
-
-	"github.com/domonda/go-types/nullable"
 )
 
 func Test_wrapArrayScanDest(t *testing.T) {
@@ -61,7 +59,6 @@ func Test_needsArrayWrappingForScanning(t *testing.T) {
 		{v: reflect.ValueOf(""), want: false},
 		{v: reflect.ValueOf(0), want: false},
 		{v: reflect.ValueOf(json.RawMessage([]byte("null"))), want: false},
-		{v: reflect.ValueOf(nullable.JSON([]byte("null"))), want: false},
 		{v: reflect.ValueOf(new(sql.NullInt64)).Elem(), want: false},
 
 		{v: reflect.ValueOf(new([3]string)).Elem(), want: true},
