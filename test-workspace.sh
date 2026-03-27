@@ -2,7 +2,11 @@
 
 set -e
 
-echo "Linting"
+echo "Found modules:"
+go list -f '  {{.Dir}}' -m
+echo ""
+
+echo "Linting with go vet and gosec"
 echo ""
 
 go list -f '{{.Dir}}' -m | xargs -I {} go vet {}/...

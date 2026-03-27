@@ -3,6 +3,7 @@ go 1.24.6
 use (
 	.
 	./cmd/sqldb-dump
+	./information/postgres_information_test
 	./mssqlconn
 	./mysqlconn
 	./pqconn

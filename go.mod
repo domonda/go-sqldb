@@ -2,11 +2,12 @@ module github.com/domonda/go-sqldb
 
 go 1.24.6
 
+tool github.com/securego/gosec/v2/cmd/gosec
+
 require (
-	github.com/DataDog/go-sqllexer v0.1.9
-	github.com/corazawaf/libinjection-go v0.2.3
-	github.com/domonda/go-sqldb/pqconn v0.1.0
-	github.com/domonda/go-types v0.0.0-20260220135934-fbc645f0b26b
+	github.com/DataDog/go-sqllexer v0.1.13
+	github.com/corazawaf/libinjection-go v0.3.2
+	github.com/domonda/go-types v0.0.0-20260309115647-9f91bea50929
 	github.com/stretchr/testify v1.11.1
 )
 
@@ -19,8 +20,8 @@ require (
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/ccojocar/zxcvbn-go v1.0.4 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/domonda/go-errs v1.0.0 // indirect
+	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/domonda/go-errs v1.0.1 // indirect
 	github.com/domonda/go-pretty v1.0.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -33,10 +34,9 @@ require (
 	github.com/gookit/color v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/invopop/jsonschema v0.13.0 // indirect
-	github.com/lib/pq v1.11.1 // indirect
 	github.com/mailru/easyjson v0.9.1 // indirect
 	github.com/openai/openai-go/v3 v3.18.0 // indirect
-	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/securego/gosec/v2 v2.23.0 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
@@ -52,6 +52,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.48.0 // indirect
+	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546 // indirect
 	golang.org/x/mod v0.33.0 // indirect
 	golang.org/x/net v0.50.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
@@ -64,5 +65,3 @@ require (
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-tool github.com/securego/gosec/v2/cmd/gosec
