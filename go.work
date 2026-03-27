@@ -9,4 +9,5 @@ use (
 	./mysqlconn
 	./pqconn
 	./sqliteconn
+	./tools
 )
