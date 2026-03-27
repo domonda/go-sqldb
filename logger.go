@@ -12,7 +12,8 @@ type Logger interface {
 	Printf(format string, v ...any)
 }
 
-// ErrLogger will be used to log errors
+// ErrLogger is a global configuration variable
+// that will be used to log errors
 // that could not be returned by
 // any of the package functions directly.
 var ErrLogger Logger = log.New(os.Stderr, "sqldb: ", log.LstdFlags)

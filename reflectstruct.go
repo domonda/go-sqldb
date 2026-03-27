@@ -118,11 +118,11 @@ func ReflectStructColumnsAndFields(structVal reflect.Value, reflector StructRefl
 
 // ReflectStructColumnPointers returns addressable pointers to the struct fields
 // corresponding to the given column names, suitable for use with Rows.Scan.
-func ReflectStructColumnPointers(structVal reflect.Value, namer StructReflector, columns []string) (pointers []any, err error) {
+func ReflectStructColumnPointers(structVal reflect.Value, reflector StructReflector, columns []string) (pointers []any, err error) {
 	if len(columns) == 0 {
 		return nil, errors.New("no columns")
 	}
-	rs, err := reflectStruct(namer, structVal.Type())
+	rs, err := reflectStruct(reflector, structVal.Type())
 	if err != nil {
 		return nil, err
 	}

@@ -76,9 +76,12 @@ func TestConnConfig_Validate(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:    "missing host",
-			config:  ConnConfig{Driver: "postgres", Database: "mydb"},
-			wantErr: true,
+			name:   "missing host",
+			config: ConnConfig{Driver: "postgres", Database: "mydb"},
+		},
+		{
+			name:   "sqlite without host",
+			config: ConnConfig{Driver: "sqlite", Database: "/tmp/test.db"},
 		},
 		{
 			name:    "missing database",

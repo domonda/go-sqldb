@@ -15,7 +15,7 @@ import (
 // For tips see https://www.alexedwards.net/blog/configuring-sqldb
 type ConnConfig struct {
 	Driver   string            `json:"driver"`
-	Host     string            `json:"host"`
+	Host     string            `json:"host"` // Defaults to "localhost" if empty
 	Port     uint16            `json:"port,omitempty"`
 	User     string            `json:"user,omitempty"`
 	Password string            `json:"password,omitempty"` //#nosec G117 -- config struct, not a hardcoded secret
@@ -96,13 +96,12 @@ func ParseConnConfig(uri string) (*ConnConfig, error) {
 }
 
 // Validate checks that the required ConnConfig fields are set
-// and returns an error if Driver, Host, or Database are missing.
+// and returns an error if Driver or Database are missing.
+// Host is required for network-based drivers
+// but not for file-based drivers like "sqlite".
 func (c *ConnConfig) Validate() error {
 	if c.Driver == "" {
 		return fmt.Errorf("missing sqldb.ConnConfig.Driver")
-	}
-	if c.Host == "" {
-		return fmt.Errorf("missing sqldb.ConnConfig.Host")
 	}
 	if c.Database == "" {
 		return fmt.Errorf("missing sqldb.ConnConfig.Database")
