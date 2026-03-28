@@ -11,6 +11,7 @@ import (
 type Stmt interface {
 	PreparedQuery() string
 	Exec(ctx context.Context, args ...any) error
+	ExecRowsAffected(ctx context.Context, args ...any) (int64, error)
 	Query(ctx context.Context, args ...any) Rows
 	Close() error
 }
@@ -33,6 +34,14 @@ func (s wrappedStmt) PreparedQuery() string {
 func (s wrappedStmt) Exec(ctx context.Context, args ...any) error {
 	_, err := s.stmt.ExecContext(ctx, args...)
 	return err
+}
+
+func (s wrappedStmt) ExecRowsAffected(ctx context.Context, args ...any) (int64, error) {
+	result, err := s.stmt.ExecContext(ctx, args...)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 func (s wrappedStmt) Query(ctx context.Context, args ...any) Rows {
@@ -69,6 +78,13 @@ func (s *unpreparedStmt) Exec(ctx context.Context, args ...any) error {
 		return net.ErrClosed
 	}
 	return s.conn.Exec(ctx, s.query, args...)
+}
+
+func (s *unpreparedStmt) ExecRowsAffected(ctx context.Context, args ...any) (int64, error) {
+	if s.conn == nil {
+		return 0, net.ErrClosed
+	}
+	return s.conn.ExecRowsAffected(ctx, s.query, args...)
 }
 
 func (s *unpreparedStmt) Query(ctx context.Context, args ...any) Rows {

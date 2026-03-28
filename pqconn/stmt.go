@@ -22,6 +22,15 @@ func (s stmt) Exec(ctx context.Context, args ...any) error {
 	return wrapKnownErrors(err)
 }
 
+func (s stmt) ExecRowsAffected(ctx context.Context, args ...any) (int64, error) {
+	wrapArrayArgs(args)
+	result, err := s.std.ExecContext(ctx, args...)
+	if err != nil {
+		return 0, wrapKnownErrors(err)
+	}
+	return result.RowsAffected()
+}
+
 func (s stmt) Query(ctx context.Context, args ...any) sqldb.Rows {
 	wrapArrayArgs(args)
 	sqlRows, err := s.std.QueryContext(ctx, args...)

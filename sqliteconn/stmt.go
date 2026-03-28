@@ -40,6 +40,29 @@ func (s *statement) Exec(ctx context.Context, args ...any) error {
 	return nil
 }
 
+func (s *statement) ExecRowsAffected(ctx context.Context, args ...any) (int64, error) {
+	// Reset the statement for reuse
+	if err := s.stmt.Reset(); err != nil {
+		return 0, wrapKnownErrors(err)
+	}
+	if err := s.stmt.ClearBindings(); err != nil {
+		return 0, wrapKnownErrors(err)
+	}
+
+	// Bind arguments
+	if err := bindArgs(s.stmt, args); err != nil {
+		return 0, wrapKnownErrors(err)
+	}
+
+	// Execute the statement
+	_, err := s.stmt.Step()
+	if err != nil {
+		return 0, wrapKnownErrors(err)
+	}
+
+	return int64(s.conn.Changes()), nil
+}
+
 func (s *statement) Query(ctx context.Context, args ...any) sqldb.Rows {
 	// Reset the statement for reuse
 	if err := s.stmt.Reset(); err != nil {
@@ -57,9 +80,9 @@ func (s *statement) Query(ctx context.Context, args ...any) sqldb.Rows {
 	// Note: We create a pseudo-rows that wraps the statement
 	// The statement should not be finalized until the rows are closed
 	return &rows{
-		stmt:              s.stmt,
-		conn:              s.conn,
-		hasRow:            false,
+		stmt:               s.stmt,
+		conn:               s.conn,
+		hasRow:             false,
 		shouldFinalizeStmt: false, // Prepared statement owns the stmt
 	}
 }

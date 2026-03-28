@@ -37,6 +37,7 @@
 | Array column support          | yes                 | —                   | —                   | —                   | —                 | —                   |
 | Prepared statements           | yes                 | yes                 | yes                 | yes                 | yes (mock)        | —                   |
 | Query recording               | —                   | —                   | —                   | —                   | yes               | —                   |
+| `ExecRowsAffected`            | yes                 | yes                 | yes                 | yes                 | yes (mock)        | returns error       |
 | `QueryBuilder`                | yes                 | yes                 | yes                 | yes                 | —                 | —                   |
 | `UpsertQueryBuilder`          | yes                 | yes                 | yes                 | yes                 | —                 | —                   |
 | `ReturningQueryBuilder`       | yes                 | —                   | —                   | yes                 | —                 | —                   |
@@ -245,6 +246,13 @@ Slice and array column handling (like PostgreSQL arrays) is handled transparentl
 
 ```go
 err = db.Exec(ctx, /*sql*/ `DELETE FROM public.user WHERE id = $1`, userID)
+```
+
+### ExecRowsAffected
+
+```go
+n, err := db.ExecRowsAffected(ctx, /*sql*/ `UPDATE public.user SET name = $1 WHERE active = $2`, "Inactive", false)
+fmt.Printf("%d rows updated\n", n)
 ```
 
 ### Querying a single row

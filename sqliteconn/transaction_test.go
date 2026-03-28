@@ -7,6 +7,54 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestTransaction_ExecRowsAffected(t *testing.T) {
+	conn := testConnection(t)
+	t.Cleanup(func() { conn.Close() })
+	setupTestTable(t, conn)
+
+	t.Run("insert in transaction", func(t *testing.T) {
+		tx, err := conn.Begin(t.Context(), 1, nil)
+		require.NoError(t, err)
+
+		n, err := tx.ExecRowsAffected(t.Context(), `INSERT INTO users (name, email) VALUES (?, ?)`, "TxUser", "tx@example.com")
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), n)
+
+		err = tx.Commit()
+		require.NoError(t, err)
+	})
+
+	t.Run("update in transaction", func(t *testing.T) {
+		tx, err := conn.Begin(t.Context(), 2, nil)
+		require.NoError(t, err)
+
+		n, err := tx.ExecRowsAffected(t.Context(), `UPDATE users SET name = ? WHERE email = ?`, "Updated", "tx@example.com")
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), n)
+
+		err = tx.Rollback()
+		require.NoError(t, err)
+	})
+
+	t.Run("delete in nested savepoint", func(t *testing.T) {
+		tx, err := conn.Begin(t.Context(), 3, nil)
+		require.NoError(t, err)
+
+		sp, err := tx.Begin(t.Context(), 4, nil)
+		require.NoError(t, err)
+
+		n, err := sp.ExecRowsAffected(t.Context(), `DELETE FROM users WHERE email = ?`, "tx@example.com")
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), n)
+
+		err = sp.Rollback()
+		require.NoError(t, err)
+
+		err = tx.Rollback()
+		require.NoError(t, err)
+	})
+}
+
 func TestSavepoint_CommitNested(t *testing.T) {
 	conn := testConnection(t)
 	t.Cleanup(func() { conn.Close() })

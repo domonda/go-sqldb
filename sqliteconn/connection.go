@@ -126,6 +126,23 @@ func (c *connection) Exec(ctx context.Context, query string, args ...any) error 
 	return nil
 }
 
+func (c *connection) ExecRowsAffected(ctx context.Context, query string, args ...any) (int64, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	resolved, err := resolveDriverValueArgs(args)
+	if err != nil {
+		return 0, err
+	}
+	err = sqlitex.Execute(c.conn, query, &sqlitex.ExecOptions{
+		Args: resolved,
+	})
+	if err != nil {
+		return 0, wrapKnownErrors(err)
+	}
+	return int64(c.conn.Changes()), nil
+}
+
 func (c *connection) Query(ctx context.Context, query string, args ...any) sqldb.Rows {
 	if err := ctx.Err(); err != nil {
 		return sqldb.NewErrRows(err)

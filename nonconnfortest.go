@@ -49,6 +49,11 @@ func (e *nonConnForTest) Exec(ctx context.Context, query string, args ...any) er
 	return nil
 }
 
+func (e *nonConnForTest) ExecRowsAffected(ctx context.Context, query string, args ...any) (int64, error) {
+	e.t.Fatal("ExecRowsAffected() called on non-working connection for test. That call should have been mocked!")
+	return 0, nil
+}
+
 func (e *nonConnForTest) Query(ctx context.Context, query string, args ...any) Rows {
 	e.t.Fatal("Query() called on non-working connection for test. That call should have been mocked!")
 	return nil

@@ -49,10 +49,10 @@ type QueryRecordings struct {
 // and a non-zero value simulates a transaction.
 type MockConn struct {
 	// Configuration
-	QueryFormatter  QueryFormatter     // StdQueryFormatter{} is used if nil
-	NormalizeQuery  NormalizeQueryFunc // nil means no normalization
-	QueryLog        io.Writer          // nil means no writing of queries
-	MockMaxArgs     int                // overrides QueryFormatter.MaxArgs() if > 0
+	QueryFormatter QueryFormatter     // StdQueryFormatter{} is used if nil
+	NormalizeQuery NormalizeQueryFunc // nil means no normalization
+	QueryLog       io.Writer          // nil means no writing of queries
+	MockMaxArgs    int                // overrides QueryFormatter.MaxArgs() if > 0
 
 	// Connection state
 	TxID        uint64 // Returned by TransactionState
@@ -66,6 +66,7 @@ type MockConn struct {
 	MockPing                 func(context.Context, time.Duration) error
 	MockStats                func() sql.DBStats
 	MockExec                 func(ctx context.Context, query string, args ...any) error
+	MockExecRowsAffected     func(ctx context.Context, query string, args ...any) (int64, error)
 	MockQuery                func(ctx context.Context, query string, args ...any) Rows
 	MockPrepare              func(ctx context.Context, query string) (Stmt, error)
 	MockTransaction          func() TransactionState
@@ -122,6 +123,7 @@ func (c *MockConn) Clone() *MockConn {
 		MockPing:                 c.MockPing,
 		MockStats:                c.MockStats,
 		MockExec:                 c.MockExec,
+		MockExecRowsAffected:     c.MockExecRowsAffected,
 		MockQuery:                c.MockQuery,
 		MockPrepare:              c.MockPrepare,
 		MockTransaction:          c.MockTransaction,
@@ -250,6 +252,39 @@ func (c *MockConn) Exec(ctx context.Context, query string, args ...any) (err err
 	return c.MockExec(ctx, query, args...)
 }
 
+// ExecRowsAffected implements Connection by recording the query,
+// optionally logging it, and then calling MockExecRowsAffected
+// or returning 0 and the context error if MockExecRowsAffected is nil.
+func (c *MockConn) ExecRowsAffected(ctx context.Context, query string, args ...any) (int64, error) {
+	queryFormatter := c.getQueryFormatter()
+	queryData, err := NewQueryData(query, args, c.NormalizeQuery)
+	if err != nil {
+		return 0, err
+	}
+
+	c.mtx.Lock()
+	c.Recordings.Execs = append(c.Recordings.Execs, queryData)
+	c.mtx.Unlock()
+
+	if c.QueryLog != nil {
+		if c.NormalizeQuery != nil {
+			query, err = c.NormalizeQuery(query)
+			if err != nil {
+				return 0, err
+			}
+		}
+		_, err = fmt.Fprint(c.QueryLog, FormatQuery(queryFormatter, query, args...), ";\n")
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	if c.MockExecRowsAffected == nil {
+		return 0, ctx.Err()
+	}
+	return c.MockExecRowsAffected(ctx, query, args...)
+}
+
 // Query implements Connection by recording the query,
 // optionally logging it, and then calling MockQuery.
 // If MockQuery is nil, it looks up the result in MockQueryResults.
@@ -317,6 +352,9 @@ func (c *MockConn) Prepare(ctx context.Context, query string) (Stmt, error) {
 			Prepared: query,
 			MockExec: func(ctx context.Context, args ...any) error {
 				return c.Exec(ctx, query, args...)
+			},
+			MockExecRowsAffected: func(ctx context.Context, args ...any) (int64, error) {
+				return c.ExecRowsAffected(ctx, query, args...)
 			},
 			MockQuery: func(ctx context.Context, args ...any) Rows {
 				return c.Query(ctx, query, args...)

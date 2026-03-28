@@ -42,6 +42,12 @@ func TestErrConn_AllMethodsReturnErr(t *testing.T) {
 		require.ErrorIs(t, err, sentinel)
 	})
 
+	t.Run("ExecRowsAffected", func(t *testing.T) {
+		n, err := conn.ExecRowsAffected(t.Context(), "UPDATE x SET y = 1")
+		require.ErrorIs(t, err, sentinel)
+		assert.Equal(t, int64(0), n)
+	})
+
 	t.Run("Query returns ErrRows", func(t *testing.T) {
 		rows := conn.Query(t.Context(), "SELECT 1")
 		require.NotNil(t, rows)

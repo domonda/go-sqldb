@@ -94,6 +94,15 @@ func (conn *connection) Exec(ctx context.Context, query string, args ...any) err
 	return nil
 }
 
+func (conn *connection) ExecRowsAffected(ctx context.Context, query string, args ...any) (int64, error) {
+	wrapArrayArgs(args)
+	result, err := conn.db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return 0, wrapKnownErrors(err)
+	}
+	return result.RowsAffected()
+}
+
 func (conn *connection) Query(ctx context.Context, query string, args ...any) sqldb.Rows {
 	wrapArrayArgs(args)
 	sqlRows, err := conn.db.QueryContext(ctx, query, args...)

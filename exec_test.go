@@ -137,6 +137,86 @@ func TestExec(t *testing.T) {
 	})
 }
 
+func TestExecRowsAffected(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			return 3, nil
+		}
+
+		n, err := ExecRowsAffected(t.Context(), conn, fmtr, "UPDATE users SET active = $1", true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if n != 3 {
+			t.Errorf("rows affected = %d, want 3", n)
+		}
+	})
+
+	t.Run("error propagation", func(t *testing.T) {
+		conn, _, _, fmtr := newTestInterfaces()
+		testErr := errors.New("exec failed")
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			return 0, testErr
+		}
+
+		n, err := ExecRowsAffected(t.Context(), conn, fmtr, "UPDATE users SET active = $1", true)
+		if !errors.Is(err, testErr) {
+			t.Errorf("expected error wrapping %v, got: %v", testErr, err)
+		}
+		if n != 0 {
+			t.Errorf("rows affected = %d, want 0", n)
+		}
+	})
+
+	t.Run("nil mock returns context error", func(t *testing.T) {
+		conn, _, _, fmtr := newTestInterfaces()
+		// MockExecRowsAffected is nil, should return ctx.Err()
+		n, err := ExecRowsAffected(t.Context(), conn, fmtr, "UPDATE users SET active = $1", true)
+		if err != nil {
+			t.Errorf("expected nil error for non-cancelled context, got: %v", err)
+		}
+		if n != 0 {
+			t.Errorf("rows affected = %d, want 0", n)
+		}
+	})
+
+	t.Run("records exec", func(t *testing.T) {
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			return 1, nil
+		}
+
+		_, err := ExecRowsAffected(t.Context(), conn, fmtr, "DELETE FROM users WHERE id = $1", 42)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(conn.Recordings.Execs) != 1 {
+			t.Fatalf("expected 1 recorded exec, got %d", len(conn.Recordings.Execs))
+		}
+		if conn.Recordings.Execs[0].Query != "DELETE FROM users WHERE id = $1" {
+			t.Errorf("recorded query = %q, want %q", conn.Recordings.Execs[0].Query, "DELETE FROM users WHERE id = $1")
+		}
+	})
+
+	t.Run("logs query", func(t *testing.T) {
+		conn, _, _, fmtr := newTestInterfaces()
+		var buf strings.Builder
+		conn.QueryLog = &buf
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			return 2, nil
+		}
+
+		_, err := ExecRowsAffected(t.Context(), conn, fmtr, "UPDATE users SET name = $1", "Alice")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(buf.String(), "UPDATE users") {
+			t.Errorf("expected query log to contain 'UPDATE users', got: %q", buf.String())
+		}
+	})
+}
+
 func TestExecStmt(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		conn, _, _, fmtr := newTestInterfaces()
@@ -207,6 +287,98 @@ func TestExecStmt(t *testing.T) {
 		}
 		if execCount != 1 {
 			t.Errorf("MockExec called %d times, want 1", execCount)
+		}
+	})
+}
+
+func TestExecRowsAffectedStmt(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		conn, _, _, fmtr := newTestInterfaces()
+		var execCount int
+		var gotArgs []any
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			execCount++
+			gotArgs = args
+			return 7, nil
+		}
+		execFunc, closeStmt, err := ExecRowsAffectedStmt(t.Context(), conn, fmtr, "UPDATE users SET active = $1 WHERE role = $2")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer closeStmt()
+
+		n, err := execFunc(t.Context(), true, "admin")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if n != 7 {
+			t.Errorf("rows affected = %d, want 7", n)
+		}
+		if execCount != 1 {
+			t.Errorf("MockExecRowsAffected called %d times, want 1", execCount)
+		}
+		assertArgs(t, gotArgs, []any{true, "admin"})
+	})
+
+	t.Run("prepare error", func(t *testing.T) {
+		conn, _, _, fmtr := newTestInterfaces()
+		prepErr := errors.New("prepare failed")
+		conn.MockPrepare = func(ctx context.Context, query string) (Stmt, error) {
+			return nil, prepErr
+		}
+		_, _, err := ExecRowsAffectedStmt(t.Context(), conn, fmtr, "UPDATE users SET active = $1")
+		if !errors.Is(err, prepErr) {
+			t.Errorf("expected error wrapping %v, got: %v", prepErr, err)
+		}
+	})
+
+	t.Run("exec error", func(t *testing.T) {
+		conn, _, _, fmtr := newTestInterfaces()
+		execErr := errors.New("exec failed")
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			return 0, execErr
+		}
+		execFunc, closeStmt, err := ExecRowsAffectedStmt(t.Context(), conn, fmtr, "UPDATE users SET active = $1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer closeStmt()
+
+		n, err := execFunc(t.Context(), true)
+		if !errors.Is(err, execErr) {
+			t.Errorf("expected error wrapping %v, got: %v", execErr, err)
+		}
+		if n != 0 {
+			t.Errorf("rows affected = %d, want 0", n)
+		}
+	})
+
+	t.Run("multiple calls", func(t *testing.T) {
+		conn, _, _, fmtr := newTestInterfaces()
+		var callCount int
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			callCount++
+			return int64(callCount), nil
+		}
+		execFunc, closeStmt, err := ExecRowsAffectedStmt(t.Context(), conn, fmtr, "DELETE FROM users WHERE id = $1")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer closeStmt()
+
+		n1, err := execFunc(t.Context(), 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		n2, err := execFunc(t.Context(), 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if n1 != 1 || n2 != 2 {
+			t.Errorf("rows affected = (%d, %d), want (1, 2)", n1, n2)
+		}
+		if callCount != 2 {
+			t.Errorf("MockExecRowsAffected called %d times, want 2", callCount)
 		}
 	})
 }

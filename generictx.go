@@ -48,6 +48,17 @@ func (conn *genericTx) Exec(ctx context.Context, query string, args ...any) erro
 	return err
 }
 
+func (conn *genericTx) ExecRowsAffected(ctx context.Context, query string, args ...any) (int64, error) {
+	result, err := conn.tx.ExecContext(ctx, query, args...)
+	if err != nil {
+		if conn.wrapErr != nil {
+			return 0, conn.wrapErr(err)
+		}
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 func (conn *genericTx) Query(ctx context.Context, query string, args ...any) Rows {
 	rows, err := conn.tx.QueryContext(ctx, query, args...)
 	if err != nil {

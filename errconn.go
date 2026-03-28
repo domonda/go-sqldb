@@ -47,6 +47,11 @@ func (e ErrConn) Exec(ctx context.Context, query string, args ...any) error {
 	return e.Err
 }
 
+// ExecRowsAffected implements the Connection interface.
+func (e ErrConn) ExecRowsAffected(ctx context.Context, query string, args ...any) (int64, error) {
+	return 0, e.Err
+}
+
 // Query implements the Connection interface.
 func (e ErrConn) Query(ctx context.Context, query string, args ...any) Rows {
 	return NewErrRows(e.Err)

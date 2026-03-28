@@ -48,6 +48,15 @@ func (conn *transaction) Exec(ctx context.Context, query string, args ...any) er
 	return nil
 }
 
+func (conn *transaction) ExecRowsAffected(ctx context.Context, query string, args ...any) (int64, error) {
+	wrapArrayArgs(args)
+	result, err := conn.tx.ExecContext(ctx, query, args...)
+	if err != nil {
+		return 0, wrapKnownErrors(err)
+	}
+	return result.RowsAffected()
+}
+
 func (conn *transaction) Query(ctx context.Context, query string, args ...any) sqldb.Rows {
 	wrapArrayArgs(args)
 	sqlRows, err := conn.tx.QueryContext(ctx, query, args...)

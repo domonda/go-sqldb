@@ -50,6 +50,23 @@ func (t *transaction) Exec(ctx context.Context, query string, args ...any) error
 	return nil
 }
 
+func (t *transaction) ExecRowsAffected(ctx context.Context, query string, args ...any) (int64, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+	resolved, err := resolveDriverValueArgs(args)
+	if err != nil {
+		return 0, err
+	}
+	err = sqlitex.Execute(t.parent.conn, query, &sqlitex.ExecOptions{
+		Args: resolved,
+	})
+	if err != nil {
+		return 0, wrapKnownErrors(err)
+	}
+	return int64(t.parent.conn.Changes()), nil
+}
+
 func (t *transaction) Query(ctx context.Context, query string, args ...any) sqldb.Rows {
 	if err := ctx.Err(); err != nil {
 		return sqldb.NewErrRows(err)

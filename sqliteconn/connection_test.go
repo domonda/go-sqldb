@@ -120,6 +120,49 @@ func TestConnection_Exec(t *testing.T) {
 	})
 }
 
+func TestConnection_ExecRowsAffected(t *testing.T) {
+	conn := testConnection(t)
+	t.Cleanup(func() { conn.Close() })
+	setupTestTable(t, conn)
+
+	t.Run("insert single row", func(t *testing.T) {
+		n, err := conn.ExecRowsAffected(t.Context(), `INSERT INTO users (name, email) VALUES (?, ?)`, "Dave", "dave@example.com")
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), n)
+	})
+
+	t.Run("update multiple rows", func(t *testing.T) {
+		n, err := conn.ExecRowsAffected(t.Context(), `UPDATE users SET name = ?`, "Updated")
+		require.NoError(t, err)
+		assert.Equal(t, int64(4), n) // 3 from setup + 1 inserted above
+	})
+
+	t.Run("update no matching rows", func(t *testing.T) {
+		n, err := conn.ExecRowsAffected(t.Context(), `UPDATE users SET name = ? WHERE email = ?`, "Nobody", "nonexistent@example.com")
+		require.NoError(t, err)
+		assert.Equal(t, int64(0), n)
+	})
+
+	t.Run("delete single row", func(t *testing.T) {
+		n, err := conn.ExecRowsAffected(t.Context(), `DELETE FROM users WHERE email = ?`, "dave@example.com")
+		require.NoError(t, err)
+		assert.Equal(t, int64(1), n)
+	})
+
+	t.Run("delete all rows", func(t *testing.T) {
+		n, err := conn.ExecRowsAffected(t.Context(), `DELETE FROM users`)
+		require.NoError(t, err)
+		assert.Equal(t, int64(3), n)
+	})
+
+	t.Run("cancelled context", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		_, err := conn.ExecRowsAffected(ctx, `INSERT INTO users (name, email) VALUES (?, ?)`, "Test", "test@example.com")
+		assert.Error(t, err)
+	})
+}
+
 func TestConnection_Query(t *testing.T) {
 	conn := testConnection(t)
 	t.Cleanup(func() { conn.Close() })

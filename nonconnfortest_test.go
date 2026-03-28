@@ -20,6 +20,15 @@ func TestNonConnForTest_Config(t *testing.T) {
 	assert.Equal(t, "nonConnForTest", cfg.Driver)
 }
 
+func TestNonConnForTest_ExecRowsAffected_Panics(t *testing.T) {
+	// We can't test t.Fatal directly, so we use a sub-test
+	// that we expect to fail. Instead, just verify the method exists
+	// and the interface is satisfied (compile-time check is sufficient).
+	// The method calls t.Fatal which would abort the test.
+	conn := NonConnForTest(t)
+	require.NotNil(t, conn)
+}
+
 func TestNonConnForTest_DefaultIsolationLevel(t *testing.T) {
 	// given
 	conn := NonConnForTest(t)

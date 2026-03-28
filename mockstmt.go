@@ -10,10 +10,11 @@ var _ Stmt = new(MockStmt)
 // Methods where the corresponding mock function is nil
 // return sane defaults (context error for Exec/Query, nil for Close).
 type MockStmt struct {
-	Prepared  string
-	MockExec  func(ctx context.Context, args ...any) error
-	MockQuery func(ctx context.Context, args ...any) Rows
-	MockClose func() error
+	Prepared             string
+	MockExec             func(ctx context.Context, args ...any) error
+	MockExecRowsAffected func(ctx context.Context, args ...any) (int64, error)
+	MockQuery            func(ctx context.Context, args ...any) Rows
+	MockClose            func() error
 }
 
 // PreparedQuery returns the prepared query string.
@@ -28,6 +29,15 @@ func (s *MockStmt) Exec(ctx context.Context, args ...any) error {
 		return ctx.Err()
 	}
 	return s.MockExec(ctx, args...)
+}
+
+// ExecRowsAffected implements Stmt by calling MockExecRowsAffected
+// or returning 0 and the context error if MockExecRowsAffected is nil.
+func (s *MockStmt) ExecRowsAffected(ctx context.Context, args ...any) (int64, error) {
+	if s.MockExecRowsAffected == nil {
+		return 0, ctx.Err()
+	}
+	return s.MockExecRowsAffected(ctx, args...)
 }
 
 // Query implements Stmt by calling MockQuery

@@ -36,6 +36,12 @@ type Preparer interface {
 type Executor interface {
 	// Exec executes a query with optional args.
 	Exec(ctx context.Context, query string, args ...any) error
+
+	// ExecRowsAffected executes a query with optional args
+	// and returns the number of rows affected by an
+	// update, insert, or delete. Not every database or database
+	// driver may support this.
+	ExecRowsAffected(ctx context.Context, query string, args ...any) (int64, error)
 }
 
 // Querier is an interface for querying rows from the database.
@@ -67,6 +73,12 @@ type Connection interface {
 
 	// Exec executes a query with optional args.
 	Exec(ctx context.Context, query string, args ...any) error
+
+	// ExecRowsAffected executes a query with optional args
+	// and returns the number of rows affected by an
+	// update, insert, or delete. Not every database or database
+	// driver may support this.
+	ExecRowsAffected(ctx context.Context, query string, args ...any) (int64, error)
 
 	// Query queries rows with optional args.
 	// Any error will be returned by the Rows.Err method.
