@@ -60,14 +60,41 @@ func TestQueryBuilder_Upsert(t *testing.T) {
 	})
 }
 
-func TestQueryBuilder_InsertUnique_error(t *testing.T) {
+func TestQueryBuilder_InsertUnique(t *testing.T) {
 	b := QueryBuilder{}
-	_, err := b.InsertUnique(testFormatter, "users", []sqldb.ColumnInfo{
-		{Name: "id"},
-		{Name: "name"},
-	}, "id")
-	if err == nil {
-		t.Error("expected error from MySQL InsertUnique")
+
+	tests := []struct {
+		name       string
+		table      string
+		columns    []sqldb.ColumnInfo
+		onConflict string
+		want       string
+	}{
+		{
+			name:       "single conflict column",
+			table:      "users",
+			columns:    []sqldb.ColumnInfo{{Name: "id"}, {Name: "name"}},
+			onConflict: "id",
+			want:       "INSERT INTO users(id,name) VALUES(?,?) ON DUPLICATE KEY UPDATE id = id",
+		},
+		{
+			name:       "multiple conflict columns uses first",
+			table:      "kv",
+			columns:    []sqldb.ColumnInfo{{Name: "ns"}, {Name: "key"}, {Name: "val"}},
+			onConflict: "ns, key",
+			want:       "INSERT INTO kv(ns,`key`,val) VALUES(?,?,?) ON DUPLICATE KEY UPDATE ns = ns",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := b.InsertUnique(testFormatter, tt.table, tt.columns, tt.onConflict)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("got:\n  %s\nwant:\n  %s", got, tt.want)
+			}
+		})
 	}
 }
 

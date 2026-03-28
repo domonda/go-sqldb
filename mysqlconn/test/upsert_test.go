@@ -125,8 +125,37 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 	ctx := t.Context()
 	qb := mysqlconn.QueryBuilder{}
 
-	// MySQL does not support InsertUnique (no RETURNING clause)
-	row := upsertRow{ID: 1, Name: "alice", Score: 100}
-	_, err = sqldb.InsertUniqueRowStruct(ctx, conn, refl, qb, conn, &row, "id")
-	require.Error(t, err, "InsertUnique should return error for MySQL")
+	t.Run("insert new row", func(t *testing.T) {
+		row := upsertRow{ID: 1, Name: "alice", Score: 100}
+		inserted, err := sqldb.InsertUniqueRowStruct(ctx, conn, refl, qb, conn, &row, "id")
+		require.NoError(t, err)
+		assert.True(t, inserted, "new row should be inserted")
+
+		// Verify
+		rows := conn.Query(ctx,
+			/*sql*/ `SELECT id, name, score FROM test_upsert WHERE id = ?`, 1,
+		)
+		require.True(t, rows.Next())
+		var got upsertRow
+		require.NoError(t, rows.Scan(&got.ID, &got.Name, &got.Score))
+		require.NoError(t, rows.Close())
+		assert.Equal(t, upsertRow{ID: 1, Name: "alice", Score: 100}, got)
+	})
+
+	t.Run("conflict does not insert", func(t *testing.T) {
+		row := upsertRow{ID: 1, Name: "alice_updated", Score: 200}
+		inserted, err := sqldb.InsertUniqueRowStruct(ctx, conn, refl, qb, conn, &row, "id")
+		require.NoError(t, err)
+		assert.False(t, inserted, "conflicting row should not be inserted")
+
+		// Verify original row is unchanged
+		rows := conn.Query(ctx,
+			/*sql*/ `SELECT id, name, score FROM test_upsert WHERE id = ?`, 1,
+		)
+		require.True(t, rows.Next())
+		var got upsertRow
+		require.NoError(t, rows.Scan(&got.ID, &got.Name, &got.Score))
+		require.NoError(t, rows.Close())
+		assert.Equal(t, upsertRow{ID: 1, Name: "alice", Score: 100}, got, "original row should be unchanged")
+	})
 }

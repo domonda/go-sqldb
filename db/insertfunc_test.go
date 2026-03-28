@@ -13,56 +13,54 @@ import (
 func TestInsertUnique(t *testing.T) {
 	t.Run("inserted", func(t *testing.T) {
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-		var queryCount int
+		var execCount int
 		var gotQuery string
 		var gotArgs []any
-		mock.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
-			queryCount++
+		mock.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			execCount++
 			gotQuery = query
 			gotArgs = args
-			// InsertUnique checks rows.Next() — return a row to indicate insertion
-			return sqldb.NewMockRows("bool").WithRow(true)
+			return 1, nil
 		}
 		ctx := testContext(t, mock)
 
 		inserted, err := InsertUnique(ctx, "users", sqldb.Values{"id": 1, "name": "Alice"}, "(id)")
 		require.NoError(t, err)
 		require.True(t, inserted)
-		require.Equal(t, 1, queryCount, "MockQuery call count")
+		require.Equal(t, 1, execCount, "MockExecRowsAffected call count")
 		// Values sorted alphabetically: id, name
-		require.Equal(t, "INSERT INTO users(id,name) VALUES($1,$2) ON CONFLICT (id) DO NOTHING RETURNING TRUE", gotQuery)
+		require.Equal(t, "INSERT INTO users(id,name) VALUES($1,$2) ON CONFLICT (id) DO NOTHING", gotQuery)
 		require.Equal(t, []any{1, "Alice"}, gotArgs)
 	})
 
 	t.Run("not inserted (conflict)", func(t *testing.T) {
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-		var queryCount int
-		mock.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
-			queryCount++
-			// No rows returned means conflict — not inserted
-			return sqldb.NewMockRows("bool")
+		var execCount int
+		mock.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			execCount++
+			return 0, nil
 		}
 		ctx := testContext(t, mock)
 
 		inserted, err := InsertUnique(ctx, "users", sqldb.Values{"id": 1, "name": "Alice"}, "(id)")
 		require.NoError(t, err)
 		require.False(t, inserted)
-		require.Equal(t, 1, queryCount, "MockQuery call count")
+		require.Equal(t, 1, execCount, "MockExecRowsAffected call count")
 	})
 
-	t.Run("query error", func(t *testing.T) {
+	t.Run("exec error", func(t *testing.T) {
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-		var queryCount int
+		var execCount int
 		testErr := errors.New("insert failed")
-		mock.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
-			queryCount++
-			return sqldb.NewErrRows(testErr)
+		mock.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			execCount++
+			return 0, testErr
 		}
 		ctx := testContext(t, mock)
 
 		_, err := InsertUnique(ctx, "users", sqldb.Values{"id": 1}, "(id)")
 		require.ErrorIs(t, err, testErr)
-		require.Equal(t, 1, queryCount, "MockQuery call count")
+		require.Equal(t, 1, execCount, "MockExecRowsAffected call count")
 	})
 }
 
@@ -75,43 +73,43 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 
 	t.Run("inserted", func(t *testing.T) {
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-		var queryCount int
+		var execCount int
 		var gotQuery string
 		var gotArgs []any
-		mock.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
-			queryCount++
+		mock.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			execCount++
 			gotQuery = query
 			gotArgs = args
-			return sqldb.NewMockRows("bool").WithRow(true)
+			return 1, nil
 		}
 		ctx := testContext(t, mock)
 
 		inserted, err := InsertUniqueRowStruct(ctx, &UserRow{ID: 1, Name: "Alice"}, "(id)")
 		require.NoError(t, err)
 		require.True(t, inserted)
-		require.Equal(t, 1, queryCount, "MockQuery call count")
-		require.Equal(t, "INSERT INTO users(id,name) VALUES($1,$2) ON CONFLICT (id) DO NOTHING RETURNING TRUE", gotQuery)
+		require.Equal(t, 1, execCount, "MockExecRowsAffected call count")
+		require.Equal(t, "INSERT INTO users(id,name) VALUES($1,$2) ON CONFLICT (id) DO NOTHING", gotQuery)
 		require.Equal(t, []any{1, "Alice"}, gotArgs)
 	})
 
 	t.Run("with IgnoreColumns", func(t *testing.T) {
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
-		var queryCount int
+		var execCount int
 		var gotQuery string
 		var gotArgs []any
-		mock.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
-			queryCount++
+		mock.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			execCount++
 			gotQuery = query
 			gotArgs = args
-			return sqldb.NewMockRows("bool").WithRow(true)
+			return 1, nil
 		}
 		ctx := testContext(t, mock)
 
 		inserted, err := InsertUniqueRowStruct(ctx, &UserRow{ID: 1, Name: "Alice"}, "(id)", sqldb.IgnoreColumns("name"))
 		require.NoError(t, err)
 		require.True(t, inserted)
-		require.Equal(t, 1, queryCount, "MockQuery call count")
-		require.Equal(t, "INSERT INTO users(id) VALUES($1) ON CONFLICT (id) DO NOTHING RETURNING TRUE", gotQuery)
+		require.Equal(t, 1, execCount, "MockExecRowsAffected call count")
+		require.Equal(t, "INSERT INTO users(id) VALUES($1) ON CONFLICT (id) DO NOTHING", gotQuery)
 		require.Equal(t, []any{1}, gotArgs)
 	})
 }

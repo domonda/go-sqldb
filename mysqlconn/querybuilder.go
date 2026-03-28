@@ -20,10 +20,23 @@ type QueryBuilder struct {
 	sqldb.StdQueryBuilder
 }
 
-// InsertUnique is not supported by MySQL because MySQL does not support
-// the RETURNING clause needed to determine if a row was inserted.
-func (QueryBuilder) InsertUnique(formatter sqldb.QueryFormatter, table string, columns []sqldb.ColumnInfo, onConflict string) (query string, err error) {
-	return "", fmt.Errorf("mysqlconn.QueryBuilder: InsertUnique is not supported because MySQL has no RETURNING clause")
+// InsertUnique builds an INSERT ... ON DUPLICATE KEY UPDATE query
+// that performs a no-op update on conflict, so the row is not modified.
+// The number of affected rows reported by MySQL is 1 for an insert
+// and 0 for a no-op update, allowing the caller to detect whether
+// a row was inserted via ExecRowsAffected.
+func (b QueryBuilder) InsertUnique(formatter sqldb.QueryFormatter, table string, columns []sqldb.ColumnInfo, onConflict string) (query string, err error) {
+	insert, err := b.Insert(formatter, table, columns)
+	if err != nil {
+		return "", err
+	}
+	conflictCols := strings.Split(onConflict, ",")
+	col := strings.TrimSpace(conflictCols[0])
+	col, err = formatter.FormatColumnName(col)
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s ON DUPLICATE KEY UPDATE %s = %s", insert, col, col), nil
 }
 
 // Upsert builds an INSERT ... ON DUPLICATE KEY UPDATE query.

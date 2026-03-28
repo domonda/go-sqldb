@@ -34,7 +34,7 @@ config.Extra = map[string]string{
 
 - Standard CRUD via embedded `sqldb.StdQueryBuilder`
 - Upsert via `MERGE INTO ... USING ... WHEN MATCHED THEN UPDATE ... WHEN NOT MATCHED THEN INSERT`
-- `InsertUnique` uses `MERGE` with `OUTPUT $action` to detect whether a row was inserted
+- `InsertUnique` uses `MERGE` with `WHEN NOT MATCHED THEN INSERT` (rows affected indicates whether a row was inserted)
 
 It does not implement `sqldb.ReturningQueryBuilder`.
 

@@ -43,7 +43,7 @@ func InsertReturning(ctx context.Context, conn Querier, refl StructReflector, bu
 // InsertUnique inserts a new row into the table using the passed values
 // or does nothing if the onConflict statement applies.
 // Returns true if a row was inserted.
-func InsertUnique(ctx context.Context, conn Querier, builder UpsertQueryBuilder, fmtr QueryFormatter, table string, values Values, onConflict string) (inserted bool, err error) {
+func InsertUnique(ctx context.Context, conn Executor, builder UpsertQueryBuilder, fmtr QueryFormatter, table string, values Values, onConflict string) (inserted bool, err error) {
 	if len(values) == 0 {
 		return false, fmt.Errorf("InsertUnique into table %s: no values", table)
 	}
@@ -54,14 +54,11 @@ func InsertUnique(ctx context.Context, conn Querier, builder UpsertQueryBuilder,
 		return false, fmt.Errorf("failed to create INSERT query: %w", err)
 	}
 
-	rows := conn.Query(ctx, query, vals...)
-	defer rows.Close()
-	if err = rows.Err(); err != nil {
+	n, err := conn.ExecRowsAffected(ctx, query, vals...)
+	if err != nil {
 		return false, WrapErrorWithQuery(err, query, vals, fmtr)
 	}
-	// If there is a row returned, then a row was inserted.
-	// The content of the returned row is not relevant.
-	return rows.Next(), nil
+	return n > 0, nil
 }
 
 // InsertRowStruct inserts a new row into the table for the given struct.
@@ -188,7 +185,7 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 // (e.g., sqldb.TableName `db:"my_table"`).
 // Column names are derived from the `db` struct tags of the struct's fields.
 // Optional QueryOption can be passed to ignore mapped columns.
-func InsertUniqueRowStruct(ctx context.Context, conn Querier, refl StructReflector, builder UpsertQueryBuilder, fmtr QueryFormatter, rowStruct StructWithTableName, onConflict string, options ...QueryOption) (inserted bool, err error) {
+func InsertUniqueRowStruct(ctx context.Context, conn Executor, refl StructReflector, builder UpsertQueryBuilder, fmtr QueryFormatter, rowStruct StructWithTableName, onConflict string, options ...QueryOption) (inserted bool, err error) {
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return false, err
@@ -213,14 +210,11 @@ func InsertUniqueRowStruct(ctx context.Context, conn Querier, refl StructReflect
 		return false, fmt.Errorf("failed to create INSERT query: %w", err)
 	}
 
-	rows := conn.Query(ctx, query, vals...)
-	defer rows.Close()
-	if err = rows.Err(); err != nil {
+	n, err := conn.ExecRowsAffected(ctx, query, vals...)
+	if err != nil {
 		return false, WrapErrorWithQuery(err, query, vals, fmtr)
 	}
-	// If there is a row returned, then a row was inserted.
-	// The content of the returned row is not relevant.
-	return rows.Next(), nil
+	return n > 0, nil
 }
 
 // InsertRowStructs inserts a slice of structs as new rows into the table for the given struct type.

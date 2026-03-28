@@ -35,7 +35,7 @@ config.Extra = map[string]string{
 
 - Standard CRUD via embedded `sqldb.StdQueryBuilder`
 - Upsert via `INSERT ... ON DUPLICATE KEY UPDATE col=VALUES(col)`
-- `InsertUnique` returns an error because MySQL has no `RETURNING` clause
+- `InsertUnique` via `INSERT ... ON DUPLICATE KEY UPDATE col = col` (no-op update to detect insert via rows affected)
 
 It does not implement `sqldb.ReturningQueryBuilder` because MySQL does not support `RETURNING`.
 

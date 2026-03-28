@@ -25,7 +25,7 @@ func (b testUpsertBuilder) InsertUnique(formatter QueryFormatter, table string, 
 	if strings.HasPrefix(onConflict, "(") && strings.HasSuffix(onConflict, ")") {
 		onConflict = onConflict[1 : len(onConflict)-1]
 	}
-	fmt.Fprintf(&q, " ON CONFLICT (%s) DO NOTHING RETURNING TRUE", onConflict)
+	fmt.Fprintf(&q, " ON CONFLICT (%s) DO NOTHING", onConflict)
 	return q.String(), nil
 }
 

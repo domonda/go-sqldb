@@ -86,8 +86,7 @@ func TestQueryBuilder_InsertUnique(t *testing.T) {
 			want: `MERGE INTO users WITH (HOLDLOCK) AS target` +
 				` USING (VALUES(@p1,@p2)) AS source(id,name)` +
 				` ON target.id = source.id` +
-				` WHEN NOT MATCHED THEN INSERT (id,name) VALUES (source.id,source.name)` +
-				` OUTPUT $action;`,
+				` WHEN NOT MATCHED THEN INSERT (id,name) VALUES (source.id,source.name);`,
 		},
 		{
 			name:       "multiple conflict columns",
@@ -97,8 +96,7 @@ func TestQueryBuilder_InsertUnique(t *testing.T) {
 			want: `MERGE INTO kv WITH (HOLDLOCK) AS target` +
 				` USING (VALUES(@p1,@p2,@p3)) AS source(ns,[key],val)` +
 				` ON target.ns = source.ns AND target.[key] = source.[key]` +
-				` WHEN NOT MATCHED THEN INSERT (ns,[key],val) VALUES (source.ns,source.[key],source.val)` +
-				` OUTPUT $action;`,
+				` WHEN NOT MATCHED THEN INSERT (ns,[key],val) VALUES (source.ns,source.[key],source.val);`,
 		},
 	}
 	for _, tt := range tests {

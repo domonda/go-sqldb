@@ -67,12 +67,12 @@ Not all databases use the same upsert syntax. Each driver provides its own imple
 
 | Driver     | Implementation             | Syntax                                                |
 | ---------- | -------------------------- | ----------------------------------------------------- |
-| PostgreSQL | `pqconn.QueryBuilder`      | `INSERT ... ON CONFLICT(...) DO UPDATE SET` / `DO NOTHING RETURNING TRUE` |
+| PostgreSQL | `pqconn.QueryBuilder`      | `INSERT ... ON CONFLICT(...) DO UPDATE SET` / `DO NOTHING` |
 | SQLite     | `sqliteconn.QueryBuilder`  | Same as PostgreSQL                                    |
-| MySQL      | `mysqlconn.QueryBuilder`   | `INSERT ... ON DUPLICATE KEY UPDATE col=VALUES(col)`  |
+| MySQL      | `mysqlconn.QueryBuilder`   | `INSERT ... ON DUPLICATE KEY UPDATE col=VALUES(col)` / `col = col` (no-op for InsertUnique) |
 | MSSQL      | `mssqlconn.QueryBuilder`   | `MERGE INTO ... USING ... WHEN MATCHED THEN UPDATE ... WHEN NOT MATCHED THEN INSERT ...;` |
 
-MySQL's `InsertUnique` returns an error because MySQL has no `RETURNING` clause to report whether a row was inserted. MSSQL uses `OUTPUT $action` for `InsertUnique`.
+`InsertUnique` uses `ExecRowsAffected` to determine whether a row was inserted (1) or a conflict occurred (0). All drivers support this.
 
 ### `ReturningQueryBuilder` — RETURNING clause
 

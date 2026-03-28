@@ -90,7 +90,7 @@ if errors.As(err, &fkErr) {
 
 - Standard CRUD via embedded `sqldb.StdReturningQueryBuilder`
 - Upsert via `INSERT ... ON CONFLICT(...) DO UPDATE SET`
-- Insert unique via `INSERT ... ON CONFLICT(...) DO NOTHING RETURNING TRUE`
+- Insert unique via `INSERT ... ON CONFLICT(...) DO NOTHING`
 - Insert/update returning via `... RETURNING`
 
 ## Query Formatting

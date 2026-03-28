@@ -20,8 +20,8 @@ type QueryBuilder struct {
 }
 
 // InsertUnique builds a MERGE statement that inserts a row only if it
-// does not conflict on the specified columns, using OUTPUT $action
-// to return a row when an insert occurs.
+// does not conflict on the specified columns.
+// The number of rows affected is 1 for an insert and 0 for a conflict.
 func (b QueryBuilder) InsertUnique(formatter sqldb.QueryFormatter, table string, columns []sqldb.ColumnInfo, onConflict string) (query string, err error) {
 	conflictCols := strings.Split(onConflict, ",")
 	for i := range conflictCols {
@@ -148,11 +148,6 @@ func (QueryBuilder) buildMerge(formatter sqldb.QueryFormatter, table string, col
 		fmt.Fprintf(&q, `source.%s`, colName)
 	}
 	q.WriteByte(')')
-
-	// OUTPUT $action for InsertUnique (to detect if a row was inserted)
-	if !withUpdate {
-		q.WriteString(` OUTPUT $action`)
-	}
 
 	// MERGE requires a trailing semicolon in MSSQL
 	q.WriteByte(';')

@@ -130,14 +130,14 @@ func TestInsertReturning(t *testing.T) {
 func TestInsertUnique(t *testing.T) {
 	t.Run("inserted", func(t *testing.T) {
 		conn, _, builder, fmtr := newTestInterfaces()
-		var queryCount int
+		var execCount int
 		var gotQuery string
 		var gotArgs []any
-		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
-			queryCount++
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			execCount++
 			gotQuery = query
 			gotArgs = args
-			return NewMockRows("true").WithRow(true)
+			return 1, nil
 		}
 		inserted, err := InsertUnique(t.Context(), conn, builder, fmtr, "users", Values{"id": 1, "name": "Alice"}, "id")
 		if err != nil {
@@ -146,10 +146,10 @@ func TestInsertUnique(t *testing.T) {
 		if !inserted {
 			t.Error("expected inserted=true")
 		}
-		if queryCount != 1 {
-			t.Errorf("MockQuery called %d times, want 1", queryCount)
+		if execCount != 1 {
+			t.Errorf("MockExecRowsAffected called %d times, want 1", execCount)
 		}
-		wantQuery := "INSERT INTO users(id,name) VALUES($1,$2) ON CONFLICT (id) DO NOTHING RETURNING TRUE"
+		wantQuery := "INSERT INTO users(id,name) VALUES($1,$2) ON CONFLICT (id) DO NOTHING"
 		if gotQuery != wantQuery {
 			t.Errorf("query = %q, want %q", gotQuery, wantQuery)
 		}
@@ -158,10 +158,10 @@ func TestInsertUnique(t *testing.T) {
 
 	t.Run("conflict no insert", func(t *testing.T) {
 		conn, _, builder, fmtr := newTestInterfaces()
-		var queryCount int
-		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
-			queryCount++
-			return NewMockRows("true")
+		var execCount int
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			execCount++
+			return 0, nil
 		}
 		inserted, err := InsertUnique(t.Context(), conn, builder, fmtr, "users", Values{"id": 1, "name": "Alice"}, "id")
 		if err != nil {
@@ -170,8 +170,8 @@ func TestInsertUnique(t *testing.T) {
 		if inserted {
 			t.Error("expected inserted=false")
 		}
-		if queryCount != 1 {
-			t.Errorf("MockQuery called %d times, want 1", queryCount)
+		if execCount != 1 {
+			t.Errorf("MockExecRowsAffected called %d times, want 1", execCount)
 		}
 	})
 
@@ -258,18 +258,18 @@ func TestInsertRowStruct(t *testing.T) {
 }
 
 func TestInsertUniqueRowStruct(t *testing.T) {
-	wantQuery := "INSERT INTO test_table(id,name,active) VALUES($1,$2,$3) ON CONFLICT (id) DO NOTHING RETURNING TRUE"
+	wantQuery := "INSERT INTO test_table(id,name,active) VALUES($1,$2,$3) ON CONFLICT (id) DO NOTHING"
 
 	t.Run("inserted", func(t *testing.T) {
 		conn, refl, builder, fmtr := newTestInterfaces()
-		var queryCount int
+		var execCount int
 		var gotQuery string
 		var gotArgs []any
-		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
-			queryCount++
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			execCount++
 			gotQuery = query
 			gotArgs = args
-			return NewMockRows("true").WithRow(true)
+			return 1, nil
 		}
 		row := reflectTestStruct{ID: 1, Name: "Alice", Active: true}
 		inserted, err := InsertUniqueRowStruct(t.Context(), conn, refl, builder, fmtr, row, "id")
@@ -279,8 +279,8 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 		if !inserted {
 			t.Error("expected inserted=true")
 		}
-		if queryCount != 1 {
-			t.Errorf("MockQuery called %d times, want 1", queryCount)
+		if execCount != 1 {
+			t.Errorf("MockExecRowsAffected called %d times, want 1", execCount)
 		}
 		if gotQuery != wantQuery {
 			t.Errorf("query = %q, want %q", gotQuery, wantQuery)
@@ -290,10 +290,10 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 
 	t.Run("conflict no insert", func(t *testing.T) {
 		conn, refl, builder, fmtr := newTestInterfaces()
-		var queryCount int
-		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
-			queryCount++
-			return NewMockRows("true")
+		var execCount int
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			execCount++
+			return 0, nil
 		}
 		row := reflectTestStruct{ID: 1, Name: "Alice", Active: true}
 		inserted, err := InsertUniqueRowStruct(t.Context(), conn, refl, builder, fmtr, row, "id")
@@ -303,17 +303,17 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 		if inserted {
 			t.Error("expected inserted=false")
 		}
-		if queryCount != 1 {
-			t.Errorf("MockQuery called %d times, want 1", queryCount)
+		if execCount != 1 {
+			t.Errorf("MockExecRowsAffected called %d times, want 1", execCount)
 		}
 	})
 
 	t.Run("with pointer", func(t *testing.T) {
 		conn, refl, builder, fmtr := newTestInterfaces()
 		var gotArgs []any
-		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
 			gotArgs = args
-			return NewMockRows("true").WithRow(true)
+			return 1, nil
 		}
 		row := &reflectTestStruct{ID: 2, Name: "Bob", Active: false}
 		inserted, err := InsertUniqueRowStruct(t.Context(), conn, refl, builder, fmtr, row, "id")
