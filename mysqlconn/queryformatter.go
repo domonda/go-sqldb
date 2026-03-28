@@ -79,7 +79,7 @@ var reservedWords = map[string]struct{}{
 }
 
 // EscapeIdentifier wraps a MySQL identifier in backticks when necessary,
-// escaping any backtick characters as “.
+// escaping any backtick characters as ".
 // Quoting is applied when the identifier contains non-lowercase/non-underscore
 // characters or is a MySQL reserved word.
 func EscapeIdentifier(ident string) string {
@@ -134,11 +134,35 @@ func (QueryFormatter) FormatPlaceholder(paramIndex int) string {
 }
 
 // FormatStringLiteral escapes a string for use as a MySQL string literal.
-// Backslashes are escaped first (\→\\) then single quotes are doubled ('→”).
-// Both steps are safe regardless of NO_BACKSLASH_ESCAPES mode.
+// Uses backslash escaping consistent with the go-sql-driver/mysql driver's
+// escapeStringBackslash function (default mode without NO_BACKSLASH_ESCAPES).
 func (QueryFormatter) FormatStringLiteral(str string) string {
-	str = strings.ReplaceAll(str, `\`, `\\`)
-	return "'" + strings.ReplaceAll(str, "'", "''") + "'"
+	var b strings.Builder
+	b.Grow(len(str)*2 + 2)
+	b.WriteByte('\'')
+	for i := 0; i < len(str); i++ {
+		c := str[i]
+		switch c {
+		case '\x00':
+			b.WriteString(`\0`)
+		case '\n':
+			b.WriteString(`\n`)
+		case '\r':
+			b.WriteString(`\r`)
+		case '\x1a':
+			b.WriteString(`\Z`)
+		case '\'':
+			b.WriteString(`\'`)
+		case '"':
+			b.WriteString(`\"`)
+		case '\\':
+			b.WriteString(`\\`)
+		default:
+			b.WriteByte(c)
+		}
+	}
+	b.WriteByte('\'')
+	return b.String()
 }
 
 // MaxArgs implements [sqldb.QueryFormatter.MaxArgs].

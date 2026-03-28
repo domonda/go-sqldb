@@ -163,10 +163,8 @@ var (
 
 // EscapeIdentifier wraps an Oracle identifier in double quotes when necessary,
 // escaping any embedded double-quote characters as "".
-// Quoting is applied when the identifier contains non-uppercase/non-underscore
-// characters or is an Oracle reserved word.
-// Oracle treats unquoted identifiers as uppercase, so any identifier with
-// lowercase letters is also quoted.
+// Quoting is applied when the identifier contains non-lowercase/non-underscore
+// characters (uppercase, digits, etc.) or is an Oracle reserved word.
 func EscapeIdentifier(ident string) string {
 	escaped := strings.ReplaceAll(ident, `"`, `""`)
 	needsQuotes := len(escaped) != len(ident)

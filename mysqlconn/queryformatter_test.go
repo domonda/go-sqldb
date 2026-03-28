@@ -177,16 +177,31 @@ func TestQueryFormatter_FormatStringLiteral(t *testing.T) {
 	}{
 		{name: "simple", str: "hello", want: "'hello'"},
 		{name: "empty", str: "", want: "''"},
-		// single quotes are doubled
-		{name: "with single quote", str: "it's", want: "'it''s'"},
-		{name: "two consecutive quotes", str: "it''s", want: "'it''''s'"},
-		// backslashes are escaped — MySQL treats \ as special by default
+		// single quotes are backslash-escaped
+		{name: "with single quote", str: "it's", want: `'it\'s'`},
+		{name: "two consecutive quotes", str: "it''s", want: `'it\'\'s'`},
+		// backslashes are escaped
 		{name: "with backslash", str: `path\to`, want: `'path\\to'`},
 		{name: "windows path", str: `C:\Users\file`, want: `'C:\\Users\\file'`},
 		// backslash immediately before a single quote
-		{name: "backslash before quote", str: `it\'s`, want: `'it\\''s'`},
-		// value with outer single quotes — those quotes must be escaped
-		{name: "value with outer quotes", str: "'hello'", want: "'''hello'''"},
+		{name: "backslash before quote", str: `it\'s`, want: `'it\\\'s'`},
+		// value with outer single quotes
+		{name: "value with outer quotes", str: "'hello'", want: `'\'hello\''`},
+		// NUL byte
+		{name: "NUL byte", str: "a\x00b", want: `'a\0b'`},
+		{name: "only NUL", str: "\x00", want: `'\0'`},
+		// newline
+		{name: "newline", str: "line1\nline2", want: `'line1\nline2'`},
+		// carriage return
+		{name: "carriage return", str: "line1\rline2", want: `'line1\rline2'`},
+		// CRLF
+		{name: "CRLF", str: "line1\r\nline2", want: `'line1\r\nline2'`},
+		// Ctrl+Z (SUB, 0x1a)
+		{name: "Ctrl+Z", str: "a\x1ab", want: `'a\Zb'`},
+		// double quote
+		{name: "double quote", str: `say "hello"`, want: `'say \"hello\"'`},
+		// all special chars combined
+		{name: "all special chars", str: "\x00\n\r\x1a'\"\\\x00", want: `'\0\n\r\Z\'\"\\\0'`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -163,9 +163,9 @@ func TestQueryFormatter_FormatStringLiteral(t *testing.T) {
 		{name: "with single quote", str: "it's", want: "'it''s'"},
 		// two consecutive single-quote chars in input — each must be escaped independently
 		{name: "two consecutive quotes", str: "it''s", want: "'it''''s'"},
-		// backslashes are literal with standard_conforming_strings=on (PostgreSQL default)
-		{name: "with backslash", str: `path\to`, want: `'path\to'`},
-		{name: "with backslash before quote", str: `Erik\'s`, want: `'Erik\''s'`},
+		// pq.QuoteLiteral uses E-string syntax when backslashes are present
+		{name: "with backslash", str: `path\to`, want: ` E'path\\to'`},
+		{name: "with backslash before quote", str: `Erik\'s`, want: ` E'Erik\\''s'`},
 		// a raw value that starts/ends with single quotes must have those quotes escaped too
 		{name: "value with outer quotes", str: "'hello'", want: "'''hello'''"},
 	}

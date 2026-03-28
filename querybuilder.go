@@ -241,7 +241,7 @@ func (StdQueryBuilder) UpdateColumns(formatter QueryFormatter, table string, col
 // All provided columns form the WHERE clause.
 func (StdQueryBuilder) Delete(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error) {
 	if len(columns) == 0 {
-		return "", fmt.Errorf("DeleteColumns requires at least one column")
+		return "", fmt.Errorf("Delete requires at least one column")
 	}
 
 	var q strings.Builder
