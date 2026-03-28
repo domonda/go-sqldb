@@ -1,0 +1,26 @@
+name: go-sqldb-oraconn-test
+
+services:
+  oracle:
+    image: gvenzl/oracle-free:23-slim-faststart
+    restart: unless-stopped
+    environment:
+      ORACLE_PASSWORD: TestPass123
+      APP_USER: testuser
+      APP_USER_PASSWORD: TestPass123
+    ports:
+      # Use 1522 as the host port to avoid conflicts with
+      # a local Oracle instance using the default port 1521
+      - "1522:1521"
+    # Larger /dev/shm for Oracle shared memory (default 64MB is too small)
+    shm_size: 1g
+    # Built-in health check for readiness detection
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    # Mount tuning script to disable recyclebin (faster DDL in tests)
+    volumes:
+      - ./initdb:/container-entrypoint-initdb.d:ro

@@ -17,30 +17,31 @@
 | [mysqlconn](https://pkg.go.dev/github.com/domonda/go-sqldb/mysqlconn)           | [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)                      | `?, ?, ...`       |
 | [mssqlconn](https://pkg.go.dev/github.com/domonda/go-sqldb/mssqlconn)           | [github.com/microsoft/go-mssqldb](https://github.com/microsoft/go-mssqldb)                    | `@p1, @p2, ...`   |
 | [sqliteconn](https://pkg.go.dev/github.com/domonda/go-sqldb/sqliteconn)         | [zombiezen.com/go/sqlite](https://pkg.go.dev/zombiezen.com/go/sqlite)                          | `?, ?, ...`       |
+| [oraconn](https://pkg.go.dev/github.com/domonda/go-sqldb/oraconn)               | [github.com/sijms/go-ora/v2](https://github.com/sijms/go-ora)                                 | `:1, :2, ...`     |
 
 
 ### Feature matrix
 
-| Feature                       | pqconn              | mysqlconn           | mssqlconn           | sqliteconn          | MockConn          | ErrConn             |
-| ----------------------------- | ------------------- | ------------------- | ------------------- | ------------------- | ----------------- | ------------------- |
-| Underlying driver             | lib/pq              | go-sql-driver/mysql | go-mssqldb          | zombiezen.com/sqlite| —                 | —                   |
-| Placeholder style             | `$1`, `$2`, …       | `?`, `?`, …         | `@p1`, `@p2`, …     | `?`, `?`, …         | configurable      | `?`, `?`, …         |
-| Max query arguments           | 65 535              | 65 535              | 2 100               | 32 766              | 65 535            | 65 535              |
-| Identifier quoting            | `"double quotes"`   | `` `backticks` ``   | `[brackets]`        | `"double quotes"`   | configurable      | none                |
-| Default isolation level       | Read Committed      | Repeatable Read     | Read Committed      | Serializable        | Default           | Default             |
-| `Connection`                  | yes                 | yes                 | yes                 | yes                 | yes               | yes (returns error) |
-| `ListenerConnection`          | yes                 | —                   | —                   | —                   | yes (mock)        | yes (returns error) |
-| Transactions                  | yes                 | yes                 | yes                 | yes                 | yes (mock)        | —                   |
-| Nested `Begin` uses savepoint | —                   | —                   | —                   | yes                 | —                 | —                   |
-| `db.TransactionSavepoint`     | yes                 | yes                 | yes                 | yes                 | yes               | —                   |
-| Constraint error mapping      | yes                 | yes                 | yes                 | yes                 | —                 | —                   |
-| Array column support          | yes                 | —                   | —                   | —                   | —                 | —                   |
-| Prepared statements           | yes                 | yes                 | yes                 | yes                 | yes (mock)        | —                   |
-| Query recording               | —                   | —                   | —                   | —                   | yes               | —                   |
-| `ExecRowsAffected`            | yes                 | yes                 | yes                 | yes                 | yes (mock)        | returns error       |
-| `QueryBuilder`                | yes                 | yes                 | yes                 | yes                 | —                 | —                   |
-| `UpsertQueryBuilder`          | yes                 | yes                 | yes                 | yes                 | —                 | —                   |
-| `ReturningQueryBuilder`       | yes                 | —                   | —                   | yes                 | —                 | —                   |
+| Feature                       | pqconn              | mysqlconn           | mssqlconn           | sqliteconn          | oraconn             | MockConn          | ErrConn             |
+| ----------------------------- | ------------------- | ------------------- | ------------------- | ------------------- | ------------------- | ----------------- | ------------------- |
+| Underlying driver             | lib/pq              | go-sql-driver/mysql | go-mssqldb          | zombiezen.com/sqlite| go-ora/v2           | —                 | —                   |
+| Placeholder style             | `$1`, `$2`, …       | `?`, `?`, …         | `@p1`, `@p2`, …     | `?`, `?`, …         | `:1`, `:2`, …       | configurable      | `?`, `?`, …         |
+| Max query arguments           | 65 535              | 65 535              | 2 100               | 32 766              | 65 535              | 65 535            | 65 535              |
+| Identifier quoting            | `"double quotes"`   | `` `backticks` ``   | `[brackets]`        | `"double quotes"`   | `"double quotes"`   | configurable      | none                |
+| Default isolation level       | Read Committed      | Repeatable Read     | Read Committed      | Serializable        | Read Committed      | Default           | Default             |
+| `Connection`                  | yes                 | yes                 | yes                 | yes                 | yes                 | yes               | yes (returns error) |
+| `ListenerConnection`          | yes                 | —                   | —                   | —                   | —                   | yes (mock)        | yes (returns error) |
+| Transactions                  | yes                 | yes                 | yes                 | yes                 | yes                 | yes (mock)        | —                   |
+| Nested `Begin` uses savepoint | —                   | —                   | —                   | yes                 | —                   | —                 | —                   |
+| `db.TransactionSavepoint`     | yes                 | yes                 | yes                 | yes                 | yes                 | yes               | —                   |
+| Constraint error mapping      | yes                 | yes                 | yes                 | yes                 | yes                 | —                 | —                   |
+| Array column support          | yes                 | —                   | —                   | —                   | —                   | —                 | —                   |
+| Prepared statements           | yes                 | yes                 | yes                 | yes                 | yes                 | yes (mock)        | —                   |
+| Query recording               | —                   | —                   | —                   | —                   | —                   | yes               | —                   |
+| `ExecRowsAffected`            | yes                 | yes                 | yes                 | yes                 | yes                 | yes (mock)        | returns error       |
+| `QueryBuilder`                | yes                 | yes                 | yes                 | yes                 | yes                 | —                 | —                   |
+| `UpsertQueryBuilder`          | yes                 | yes                 | yes                 | yes                 | yes                 | —                 | —                   |
+| `ReturningQueryBuilder`       | yes                 | —                   | —                   | yes                 | —                   | —                 | —                   |
 
 **Notes:**
 - **Nested `Begin` uses savepoint**: Only `sqliteconn` converts nested `Begin` calls into SQL `SAVEPOINT` / `RELEASE` commands. All other real drivers start a new independent transaction on the underlying connection.
@@ -71,6 +72,7 @@ Not all databases use the same upsert syntax. Each driver provides its own imple
 | SQLite     | `sqliteconn.QueryBuilder`  | Same as PostgreSQL                                    |
 | MySQL      | `mysqlconn.QueryBuilder`   | `INSERT ... ON DUPLICATE KEY UPDATE col=VALUES(col)` / `col = col` (no-op for InsertUnique) |
 | MSSQL      | `mssqlconn.QueryBuilder`   | `MERGE INTO ... USING ... WHEN MATCHED THEN UPDATE ... WHEN NOT MATCHED THEN INSERT ...;` |
+| Oracle     | `oraconn.QueryBuilder`     | `MERGE INTO ... USING (SELECT ... FROM DUAL) ... WHEN MATCHED THEN UPDATE ... WHEN NOT MATCHED THEN INSERT ...` |
 
 `InsertUnique` uses `ExecRowsAffected` to determine whether a row was inserted (1) or a conflict occurred (0). All drivers support this.
 
@@ -97,8 +99,9 @@ All driver connections implement `QueryBuilder` automatically, so `db.SetQueryBu
 | `sqliteconn` | embeds `sqliteconn.QueryBuilder`    | yes | yes |
 | `mysqlconn`  | `NewGenericConn` with `mysqlconn.QueryBuilder` | yes | no |
 | `mssqlconn`  | `NewGenericConn` with `mssqlconn.QueryBuilder` | yes | no |
+| `oraconn`    | embeds `oraconn.QueryBuilder`       | yes | no |
 
-PostgreSQL and SQLite connections embed their driver-specific `QueryBuilder`, which extends `StdReturningQueryBuilder` with `ON CONFLICT` upsert syntax, so the connection itself satisfies all three interfaces. MySQL and MSSQL pass their driver-specific builder to `NewGenericConn`, which wraps the connection so it implements `QueryBuilder`, `UpsertQueryBuilder`, and `ReturningQueryBuilder` — delegating to the underlying builder and returning errors for unsupported operations (e.g. `ReturningQueryBuilder` on MySQL).
+PostgreSQL and SQLite connections embed their driver-specific `QueryBuilder`, which extends `StdReturningQueryBuilder` with `ON CONFLICT` upsert syntax, so the connection itself satisfies all three interfaces. MySQL, MSSQL, and Oracle pass their driver-specific builder to `NewGenericConn` or embed it directly, providing `QueryBuilder` and `UpsertQueryBuilder` support — but not `ReturningQueryBuilder` (Oracle's `RETURNING ... INTO` syntax is incompatible with the row-returning interface).
 
 Driver-specific builders embed `StdQueryBuilder` and override only the methods that differ, so standard SQL operations work identically across all drivers.
 
@@ -137,17 +140,17 @@ if errors.As(err, &uv) {
 
 ### Error mapping matrix
 
-| Error type                        | pqconn | mysqlconn | mssqlconn | sqliteconn |
-| --------------------------------- | ------ | --------- | --------- | ---------- |
-| `ErrIntegrityConstraintViolation` | yes    | —         | —         | yes        |
-| `ErrNotNullViolation`             | yes    | yes       | yes       | yes        |
-| `ErrUniqueViolation`              | yes    | yes       | yes       | yes        |
-| `ErrForeignKeyViolation`          | yes    | yes       | yes       | yes        |
-| `ErrCheckViolation`               | yes    | yes       | yes       | yes        |
-| `ErrRestrictViolation`            | yes    | —         | —         | —          |
-| `ErrExclusionViolation`           | yes    | —         | —         | —          |
-| `ErrDeadlock`                     | yes    | yes       | yes       | —          |
-| `ErrRaisedException`              | yes    | yes       | yes       | —          |
+| Error type                        | pqconn | mysqlconn | mssqlconn | sqliteconn | oraconn |
+| --------------------------------- | ------ | --------- | --------- | ---------- | ------- |
+| `ErrIntegrityConstraintViolation` | yes    | —         | —         | yes        | —       |
+| `ErrNotNullViolation`             | yes    | yes       | yes       | yes        | yes     |
+| `ErrUniqueViolation`              | yes    | yes       | yes       | yes        | yes     |
+| `ErrForeignKeyViolation`          | yes    | yes       | yes       | yes        | yes     |
+| `ErrCheckViolation`               | yes    | yes       | yes       | yes        | yes     |
+| `ErrRestrictViolation`            | yes    | —         | —         | —          | —       |
+| `ErrExclusionViolation`           | yes    | —         | —         | —          | —       |
+| `ErrDeadlock`                     | yes    | yes       | yes       | —          | yes     |
+| `ErrRaisedException`              | yes    | yes       | yes       | —          | yes     |
 
 Driver packages also expose driver-specific helper functions (e.g. `pqconn.IsUniqueViolation`) for error conditions that have no generic `sqldb` type, such as query cancellations or text-representation errors. See each driver's README for the full list.
 
@@ -696,6 +699,7 @@ Integration tests use dockerized database instances to avoid conflicts with loca
 | pqconn    | PostgreSQL 17   | 5433 | `pqconn/test/docker-compose.yml`       |
 | mysqlconn | MariaDB 11.7    | 3307 | `mysqlconn/test/docker-compose.yml`    |
 | mssqlconn | SQL Server 2022 | 1434 | `mssqlconn/test/docker-compose.yml`    |
+| oraconn   | Oracle Free 23  | 1522 | `oraconn/test/docker-compose.yml`      |
 
 Start a test database and run all tests:
 ```bash
@@ -708,6 +712,7 @@ After changing a database version in `docker-compose.yml`, reset the data direct
 ./pqconn/test/reset-postgres-data.sh
 ./mysqlconn/test/reset-mariadb-data.sh
 ./mssqlconn/test/reset-mssql-data.sh
+# oraconn has no persistent data — use: docker compose -f oraconn/test/docker-compose.yml down
 ```
 
 ## History

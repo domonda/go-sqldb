@@ -4,7 +4,7 @@
 SCRIPT_DIR=$(cd -P -- $(dirname -- "$0") && pwd -P)
 cd $SCRIPT_DIR
 
-MODULE_PATHS=("" "mssqlconn/" "mysqlconn/" "pqconn/" "sqliteconn/")
+MODULE_PATHS=("" "mssqlconn/" "mysqlconn/" "oraconn/" "pqconn/" "sqliteconn/")
 
 # Show current tags and usage if no arguments provided
 if [ -z "$1" ]; then
