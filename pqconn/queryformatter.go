@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/domonda/go-sqldb"
+	"github.com/lib/pq"
 )
 
 var (
@@ -237,7 +237,7 @@ func (f QueryFormatter) FormatPlaceholder(paramIndex int) string {
 
 // FormatStringLiteral implements [sqldb.QueryFormatter.FormatStringLiteral].
 func (QueryFormatter) FormatStringLiteral(str string) string {
-	return sqldb.FormatSingleQuoteStringLiteral(str)
+	return pq.QuoteLiteral(str)
 }
 
 // MaxArgs implements [sqldb.QueryFormatter.MaxArgs].

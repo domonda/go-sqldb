@@ -175,7 +175,7 @@ func TestStdQueryFormatter_MaxArgs(t *testing.T) {
 	}
 }
 
-func TestFormatSingleQuoteStringLiteral(t *testing.T) {
+func TestQuoteStringLiteral(t *testing.T) {
 	tests := []struct {
 		str  string
 		want string
@@ -193,15 +193,15 @@ func TestFormatSingleQuoteStringLiteral(t *testing.T) {
 		// strings that happen to look like pre-quoted SQL must still escape all quotes
 		{str: `'Erik's String'`, want: `'''Erik''s String'''`},
 		{str: `'Erik''s String'`, want: `'''Erik''''s String'''`},
-		// backslashes are literal (standard_conforming_strings = on is the PostgreSQL default)
+		// backslashes are literal (ANSI SQL standard)
 		{str: `path\to`, want: `'path\to'`},
 		{str: `Erik\'s String`, want: `'Erik\''s String'`},
 		{str: `'Erik\'s String'`, want: `'''Erik\''s String'''`},
 	}
 	for _, tt := range tests {
 		t.Run(tt.str, func(t *testing.T) {
-			got := FormatSingleQuoteStringLiteral(tt.str)
-			require.Equal(t, tt.want, got, "FormatSingleQuoteStringLiteral(%#v)", tt.str)
+			got := QuoteStringLiteral(tt.str)
+			require.Equal(t, tt.want, got, "QuoteStringLiteral(%#v)", tt.str)
 		})
 	}
 }

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"strings"
 )
 
 // QueryFormatter has methods for formatting parts
@@ -93,16 +92,10 @@ func (f StdQueryFormatter) FormatPlaceholder(paramIndex int) string {
 
 // FormatStringLiteral implements the QueryFormatter interface.
 func (StdQueryFormatter) FormatStringLiteral(str string) string {
-	return FormatSingleQuoteStringLiteral(str)
+	return QuoteStringLiteral(str)
 }
 
 // MaxArgs implements the QueryFormatter interface.
 func (StdQueryFormatter) MaxArgs() int {
 	return 65535
-}
-
-// FormatSingleQuoteStringLiteral formats a string as an ANSI SQL single-quoted literal,
-// doubling any embedded single quotes.
-func FormatSingleQuoteStringLiteral(str string) string {
-	return "'" + strings.ReplaceAll(str, "'", "''") + "'"
 }

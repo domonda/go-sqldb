@@ -220,7 +220,7 @@ func (QueryFormatter) FormatPlaceholder(paramIndex int) string {
 
 // FormatStringLiteral implements [sqldb.QueryFormatter.FormatStringLiteral].
 func (QueryFormatter) FormatStringLiteral(str string) string {
-	return sqldb.FormatSingleQuoteStringLiteral(str)
+	return sqldb.QuoteStringLiteral(str)
 }
 
 // MaxArgs implements [sqldb.QueryFormatter.MaxArgs].

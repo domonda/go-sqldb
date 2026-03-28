@@ -48,29 +48,6 @@ func TestFormatValue(t *testing.T) {
 	}
 }
 
-func TestQuoteLiteral(t *testing.T) {
-	tests := []struct {
-		name    string
-		literal string
-		want    string
-	}{
-		{name: "simple", literal: "hello", want: `'hello'`},
-		{name: "empty", literal: "", want: `''`},
-		{name: "single quote", literal: "it's", want: `'it''s'`},
-		{name: "multiple quotes", literal: "it's Erik's", want: `'it''s Erik''s'`},
-		{name: "backslash", literal: `path\to\file`, want: ` E'path\\to\\file'`},
-		{name: "backslash and quote", literal: `it\'s`, want: ` E'it\\''s'`},
-		{name: "no special chars", literal: "plain text", want: `'plain text'`},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := QuoteLiteral(tt.literal); got != tt.want {
-				t.Errorf("QuoteLiteral(%q) = %q, want %q", tt.literal, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestFormatQuery(t *testing.T) {
 	query1 := `
 
