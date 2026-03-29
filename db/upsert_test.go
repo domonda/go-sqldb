@@ -50,10 +50,10 @@ func ExampleUpsertRowStructStmt() {
 
 	// Output:
 	// BEGIN;
-	// PREPARE stmt1 AS INSERT INTO public.user(id,name,email) VALUES($1,$2,$3) ON CONFLICT(id) DO UPDATE SET name=$2, email=$3;
-	// INSERT INTO public.user(id,name,email) VALUES(1,'Alice','alice@example.com') ON CONFLICT(id) DO UPDATE SET name='Alice', email='alice@example.com';
-	// INSERT INTO public.user(id,name,email) VALUES(2,'Bob','bob@example.com') ON CONFLICT(id) DO UPDATE SET name='Bob', email='bob@example.com';
-	// INSERT INTO public.user(id,name,email) VALUES(3,'Charlie','charlie@example.com') ON CONFLICT(id) DO UPDATE SET name='Charlie', email='charlie@example.com';
+	// PREPARE stmt1 AS INSERT INTO public.user(id,name,email) VALUES($1,$2,$3) ON CONFLICT (id) DO UPDATE SET name=$2, email=$3;
+	// INSERT INTO public.user(id,name,email) VALUES(1,'Alice','alice@example.com') ON CONFLICT (id) DO UPDATE SET name='Alice', email='alice@example.com';
+	// INSERT INTO public.user(id,name,email) VALUES(2,'Bob','bob@example.com') ON CONFLICT (id) DO UPDATE SET name='Bob', email='bob@example.com';
+	// INSERT INTO public.user(id,name,email) VALUES(3,'Charlie','charlie@example.com') ON CONFLICT (id) DO UPDATE SET name='Charlie', email='charlie@example.com';
 	// DEALLOCATE PREPARE stmt1;
 	// COMMIT;
 }

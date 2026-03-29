@@ -399,6 +399,73 @@ func TestReflectStructColumns(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// ReflectStructColumnsAndFields
+// ---------------------------------------------------------------------------
+
+func TestReflectStructColumnsAndFields(t *testing.T) {
+	t.Run("flat struct", func(t *testing.T) {
+		s := reflectTestStruct{ID: 1, Name: "Alice", Active: true}
+		cols, fields, err := ReflectStructColumnsAndFields(reflect.ValueOf(s), reflectTestReflector)
+		if err != nil {
+			t.Fatal(err)
+		}
+		wantNames := []string{"id", "name", "active"}
+		if len(cols) != len(wantNames) {
+			t.Fatalf("got %d columns, want %d", len(cols), len(wantNames))
+		}
+		for i, want := range wantNames {
+			if cols[i].Name != want {
+				t.Errorf("cols[%d].Name = %q, want %q", i, cols[i].Name, want)
+			}
+		}
+		if len(fields) != len(wantNames) {
+			t.Fatalf("got %d fields, want %d", len(fields), len(wantNames))
+		}
+		if fields[0] != reflect.TypeFor[int64]() {
+			t.Errorf("fields[0] = %v, want int64", fields[0])
+		}
+		if fields[1] != reflect.TypeFor[string]() {
+			t.Errorf("fields[1] = %v, want string", fields[1])
+		}
+		if fields[2] != reflect.TypeFor[bool]() {
+			t.Errorf("fields[2] = %v, want bool", fields[2])
+		}
+	})
+
+	t.Run("with IgnoreColumns option", func(t *testing.T) {
+		s := reflectTestStruct{ID: 1, Name: "Bob", Active: false}
+		cols, fields, err := ReflectStructColumnsAndFields(reflect.ValueOf(s), reflectTestReflector, IgnoreColumns("active"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(cols) != 2 || len(fields) != 2 {
+			t.Fatalf("got %d cols and %d fields, want 2 each", len(cols), len(fields))
+		}
+		if cols[0].Name != "id" || cols[1].Name != "name" {
+			t.Errorf("unexpected columns: %v, %v", cols[0].Name, cols[1].Name)
+		}
+	})
+
+	t.Run("embedded struct", func(t *testing.T) {
+		s := reflectTestEmbedded{
+			ID:              10,
+			reflectEmbedded: reflectEmbedded{EmbVal: 42, reflectDeepEmbedded: reflectDeepEmbedded{DeepVal: "deep"}},
+		}
+		cols, fields, err := ReflectStructColumnsAndFields(reflect.ValueOf(s), reflectTestReflector)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(cols) != 3 || len(fields) != 3 {
+			t.Fatalf("got %d cols and %d fields, want 3 each", len(cols), len(fields))
+		}
+		// deep_val should be a string field
+		if fields[1] != reflect.TypeFor[string]() {
+			t.Errorf("fields[1] = %v, want string for deep_val", fields[1])
+		}
+	})
+}
+
+// ---------------------------------------------------------------------------
 // ReflectStructColumnPointers
 // ---------------------------------------------------------------------------
 

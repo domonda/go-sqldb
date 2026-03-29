@@ -134,6 +134,130 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
+func TestConfig(t *testing.T) {
+	conn, err := mssqlconn.Connect(t.Context(), testConfig())
+	require.NoError(t, err)
+	defer conn.Close()
+
+	cfg := conn.Config()
+	require.NotNil(t, cfg)
+	assert.Equal(t, mssqlconn.Driver, cfg.Driver)
+	assert.Equal(t, dbName, cfg.Database)
+}
+
+func TestPing(t *testing.T) {
+	conn, err := mssqlconn.Connect(t.Context(), testConfig())
+	require.NoError(t, err)
+	defer conn.Close()
+
+	err = conn.Ping(t.Context(), 5*time.Second)
+	assert.NoError(t, err)
+}
+
+func TestStats(t *testing.T) {
+	conn, err := mssqlconn.Connect(t.Context(), testConfig())
+	require.NoError(t, err)
+	defer conn.Close()
+
+	// Stats() should return without panic; exact values depend on pool state
+	_ = conn.Stats()
+}
+
+func TestDefaultIsolationLevel(t *testing.T) {
+	conn, err := mssqlconn.Connect(t.Context(), testConfig())
+	require.NoError(t, err)
+	defer conn.Close()
+
+	assert.Equal(t, sql.LevelReadCommitted, conn.DefaultIsolationLevel())
+}
+
+func TestTransactionState(t *testing.T) {
+	conn, err := mssqlconn.Connect(t.Context(), testConfig())
+	require.NoError(t, err)
+	defer conn.Close()
+
+	t.Run("not in transaction", func(t *testing.T) {
+		tx := conn.Transaction()
+		assert.False(t, tx.Active())
+	})
+
+	t.Run("in transaction", func(t *testing.T) {
+		txConn, err := conn.Begin(t.Context(), 1, nil)
+		require.NoError(t, err)
+		defer txConn.Rollback() //nolint:errcheck
+
+		tx := txConn.Transaction()
+		assert.True(t, tx.Active())
+	})
+}
+
+func TestExecRowsAffected(t *testing.T) {
+	conn, err := mssqlconn.Connect(t.Context(), testConfig())
+	require.NoError(t, err)
+	defer conn.Close()
+
+	ctx := t.Context()
+
+	err = conn.Exec(ctx,
+		/*sql*/ `
+		IF OBJECT_ID('test_rows_affected', 'U') IS NOT NULL DROP TABLE test_rows_affected;
+		CREATE TABLE test_rows_affected (id INT PRIMARY KEY, val NVARCHAR(255))
+	`,
+	)
+	require.NoError(t, err)
+	defer conn.Exec(ctx, //nolint:errcheck
+		/*sql*/ `DROP TABLE IF EXISTS test_rows_affected`,
+	)
+
+	err = conn.Exec(ctx,
+		/*sql*/ `INSERT INTO test_rows_affected (id, val) VALUES (@p1, @p2), (@p3, @p4), (@p5, @p6)`, 1, "a", 2, "b", 3, "c",
+	)
+	require.NoError(t, err)
+
+	n, err := conn.ExecRowsAffected(ctx,
+		/*sql*/ `DELETE FROM test_rows_affected WHERE id IN (@p1, @p2)`, 1, 2,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), n)
+}
+
+func TestPrepare(t *testing.T) {
+	conn, err := mssqlconn.Connect(t.Context(), testConfig())
+	require.NoError(t, err)
+	defer conn.Close()
+
+	ctx := t.Context()
+
+	err = conn.Exec(ctx,
+		/*sql*/ `
+		IF OBJECT_ID('test_prepare', 'U') IS NOT NULL DROP TABLE test_prepare;
+		CREATE TABLE test_prepare (id INT IDENTITY PRIMARY KEY, val NVARCHAR(255))
+	`,
+	)
+	require.NoError(t, err)
+	defer conn.Exec(ctx, //nolint:errcheck
+		/*sql*/ `DROP TABLE IF EXISTS test_prepare`,
+	)
+
+	stmt, err := conn.Prepare(ctx,
+		/*sql*/ `INSERT INTO test_prepare (val) VALUES (@p1)`,
+	)
+	require.NoError(t, err)
+	defer stmt.Close() //nolint:errcheck
+
+	err = stmt.Exec(ctx, "prepared-value")
+	require.NoError(t, err)
+
+	rows := conn.Query(ctx,
+		/*sql*/ `SELECT TOP 1 val FROM test_prepare`,
+	)
+	require.True(t, rows.Next())
+	var val string
+	require.NoError(t, rows.Scan(&val))
+	assert.Equal(t, "prepared-value", val)
+	require.NoError(t, rows.Close())
+}
+
 func TestConnect(t *testing.T) {
 	conn, err := mssqlconn.Connect(t.Context(), testConfig())
 	require.NoError(t, err)

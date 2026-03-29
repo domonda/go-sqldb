@@ -34,7 +34,7 @@ func TestUpsertRowStruct(t *testing.T) {
 		err := UpsertRowStruct(ctx, &UserRow{ID: 1, Name: "Alice", Active: true})
 		require.NoError(t, err)
 		require.Equal(t, 1, execCount, "MockExec call count")
-		require.Equal(t, "INSERT INTO users(id,name,active) VALUES($1,$2,$3) ON CONFLICT(id) DO UPDATE SET name=$2, active=$3", gotQuery)
+		require.Equal(t, "INSERT INTO users(id,name,active) VALUES($1,$2,$3) ON CONFLICT (id) DO UPDATE SET name=$2, active=$3", gotQuery)
 		require.Equal(t, []any{1, "Alice", true}, gotArgs)
 	})
 
@@ -54,7 +54,7 @@ func TestUpsertRowStruct(t *testing.T) {
 		err := UpsertRowStruct(ctx, &UserRow{ID: 1, Name: "Alice", Active: true}, sqldb.IgnoreColumns("active"))
 		require.NoError(t, err)
 		require.Equal(t, 1, execCount, "MockExec call count")
-		require.Equal(t, "INSERT INTO users(id,name) VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET name=$2", gotQuery)
+		require.Equal(t, "INSERT INTO users(id,name) VALUES($1,$2) ON CONFLICT (id) DO UPDATE SET name=$2", gotQuery)
 		require.Equal(t, []any{1, "Alice"}, gotArgs)
 	})
 
@@ -110,7 +110,7 @@ func TestUpsertRowStructs(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 2, execCount, "MockExec call count")
 		for _, q := range queries {
-			require.Equal(t, "INSERT INTO items(id,name) VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET name=$2", q)
+			require.Equal(t, "INSERT INTO items(id,name) VALUES($1,$2) ON CONFLICT (id) DO UPDATE SET name=$2", q)
 		}
 		require.Equal(t, []any{1, "Item1"}, allArgs[0])
 		require.Equal(t, []any{2, "Item2"}, allArgs[1])

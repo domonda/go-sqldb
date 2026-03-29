@@ -110,3 +110,60 @@ func TestConnConfig_String_DriverOnly(t *testing.T) {
 	c := &ConnConfig{Driver: "postgres"}
 	assert.Equal(t, "postgres", c.String())
 }
+
+func TestConnConfig_URL(t *testing.T) {
+	t.Run("full config", func(t *testing.T) {
+		// given
+		c := &ConnConfig{
+			Driver:   "postgres",
+			Host:     "dbhost",
+			Port:     5432,
+			User:     "admin",
+			Password: "secret",
+			Database: "mydb",
+			Extra:    map[string]string{"sslmode": "disable"},
+		}
+
+		// when
+		u := c.URL()
+
+		// then
+		assert.Equal(t, "postgres", u.Scheme)
+		assert.Equal(t, "dbhost:5432", u.Host)
+		assert.Equal(t, "mydb", u.Path)
+		assert.Equal(t, "admin", u.User.Username())
+		pw, _ := u.User.Password()
+		assert.Equal(t, "secret", pw)
+		assert.Equal(t, "disable", u.Query().Get("sslmode"))
+	})
+
+	t.Run("defaults to localhost when host empty", func(t *testing.T) {
+		c := &ConnConfig{Driver: "postgres", Database: "mydb"}
+		u := c.URL()
+		assert.Equal(t, "localhost", u.Host)
+	})
+
+	t.Run("defaults to UNKNOWN_DRIVER when driver empty", func(t *testing.T) {
+		c := &ConnConfig{Database: "mydb"}
+		u := c.URL()
+		assert.Equal(t, "UNKNOWN_DRIVER", u.Scheme)
+	})
+
+	t.Run("no port omits port in host", func(t *testing.T) {
+		c := &ConnConfig{Driver: "sqlite", Host: "myhost", Database: "test.db"}
+		u := c.URL()
+		assert.Equal(t, "myhost", u.Host)
+	})
+
+	t.Run("no user omits userinfo", func(t *testing.T) {
+		c := &ConnConfig{Driver: "postgres", Database: "mydb"}
+		u := c.URL()
+		assert.Nil(t, u.User)
+	})
+
+	t.Run("no extra params", func(t *testing.T) {
+		c := &ConnConfig{Driver: "postgres", Host: "localhost", Port: 5432, Database: "mydb"}
+		u := c.URL()
+		assert.Empty(t, u.RawQuery)
+	})
+}

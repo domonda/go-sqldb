@@ -25,6 +25,24 @@ func TestSanitizeString(t *testing.T) {
 	}
 }
 
+func TestSanitizeStringTrimSpace(t *testing.T) {
+	tests := map[string]string{
+		"":                       "",
+		"  hello  ":              "hello",
+		"\t trimmed \n":          "trimmed",
+		"  \u0000inner\u0000  ":  "inner",
+		"no trim needed":         "no trim needed",
+		"  \a leading control  ": "leading control",
+	}
+	for str, want := range tests {
+		t.Run(str, func(t *testing.T) {
+			if got := SanitizeStringTrimSpace(str); got != want {
+				t.Errorf("SanitizeStringTrimSpace(%q) = %q, want %q", str, got, want)
+			}
+		})
+	}
+}
+
 func TestIsSQLInjection(t *testing.T) {
 	tests := []struct {
 		str      string

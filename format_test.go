@@ -2,6 +2,7 @@ package sqldb
 
 import (
 	"database/sql/driver"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -46,6 +47,61 @@ func TestFormatValue(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestNormalizeAndFormatQuery(t *testing.T) {
+	t.Run("nil normalize and formatter uses defaults", func(t *testing.T) {
+		result, err := NormalizeAndFormatQuery(nil, nil, "SELECT * FROM t WHERE id = $1", 42)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result != "SELECT * FROM t WHERE id = 42" {
+			t.Errorf("got %q, want %q", result, "SELECT * FROM t WHERE id = 42")
+		}
+	})
+
+	t.Run("with custom formatter", func(t *testing.T) {
+		formatter := NewQueryFormatter("$")
+		result, err := NormalizeAndFormatQuery(nil, formatter, "SELECT $1, $2", "a", "b")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result != "SELECT 'a', 'b'" {
+			t.Errorf("got %q, want %q", result, "SELECT 'a', 'b'")
+		}
+	})
+
+	t.Run("normalize error propagates", func(t *testing.T) {
+		badNormalize := func(query string) (string, error) {
+			return "", fmt.Errorf("normalize failed")
+		}
+		_, err := NormalizeAndFormatQuery(badNormalize, nil, "SELECT 1")
+		if err == nil {
+			t.Fatal("expected error")
+		}
+	})
+}
+
+func TestMustNormalizeAndFormatQuery(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		result := MustNormalizeAndFormatQuery(nil, nil, "SELECT $1", 42)
+		if result != "SELECT 42" {
+			t.Errorf("got %q, want %q", result, "SELECT 42")
+		}
+	})
+
+	t.Run("panics on error", func(t *testing.T) {
+		badNormalize := func(query string) (string, error) {
+			return "", fmt.Errorf("normalize failed")
+		}
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Fatal("expected panic")
+			}
+		}()
+		MustNormalizeAndFormatQuery(badNormalize, nil, "SELECT 1")
+	})
 }
 
 func TestFormatQuery(t *testing.T) {

@@ -313,6 +313,40 @@ func TestGetTableRowsWithPrimaryKey(t *testing.T) {
 	})
 }
 
+func TestGetPrimaryKeyColumns_ForeignKey(t *testing.T) {
+	// The child table's PK column (id) is NOT a foreign key,
+	// but it references information_test(id) via parent_id.
+	// Verify the foreign_key flag is correctly set.
+	cols, err := information.GetPrimaryKeyColumns(testCtx, testConn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, col := range cols {
+		switch col.Table {
+		case "public.information_test":
+			if col.ForeignKey {
+				t.Error("information_test.id should not be a foreign key")
+			}
+		case "public.information_test_child":
+			// The child's PK is 'id', not 'parent_id', so it shouldn't be a FK
+			if col.Column == "id" && col.ForeignKey {
+				t.Error("information_test_child.id PK should not be a foreign key")
+			}
+		}
+	}
+}
+
+func TestRenderUUIDPrimaryKeyRefsHTML(t *testing.T) {
+	// This test verifies the handler doesn't panic with the test connection.
+	// A full end-to-end test would require UUID primary keys,
+	// but we can at least verify it returns a handler.
+	handler := information.RenderUUIDPrimaryKeyRefsHTML(testConn)
+	if handler == nil {
+		t.Fatal("expected non-nil handler")
+	}
+}
+
 func TestGetPrimaryKeyColumnsOfType(t *testing.T) {
 	cols, err := information.GetPrimaryKeyColumnsOfType(testCtx, testConn, "integer")
 	if err != nil {

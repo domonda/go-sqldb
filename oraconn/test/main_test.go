@@ -108,6 +108,132 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
+func TestConfig(t *testing.T) {
+	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	cfg := conn.Config()
+	require.NotNil(t, cfg)
+	assert.Equal(t, oraconn.Driver, cfg.Driver)
+	assert.Equal(t, oracleService, cfg.Database)
+}
+
+func TestPing(t *testing.T) {
+	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	err = conn.Ping(t.Context(), 5*time.Second)
+	assert.NoError(t, err)
+}
+
+func TestStats(t *testing.T) {
+	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	// Stats() should return without panic; exact values depend on pool state
+	_ = conn.Stats()
+}
+
+func TestDefaultIsolationLevel(t *testing.T) {
+	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	assert.Equal(t, sql.LevelReadCommitted, conn.DefaultIsolationLevel())
+}
+
+func TestTransactionState(t *testing.T) {
+	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	t.Run("not in transaction", func(t *testing.T) {
+		tx := conn.Transaction()
+		assert.False(t, tx.Active())
+	})
+
+	t.Run("in transaction", func(t *testing.T) {
+		txConn, err := conn.Begin(t.Context(), 1, nil)
+		require.NoError(t, err)
+		defer txConn.Rollback() //nolint:errcheck
+
+		tx := txConn.Transaction()
+		assert.True(t, tx.Active())
+	})
+}
+
+func TestExecRowsAffected(t *testing.T) {
+	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	ctx := t.Context()
+
+	err = conn.Exec(ctx,
+		/*sql*/ `CREATE TABLE test_rows_affected (id NUMBER(10) PRIMARY KEY, val VARCHAR2(255))`,
+	)
+	require.NoError(t, err)
+	defer conn.Exec(ctx, //nolint:errcheck
+		/*sql*/ `DROP TABLE test_rows_affected`,
+	)
+
+	err = conn.Exec(ctx,
+		/*sql*/ `INSERT INTO test_rows_affected (id, val) VALUES (:1, :2)`, 1, "a",
+	)
+	require.NoError(t, err)
+	err = conn.Exec(ctx,
+		/*sql*/ `INSERT INTO test_rows_affected (id, val) VALUES (:1, :2)`, 2, "b",
+	)
+	require.NoError(t, err)
+	err = conn.Exec(ctx,
+		/*sql*/ `INSERT INTO test_rows_affected (id, val) VALUES (:1, :2)`, 3, "c",
+	)
+	require.NoError(t, err)
+
+	n, err := conn.ExecRowsAffected(ctx,
+		/*sql*/ `DELETE FROM test_rows_affected WHERE id IN (:1, :2)`, 1, 2,
+	)
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), n)
+}
+
+func TestPrepare(t *testing.T) {
+	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	ctx := t.Context()
+
+	err = conn.Exec(ctx,
+		/*sql*/ `CREATE TABLE test_prepare (id NUMBER(10) GENERATED ALWAYS AS IDENTITY PRIMARY KEY, val VARCHAR2(255))`,
+	)
+	require.NoError(t, err)
+	defer conn.Exec(ctx, //nolint:errcheck
+		/*sql*/ `DROP TABLE test_prepare`,
+	)
+
+	stmt, err := conn.Prepare(ctx,
+		/*sql*/ `INSERT INTO test_prepare (val) VALUES (:1)`,
+	)
+	require.NoError(t, err)
+	defer stmt.Close() //nolint:errcheck
+
+	err = stmt.Exec(ctx, "prepared-value")
+	require.NoError(t, err)
+
+	rows := conn.Query(ctx,
+		/*sql*/ `SELECT val FROM test_prepare WHERE ROWNUM = 1`,
+	)
+	require.True(t, rows.Next())
+	var val string
+	require.NoError(t, rows.Scan(&val))
+	assert.Equal(t, "prepared-value", val)
+	require.NoError(t, rows.Close())
+}
+
 func TestConnect(t *testing.T) {
 	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
 	require.NoError(t, err)
