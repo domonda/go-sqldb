@@ -26,16 +26,8 @@ Using `VALUES(col)` ensures compatibility with both MySQL and MariaDB.
 
 ## 2. CONSISTENCY / MISSING ERROR WRAPPING
 
-### 2a. db package uses `fmt.Errorf`/`errors.New` instead of `errs.Errorf`/`errs.New`
-- `db/insert.go:31,52,113`
-- `db/upsert.go:21,45,67`
-- `db/transaction.go:198,214,319`
-
-### 2b. mysqlconn missing error wrapping in Prepare/Begin
-**`mysqlconn/connection.go:134-140`**, **`mysqlconn/transaction.go:67-73,86-95`** — `Prepare()` and `Begin()` don't call `wrapKnownErrors()`, unlike Exec/Query/ExecRowsAffected.
-
-### 2c. ~~mysqlconn `queryformatter.go:137` — comment typo~~ FIXED
-Entire `FormatStringLiteral` rewritten to match `go-sql-driver/mysql` `escapeStringBackslash`.
+### 2b. ~~mysqlconn missing error wrapping in Prepare/Begin~~ FIXED
+Added `wrapKnownErrors()` calls in `Prepare()` and `Begin()` for both `connection.go` and `transaction.go`.
 
 ---
 
@@ -59,17 +51,17 @@ Entire `FormatStringLiteral` rewritten to match `go-sql-driver/mysql` `escapeStr
 
 ## 4. TEST COVERAGE SUMMARY
 
-| Module | Coverage | Notes |
-|--------|----------|-------|
-| Root (`go-sqldb`) | **65.6%** | `generictx.go`, `stmt.go`, `errors.go` types at 0% |
-| `db` | **68.1%** | Most Result variants at 0% |
-| `sqliteconn` | **51.3%** | `scanColumn` at 14.9%, `bindArgs` at 18.8% |
-| `mssqlconn` | **35.1%** | All connection/transaction/error methods at 0% |
-| `mysqlconn` | **24.1%** | All connection/transaction/error methods at 0% |
-| `pqconn` | **23.4%** | Only formatter/builder tested |
-| `information` | **14.9%** | All table/primarykey functions at 0% |
-| `oraconn` | **0.0%** | No unit tests at all |
-| `postgres` | **0.0%** | No unit tests for new QueryBuilder |
+| Module             | Coverage  | Notes                                                |
+|--------------------|-----------|------------------------------------------------------|
+| Root (`go-sqldb`)  | **65.6%** | `generictx.go`, `stmt.go`, `errors.go` types at 0%  |
+| `db`               | **68.1%** | Most Result variants at 0%                           |
+| `sqliteconn`       | **51.3%** | `scanColumn` at 14.9%, `bindArgs` at 18.8%           |
+| `mssqlconn`        | **35.1%** | All connection/transaction/error methods at 0%       |
+| `mysqlconn`        | **24.1%** | All connection/transaction/error methods at 0%       |
+| `pqconn`           | **23.4%** | Only formatter/builder tested                        |
+| `information`      | **14.9%** | All table/primarykey functions at 0%                 |
+| `oraconn`          | **0.0%**  | No unit tests at all                                 |
+| `postgres`         | **0.0%**  | No unit tests for new QueryBuilder                   |
 
 ### Critical uncovered code:
 - **`postgres/querybuilder.go`**: New package with 0% coverage — `InsertUnique` and `Upsert` untested
@@ -119,5 +111,5 @@ Already assigned `conn := Conn(ctx)` on line 48, then shadows it with another `c
 ### Nice to have:
 13. [ ] Improve pqconn listener thread safety with `sync.Once`
 14. [ ] Add sqliteconn stmt.go context checks
-15. [ ] Add mysqlconn Prepare/Begin error wrapping
+15. [x] ~~Add mysqlconn Prepare/Begin error wrapping~~
 16. [ ] Improve overall test coverage (especially connectors at 0-35%)

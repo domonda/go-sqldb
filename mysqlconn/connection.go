@@ -134,7 +134,7 @@ func (conn *connection) Query(ctx context.Context, query string, args ...any) sq
 func (conn *connection) Prepare(ctx context.Context, query string) (sqldb.Stmt, error) {
 	stmt, err := conn.db.PrepareContext(ctx, query)
 	if err != nil {
-		return nil, err
+		return nil, wrapKnownErrors(err)
 	}
 	return sqldb.NewStmt(stmt, query), nil
 }
@@ -156,7 +156,7 @@ func (conn *connection) Begin(ctx context.Context, id uint64, opts *sql.TxOption
 	}
 	tx, err := conn.db.BeginTx(ctx, opts)
 	if err != nil {
-		return nil, err
+		return nil, wrapKnownErrors(err)
 	}
 	return newTransaction(conn, tx, opts, id), nil
 }
