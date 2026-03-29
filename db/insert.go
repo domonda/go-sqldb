@@ -48,8 +48,13 @@ func InsertReturning(ctx context.Context, table string, values sqldb.Values, ret
 	conn := Conn(ctx)
 	builder, ok := QueryBuilder(ctx).(sqldb.ReturningQueryBuilder)
 	if !ok {
-		conn := Conn(ctx)
-		return sqldb.NewRow(sqldb.NewErrRows(fmt.Errorf("db.InsertReturning: QueryBuilder %T does not implement sqldb.ReturningQueryBuilder", QueryBuilder(ctx))), StructReflector(ctx), conn, "", nil)
+		return sqldb.NewRow(
+			sqldb.NewErrRows(fmt.Errorf("db.InsertReturning: QueryBuilder %T does not implement sqldb.ReturningQueryBuilder", QueryBuilder(ctx))),
+			StructReflector(ctx),
+			conn, // formatter
+			"",   // query
+			nil,  // args
+		)
 	}
 	return sqldb.InsertReturning(
 		ctx,
