@@ -1,8 +1,9 @@
 #!/bin/bash
+set -e
 
 # Just in case the script is run from another directory
-SCRIPT_DIR=$(cd -P -- $(dirname -- "$0") && pwd -P)
-cd $SCRIPT_DIR
+SCRIPT_DIR=$(cd -P -- "$(dirname -- "$0")" && pwd -P)
+cd "$SCRIPT_DIR"
 
 MODULE_PATHS=("" "mssqlconn/" "mysqlconn/" "oraconn/" "pqconn/" "sqliteconn/")
 
@@ -37,7 +38,7 @@ if [ -z "$1" ]; then
     echo "Creates tags for all modules with the specified version."
     echo ""
     echo "Examples:"
-    echo "  $0 v0.99.1               # Creates v0.99.1, cmd/sqldb-dump/v0.99.1, mssqlconn/v0.99.1, mysqlconn/v0.99.1, pqconn/v0.99.1, sqliteconn/v0.99.1"
+    echo "  $0 v0.99.1               # Creates v0.99.1, mssqlconn/v0.99.1, mysqlconn/v0.99.1, oraconn/v0.99.1, pqconn/v0.99.1, sqliteconn/v0.99.1"
     echo "  $0 v0.99.1 \"bug fixes\"   # Same with custom message"
     echo "  $0 v1.0.0-beta1          # Pre-release version"
     echo ""

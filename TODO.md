@@ -1,51 +1,18 @@
 # go-sqldb v1.0 Release To Dos
 
-## 1. BUGS & TEST FAILURES
-
-### 1a. ~~pqconn `FormatStringLiteral` test failure~~ FIXED
-Updated test expectations to match `pq.QuoteLiteral()` E-string syntax (` E'path\\to'`).
-
-### 1b. ~~oraconn `EscapeIdentifier` — wrong comment~~ FIXED
-Fixed comment to say "non-lowercase/non-underscore" and removed incorrect claim about lowercase being quoted.
-
-### 1c. ~~`querybuilder.go:244` — wrong error message~~ FIXED
-Changed error message from `"DeleteColumns requires at least one column"` to `"Delete requires at least one column"`.
-
-### 1d. ~~`connconfig.go:76-77` — port parse error silently discarded~~ FIXED
-Changed to `strconv.ParseUint` with proper error return and descriptive error message including the invalid port value.
-
-### 1e. ~~Resource leak in `DropAllTables`/`DropAllTypes` (mssqlconn, oraconn)~~ FIXED
-Added `_ = rows.Close()` before returning from `rows.Err()` checks in both `mssqlconn/dropall.go` and `oraconn/dropall.go`.
-
-### 1f. ~~mysqlconn `Upsert` syntax incompatible with MariaDB~~ FIXED
-Reverted `Upsert` from row alias syntax (`AS new ... new.col`, MySQL 8.0.19+) back to `VALUES(col)` in `mysqlconn/querybuilder.go`.
-The `AS new` syntax is not supported by MariaDB, which caused SQL syntax errors in integration tests.
-Using `VALUES(col)` ensures compatibility with both MySQL and MariaDB.
-
----
-
-## 2. CONSISTENCY / MISSING ERROR WRAPPING
-
-### 2b. ~~mysqlconn missing error wrapping in Prepare/Begin~~ FIXED
-Added `wrapKnownErrors()` calls in `Prepare()` and `Begin()` for both `connection.go` and `transaction.go`.
-
 ---
 
 ## 3. TAG-RELEASE & CI SCRIPT ISSUES
 
-### 3a. `tag-release.sh`
-1. **Lines 4-5**: Missing shell quoting — `$(dirname -- "$0")` and `cd $SCRIPT_DIR` need double-quotes
-2. **Line 40**: Stale example `cmd/sqldb-dump/v0.99.1` — path doesn't exist
-3. **No `set -e`** — script continues after errors
-4. **No pre-flight checks** — doesn't verify clean tree, correct branch, or tests passing
+### 3a. ~~`tag-release.sh`~~ FIXED
+Added `set -e`, fixed shell quoting on lines 4-5, and updated stale `cmd/sqldb-dump` example to match current `MODULE_PATHS`.
 
-### 3b. CI workflow `.github/workflows/go.yml`
-1. **Lines 44-50**: MSSQL service has **no health check** options — tests may start before MSSQL is ready
-2. **Line 6**: `slim-conn` branch trigger may be stale
-3. **Line 58**: `go-version: '1.24'` doesn't match `go.work`'s `1.24.6`
+### 3b. ~~CI workflow `.github/workflows/go.yml`~~ FIXED
+Added MSSQL health check, removed stale `slim-conn` branch trigger, updated `go-version` to `1.24.6`,
+and fixed `grep -v /cmd/` to `grep -v /examples/` for gosec filter.
 
-### 3c. `test-workspace.sh:13`
-`grep -v /cmd/` filter doesn't match any module path — examples live under `examples/`, not `cmd/`
+### 3c. ~~`test-workspace.sh:13`~~ FIXED
+Changed `grep -v /cmd/` to `grep -v /examples/` to correctly filter example modules from gosec.
 
 ---
 
@@ -96,14 +63,14 @@ Already assigned `conn := Conn(ctx)` on line 48, then shadows it with another `c
 1. [x] ~~Fix pqconn `FormatStringLiteral` (test is failing)~~
 2. [x] ~~Fix oraconn `EscapeIdentifier` comment~~
 3. [x] ~~Fix `querybuilder.go:244` error message typo~~
-4. Fix `tag-release.sh` quoting and stale example
-5. [ ] Add MSSQL health check to CI
+4. [x] ~~Fix `tag-release.sh` quoting and stale example~~
+5. [x] ~~Add MSSQL health check to CI~~
 6. [x] ~~Fix resource leaks in mssqlconn/oraconn `DropAllTables`~~
 
 ### Should fix:
 7. [ ] Add unit tests for `postgres/querybuilder.go`
 8. [ ] Add unit tests for `oraconn` queryformatter
-9. [ ] Add `set -e` to `tag-release.sh`
+9. [x] ~~Add `set -e` to `tag-release.sh`~~
 10. [x] ~~Fix mysqlconn `Upsert` MariaDB compatibility~~
 11. [x] ~~Fix mysqlconn comment typo~~
 12. [ ] Fix `db/` package error constructors to use `errs.New`/`errs.Errorf`

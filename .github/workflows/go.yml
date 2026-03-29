@@ -2,7 +2,7 @@ name: Go
 
 on:
   push:
-    branches: [ "master", "slim-conn" ]
+    branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
 
@@ -48,6 +48,11 @@ jobs:
           MSSQL_SA_PASSWORD: "TestPass123!"
         ports:
           - 1433:1433
+        options: >-
+          --health-cmd "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'TestPass123!' -C -Q 'SELECT 1' -b"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
 
     steps:
     - uses: actions/checkout@v6
@@ -55,7 +60,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v6
       with:
-        go-version: '1.24'
+        go-version: '1.24.6'
 
     - name: Build all modules
       run: go list -f '{{.Dir}}' -m | xargs -I {} go build -v {}/...
@@ -64,7 +69,7 @@ jobs:
       run: go list -f '{{.Dir}}' -m | xargs -I {} go vet {}/...
 
     - name: Gosec all modules
-      run: go list -f '{{.Dir}}' -m | grep -v /cmd/ | xargs -I {} go tool gosec {}/...
+      run: go list -f '{{.Dir}}' -m | grep -v /examples/ | xargs -I {} go tool gosec {}/...
 
     - name: Test all modules
       env:
