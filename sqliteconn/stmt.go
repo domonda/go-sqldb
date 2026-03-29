@@ -18,6 +18,10 @@ func (s *statement) PreparedQuery() string {
 }
 
 func (s *statement) Exec(ctx context.Context, args ...any) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	// Reset the statement for reuse
 	if err := s.stmt.Reset(); err != nil {
 		return wrapKnownErrors(err)
@@ -41,6 +45,10 @@ func (s *statement) Exec(ctx context.Context, args ...any) error {
 }
 
 func (s *statement) ExecRowsAffected(ctx context.Context, args ...any) (int64, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, err
+	}
+
 	// Reset the statement for reuse
 	if err := s.stmt.Reset(); err != nil {
 		return 0, wrapKnownErrors(err)
@@ -64,6 +72,10 @@ func (s *statement) ExecRowsAffected(ctx context.Context, args ...any) (int64, e
 }
 
 func (s *statement) Query(ctx context.Context, args ...any) sqldb.Rows {
+	if err := ctx.Err(); err != nil {
+		return sqldb.NewErrRows(err)
+	}
+
 	// Reset the statement for reuse
 	if err := s.stmt.Reset(); err != nil {
 		return sqldb.NewErrRows(wrapKnownErrors(err))

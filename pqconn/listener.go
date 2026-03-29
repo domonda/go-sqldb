@@ -26,9 +26,11 @@ var (
 )
 
 type listener struct {
-	connURL string
-	conn    *pq.Listener
-	ping    *time.Ticker
+	connURL  string
+	conn     *pq.Listener
+	ping     *time.Ticker
+	stop     chan struct{}
+	stopOnce sync.Once
 
 	callbacksMtx      sync.RWMutex
 	notifyCallbacks   map[string][]sqldb.OnNotifyFunc
@@ -53,6 +55,7 @@ func (conn *connection) getOrCreateListener() *listener {
 				logListenerConnectionEvent,
 			),
 			ping:              time.NewTicker(ListenerPingInterval),
+			stop:              make(chan struct{}),
 			notifyCallbacks:   make(map[string][]sqldb.OnNotifyFunc),
 			unlistenCallbacks: make(map[string][]sqldb.OnUnlistenFunc),
 		}
@@ -77,6 +80,8 @@ func (conn *connection) getListenerOrNil() *listener {
 func (l *listener) listen() {
 	for {
 		select {
+		case <-l.stop:
+			return
 		case notification, isOpen := <-l.conn.Notify:
 			if !isOpen {
 				l.close()
@@ -124,23 +129,37 @@ func (l *listener) close() {
 	if l == nil {
 		return
 	}
+	l.stopOnce.Do(func() {
+		close(l.stop)
 
-	globalListenersMtx.Lock()
-	defer globalListenersMtx.Unlock()
+		globalListenersMtx.Lock()
+		delete(globalListeners, l.connURL)
+		globalListenersMtx.Unlock()
 
-	delete(globalListeners, l.connURL)
+		l.ping.Stop()
+		l.conn.Close() //#nosec G104 -- Don't care about close errors
 
-	l.ping.Stop()
-	l.conn.Close() //#nosec G104 -- Don't care about close errors
-	l.conn = nil
-
-	l.callbacksMtx.Lock()
-	defer l.callbacksMtx.Unlock()
-
-	for channel, callbacks := range l.unlistenCallbacks {
-		for _, callback := range callbacks {
-			l.safeUnlistenCallback(callback, channel)
+		l.callbacksMtx.Lock()
+		unlistenCallbacks := make(map[string][]sqldb.OnUnlistenFunc, len(l.unlistenCallbacks))
+		for ch, cbs := range l.unlistenCallbacks {
+			unlistenCallbacks[ch] = cbs
 		}
+		l.callbacksMtx.Unlock()
+
+		for channel, callbacks := range unlistenCallbacks {
+			for _, callback := range callbacks {
+				l.safeUnlistenCallback(callback, channel)
+			}
+		}
+	})
+}
+
+func (l *listener) isStopped() bool {
+	select {
+	case <-l.stop:
+		return true
+	default:
+		return false
 	}
 }
 
@@ -176,7 +195,7 @@ func (l *listener) listenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, 
 
 // called on nil listener will return an error
 func (l *listener) unlistenChannel(channel string) (err error) {
-	if l == nil || l.conn == nil {
+	if l == nil || l.isStopped() {
 		return fmt.Errorf("pqconn unable to unlistenChannel %q: no db connection", channel)
 	}
 

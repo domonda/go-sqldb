@@ -2,20 +2,6 @@
 
 ---
 
-## 3. TAG-RELEASE & CI SCRIPT ISSUES
-
-### 3a. ~~`tag-release.sh`~~ FIXED
-Added `set -e`, fixed shell quoting on lines 4-5, and updated stale `cmd/sqldb-dump` example to match current `MODULE_PATHS`.
-
-### 3b. ~~CI workflow `.github/workflows/go.yml`~~ FIXED
-Added MSSQL health check, removed stale `slim-conn` branch trigger, updated `go-version` to `1.24.6`,
-and fixed `grep -v /cmd/` to `grep -v /examples/` for gosec filter.
-
-### 3c. ~~`test-workspace.sh:13`~~ FIXED
-Changed `grep -v /cmd/` to `grep -v /examples/` to correctly filter example modules from gosec.
-
----
-
 ## 4. TEST COVERAGE SUMMARY
 
 | Module             | Coverage  | Notes                                                |
@@ -32,19 +18,16 @@ Changed `grep -v /cmd/` to `grep -v /examples/` to correctly filter example modu
 
 ### Critical uncovered code:
 - **`postgres/querybuilder.go`**: New package with 0% coverage — `InsertUnique` and `Upsert` untested
-- **`oraconn/`**: Entire package has zero unit tests
-- **All connector error wrapping** (`wrapKnownErrors`): Only sqliteconn has unit tests for error mapping
-- **`generictx.go`**: Every method at 0% — this wraps `database/sql` for pqconn/mysqlconn/mssqlconn
+- **`oraconn/`**: Entire package has zero unit tests (only integration tests in `oraconn/test/`)
+- **Connector error wrapping** (`wrapKnownErrors`): sqliteconn tests it indirectly via connection tests; pqconn tests `Is*` helpers but not the `wrapKnownErrors` mapping to `sqldb.Err*` types; mysqlconn, mssqlconn, and oraconn have no error tests at all
+- **`generictx.go`**: Every method at 0% — generic `database/sql` transaction wrapper (not currently used by any connector, each has its own implementation)
 
 ---
 
 ## 5. ADDITIONAL FINDINGS FROM DEEP REVIEW
 
-### 5a. pqconn listener race conditions
-**`pqconn/listener.go:61,77-98`** — The `listen()` goroutine and `close()` can race. Both can call `l.close()` simultaneously. Consider `sync.Once` for the close operation. Also, external `Connection.Close()` may not properly signal the listen goroutine to exit.
-
-### 5b. sqliteconn `stmt.go` missing context checks
-**`sqliteconn/stmt.go:20,43,66`** — `Exec()`, `ExecRowsAffected()`, `Query()` accept `ctx` but never check `ctx.Err()`, unlike all other methods in connection.go/transaction.go.
+### ~~5a. pqconn listener race conditions~~ ✓ FIXED
+Fixed via stop channel + `sync.Once` in `pqconn/listener.go`. The `listen()` goroutine now exits on `<-l.stop`, `close()` is idempotent via `stopOnce.Do`, and `unlistenChannel` uses `isStopped()` instead of the racy `l.conn == nil` check.
 
 ### 5c. `postgres/querybuilder.go:66` — inconsistent SQL spacing
 `ON CONFLICT(` missing space before `(`, while line 41 in `InsertUnique` uses `ON CONFLICT (%s)` with a space. Both valid but inconsistent.
@@ -59,24 +42,11 @@ Already assigned `conn := Conn(ctx)` on line 48, then shadows it with another `c
 
 ## 6. PRIORITY MATRIX
 
-### Must fix before v1.0:
-1. [x] ~~Fix pqconn `FormatStringLiteral` (test is failing)~~
-2. [x] ~~Fix oraconn `EscapeIdentifier` comment~~
-3. [x] ~~Fix `querybuilder.go:244` error message typo~~
-4. [x] ~~Fix `tag-release.sh` quoting and stale example~~
-5. [x] ~~Add MSSQL health check to CI~~
-6. [x] ~~Fix resource leaks in mssqlconn/oraconn `DropAllTables`~~
-
 ### Should fix:
 7. [ ] Add unit tests for `postgres/querybuilder.go`
 8. [ ] Add unit tests for `oraconn` queryformatter
-9. [x] ~~Add `set -e` to `tag-release.sh`~~
-10. [x] ~~Fix mysqlconn `Upsert` MariaDB compatibility~~
-11. [x] ~~Fix mysqlconn comment typo~~
-12. [ ] Fix `db/` package error constructors to use `errs.New`/`errs.Errorf`
 
 ### Nice to have:
-13. [ ] Improve pqconn listener thread safety with `sync.Once`
+13. [x] Improve pqconn listener thread safety with `sync.Once`
 14. [ ] Add sqliteconn stmt.go context checks
-15. [x] ~~Add mysqlconn Prepare/Begin error wrapping~~
 16. [ ] Improve overall test coverage (especially connectors at 0-35%)
