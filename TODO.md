@@ -11,14 +11,16 @@ Fixed comment to say "non-lowercase/non-underscore" and removed incorrect claim 
 ### 1c. ~~`querybuilder.go:244` — wrong error message~~ FIXED
 Changed error message from `"DeleteColumns requires at least one column"` to `"Delete requires at least one column"`.
 
-### 1d. `connconfig.go:76-77` — port parse error silently discarded
-`ParseConnConfig` uses `_ , _ = strconv.Atoi(parsed.Port())`. If the port is non-numeric, it silently becomes 0.
+### 1d. ~~`connconfig.go:76-77` — port parse error silently discarded~~ FIXED
+Changed to `strconv.ParseUint` with proper error return and descriptive error message including the invalid port value.
 
-### 1e. Resource leak in `DropAllTables`/`DropAllTypes` (mssqlconn, oraconn)
-**`mssqlconn/dropall.go:34-35,64-65,100-101`** and **`oraconn/dropall.go:32-33,57-58,88-89`** — when `rows.Err()` returns an error, rows are not closed before returning.
+### 1e. ~~Resource leak in `DropAllTables`/`DropAllTypes` (mssqlconn, oraconn)~~ FIXED
+Added `_ = rows.Close()` before returning from `rows.Err()` checks in both `mssqlconn/dropall.go` and `oraconn/dropall.go`.
 
-### 1f. mysqlconn `VALUES()` syntax is deprecated
-**`mysqlconn/querybuilder.go:44,78`** — Uses `VALUES(col)` in `ON DUPLICATE KEY UPDATE`, deprecated since MySQL 8.0.20 and will be removed in MySQL 9.0. Should switch to row alias syntax (`AS new ... new.col`).
+### 1f. ~~mysqlconn `Upsert` syntax incompatible with MariaDB~~ FIXED
+Reverted `Upsert` from row alias syntax (`AS new ... new.col`, MySQL 8.0.19+) back to `VALUES(col)` in `mysqlconn/querybuilder.go`.
+The `AS new` syntax is not supported by MariaDB, which caused SQL syntax errors in integration tests.
+Using `VALUES(col)` ensures compatibility with both MySQL and MariaDB.
 
 ---
 
@@ -103,19 +105,19 @@ Already assigned `conn := Conn(ctx)` on line 48, then shadows it with another `c
 2. [x] ~~Fix oraconn `EscapeIdentifier` comment~~
 3. [x] ~~Fix `querybuilder.go:244` error message typo~~
 4. Fix `tag-release.sh` quoting and stale example
-5. Add MSSQL health check to CI
-6. Fix resource leaks in mssqlconn/oraconn `DropAllTables`
+5. [ ] Add MSSQL health check to CI
+6. [x] ~~Fix resource leaks in mssqlconn/oraconn `DropAllTables`~~
 
 ### Should fix:
-7. Add unit tests for `postgres/querybuilder.go`
-8. Add unit tests for `oraconn` queryformatter
-9. Add `set -e` to `tag-release.sh`
-10. Address mysqlconn `VALUES()` deprecation (or document as known limitation)
+7. [ ] Add unit tests for `postgres/querybuilder.go`
+8. [ ] Add unit tests for `oraconn` queryformatter
+9. [ ] Add `set -e` to `tag-release.sh`
+10. [x] ~~Fix mysqlconn `Upsert` MariaDB compatibility~~
 11. [x] ~~Fix mysqlconn comment typo~~
-12. Fix `db/` package error constructors to use `errs.New`/`errs.Errorf`
+12. [ ] Fix `db/` package error constructors to use `errs.New`/`errs.Errorf`
 
 ### Nice to have:
-13. Improve pqconn listener thread safety with `sync.Once`
-14. Add sqliteconn stmt.go context checks
-15. Add mysqlconn Prepare/Begin error wrapping
-16. Improve overall test coverage (especially connectors at 0-35%)
+13. [ ] Improve pqconn listener thread safety with `sync.Once`
+14. [ ] Add sqliteconn stmt.go context checks
+15. [ ] Add mysqlconn Prepare/Begin error wrapping
+16. [ ] Improve overall test coverage (especially connectors at 0-35%)

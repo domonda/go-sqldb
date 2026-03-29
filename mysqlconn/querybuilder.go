@@ -41,7 +41,8 @@ func (b QueryBuilder) InsertUnique(formatter sqldb.QueryFormatter, table string,
 
 // Upsert builds an INSERT ... ON DUPLICATE KEY UPDATE query.
 // Primary key columns are used to detect conflicts,
-// non-primary key columns are updated using VALUES(col).
+// non-primary key columns are updated using VALUES(col) syntax
+// for compatibility with both MySQL and MariaDB.
 func (b QueryBuilder) Upsert(formatter sqldb.QueryFormatter, table string, columns []sqldb.ColumnInfo) (query string, err error) {
 	hasNonPK := false
 	for i := range columns {
