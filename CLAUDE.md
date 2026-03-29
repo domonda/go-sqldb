@@ -84,8 +84,6 @@ func MyValueFromContext(ctx context.Context) string {
 - Run `./mysqlconn/test/reset-mariadb-data.sh` after changing the MariaDB version
 - SQL Server integration tests use dockerized SQL Server 2022 on port 1434 (see `mssqlconn/test/docker-compose.yml`)
 - Run `./mssqlconn/test/reset-mssql-data.sh` after changing the SQL Server version
-- Use `db.ContextWithNonConnectionForTest()` for testing without real database
-- Helper functions in `db/testhelper.go`
 - Do **not** use `os.Exit(m.Run())` in `TestMain` — just call `m.Run()` directly
 
 ### Commit Message Guidelines
@@ -123,14 +121,14 @@ err := db.TransactionSavepoint(ctx, func(ctx context.Context) error { ... })
 
 ### Struct Operations
 ```go
-// Insert with struct
-err := db.InsertStruct(ctx, "table_name", &structInstance)
+// Insert with struct (struct must implement sqldb.StructWithTableName)
+err := db.InsertRowStruct(ctx, &structInstance)
 
 // Upsert (uses primary key fields)
-err := db.UpsertStruct(ctx, "table_name", &structInstance)
+err := db.UpsertRowStruct(ctx, &structInstance)
 
-// Query into struct
-user, err := db.QueryRowValue[User](ctx, 
+// Query into value/struct
+user, err := db.QueryRowAs[User](ctx,
     /*sql*/ `SELECT * FROM users WHERE id = $1`,
     id, // $1
 )
