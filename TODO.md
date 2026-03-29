@@ -25,8 +25,8 @@
 
 ## 5. ADDITIONAL FINDINGS FROM DEEP REVIEW
 
-### 5c. `postgres/querybuilder.go:66` — inconsistent SQL spacing
-`ON CONFLICT(` missing space before `(`, while line 41 in `InsertUnique` uses `ON CONFLICT (%s)` with a space. Both valid but inconsistent.
+### ~~5c. `postgres/querybuilder.go:66` — inconsistent SQL spacing~~ FIXED
+Normalized `ON CONFLICT(` to `ON CONFLICT (` with consistent space before `(`, matching `InsertUnique`.
 
-### 5e. Foreign key cleanup not guaranteed in `DropAllTables`
-**`sqliteconn/dropall.go:39-48`**, **`mysqlconn/dropall.go:39-48`** — If `SET FOREIGN_KEY_CHECKS = 1` / `PRAGMA foreign_keys = ON` fails after an error, the database is left with foreign keys disabled. The error from re-enabling is silently discarded.
+### ~~5e. Foreign key cleanup not guaranteed in `DropAllTables`~~ FIXED
+Used `defer` with named return and `errors.Join` in both `sqliteconn/dropall.go` and `mysqlconn/dropall.go` to guarantee foreign key re-enablement and surface both errors.

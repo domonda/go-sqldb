@@ -2,6 +2,7 @@ package sqliteconn
 
 import (
 	"context"
+	"errors"
 
 	"github.com/domonda/go-sqldb"
 )
@@ -10,7 +11,7 @@ import (
 // Internal SQLite tables (names prefixed with "sqlite_") are excluded.
 // Foreign key enforcement is disabled during the operation to allow
 // dropping tables in any order regardless of foreign key constraints.
-func DropAllTables(ctx context.Context, conn sqldb.Connection) error {
+func DropAllTables(ctx context.Context, conn sqldb.Connection) (err error) {
 	rows := conn.Query(ctx,
 		/*sql*/ `
 		SELECT name FROM sqlite_master
@@ -36,14 +37,16 @@ func DropAllTables(ctx context.Context, conn sqldb.Connection) error {
 		return nil
 	}
 
-	if err := conn.Exec(ctx, `PRAGMA foreign_keys = OFF`); err != nil {
+	if err = conn.Exec(ctx, `PRAGMA foreign_keys = OFF`); err != nil {
 		return err
 	}
+	defer func() {
+		err = errors.Join(err, conn.Exec(ctx, `PRAGMA foreign_keys = ON`))
+	}()
 	for _, table := range tables {
-		if err := conn.Exec(ctx, "DROP TABLE IF EXISTS "+EscapeIdentifier(table)); err != nil {
-			_ = conn.Exec(ctx, `PRAGMA foreign_keys = ON`)
+		if err = conn.Exec(ctx, "DROP TABLE IF EXISTS "+EscapeIdentifier(table)); err != nil {
 			return err
 		}
 	}
-	return conn.Exec(ctx, `PRAGMA foreign_keys = ON`)
+	return nil
 }

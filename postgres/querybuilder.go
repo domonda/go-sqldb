@@ -63,7 +63,7 @@ func (b QueryBuilder) Upsert(formatter sqldb.QueryFormatter, table string, colum
 		return "", err
 	}
 	q.WriteString(insert)
-	q.WriteString(` ON CONFLICT(`)
+	q.WriteString(` ON CONFLICT (`)
 	first := true
 	for i := range columns {
 		if !columns[i].PrimaryKey {

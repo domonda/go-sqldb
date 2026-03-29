@@ -78,7 +78,7 @@ func TestQueryBuilder_Upsert(t *testing.T) {
 				{Name: "id", PrimaryKey: true},
 				{Name: "name"},
 			},
-			wantQuery: `INSERT INTO users(id,name) VALUES($1,$2) ON CONFLICT(id) DO UPDATE SET name=$2`,
+			wantQuery: `INSERT INTO users(id,name) VALUES($1,$2) ON CONFLICT (id) DO UPDATE SET name=$2`,
 		},
 		{
 			name:  "single PK and multiple value columns",
@@ -89,7 +89,7 @@ func TestQueryBuilder_Upsert(t *testing.T) {
 				{Name: "email"},
 				{Name: "age"},
 			},
-			wantQuery: `INSERT INTO users(id,name,email,age) VALUES($1,$2,$3,$4) ON CONFLICT(id) DO UPDATE SET name=$2, email=$3, age=$4`,
+			wantQuery: `INSERT INTO users(id,name,email,age) VALUES($1,$2,$3,$4) ON CONFLICT (id) DO UPDATE SET name=$2, email=$3, age=$4`,
 		},
 		{
 			name:  "multiple PK columns and value column",
@@ -99,7 +99,7 @@ func TestQueryBuilder_Upsert(t *testing.T) {
 				{Name: "item_id", PrimaryKey: true},
 				{Name: "quantity"},
 			},
-			wantQuery: `INSERT INTO order_items(order_id,item_id,quantity) VALUES($1,$2,$3) ON CONFLICT(order_id,item_id) DO UPDATE SET quantity=$3`,
+			wantQuery: `INSERT INTO order_items(order_id,item_id,quantity) VALUES($1,$2,$3) ON CONFLICT (order_id,item_id) DO UPDATE SET quantity=$3`,
 		},
 		{
 			name:  "all columns are PK returns error",

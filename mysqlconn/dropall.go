@@ -2,6 +2,7 @@ package mysqlconn
 
 import (
 	"context"
+	"errors"
 
 	"github.com/domonda/go-sqldb"
 )
@@ -9,7 +10,7 @@ import (
 // DropAllTables drops all tables in the current database.
 // Disables foreign key checks during the operation to allow dropping
 // tables in any order regardless of foreign key constraints.
-func DropAllTables(ctx context.Context, conn sqldb.Connection) error {
+func DropAllTables(ctx context.Context, conn sqldb.Connection) (err error) {
 	rows := conn.Query(ctx,
 		/*sql*/ `
 		SELECT TABLE_NAME
@@ -36,14 +37,16 @@ func DropAllTables(ctx context.Context, conn sqldb.Connection) error {
 		return nil
 	}
 
-	if err := conn.Exec(ctx, `SET FOREIGN_KEY_CHECKS = 0`); err != nil {
+	if err = conn.Exec(ctx, `SET FOREIGN_KEY_CHECKS = 0`); err != nil {
 		return err
 	}
+	defer func() {
+		err = errors.Join(err, conn.Exec(ctx, `SET FOREIGN_KEY_CHECKS = 1`))
+	}()
 	for _, table := range tables {
-		if err := conn.Exec(ctx, "DROP TABLE IF EXISTS "+EscapeIdentifier(table)); err != nil {
-			_ = conn.Exec(ctx, `SET FOREIGN_KEY_CHECKS = 1`)
+		if err = conn.Exec(ctx, "DROP TABLE IF EXISTS "+EscapeIdentifier(table)); err != nil {
 			return err
 		}
 	}
-	return conn.Exec(ctx, `SET FOREIGN_KEY_CHECKS = 1`)
+	return nil
 }
