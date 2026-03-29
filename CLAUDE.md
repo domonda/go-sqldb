@@ -54,15 +54,6 @@ func MyValueFromContext(ctx context.Context) string {
 - Use `_test.go` suffix for source files that contain tests
 - **NEVER** use underscores `_` or dashes `-` in general Go source file names
 
-### Error Handling
-- Use `errs.New` from `github.com/domonda/go-errs` instead of `errors.New`
-- Use `errs.Errorf` from `github.com/domonda/go-errs` instead of `fmt.Errorf`
-- Use `errs.Errorf` instead of `errs.Wrap` or `errors.Wrap`
-- **NEVER** use the exact functions `errs.Wrap` or `errors.Wrap`
-- Every exported function returning an error should have error result named `err`
-- Add error wrapping defer call: `defer errs.WrapWithFuncParams(&err, arg0, arg1, ...)`
-- Ensure empty line between error wrapping and function body
-
 ### SQL Rules
 - Write SQL string literals with backticks and prefix with `/*sql*/`
   and start such SQL string literals in a new line if not the first argument
@@ -72,25 +63,13 @@ func MyValueFromContext(ctx context.Context) string {
 - Database lookup functions use `Get`, `Is`, or `Has` prefixes
 - Use nullable Go types instead of pointers for NULL columns
 
-### UUID Rules
-- Use `github.com/domonda/go-types/uu` package for UUIDs instead of `github.com/google/uuid`
-- Single UUID: `uu.ID`
-- UUID slice: `uu.IDSlice` (not `[]uu.ID`)
-- Zero values: `uu.IDNil` for `uu.ID`, `uu.IDNull` for `uu.NullableID`, `nil` for `uu.IDSlice`
-- Use `ID` suffix instead of `UUID` in naming
-
-### Data Validation Rules
-- Use `Validate()` method for data validation, `Valid()` for boolean results
-- Use `IsNull()` and `IsNotNull()` methods for nullable value checks
-- Prefer types from `github.com/domonda/go-types` when appropriate
-
 ### Struct Field Mapping
 - Default tag: `db:"column_name"`
 - Primary key: `db:"id,primarykey"`
 - Ignore field: `db:"-"`
 
 ### Building Rules
-- Remove build artefacts after testing
+- Remove build artefacts after testing with `go clean ./...`
 
 ### Testing
 - **Acceptance tests for workspace**: `./test-workspace.sh` 
@@ -99,7 +78,6 @@ func MyValueFromContext(ctx context.Context) string {
 - Import `github.com/stretchr/testify/require` for required conditions
 - Import `github.com/stretchr/testify/assert` for assertions where the test should continue even if the condition is not met
 - Always use `go clean` after `go build` to not leave binaries behind
-- Mock connections available in `_mockconn/` package
 - PostgreSQL integration tests use dockerized PostgreSQL 17 on port 5433 (see `pqconn/test/docker-compose.yml`)
 - Run `./pqconn/test/reset-postgres-data.sh` after changing the PostgreSQL version
 - MariaDB integration tests use dockerized MariaDB 11.7 on port 3307 (see `mysqlconn/test/docker-compose.yml`)
