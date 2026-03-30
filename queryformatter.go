@@ -81,9 +81,6 @@ func (StdQueryFormatter) FormatColumnName(name string) (string, error) {
 
 // FormatPlaceholder implements the QueryFormatter interface.
 func (f StdQueryFormatter) FormatPlaceholder(paramIndex int) string {
-	if paramIndex < 0 {
-		panic("paramIndex must be greater or equal zero")
-	}
 	if f.PlaceholderPosPrefix == "" {
 		return "?"
 	}

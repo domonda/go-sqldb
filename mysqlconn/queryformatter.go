@@ -127,9 +127,6 @@ func (QueryFormatter) FormatColumnName(name string) (string, error) {
 
 // FormatPlaceholder implements [sqldb.QueryFormatter.FormatPlaceholder].
 func (QueryFormatter) FormatPlaceholder(paramIndex int) string {
-	if paramIndex < 0 {
-		panic("paramIndex must be greater or equal zero")
-	}
 	return "?"
 }
 
