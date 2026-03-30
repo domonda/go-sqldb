@@ -11,13 +11,13 @@
 
 ## Database drivers
 
-| Package                                                                          | Underlying driver                                                                              | Placeholder style |
-| -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ----------------- |
-| [pqconn](https://pkg.go.dev/github.com/domonda/go-sqldb/pqconn)                 | [github.com/lib/pq](https://github.com/lib/pq)                                                | `$1, $2, ...`     |
-| [mysqlconn](https://pkg.go.dev/github.com/domonda/go-sqldb/mysqlconn)           | [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)                      | `?, ?, ...`       |
-| [mssqlconn](https://pkg.go.dev/github.com/domonda/go-sqldb/mssqlconn)           | [github.com/microsoft/go-mssqldb](https://github.com/microsoft/go-mssqldb)                    | `@p1, @p2, ...`   |
-| [sqliteconn](https://pkg.go.dev/github.com/domonda/go-sqldb/sqliteconn)         | [zombiezen.com/go/sqlite](https://pkg.go.dev/zombiezen.com/go/sqlite)                          | `?, ?, ...`       |
-| [oraconn](https://pkg.go.dev/github.com/domonda/go-sqldb/oraconn)               | [github.com/sijms/go-ora/v2](https://github.com/sijms/go-ora)                                 | `:1, :2, ...`     |
+| Database   | Package                                                                          | Underlying driver                                                                              |
+| ---------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| PostgreSQL | [pqconn](https://pkg.go.dev/github.com/domonda/go-sqldb/pqconn)                 | [github.com/lib/pq](https://github.com/lib/pq)                                                |
+| MySQL      | [mysqlconn](https://pkg.go.dev/github.com/domonda/go-sqldb/mysqlconn)           | [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)                      |
+| SQL Server | [mssqlconn](https://pkg.go.dev/github.com/domonda/go-sqldb/mssqlconn)           | [github.com/microsoft/go-mssqldb](https://github.com/microsoft/go-mssqldb)                    |
+| SQLite     | [sqliteconn](https://pkg.go.dev/github.com/domonda/go-sqldb/sqliteconn)         | [zombiezen.com/go/sqlite](https://pkg.go.dev/zombiezen.com/go/sqlite)                          |
+| Oracle     | [oraconn](https://pkg.go.dev/github.com/domonda/go-sqldb/oraconn)               | [github.com/sijms/go-ora/v2](https://github.com/sijms/go-ora)                                 |
 
 
 ### Feature matrix
