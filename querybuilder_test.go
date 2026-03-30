@@ -1,6 +1,11 @@
 package sqldb
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
 
 var testFormatter = NewQueryFormatter("$") // PostgreSQL style
 
@@ -217,4 +222,99 @@ func TestStdQueryBuilder_UpdateColumns(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("all primary keys error", func(t *testing.T) {
+		_, err := b.UpdateColumns(testFormatter, "keys_only", []ColumnInfo{
+			{Name: "a", PrimaryKey: true},
+			{Name: "b", PrimaryKey: true},
+		})
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "non-primary-key column")
+	})
+}
+
+func TestStdQueryBuilder_InsertRows(t *testing.T) {
+	b := StdQueryBuilder{}
+
+	t.Run("single row", func(t *testing.T) {
+		got, err := b.InsertRows(testFormatter, "users", []ColumnInfo{
+			{Name: "id"},
+			{Name: "name"},
+		}, 1)
+		require.NoError(t, err)
+		assert.Equal(t, `INSERT INTO users(id,name) VALUES($1,$2)`, got)
+	})
+
+	t.Run("multiple rows", func(t *testing.T) {
+		got, err := b.InsertRows(testFormatter, "users", []ColumnInfo{
+			{Name: "id"},
+			{Name: "name"},
+			{Name: "email"},
+		}, 3)
+		require.NoError(t, err)
+		assert.Equal(t,
+			`INSERT INTO users(id,name,email) VALUES($1,$2,$3),($4,$5,$6),($7,$8,$9)`,
+			got,
+		)
+	})
+
+	t.Run("numRows zero error", func(t *testing.T) {
+		_, err := b.InsertRows(testFormatter, "users", []ColumnInfo{{Name: "id"}}, 0)
+		assert.Error(t, err)
+	})
+
+	t.Run("numRows negative error", func(t *testing.T) {
+		_, err := b.InsertRows(testFormatter, "users", []ColumnInfo{{Name: "id"}}, -1)
+		assert.Error(t, err)
+	})
+}
+
+func TestStdReturningQueryBuilder_InsertReturning(t *testing.T) {
+	b := StdReturningQueryBuilder{}
+
+	t.Run("returning single column", func(t *testing.T) {
+		got, err := b.InsertReturning(testFormatter, "users", []ColumnInfo{
+			{Name: "name"},
+			{Name: "email"},
+		}, "id")
+		require.NoError(t, err)
+		assert.Equal(t, `INSERT INTO users(name,email) VALUES($1,$2) RETURNING id`, got)
+	})
+
+	t.Run("returning star", func(t *testing.T) {
+		got, err := b.InsertReturning(testFormatter, "users", []ColumnInfo{
+			{Name: "name"},
+		}, "*")
+		require.NoError(t, err)
+		assert.Equal(t, `INSERT INTO users(name) VALUES($1) RETURNING *`, got)
+	})
+}
+
+func TestStdReturningQueryBuilder_UpdateReturning(t *testing.T) {
+	b := StdReturningQueryBuilder{}
+
+	t.Run("with where args", func(t *testing.T) {
+		gotQuery, gotArgs, err := b.UpdateReturning(
+			testFormatter, "users",
+			Values{"name": "Alice"},
+			"*",
+			"id = $1", []any{42},
+		)
+		require.NoError(t, err)
+		assert.Equal(t, `UPDATE users SET name=$2 WHERE id = $1 RETURNING *`, gotQuery)
+		require.Len(t, gotArgs, 2)
+		assert.Equal(t, 42, gotArgs[0])
+		assert.Equal(t, "Alice", gotArgs[1])
+	})
+
+	t.Run("returning specific columns", func(t *testing.T) {
+		gotQuery, _, err := b.UpdateReturning(
+			testFormatter, "users",
+			Values{"score": 100},
+			"id, score",
+			"active = true", nil,
+		)
+		require.NoError(t, err)
+		assert.Equal(t, `UPDATE users SET score=$1 WHERE active = true RETURNING id, score`, gotQuery)
+	})
 }

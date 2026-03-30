@@ -96,6 +96,8 @@ func RunAll(t *testing.T, config Config) {
 	t.Run("QueryBuilder", func(t *testing.T) { runQueryBuilderTests(t, config) })
 	t.Run("Upsert", func(t *testing.T) { runUpsertTests(t, config) })
 	t.Run("Returning", func(t *testing.T) { runReturningTests(t, config) })
+	t.Run("QueryCallback", func(t *testing.T) { runQueryCallbackTests(t, config) })
+	t.Run("Batch", func(t *testing.T) { runBatchTests(t, config) })
 }
 
 // setupTable drops the table if it exists, creates it using the given DDL,
