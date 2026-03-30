@@ -39,6 +39,22 @@ type Config struct {
 	// Defaults to "SELECT 1" if empty.
 	// Oracle needs "SELECT 1 FROM DUAL".
 	SelectOneQuery string
+
+	// SupportsReadOnlyTransaction indicates whether the driver enforces
+	// read-only transactions at the SQL execution level.
+	// If false, the ReadOnlyTransactionRejectsWrite test is skipped.
+	SupportsReadOnlyTransaction bool
+
+	// SupportsCustomIsolationLevel indicates whether the driver supports
+	// setting a non-default isolation level in sql.TxOptions.
+	// If false, the TransactionIsolation test uses nil opts.
+	SupportsCustomIsolationLevel bool
+
+	// ExecAfterClosedTxErrors indicates whether the driver returns an error
+	// when executing on a committed or rolled-back transaction.
+	// Drivers wrapping *sql.Tx return sql.ErrTxDone;
+	// drivers with custom connection management (e.g., SQLite) may not.
+	ExecAfterClosedTxErrors bool
 }
 
 func (c *Config) selectOneQuery() string {

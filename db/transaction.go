@@ -164,7 +164,7 @@ func OptionalTransactionResult[T any](ctx context.Context, useTransaction bool, 
 // During transaction execution, the isolation level "Serializable" is set. This does not mean
 // that the transaction will be run in series. On the contrary, it actually means that Postgres will
 // track read/write dependencies and will report an error in case other concurrent transactions
-// have altered the results of the statements within this transaction. If no serialisation is possible,
+// have altered the results of the statements within this transaction. If no serialization is possible,
 // raw Postgres error will be:
 // ```
 // ERROR:  could not serialize access due to read/write dependencies among transactions

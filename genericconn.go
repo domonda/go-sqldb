@@ -87,9 +87,12 @@ func (conn *genericConn) Query(ctx context.Context, query string, args ...any) R
 func (conn *genericConn) Prepare(ctx context.Context, query string) (Stmt, error) {
 	stmt, err := conn.db.PrepareContext(ctx, query)
 	if err != nil {
+		if conn.wrapErr != nil {
+			return nil, conn.wrapErr(err)
+		}
 		return nil, err
 	}
-	return NewStmt(stmt, query, nil), nil
+	return NewStmt(stmt, query, conn.wrapErr), nil
 }
 
 func (conn *genericConn) DefaultIsolationLevel() sql.IsolationLevel {
@@ -109,6 +112,9 @@ func (conn *genericConn) Begin(ctx context.Context, id uint64, opts *sql.TxOptio
 	}
 	tx, err := conn.db.BeginTx(ctx, opts)
 	if err != nil {
+		if conn.wrapErr != nil {
+			return nil, conn.wrapErr(err)
+		}
 		return nil, err
 	}
 	return newGenericTx(conn, tx, opts, id), nil

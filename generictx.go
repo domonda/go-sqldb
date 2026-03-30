@@ -73,9 +73,12 @@ func (conn *genericTx) Query(ctx context.Context, query string, args ...any) Row
 func (conn *genericTx) Prepare(ctx context.Context, query string) (Stmt, error) {
 	stmt, err := conn.tx.PrepareContext(ctx, query)
 	if err != nil {
+		if conn.wrapErr != nil {
+			return nil, conn.wrapErr(err)
+		}
 		return nil, err
 	}
-	return NewStmt(stmt, query, nil), nil
+	return NewStmt(stmt, query, conn.wrapErr), nil
 }
 
 func (conn *genericTx) DefaultIsolationLevel() sql.IsolationLevel {
@@ -95,6 +98,9 @@ func (conn *genericTx) Begin(ctx context.Context, id uint64, opts *sql.TxOptions
 	}
 	tx, err := conn.parent.db.BeginTx(ctx, opts)
 	if err != nil {
+		if conn.wrapErr != nil {
+			return nil, conn.wrapErr(err)
+		}
 		return nil, err
 	}
 	return newGenericTx(conn.parent, tx, opts, id), nil
@@ -180,6 +186,9 @@ func (conn *genericTxWithQueryBuilder) Begin(ctx context.Context, id uint64, opt
 	}
 	tx, err := conn.genericTx.parent.db.BeginTx(ctx, opts)
 	if err != nil {
+		if conn.wrapErr != nil {
+			return nil, conn.wrapErr(err)
+		}
 		return nil, err
 	}
 	return &genericTxWithQueryBuilder{

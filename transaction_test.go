@@ -189,6 +189,61 @@ func TestTransaction(t *testing.T) {
 			t.Error("expected txFunc to be called")
 		}
 	})
+
+	t.Run("incompatible child opts returns error", func(t *testing.T) {
+		conn := NewMockConn(NewQueryFormatter("$"))
+		conn.TxID = 1 // simulate active transaction
+		conn.MockTransaction = func() TransactionState {
+			return TransactionState{
+				ID:   1,
+				Opts: &sql.TxOptions{ReadOnly: true},
+			}
+		}
+		err := Transaction(t.Context(), conn, &sql.TxOptions{ReadOnly: false}, func(tx Connection) error {
+			t.Error("txFunc should not be called on incompatible opts")
+			return nil
+		})
+		if err == nil {
+			t.Fatal("expected error for incompatible opts")
+		}
+	})
+
+	t.Run("compatible child opts passes through", func(t *testing.T) {
+		conn := NewMockConn(NewQueryFormatter("$"))
+		conn.TxID = 1 // simulate active transaction
+		conn.MockTransaction = func() TransactionState {
+			return TransactionState{
+				ID:   1,
+				Opts: &sql.TxOptions{Isolation: sql.LevelSerializable},
+			}
+		}
+		var called bool
+		err := Transaction(t.Context(), conn, &sql.TxOptions{Isolation: sql.LevelReadCommitted}, func(tx Connection) error {
+			called = true
+			if tx != conn {
+				t.Error("expected same connection to be passed through")
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !called {
+			t.Error("expected txFunc to be called")
+		}
+	})
+
+	t.Run("txFunc error in nested passes through", func(t *testing.T) {
+		conn := NewMockConn(NewQueryFormatter("$"))
+		conn.TxID = 1 // simulate active transaction
+		txErr := errors.New("nested tx func failed")
+		err := Transaction(t.Context(), conn, nil, func(tx Connection) error {
+			return txErr
+		})
+		if !errors.Is(err, txErr) {
+			t.Errorf("expected %v, got: %v", txErr, err)
+		}
+	})
 }
 
 func TestIsolatedTransaction(t *testing.T) {
@@ -271,5 +326,92 @@ func TestIsolatedTransaction(t *testing.T) {
 		if beginCount != 1 {
 			t.Errorf("MockBegin called %d times, want 1", beginCount)
 		}
+	})
+
+	t.Run("commit error", func(t *testing.T) {
+		conn := NewMockConn(NewQueryFormatter("$"))
+		commitErr := errors.New("commit failed")
+		conn.MockCommit = func() error {
+			return commitErr
+		}
+		err := IsolatedTransaction(t.Context(), conn, nil, func(tx Connection) error {
+			return nil // txFunc succeeds
+		})
+		if !errors.Is(err, commitErr) {
+			t.Errorf("expected error wrapping %v, got: %v", commitErr, err)
+		}
+	})
+
+	t.Run("rollback error after txFunc error", func(t *testing.T) {
+		conn := NewMockConn(NewQueryFormatter("$"))
+		txErr := errors.New("tx func failed")
+		rbErr := errors.New("rollback failed")
+		conn.MockRollback = func() error {
+			return rbErr
+		}
+		err := IsolatedTransaction(t.Context(), conn, nil, func(tx Connection) error {
+			return txErr
+		})
+		// Both errors should be in the chain
+		if !errors.Is(err, txErr) {
+			t.Errorf("expected error chain to contain %v, got: %v", txErr, err)
+		}
+		if err.Error() == txErr.Error() {
+			t.Errorf("expected rollback error to be included, got only: %v", err)
+		}
+	})
+
+	t.Run("rollback ErrTxDone after error", func(t *testing.T) {
+		conn := NewMockConn(NewQueryFormatter("$"))
+		txErr := errors.New("tx func failed")
+		conn.MockRollback = func() error {
+			return sql.ErrTxDone
+		}
+		err := IsolatedTransaction(t.Context(), conn, nil, func(tx Connection) error {
+			return txErr
+		})
+		// ErrTxDone should be suppressed, only txErr returned
+		if !errors.Is(err, txErr) {
+			t.Errorf("expected %v, got: %v", txErr, err)
+		}
+	})
+
+	t.Run("panic with rollback error", func(t *testing.T) {
+		conn := NewMockConn(NewQueryFormatter("$"))
+		rbErr := errors.New("rollback failed during panic")
+		conn.MockRollback = func() error {
+			return rbErr
+		}
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Error("expected panic to be re-thrown")
+			}
+			if r != "test panic" {
+				t.Errorf("unexpected panic value: %v", r)
+			}
+		}()
+		IsolatedTransaction(t.Context(), conn, nil, func(tx Connection) error {
+			panic("test panic")
+		})
+	})
+
+	t.Run("panic with rollback ErrTxDone", func(t *testing.T) {
+		conn := NewMockConn(NewQueryFormatter("$"))
+		conn.MockRollback = func() error {
+			return sql.ErrTxDone
+		}
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Error("expected panic to be re-thrown")
+			}
+			if r != "test panic" {
+				t.Errorf("unexpected panic value: %v", r)
+			}
+		}()
+		IsolatedTransaction(t.Context(), conn, nil, func(tx Connection) error {
+			panic("test panic")
+		})
 	})
 }
