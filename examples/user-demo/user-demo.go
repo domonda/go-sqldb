@@ -52,14 +52,18 @@ func main() {
 	}
 
 	// Query all users as struct slice
-	users, err := sqldb.QueryRowsAsSlice[User](ctx, conn, refl, conn, `select * from public.user`)
+	users, err := sqldb.QueryRowsAsSlice[User](ctx, conn, refl, conn,
+		/*sql*/ `SELECT * FROM public.user`,
+	)
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(users)
 
 	// Query single column as slice
-	userEmails, err := sqldb.QueryRowsAsSlice[string](ctx, conn, refl, conn, `select email from public.user`)
+	userEmails, err := sqldb.QueryRowsAsSlice[string](ctx, conn, refl, conn,
+		/*sql*/ `SELECT email FROM public.user`,
+	)
 	if err != nil {
 		panic(err)
 	}
@@ -70,7 +74,7 @@ func main() {
 		func(name, email string) {
 			fmt.Printf("%q <%s>\n", name, email)
 		},
-		`select name, email from public.user`,
+		/*sql*/ `SELECT name, email FROM public.user`,
 	)
 	if err != nil {
 		panic(err)
@@ -103,11 +107,17 @@ func main() {
 	txOpts := &sql.TxOptions{Isolation: sql.LevelWriteCommitted}
 
 	err = sqldb.Transaction(ctx, conn, txOpts, func(tx sqldb.Connection) error {
-		err := tx.Exec(ctx, "...")
+		err := tx.Exec(ctx,
+			/*sql*/ `UPDATE public.user SET disabled_at = now() WHERE id = $1`,
+			newUser.ID,
+		)
 		if err != nil {
 			return err
 		}
-		return tx.Exec(ctx, "...")
+		return tx.Exec(ctx,
+			/*sql*/ `UPDATE public.user SET session_token = NULL WHERE id = $1`,
+			newUser.ID,
+		)
 	})
 	if err != nil {
 		panic(err)
@@ -117,14 +127,20 @@ func main() {
 	ctxTimeout, cancel := context.WithTimeout(ctx, time.Second*30)
 	defer cancel()
 
-	err = conn.Exec(ctxTimeout, "...")
+	err = conn.Exec(ctxTimeout,
+		/*sql*/ `DELETE FROM public.user WHERE disabled_at < now() - interval '1 year'`,
+	)
 	if err != nil {
 		panic(err)
 	}
 
 	// HTTP handler using request context
 	_ = http.HandlerFunc(func(response http.ResponseWriter, request *http.Request) {
-		err := conn.Exec(request.Context(), "...")
+		err := conn.Exec(request.Context(),
+			/*sql*/ `UPDATE public.user SET session_token = $1 WHERE id = $2`,
+			request.Header.Get("X-Session-Token"),
+			request.Header.Get("X-User-ID"),
+		)
 		if err != nil {
 			http.Error(response, "internal server error", http.StatusInternalServerError)
 			return
@@ -136,12 +152,15 @@ func main() {
 
 	db.SetConn(conn)
 
-	err = db.Exec(ctx, "...")
+	userID := uu.IDFrom("b26200df-5973-4ea5-a284-24dd15b6b85b")
+
+	err = db.Exec(ctx,
+		/*sql*/ `UPDATE public.user SET updated_at = now() WHERE id = $1`,
+		userID,
+	)
 	if err != nil {
 		panic(err)
 	}
-
-	userID := uu.IDFrom("b26200df-5973-4ea5-a284-24dd15b6b85b")
 
 	err = db.Transaction(ctx, func(ctx context.Context) error {
 		user, err := GetUserOrNil(ctx, userID)
@@ -149,9 +168,16 @@ func main() {
 			return err
 		}
 		if user == nil {
-			return db.Exec(ctx, "...")
+			return db.Exec(ctx,
+				/*sql*/ `INSERT INTO public.user (id, name) VALUES ($1, 'New User')`,
+				userID,
+			)
 		}
-		return db.Exec(ctx, "...")
+		return db.Exec(ctx,
+			/*sql*/ `UPDATE public.user SET name = $1 WHERE id = $2`,
+			user.Name+" (updated)",
+			userID,
+		)
 	})
 	if err != nil {
 		panic(err)
