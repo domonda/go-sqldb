@@ -12,7 +12,7 @@ Basic usage:
 		"github.com/domonda/go-sqldb/sqliteconn"
 	)
 
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver:   "sqlite",
 		Database: "mydb.sqlite",
 	}
@@ -30,7 +30,7 @@ Basic usage:
 The connection automatically:
   - Enables foreign key constraints (PRAGMA foreign_keys = ON)
   - Enables WAL mode for better concurrency (PRAGMA journal_mode = WAL)
-  - Sets query_only mode when ConnConfig.ReadOnly is true
+  - Sets query_only mode when Config.ReadOnly is true
 
 SQLite-specific features:
   - Default isolation level is sql.LevelSerializable
@@ -40,7 +40,7 @@ SQLite-specific features:
 
 For in-memory databases, use ":memory:" as the database name:
 
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver:   "sqlite",
 		Database: ":memory:",
 	}

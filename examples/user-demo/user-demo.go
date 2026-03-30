@@ -36,7 +36,7 @@ func main() {
 
 	refl := sqldb.NewTaggedStructReflector()
 
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver:   "postgres",
 		Host:     "localhost",
 		User:     "postgres",

@@ -10,7 +10,7 @@ Basic usage:
 		"github.com/domonda/go-sqldb/pqconn"
 	)
 
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver:   pqconn.Driver,
 		Host:     "localhost",
 		Port:     5432,

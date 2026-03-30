@@ -11,7 +11,7 @@ import (
 )
 
 func TestConnectWrongDriver(t *testing.T) {
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver:   "postgres",
 		Host:     "localhost",
 		Database: "testdb",
@@ -23,7 +23,7 @@ func TestConnectWrongDriver(t *testing.T) {
 }
 
 func TestFormatDSN(t *testing.T) {
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver:   Driver,
 		Host:     "localhost",
 		Port:     1433,
@@ -40,7 +40,7 @@ func TestFormatDSN(t *testing.T) {
 }
 
 func TestFormatDSNWithExtra(t *testing.T) {
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver:   Driver,
 		Host:     "localhost",
 		Port:     1433,

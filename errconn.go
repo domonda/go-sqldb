@@ -28,8 +28,8 @@ type ErrConn struct {
 }
 
 // Config implements the Connection interface.
-func (e ErrConn) Config() *ConnConfig {
-	return &ConnConfig{Driver: "ErrConn"}
+func (e ErrConn) Config() *Config {
+	return &Config{Driver: "ErrConn"}
 }
 
 // Ping implements the Connection interface.

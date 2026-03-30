@@ -54,7 +54,7 @@ func testConn(t *testing.T) sqldb.Connection {
 		t.Fatalf("Invalid port %q: %v", postgresPort, err)
 	}
 
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver:   "postgres",
 		Host:     postgresHost,
 		Port:     uint16(port),

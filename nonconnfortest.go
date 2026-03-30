@@ -28,8 +28,8 @@ type nonConnForTest struct {
 	txOpts *sql.TxOptions
 }
 
-func (e *nonConnForTest) Config() *ConnConfig {
-	return &ConnConfig{
+func (e *nonConnForTest) Config() *Config {
+	return &Config{
 		Driver: "nonConnForTest",
 	}
 }

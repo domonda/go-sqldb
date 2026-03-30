@@ -36,8 +36,8 @@ func TestMockConn_Config(t *testing.T) {
 
 	t.Run("custom config", func(t *testing.T) {
 		conn := NewMockConn(nil)
-		conn.MockConfig = func() *ConnConfig {
-			return &ConnConfig{Driver: "test", Database: "testdb"}
+		conn.MockConfig = func() *Config {
+			return &Config{Driver: "test", Database: "testdb"}
 		}
 		cfg := conn.Config()
 		assert.Equal(t, "test", cfg.Driver)

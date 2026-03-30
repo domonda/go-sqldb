@@ -7,7 +7,7 @@ Oracle Database driver for [go-sqldb](https://github.com/domonda/go-sqldb) using
 ## Connecting
 
 ```go
-config := &sqldb.ConnConfig{
+config := &sqldb.Config{
     Driver:   oraconn.Driver, // "oracle"
     Host:     "localhost",
     Port:     1521,

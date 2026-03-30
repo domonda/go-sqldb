@@ -16,7 +16,7 @@ func connectPQ(t *testing.T) sqldb.Connection {
 	t.Helper()
 	port, err := strconv.ParseUint(postgresPort, 10, 16)
 	require.NoError(t, err)
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver:   "postgres",
 		Host:     postgresHost,
 		Port:     uint16(port),

@@ -25,7 +25,7 @@ const Driver = "oracle"
 // Oracle returns uppercase names for unquoted identifiers by default.
 // Oracle SQL itself is case-insensitive for unquoted identifiers,
 // so this only affects the Go-side column name matching.
-func Connect(ctx context.Context, config *sqldb.ConnConfig, lowercaseColumns bool) (sqldb.Connection, error) {
+func Connect(ctx context.Context, config *sqldb.Config, lowercaseColumns bool) (sqldb.Connection, error) {
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
@@ -52,9 +52,9 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig, lowercaseColumns boo
 	return &connection{db: db, config: config, lowercaseColumns: lowercaseColumns}, nil
 }
 
-// formatDSN converts a sqldb.ConnConfig to an Oracle connection URL
+// formatDSN converts a sqldb.Config to an Oracle connection URL
 // using the go-ora BuildUrl function.
-func formatDSN(config *sqldb.ConnConfig) string {
+func formatDSN(config *sqldb.Config) string {
 	var options map[string]string
 	if len(config.Extra) > 0 {
 		options = config.Extra
@@ -70,7 +70,7 @@ func formatDSN(config *sqldb.ConnConfig) string {
 }
 
 // MustConnect is like Connect but panics on error.
-func MustConnect(ctx context.Context, config *sqldb.ConnConfig, lowercaseColumns bool) sqldb.Connection {
+func MustConnect(ctx context.Context, config *sqldb.Config, lowercaseColumns bool) sqldb.Connection {
 	conn, err := Connect(ctx, config, lowercaseColumns)
 	if err != nil {
 		panic(err)
@@ -83,11 +83,11 @@ type connection struct {
 	QueryBuilder
 
 	db               *sql.DB
-	config           *sqldb.ConnConfig
+	config           *sqldb.Config
 	lowercaseColumns bool
 }
 
-func (conn *connection) Config() *sqldb.ConnConfig {
+func (conn *connection) Config() *sqldb.Config {
 	return conn.config
 }
 

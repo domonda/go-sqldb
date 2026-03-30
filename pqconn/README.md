@@ -4,10 +4,10 @@ Package `pqconn` implements the `github.com/domonda/go-sqldb` interfaces for Pos
 
 ## Connecting
 
-Use `Connect` to establish a connection from an `sqldb.ConnConfig`:
+Use `Connect` to establish a connection from an `sqldb.Config`:
 
 ```go
-config := &sqldb.ConnConfig{
+config := &sqldb.Config{
     Driver:   pqconn.Driver, // "postgres"
     Host:     "localhost",
     Port:     5432,
@@ -135,7 +135,7 @@ If you use the table and type queries separately, always execute them in this or
 ```go
 func TestMain(m *testing.M) {
     ctx := context.Background()
-    config := &sqldb.ConnConfig{
+    config := &sqldb.Config{
         Driver:   pqconn.Driver,
         Host:     "localhost",
         Port:     5432,

@@ -30,7 +30,7 @@ func newTransaction(parent *connection, tx *sql.Tx, opts *sql.TxOptions, id uint
 	}
 }
 
-func (conn *transaction) Config() *sqldb.ConnConfig {
+func (conn *transaction) Config() *sqldb.Config {
 	return conn.parent.config
 }
 

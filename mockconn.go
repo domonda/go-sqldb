@@ -63,7 +63,7 @@ type MockConn struct {
 	Recordings       QueryRecordings
 	MockQueryResults map[string]Rows
 
-	MockConfig               func() *ConnConfig
+	MockConfig               func() *Config
 	MockPing                 func(context.Context, time.Duration) error
 	MockStats                func() sql.DBStats
 	MockExec                 func(ctx context.Context, query string, args ...any) error
@@ -195,10 +195,10 @@ func (c *MockConn) MaxArgs() int {
 }
 
 // Config implements Connection by returning MockConfig()
-// or a default ConnConfig with Driver "MockConn" if MockConfig is nil.
-func (c *MockConn) Config() *ConnConfig {
+// or a default Config with Driver "MockConn" if MockConfig is nil.
+func (c *MockConn) Config() *Config {
 	if c.MockConfig == nil {
-		return &ConnConfig{
+		return &Config{
 			Driver: "MockConn",
 		}
 	}

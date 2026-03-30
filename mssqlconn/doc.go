@@ -10,7 +10,7 @@ Basic usage:
 		"github.com/domonda/go-sqldb/mssqlconn"
 	)
 
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver:   mssqlconn.Driver,
 		Host:     "localhost",
 		Port:     1433,

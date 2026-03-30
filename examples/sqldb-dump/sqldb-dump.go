@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver: "postgres",
 		Host:   "localhost",
 		User:   "postgres",

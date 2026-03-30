@@ -179,7 +179,7 @@ func TestQueryFormatter_FormatStringLiteral(t *testing.T) {
 }
 
 func TestConnect_InvalidDriver(t *testing.T) {
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver:   "mysql",
 		Host:     "localhost",
 		Port:     5432,

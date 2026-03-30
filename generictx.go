@@ -30,7 +30,7 @@ func newGenericTx(parent *genericConn, tx *sql.Tx, opts *sql.TxOptions, id uint6
 	}
 }
 
-func (conn *genericTx) Config() *ConnConfig {
+func (conn *genericTx) Config() *Config {
 	return conn.parent.config
 }
 

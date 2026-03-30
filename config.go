@@ -11,9 +11,9 @@ import (
 	"time"
 )
 
-// ConnConfig for a connection.
+// Config for a connection.
 // For tips see https://www.alexedwards.net/blog/configuring-sqldb
-type ConnConfig struct {
+type Config struct {
 	Driver   string            `json:"driver"`
 	Host     string            `json:"host"` // Defaults to "localhost" if empty
 	Port     uint16            `json:"port,omitempty"`
@@ -58,7 +58,7 @@ type ConnConfig struct {
 	ConnMaxLifetime time.Duration `json:"connMaxLifetime,omitempty"`
 }
 
-// ParseConnConfig parses a connection URI string and returns a ConnConfig.
+// ParseConfig parses a connection URI string and returns a Config.
 // The URI must be in the format:
 //
 //	driver://user:password@host:port/database?key=value&key2=value2
@@ -67,8 +67,8 @@ type ConnConfig struct {
 //
 //	postgres://user:password@localhost:5432/database?sslmode=disable
 //
-// See also [ConnConfig.String]
-func ParseConnConfig(uri string) (*ConnConfig, error) {
+// See also [Config.String]
+func ParseConfig(uri string) (*Config, error) {
 	parsed, err := url.Parse(uri)
 	if err != nil {
 		return nil, err
@@ -81,7 +81,7 @@ func ParseConnConfig(uri string) (*ConnConfig, error) {
 		}
 	}
 	password, _ := parsed.User.Password()
-	config := &ConnConfig{
+	config := &Config{
 		Driver:   parsed.Scheme,
 		Host:     parsed.Hostname(),
 		Port:     uint16(port),
@@ -98,24 +98,24 @@ func ParseConnConfig(uri string) (*ConnConfig, error) {
 	return config, nil
 }
 
-// Validate checks that the required ConnConfig fields are set
+// Validate checks that the required Config fields are set
 // and returns an error if Driver or Database are missing.
 // Host is required for network-based drivers
 // but not for file-based drivers like "sqlite".
-func (c *ConnConfig) Validate() error {
+func (c *Config) Validate() error {
 	if c.Driver == "" {
-		return fmt.Errorf("missing sqldb.ConnConfig.Driver")
+		return fmt.Errorf("missing sqldb.Config.Driver")
 	}
 	if c.Database == "" {
-		return fmt.Errorf("missing sqldb.ConnConfig.Database")
+		return fmt.Errorf("missing sqldb.Config.Database")
 	}
 	return nil
 }
 
 // URL returns a [*url.URL] with the connection parameters
-// for connecting to a database based on the ConnConfig.
+// for connecting to a database based on the Config.
 // If Host is empty, localhost is used.
-func (c *ConnConfig) URL() *url.URL {
+func (c *Config) URL() *url.URL {
 	extra := make(url.Values)
 	for key, val := range c.Extra {
 		extra.Add(key, val)
@@ -135,10 +135,10 @@ func (c *ConnConfig) URL() *url.URL {
 	return u
 }
 
-// String returns the connection URI string for the ConnConfig
+// String returns the connection URI string for the Config
 // without the password and implements the [fmt.Stringer] interface.
 //
-// To get the full connection URI including the password use [ConnConfig.URL].
+// To get the full connection URI including the password use [Config.URL].
 //
 // The returned string will not include the following fields:
 //   - Password
@@ -146,8 +146,8 @@ func (c *ConnConfig) URL() *url.URL {
 //   - MaxIdleConns
 //   - ConnMaxLifetime
 //
-// See also [ParseConnConfig]
-func (c *ConnConfig) String() string {
+// See also [ParseConfig]
+func (c *Config) String() string {
 	if c.Driver != "" && c.Host == "" && c.Database == "" {
 		return c.Driver
 	}
@@ -157,9 +157,9 @@ func (c *ConnConfig) String() string {
 }
 
 // Connect opens a new [sql.DB] connection,
-// sets all ConnConfig values and performs a ping with ctx.
+// sets all Config values and performs a ping with ctx.
 // The [sql.DB] will be returned if the ping was successful.
-func (c *ConnConfig) Connect(ctx context.Context) (*sql.DB, error) {
+func (c *Config) Connect(ctx context.Context) (*sql.DB, error) {
 	err := c.Validate()
 	if err != nil {
 		return nil, err

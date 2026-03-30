@@ -20,7 +20,7 @@ const Driver = "sqlite"
 
 // Connect establishes a new [sqldb.Connection] using the passed config
 // and zombiezen.com/go/sqlite as the underlying SQLite implementation.
-func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
+func Connect(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -68,10 +68,10 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, e
 	}, nil
 }
 
-// MustConnect creates a new sqldb.Connection using the passed sqldb.ConnConfig
+// MustConnect creates a new sqldb.Connection using the passed sqldb.Config
 // and zombiezen.com/go/sqlite as the underlying implementation.
 // Errors are panicked.
-func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
+func MustConnect(ctx context.Context, config *sqldb.Config) sqldb.Connection {
 	conn, err := Connect(ctx, config)
 	if err != nil {
 		panic(err)
@@ -84,12 +84,12 @@ type connection struct {
 	QueryBuilder   // SQLite UpsertQueryBuilder and ReturningQueryBuilder
 
 	conn   *sqlite.Conn
-	config *sqldb.ConnConfig
+	config *sqldb.Config
 	txOpts *sql.TxOptions
 	txID   uint64
 }
 
-func (c *connection) Config() *sqldb.ConnConfig {
+func (c *connection) Config() *sqldb.Config {
 	return c.config
 }
 

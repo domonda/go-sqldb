@@ -21,7 +21,7 @@ type transaction struct {
 	savepointName string // Non-empty for nested transactions (savepoints)
 }
 
-func (conn *transaction) Config() *sqldb.ConnConfig {
+func (conn *transaction) Config() *sqldb.Config {
 	return conn.parent.config
 }
 

@@ -11,7 +11,7 @@ import (
 )
 
 func TestConnectWrongDriver(t *testing.T) {
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver:   "postgres",
 		Host:     "localhost",
 		Database: "testdb",

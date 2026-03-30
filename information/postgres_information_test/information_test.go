@@ -53,7 +53,7 @@ func TestMain(m *testing.M) {
 	}
 
 	ctx := context.Background()
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver:   pqconn.Driver,
 		Host:     postgresHost,
 		Port:     uint16(postgresPort),

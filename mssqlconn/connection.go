@@ -20,7 +20,7 @@ const Driver = "sqlserver"
 // and github.com/microsoft/go-mssqldb as driver implementation.
 // The connection is pinged with the passed context and only returned
 // when there was no error from the ping.
-func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
+func Connect(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
@@ -47,10 +47,10 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, e
 	return &connection{db: db, config: config}, nil
 }
 
-// formatDSN converts a sqldb.ConnConfig to a SQL Server connection URL.
+// formatDSN converts a sqldb.Config to a SQL Server connection URL.
 // The go-mssqldb driver expects the database as a query parameter,
 // not in the URL path (which is used for instance names).
-func formatDSN(config *sqldb.ConnConfig) string {
+func formatDSN(config *sqldb.Config) string {
 	query := make(url.Values)
 	query.Set("database", config.Database)
 	for key, val := range config.Extra {
@@ -71,7 +71,7 @@ func formatDSN(config *sqldb.ConnConfig) string {
 }
 
 // MustConnect is like Connect but panics on error.
-func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
+func MustConnect(ctx context.Context, config *sqldb.Config) sqldb.Connection {
 	conn, err := Connect(ctx, config)
 	if err != nil {
 		panic(err)
@@ -84,10 +84,10 @@ type connection struct {
 	QueryBuilder
 
 	db     *sql.DB
-	config *sqldb.ConnConfig
+	config *sqldb.Config
 }
 
-func (conn *connection) Config() *sqldb.ConnConfig {
+func (conn *connection) Config() *sqldb.Config {
 	return conn.config
 }
 

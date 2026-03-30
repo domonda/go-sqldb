@@ -19,7 +19,7 @@ import (
 // and github.com/go-sql-driver/mysql as driver implementation.
 // The connection is pinged with the passed context and only returned
 // when there was no error from the ping.
-func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
+func Connect(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
@@ -47,9 +47,9 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, e
 
 }
 
-// formatDSN converts a sqldb.ConnConfig to a MySQL DSN string
+// formatDSN converts a sqldb.Config to a MySQL DSN string
 // using the go-sql-driver/mysql Config.FormatDSN method.
-func formatDSN(config *sqldb.ConnConfig) string {
+func formatDSN(config *sqldb.Config) string {
 	mysqlCfg := mysqldriver.NewConfig()
 	mysqlCfg.User = config.User
 	mysqlCfg.Passwd = config.Password
@@ -69,12 +69,12 @@ func formatDSN(config *sqldb.ConnConfig) string {
 	return mysqlCfg.FormatDSN()
 }
 
-// MustConnect creates a new sqldb.Connection using the passed sqldb.ConnConfig
+// MustConnect creates a new sqldb.Connection using the passed sqldb.Config
 // and github.com/go-sql-driver/mysql as driver implementation.
 // The connection is pinged with the passed context and only returned
 // when there was no error from the ping.
 // Errors are panicked.
-func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
+func MustConnect(ctx context.Context, config *sqldb.Config) sqldb.Connection {
 	conn, err := Connect(ctx, config)
 	if err != nil {
 		panic(err)
@@ -87,10 +87,10 @@ type connection struct {
 	QueryBuilder
 
 	db     *sql.DB
-	config *sqldb.ConnConfig
+	config *sqldb.Config
 }
 
-func (conn *connection) Config() *sqldb.ConnConfig {
+func (conn *connection) Config() *sqldb.Config {
 	return conn.config
 }
 

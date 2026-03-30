@@ -4,10 +4,10 @@ Package `mssqlconn` implements the `github.com/domonda/go-sqldb` interfaces for 
 
 ## Connecting
 
-Use `Connect` to establish a connection from an `sqldb.ConnConfig`:
+Use `Connect` to establish a connection from an `sqldb.Config`:
 
 ```go
-config := &sqldb.ConnConfig{
+config := &sqldb.Config{
     Driver:   mssqlconn.Driver, // "sqlserver"
     Host:     "localhost",
     Port:     1433,
@@ -123,7 +123,7 @@ Always use `DropAll` (or call `DropAllTables` before `DropAllTypes`) because typ
 ```go
 func TestMain(m *testing.M) {
     ctx := context.Background()
-    config := &sqldb.ConnConfig{
+    config := &sqldb.Config{
         Driver:   mssqlconn.Driver,
         Host:     "localhost",
         Port:     1433,

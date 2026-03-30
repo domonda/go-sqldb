@@ -208,7 +208,7 @@ See the [db package README](db/README.md) for a complete function reference and 
 ### Creating a connection
 
 ```go
-config := &sqldb.ConnConfig{
+config := &sqldb.Config{
     Driver:   "postgres",
     Host:     "localhost",
     User:     "postgres",

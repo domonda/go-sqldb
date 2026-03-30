@@ -56,7 +56,7 @@ type Connection interface {
 	QueryFormatter
 
 	// Config returns the configuration used to establish this connection.
-	Config() *ConnConfig
+	Config() *Config
 
 	// Stats returns the sql.DBStats of this connection.
 	Stats() sql.DBStats

@@ -10,7 +10,7 @@ Basic usage:
 		"github.com/domonda/go-sqldb/mysqlconn"
 	)
 
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver:   mysqlconn.Driver,
 		Host:     "localhost",
 		Port:     3306,

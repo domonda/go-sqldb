@@ -127,7 +127,7 @@ func TestIsDatabaseLocked(t *testing.T) {
 	// Use a file-based database so two connections can access it
 	dbPath := filepath.Join(t.TempDir(), "locked.db")
 
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver:   "sqlite",
 		Host:     "localhost",
 		Database: dbPath,
@@ -176,7 +176,7 @@ func TestIsDatabaseLocked(t *testing.T) {
 
 func TestReadOnlyError(t *testing.T) {
 	// Create a read-only connection
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver:   "sqlite",
 		Host:     "localhost",
 		Database: ":memory:",

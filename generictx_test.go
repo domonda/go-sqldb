@@ -13,7 +13,7 @@ func newTestGenericTx(t *testing.T, opts *sql.TxOptions, id uint64) *genericTx {
 	parent := &genericConn{
 		QueryFormatter:        StdQueryFormatter{PlaceholderPosPrefix: "$"},
 		db:                    &sql.DB{},
-		config:                &ConnConfig{Driver: "postgres", Host: "localhost", Database: "testdb"},
+		config:                &Config{Driver: "postgres", Host: "localhost", Database: "testdb"},
 		defaultIsolationLevel: sql.LevelReadCommitted,
 	}
 	return &genericTx{
@@ -63,7 +63,7 @@ func TestGenericTx_DefaultIsolationLevel(t *testing.T) {
 			parent := &genericConn{
 				QueryFormatter:        StdQueryFormatter{},
 				db:                    &sql.DB{},
-				config:                &ConnConfig{Driver: "postgres"},
+				config:                &Config{Driver: "postgres"},
 				defaultIsolationLevel: scenario.level,
 			}
 			tx := &genericTx{parent: parent, id: 1}
@@ -192,7 +192,7 @@ func TestGenericTx_FormatPlaceholder(t *testing.T) {
 			parent := &genericConn{
 				QueryFormatter: StdQueryFormatter{PlaceholderPosPrefix: scenario.prefix},
 				db:             &sql.DB{},
-				config:         &ConnConfig{Driver: "test"},
+				config:         &Config{Driver: "test"},
 			}
 			tx := &genericTx{parent: parent, id: 1}
 

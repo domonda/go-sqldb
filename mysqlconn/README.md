@@ -4,10 +4,10 @@ Package `mysqlconn` implements the `github.com/domonda/go-sqldb` interfaces for 
 
 ## Connecting
 
-Use `Connect` to establish a connection from an `sqldb.ConnConfig`:
+Use `Connect` to establish a connection from an `sqldb.Config`:
 
 ```go
-config := &sqldb.ConnConfig{
+config := &sqldb.Config{
     Driver:   mysqlconn.Driver, // "mysql"
     Host:     "localhost",
     Port:     3306,
@@ -120,7 +120,7 @@ err = mysqlconn.DropAllTables(ctx, conn)
 ```go
 func TestMain(m *testing.M) {
     ctx := context.Background()
-    config := &sqldb.ConnConfig{
+    config := &sqldb.Config{
         Driver:   mysqlconn.Driver,
         Host:     "localhost",
         Port:     3306,

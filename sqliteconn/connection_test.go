@@ -15,7 +15,7 @@ import (
 
 func TestConnect(t *testing.T) {
 	t.Run("successful connection", func(t *testing.T) {
-		config := &sqldb.ConnConfig{
+		config := &sqldb.Config{
 			Driver:   "sqlite",
 			Host:     "localhost",
 			Database: ":memory:",
@@ -32,7 +32,7 @@ func TestConnect(t *testing.T) {
 	})
 
 	t.Run("invalid driver", func(t *testing.T) {
-		config := &sqldb.ConnConfig{
+		config := &sqldb.Config{
 			Driver:   "postgres",
 			Host:     "localhost",
 			Database: ":memory:",
@@ -45,7 +45,7 @@ func TestConnect(t *testing.T) {
 	})
 
 	t.Run("read-only mode", func(t *testing.T) {
-		config := &sqldb.ConnConfig{
+		config := &sqldb.Config{
 			Driver:   "sqlite",
 			Host:     "localhost",
 			Database: ":memory:",
@@ -62,7 +62,7 @@ func TestConnect(t *testing.T) {
 func TestMustConnect(t *testing.T) {
 
 	t.Run("successful connection", func(t *testing.T) {
-		config := &sqldb.ConnConfig{
+		config := &sqldb.Config{
 			Driver:   "sqlite",
 			Host:     "localhost",
 			Database: ":memory:",
@@ -74,7 +74,7 @@ func TestMustConnect(t *testing.T) {
 	})
 
 	t.Run("panic on error", func(t *testing.T) {
-		config := &sqldb.ConnConfig{
+		config := &sqldb.Config{
 			Driver:   "invalid",
 			Host:     "localhost",
 			Database: ":memory:",
@@ -274,7 +274,7 @@ func TestDriverValuerAndSQLScanner(t *testing.T) {
 
 func testConnection(t *testing.T) sqldb.Connection {
 	t.Helper()
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver:   "sqlite",
 		Host:     "localhost",
 		Database: ":memory:",

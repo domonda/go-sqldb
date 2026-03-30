@@ -45,8 +45,8 @@ func envOrDefaultInt(key string, defaultVal int) int {
 	return defaultVal
 }
 
-func testConfig() *sqldb.ConnConfig {
-	return &sqldb.ConnConfig{
+func testConfig() *sqldb.Config {
+	return &sqldb.Config{
 		Driver:   mssqlconn.Driver,
 		Host:     mssqlHost,
 		Port:     uint16(mssqlPort),
@@ -274,7 +274,7 @@ func TestConnect(t *testing.T) {
 }
 
 func TestMustConnectPanics(t *testing.T) {
-	badConfig := &sqldb.ConnConfig{
+	badConfig := &sqldb.Config{
 		Driver:   mssqlconn.Driver,
 		Host:     "invalid-host-that-does-not-exist",
 		Port:     9999,

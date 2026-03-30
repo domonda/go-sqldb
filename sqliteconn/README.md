@@ -30,7 +30,7 @@ import (
     "github.com/domonda/go-sqldb/sqliteconn"
 )
 
-config := &sqldb.ConnConfig{
+config := &sqldb.Config{
     Driver:   "sqlite",
     Database: "myapp.db",
 }
@@ -45,7 +45,7 @@ defer conn.Close()
 ### In-Memory Database
 
 ```go
-config := &sqldb.ConnConfig{
+config := &sqldb.Config{
     Driver:   "sqlite",
     Database: ":memory:",
 }
@@ -56,7 +56,7 @@ conn, err := sqliteconn.Connect(context.Background(), config)
 ### Read-Only Mode
 
 ```go
-config := &sqldb.ConnConfig{
+config := &sqldb.Config{
     Driver:   "sqlite",
     Database: "myapp.db",
     ReadOnly: true,
@@ -73,7 +73,7 @@ import (
     "github.com/domonda/go-sqldb/sqliteconn"
 )
 
-config := &sqldb.ConnConfig{
+config := &sqldb.Config{
     Driver:   "sqlite",
     Database: "myapp.db",
 }

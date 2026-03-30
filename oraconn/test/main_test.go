@@ -45,8 +45,8 @@ func envOrDefaultInt(key string, defaultVal int) int {
 	return defaultVal
 }
 
-func testConfig() *sqldb.ConnConfig {
-	return &sqldb.ConnConfig{
+func testConfig() *sqldb.Config {
+	return &sqldb.Config{
 		Driver:   oraconn.Driver,
 		Host:     oracleHost,
 		Port:     uint16(oraclePort),
@@ -250,7 +250,7 @@ func TestConnect(t *testing.T) {
 }
 
 func TestMustConnectPanics(t *testing.T) {
-	badConfig := &sqldb.ConnConfig{
+	badConfig := &sqldb.Config{
 		Driver:   oraconn.Driver,
 		Host:     "invalid-host-that-does-not-exist",
 		Port:     9999,

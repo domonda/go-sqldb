@@ -18,7 +18,7 @@ const Driver = "postgres"
 // The returned connection also implements [sqldb.ListenerConnection].
 // The connection is pinged with the passed context and only returned
 // when there was no error from the ping.
-func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, error) {
+func Connect(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
@@ -47,12 +47,12 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, e
 	return &connection{db: db, config: config}, nil
 }
 
-// MustConnect creates a new sqldb.Connection using the passed sqldb.ConnConfig
+// MustConnect creates a new sqldb.Connection using the passed sqldb.Config
 // and github.com/lib/pq as driver implementation.
 // The connection is pinged with the passed context and only returned
 // when there was no error from the ping.
 // Errors are panicked.
-func MustConnect(ctx context.Context, config *sqldb.ConnConfig) sqldb.Connection {
+func MustConnect(ctx context.Context, config *sqldb.Config) sqldb.Connection {
 	conn, err := Connect(ctx, config)
 	if err != nil {
 		panic(err)
@@ -65,10 +65,10 @@ type connection struct {
 	QueryBuilder
 
 	db     *sql.DB
-	config *sqldb.ConnConfig
+	config *sqldb.Config
 }
 
-func (conn *connection) Config() *sqldb.ConnConfig {
+func (conn *connection) Config() *sqldb.Config {
 	return conn.config
 }
 

@@ -10,7 +10,7 @@ Basic usage:
 		"github.com/domonda/go-sqldb/oraconn"
 	)
 
-	config := &sqldb.ConnConfig{
+	config := &sqldb.Config{
 		Driver:   oraconn.Driver,
 		Host:     "localhost",
 		Port:     1521,
