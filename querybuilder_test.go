@@ -197,7 +197,7 @@ func TestStdQueryBuilder_UpdateColumns(t *testing.T) {
 				{Name: "id", PrimaryKey: true},
 				{Name: "name"},
 			},
-			want: `UPDATE users SET name=$2 WHERE id = $1`,
+			want: `UPDATE users SET name=$1 WHERE id = $2`,
 		},
 		{
 			name:  "composite PK and multiple values",
@@ -208,7 +208,7 @@ func TestStdQueryBuilder_UpdateColumns(t *testing.T) {
 				{Name: "quantity"},
 				{Name: "price"},
 			},
-			want: `UPDATE order_items SET quantity=$3, price=$4 WHERE order_id = $1 AND item_id = $2`,
+			want: `UPDATE order_items SET quantity=$1, price=$2 WHERE order_id = $3 AND item_id = $4`,
 		},
 	}
 	for _, tt := range tests {

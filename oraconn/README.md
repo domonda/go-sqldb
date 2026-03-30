@@ -40,7 +40,7 @@ reflector.
 
 `oraconn.QueryBuilder` implements `sqldb.QueryBuilder` and `sqldb.UpsertQueryBuilder`:
 
-- Standard SQL operations via embedded `sqldb.StdQueryBuilder`
+- Standard SQL operations via embedded `sqldb.StdQueryBuilder` (with `Update` overridden to reorder arguments for Oracle's positional `:N` binding)
 - **Upsert** via Oracle `MERGE INTO ... USING (SELECT ... FROM DUAL) ...`
 - **InsertUnique** via MERGE with only `WHEN NOT MATCHED`
 

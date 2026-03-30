@@ -109,6 +109,10 @@ func UpdateRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 	if err != nil {
 		return err
 	}
+	// Reorder field indices and values: non-PK first, then PK,
+	// matching the placeholder order in UpdateColumns.
+	cached.structFieldIndices = reorderForUpdate(columns, cached.structFieldIndices)
+	vals = reorderForUpdate(columns, vals)
 	if useCache {
 		updateRowStructQueryCacheMtx.Lock()
 		if _, ok := updateRowStructQueryCache[structType]; !ok {
@@ -180,6 +184,9 @@ func UpdateRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 		if err != nil {
 			return err
 		}
+		// Reorder values: non-PK first, then PK,
+		// matching the placeholder order in UpdateColumns.
+		vals = reorderForUpdate(columns, vals)
 		err = stmt.Exec(ctx, vals...)
 		if err != nil {
 			return WrapErrorWithQuery(err, query, vals, fmtr)
@@ -187,6 +194,24 @@ func UpdateRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 		return nil
 	}
 	return updateFunc, stmt.Close, nil
+}
+
+// reorderForUpdate reorders a slice so that entries corresponding
+// to non-PK columns come first, followed by PK column entries,
+// matching the placeholder order produced by UpdateColumns.
+func reorderForUpdate[T any](columns []ColumnInfo, vals []T) []T {
+	reordered := make([]T, 0, len(vals))
+	for i, col := range columns {
+		if !col.PrimaryKey {
+			reordered = append(reordered, vals[i])
+		}
+	}
+	for i, col := range columns {
+		if col.PrimaryKey {
+			reordered = append(reordered, vals[i])
+		}
+	}
+	return reordered
 }
 
 // UpdateRowStructs updates a slice of structs within a transaction

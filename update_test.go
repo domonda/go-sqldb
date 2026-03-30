@@ -64,7 +64,7 @@ func TestUpdate(t *testing.T) {
 }
 
 func TestUpdateRowStruct(t *testing.T) {
-	wantQuery := "UPDATE test_table SET name=$2, active=$3 WHERE id = $1"
+	wantQuery := "UPDATE test_table SET name=$1, active=$2 WHERE id = $3"
 
 	t.Run("success", func(t *testing.T) {
 		conn, refl, builder, fmtr := newTestInterfaces()
@@ -88,7 +88,7 @@ func TestUpdateRowStruct(t *testing.T) {
 		if gotQuery != wantQuery {
 			t.Errorf("query = %q, want %q", gotQuery, wantQuery)
 		}
-		assertArgs(t, gotArgs, []any{int64(1), "Alice", true})
+		assertArgs(t, gotArgs, []any{"Alice", true, int64(1)})
 	})
 
 	t.Run("with pointer", func(t *testing.T) {
@@ -113,7 +113,7 @@ func TestUpdateRowStruct(t *testing.T) {
 		if gotQuery != wantQuery {
 			t.Errorf("query = %q, want %q", gotQuery, wantQuery)
 		}
-		assertArgs(t, gotArgs, []any{int64(2), "Bob", false})
+		assertArgs(t, gotArgs, []any{"Bob", false, int64(2)})
 	})
 
 	t.Run("no primary key error", func(t *testing.T) {
@@ -305,7 +305,7 @@ func TestUpdateReturningRows(t *testing.T) {
 }
 
 func TestUpdateRowStructStmt(t *testing.T) {
-	wantQuery := "UPDATE test_table SET name=$2, active=$3 WHERE id = $1"
+	wantQuery := "UPDATE test_table SET name=$1, active=$2 WHERE id = $3"
 
 	t.Run("success", func(t *testing.T) {
 		conn, refl, builder, fmtr := newTestInterfaces()
@@ -367,7 +367,7 @@ func TestUpdateRowStructStmt(t *testing.T) {
 }
 
 func TestUpdateRowStructs(t *testing.T) {
-	wantQuery := "UPDATE test_table SET name=$2, active=$3 WHERE id = $1"
+	wantQuery := "UPDATE test_table SET name=$1, active=$2 WHERE id = $3"
 
 	t.Run("empty slice", func(t *testing.T) {
 		conn, refl, builder, fmtr := newTestInterfaces()
@@ -394,7 +394,7 @@ func TestUpdateRowStructs(t *testing.T) {
 		if gotQuery != wantQuery {
 			t.Errorf("query = %q, want %q", gotQuery, wantQuery)
 		}
-		assertArgs(t, gotArgs, []any{int64(1), "Alice", true})
+		assertArgs(t, gotArgs, []any{"Alice", true, int64(1)})
 	})
 
 	t.Run("multiple items uses transaction", func(t *testing.T) {
@@ -439,7 +439,7 @@ func TestUpdateRowStructs(t *testing.T) {
 		if gotQuery != wantQuery {
 			t.Errorf("query = %q, want %q", gotQuery, wantQuery)
 		}
-		assertArgs(t, gotArgs, []any{int64(1), "Alice", true})
+		assertArgs(t, gotArgs, []any{"Alice", true, int64(1)})
 	})
 
 	t.Run("multiple pointer items", func(t *testing.T) {

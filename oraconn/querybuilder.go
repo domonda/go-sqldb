@@ -19,6 +19,27 @@ type QueryBuilder struct {
 	sqldb.StdQueryBuilder
 }
 
+// Update overrides StdQueryBuilder.Update to reorder query arguments
+// for Oracle's positional parameter binding.
+// StdQueryBuilder.Update returns queryArgs as [whereArgs..., vals...]
+// but the generated SQL has SET (vals) before WHERE (whereArgs).
+// Oracle's Go driver binds :N placeholders by order of appearance,
+// so this override reorders to [vals..., whereArgs...] to match SQL order.
+func (b QueryBuilder) Update(formatter sqldb.QueryFormatter, table string, values sqldb.Values, where string, whereArgs []any) (query string, queryArgs []any, err error) {
+	query, queryArgs, err = b.StdQueryBuilder.Update(formatter, table, values, where, whereArgs)
+	if err != nil {
+		return "", nil, err
+	}
+	nWhere := len(whereArgs)
+	if nWhere > 0 && nWhere < len(queryArgs) {
+		reordered := make([]any, len(queryArgs))
+		copy(reordered, queryArgs[nWhere:])
+		copy(reordered[len(queryArgs)-nWhere:], queryArgs[:nWhere])
+		queryArgs = reordered
+	}
+	return query, queryArgs, nil
+}
+
 // InsertUnique builds a MERGE statement that inserts a row only if it
 // does not conflict on the specified columns.
 // The number of rows affected is 1 for an insert and 0 for a conflict.

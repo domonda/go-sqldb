@@ -100,6 +100,8 @@ Implemented by all drivers via `StdQueryBuilder`. Generates portable SQL for:
 - `UPDATE ... SET ... WHERE ...` (Update, UpdateColumns)
 - `DELETE FROM ... WHERE ...` (Delete)
 
+`UpdateColumns` numbers placeholders sequentially: SET columns first, then WHERE (primary key) columns. MySQL and Oracle override `Update` to reorder arguments for their positional placeholder binding.
+
 ### `UpsertQueryBuilder` — driver-specific upsert
 
 Not all databases use the same upsert syntax. Each driver provides its own implementation:
@@ -567,6 +569,7 @@ The package internally caches struct reflection data and generated SQL queries t
 Cached data includes:
 - **Struct reflection**: Flattened field metadata (column names, flags, field indices) for each struct type and reflector combination.
 - **INSERT queries**: The generated SQL query string and struct field indices, cached per struct type and connection configuration.
+- **UPDATE queries**: The generated SQL query string and struct field indices (reordered: non-PK first, then PK), cached per struct type and connection configuration.
 - **UPSERT queries**: Same as INSERT caching for upsert operations.
 - **QueryRowByPrimaryKey queries**: The generated SELECT query and primary key column count.
 

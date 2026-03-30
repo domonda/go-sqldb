@@ -102,9 +102,9 @@ func TestUpdateRowStruct(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 1, execCount, "MockExec call count")
 		// Columns in struct field order: id(PK), name, active
-		// SET non-PK columns, WHERE PK columns
-		require.Equal(t, "UPDATE users SET name=$2, active=$3 WHERE id = $1", gotQuery)
-		require.Equal(t, []any{1, "Alice", true}, gotArgs)
+		// SET non-PK columns first, WHERE PK columns second
+		require.Equal(t, "UPDATE users SET name=$1, active=$2 WHERE id = $3", gotQuery)
+		require.Equal(t, []any{"Alice", true, 1}, gotArgs)
 	})
 
 	t.Run("with pointer", func(t *testing.T) {
@@ -123,8 +123,8 @@ func TestUpdateRowStruct(t *testing.T) {
 		err := UpdateRowStruct(ctx, &UserRow{ID: 2, Name: "Bob", Active: false})
 		require.NoError(t, err)
 		require.Equal(t, 1, execCount, "MockExec call count")
-		require.Equal(t, "UPDATE users SET name=$2, active=$3 WHERE id = $1", gotQuery)
-		require.Equal(t, []any{2, "Bob", false}, gotArgs)
+		require.Equal(t, "UPDATE users SET name=$1, active=$2 WHERE id = $3", gotQuery)
+		require.Equal(t, []any{"Bob", false, 2}, gotArgs)
 	})
 
 	t.Run("with IgnoreColumns option", func(t *testing.T) {
@@ -143,8 +143,8 @@ func TestUpdateRowStruct(t *testing.T) {
 		err := UpdateRowStruct(ctx, UserRow{ID: 1, Name: "Alice", Active: true}, sqldb.IgnoreColumns("active"))
 		require.NoError(t, err)
 		require.Equal(t, 1, execCount, "MockExec call count")
-		require.Equal(t, "UPDATE users SET name=$2 WHERE id = $1", gotQuery)
-		require.Equal(t, []any{1, "Alice"}, gotArgs)
+		require.Equal(t, "UPDATE users SET name=$1 WHERE id = $2", gotQuery)
+		require.Equal(t, []any{"Alice", 1}, gotArgs)
 	})
 
 	t.Run("no primary key error", func(t *testing.T) {

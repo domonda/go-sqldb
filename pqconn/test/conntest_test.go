@@ -51,9 +51,9 @@ func TestConnectionSuite(t *testing.T) {
 				score INTEGER NOT NULL DEFAULT 0
 			)`,
 		},
-		DefaultIsolationLevel:       sql.LevelReadCommitted,
-		DriverName:                  pqconn.Driver,
-		DatabaseName:                dbName,
+		DefaultIsolationLevel:        sql.LevelReadCommitted,
+		DriverName:                   pqconn.Driver,
+		DatabaseName:                 dbName,
 		SupportsReadOnlyTransaction:  true,
 		SupportsCustomIsolationLevel: true,
 		ExecAfterClosedTxErrors:      true,

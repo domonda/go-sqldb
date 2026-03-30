@@ -20,6 +20,26 @@ type QueryBuilder struct {
 	sqldb.StdQueryBuilder
 }
 
+// Update overrides StdQueryBuilder.Update to reorder query arguments
+// for MySQL's positional ? placeholders.
+// StdQueryBuilder.Update returns queryArgs as [whereArgs..., vals...]
+// but the generated SQL has SET (vals) before WHERE (whereArgs).
+// This override reorders to [vals..., whereArgs...] to match SQL order.
+func (b QueryBuilder) Update(formatter sqldb.QueryFormatter, table string, values sqldb.Values, where string, whereArgs []any) (query string, queryArgs []any, err error) {
+	query, queryArgs, err = b.StdQueryBuilder.Update(formatter, table, values, where, whereArgs)
+	if err != nil {
+		return "", nil, err
+	}
+	nWhere := len(whereArgs)
+	if nWhere > 0 && nWhere < len(queryArgs) {
+		reordered := make([]any, len(queryArgs))
+		copy(reordered, queryArgs[nWhere:])
+		copy(reordered[len(queryArgs)-nWhere:], queryArgs[:nWhere])
+		queryArgs = reordered
+	}
+	return query, queryArgs, nil
+}
+
 // InsertUnique builds an INSERT ... ON DUPLICATE KEY UPDATE query
 // that performs a no-op update on conflict, so the row is not modified.
 // The number of affected rows reported by MySQL is 1 for an insert

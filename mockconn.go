@@ -111,13 +111,13 @@ func (c *MockConn) Clone() *MockConn {
 	defer c.mtx.Unlock()
 
 	return &MockConn{
-		QueryFormatter:           c.QueryFormatter,
-		NormalizeQuery:           c.NormalizeQuery,
-		QueryLog:                 c.QueryLog,
-		MockMaxArgs:              c.MockMaxArgs,
-		TxID:                     c.TxID,
-		StmtNo:                   c.StmtNo,
-		ListeningOn:              maps.Clone(c.ListeningOn),
+		QueryFormatter: c.QueryFormatter,
+		NormalizeQuery: c.NormalizeQuery,
+		QueryLog:       c.QueryLog,
+		MockMaxArgs:    c.MockMaxArgs,
+		TxID:           c.TxID,
+		StmtNo:         c.StmtNo,
+		ListeningOn:    maps.Clone(c.ListeningOn),
 		Recordings: QueryRecordings{
 			Execs:   slices.Clone(c.Recordings.Execs),
 			Queries: slices.Clone(c.Recordings.Queries),

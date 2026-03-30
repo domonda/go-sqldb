@@ -33,7 +33,7 @@ config.Extra = map[string]string{
 
 `QueryBuilder` implements `sqldb.QueryBuilder` and `sqldb.UpsertQueryBuilder`:
 
-- Standard CRUD via embedded `sqldb.StdQueryBuilder`
+- Standard CRUD via embedded `sqldb.StdQueryBuilder` (with `Update` overridden to reorder arguments for positional `?` placeholders)
 - Upsert via `INSERT ... ON DUPLICATE KEY UPDATE col=VALUES(col)`
 - `InsertUnique` via `INSERT ... ON DUPLICATE KEY UPDATE col = col` (no-op update to detect insert via rows affected)
 

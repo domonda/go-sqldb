@@ -178,6 +178,8 @@ func (StdQueryBuilder) Update(formatter QueryFormatter, table string, values Val
 
 // UpdateColumns builds an UPDATE SET ... WHERE query using column metadata.
 // Primary key columns form the WHERE clause, non-primary key columns are SET.
+// Placeholders are numbered sequentially: non-PK columns first (SET), then PK columns (WHERE).
+// Callers must provide values in the same order (non-PK first, then PK).
 func (StdQueryBuilder) UpdateColumns(formatter QueryFormatter, table string, columns []ColumnInfo) (query string, err error) {
 	hasNonPK := false
 	for i := range columns {
@@ -198,6 +200,7 @@ func (StdQueryBuilder) UpdateColumns(formatter QueryFormatter, table string, col
 
 	fmt.Fprintf(&q, `UPDATE %s SET`, table)
 
+	placeholder := 0
 	first := true
 	for i := range columns {
 		if columns[i].PrimaryKey {
@@ -212,7 +215,8 @@ func (StdQueryBuilder) UpdateColumns(formatter QueryFormatter, table string, col
 		if err != nil {
 			return "", err
 		}
-		fmt.Fprintf(&q, ` %s=%s`, columnName, formatter.FormatPlaceholder(i))
+		fmt.Fprintf(&q, ` %s=%s`, columnName, formatter.FormatPlaceholder(placeholder))
+		placeholder++
 	}
 
 	q.WriteString(` WHERE `)
@@ -231,7 +235,8 @@ func (StdQueryBuilder) UpdateColumns(formatter QueryFormatter, table string, col
 		if err != nil {
 			return "", err
 		}
-		fmt.Fprintf(&q, `%s = %s`, columnName, formatter.FormatPlaceholder(i))
+		fmt.Fprintf(&q, `%s = %s`, columnName, formatter.FormatPlaceholder(placeholder))
+		placeholder++
 	}
 
 	return q.String(), nil
