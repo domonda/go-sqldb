@@ -91,7 +91,7 @@ func main() {
 	// Insert with values map
 	err = sqldb.Insert(ctx, conn, builder, conn, "public.user", sqldb.Values{
 		"name":  "Erik Unger",
-		"email": "erik@domonda.com",
+		"email": "erik@example.com",
 	})
 	if err != nil {
 		panic(err)

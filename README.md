@@ -390,19 +390,19 @@ err = db.InsertRowStruct(ctx, newUser, sqldb.IgnoreColumns("id", "created_at"))
 // Insert using a values map
 err = db.Insert(ctx, "public.user", sqldb.Values{
     "name":  "Erik Unger",
-    "email": "erik@domonda.com",
+    "email": "erik@example.com",
 })
 
 // Insert with RETURNING clause
 var id uu.ID
 err = db.InsertReturning(ctx, "public.user", sqldb.Values{
     "name":  "Erik Unger",
-    "email": "erik@domonda.com",
+    "email": "erik@example.com",
 }, "id").Scan(&id)
 
 // Insert or do nothing on conflict
 inserted, err := db.InsertUnique(ctx, "public.user", sqldb.Values{
-    "email": "erik@domonda.com",
+    "email": "erik@example.com",
     "name":  "Erik Unger",
 }, "ON CONFLICT (email) DO NOTHING")
 
