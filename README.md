@@ -36,6 +36,7 @@
 | `db.TransactionSavepoint`     | yes                 | yes                 | yes                 | yes                 | yes                 |
 | Constraint error mapping      | yes                 | yes                 | yes                 | yes                 | yes                 |
 | Array column support          | yes                 | —                   | —                   | —                   | —                   |
+| JSON column type              | `json`, `jsonb`     | `json`              | —                   | `json`, `jsonb`     | `json`              |
 | Prepared statements           | yes                 | yes                 | yes                 | yes                 | yes                 |
 | `ExecRowsAffected`            | yes                 | yes                 | yes                 | yes                 | yes                 |
 | `QueryBuilder`                | yes                 | yes                 | yes                 | yes                 | yes                 |
