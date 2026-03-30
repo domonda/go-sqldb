@@ -1,4 +1,4 @@
-module github.com/domonda/go-sqldb/cmd/sqldb-dump
+module github.com/domonda/go-sqldb/examples/sqldb-dump
 
 go 1.24.6
 
