@@ -16,5 +16,5 @@ require (
 require (
 	github.com/DataDog/go-sqllexer v0.1.13 // indirect
 	github.com/corazawaf/libinjection-go v0.3.2 // indirect
-	github.com/lib/pq v1.12.0 // indirect
+	github.com/lib/pq v1.12.1 // indirect
 )
