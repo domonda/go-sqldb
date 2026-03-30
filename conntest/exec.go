@@ -95,7 +95,7 @@ func runExecTests(t *testing.T, config Config) {
 
 		// then
 		require.NoError(t, err)
-		_, err = sqldb.QueryRowByPK[simpleRow](ctx, conn, refl, qb, conn, 1)
+		_, err = sqldb.QueryRowByPrimaryKey[simpleRow](ctx, conn, refl, qb, conn, 1)
 		assert.True(t, errors.Is(err, sql.ErrNoRows))
 	})
 

@@ -84,7 +84,7 @@ func TestQueryRowAsStmt_DB(t *testing.T) {
 	})
 }
 
-func TestQueryRowByPK_DB(t *testing.T) {
+func TestQueryRowByPrimaryKey_DB(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var queryCount int
@@ -98,7 +98,7 @@ func TestQueryRowByPK_DB(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		row, err := QueryRowByPK[testUserRow](ctx, int64(1))
+		row, err := QueryRowByPrimaryKey[testUserRow](ctx, int64(1))
 		require.NoError(t, err)
 		require.Equal(t, int64(1), row.ID)
 		require.Equal(t, "Alice", row.Name)
@@ -117,13 +117,13 @@ func TestQueryRowByPK_DB(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		_, err := QueryRowByPK[testUserRow](ctx, int64(999))
+		_, err := QueryRowByPrimaryKey[testUserRow](ctx, int64(999))
 		require.ErrorIs(t, err, sql.ErrNoRows)
 		require.Equal(t, 1, queryCount, "MockQuery call count")
 	})
 }
 
-func TestQueryRowByPKOr_DB(t *testing.T) {
+func TestQueryRowByPrimaryKeyOr_DB(t *testing.T) {
 	t.Run("found", func(t *testing.T) {
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var queryCount int
@@ -134,7 +134,7 @@ func TestQueryRowByPKOr_DB(t *testing.T) {
 		ctx := testContext(t, mock)
 
 		defaultVal := testUserRow{ID: 0, Name: "default"}
-		row, err := QueryRowByPKOr(ctx, defaultVal, int64(1))
+		row, err := QueryRowByPrimaryKeyOr(ctx, defaultVal, int64(1))
 		require.NoError(t, err)
 		require.Equal(t, int64(1), row.ID)
 		require.Equal(t, "Alice", row.Name)
@@ -151,7 +151,7 @@ func TestQueryRowByPKOr_DB(t *testing.T) {
 		ctx := testContext(t, mock)
 
 		defaultVal := testUserRow{ID: 0, Name: "default"}
-		row, err := QueryRowByPKOr(ctx, defaultVal, int64(999))
+		row, err := QueryRowByPrimaryKeyOr(ctx, defaultVal, int64(999))
 		require.NoError(t, err)
 		require.Equal(t, defaultVal, row)
 		require.Equal(t, 1, queryCount, "MockQuery call count")

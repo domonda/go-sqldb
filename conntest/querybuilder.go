@@ -12,7 +12,7 @@ import (
 )
 
 func runQueryBuilderTests(t *testing.T, config Config) {
-	t.Run("InsertAndQueryByPK", func(t *testing.T) {
+	t.Run("InsertAndQueryByPrimaryKey", func(t *testing.T) {
 		// given
 		conn := config.NewConn(t)
 		ctx := t.Context()
@@ -24,7 +24,7 @@ func runQueryBuilderTests(t *testing.T, config Config) {
 		err := sqldb.InsertRowStruct(ctx, conn, refl, qb, conn, &row)
 		require.NoError(t, err)
 
-		got, err := sqldb.QueryRowByPK[simpleRow](ctx, conn, refl, qb, conn, 1)
+		got, err := sqldb.QueryRowByPrimaryKey[simpleRow](ctx, conn, refl, qb, conn, 1)
 
 		// then
 		require.NoError(t, err)
@@ -89,7 +89,7 @@ func runQueryBuilderTests(t *testing.T, config Config) {
 		err := sqldb.DeleteRowStruct(ctx, conn, refl, qb, conn, &simpleRow{ID: 1})
 		require.NoError(t, err)
 
-		_, err = sqldb.QueryRowByPK[simpleRow](ctx, conn, refl, qb, conn, 1)
+		_, err = sqldb.QueryRowByPrimaryKey[simpleRow](ctx, conn, refl, qb, conn, 1)
 
 		// then
 		assert.True(t, errors.Is(err, sql.ErrNoRows))

@@ -79,7 +79,7 @@ func runTransactionTests(t *testing.T, config Config) {
 		require.NoError(t, err)
 
 		// then — row NOT visible from original conn
-		_, err = sqldb.QueryRowByPK[simpleRow](ctx, conn, refl, qb, conn, 1)
+		_, err = sqldb.QueryRowByPrimaryKey[simpleRow](ctx, conn, refl, qb, conn, 1)
 		assert.True(t, errors.Is(err, sql.ErrNoRows))
 	})
 
@@ -174,7 +174,7 @@ func runTransactionTests(t *testing.T, config Config) {
 		require.NoError(t, err)
 
 		// then — row NOT visible from original conn
-		_, err = sqldb.QueryRowByPK[simpleRow](ctx, conn, refl, qb, conn, 1)
+		_, err = sqldb.QueryRowByPrimaryKey[simpleRow](ctx, conn, refl, qb, conn, 1)
 		assert.True(t, errors.Is(err, sql.ErrNoRows))
 	})
 
@@ -215,7 +215,7 @@ func runTransactionTests(t *testing.T, config Config) {
 
 		// then
 		assert.ErrorIs(t, err, testErr)
-		_, err = sqldb.QueryRowByPK[simpleRow](ctx, conn, refl, qb, conn, 1)
+		_, err = sqldb.QueryRowByPrimaryKey[simpleRow](ctx, conn, refl, qb, conn, 1)
 		assert.True(t, errors.Is(err, sql.ErrNoRows))
 	})
 
@@ -333,7 +333,7 @@ func runTransactionTests(t *testing.T, config Config) {
 		})
 
 		// Data should not be visible after panic rollback
-		_, err := sqldb.QueryRowByPK[simpleRow](ctx, conn, refl, qb, conn, 1)
+		_, err := sqldb.QueryRowByPrimaryKey[simpleRow](ctx, conn, refl, qb, conn, 1)
 		assert.True(t, errors.Is(err, sql.ErrNoRows))
 	})
 
@@ -368,7 +368,7 @@ func runTransactionTests(t *testing.T, config Config) {
 		})
 		assert.ErrorIs(t, err, testErr)
 
-		_, err = sqldb.QueryRowByPK[simpleRow](ctx, conn, refl, qb, conn, 1)
+		_, err = sqldb.QueryRowByPrimaryKey[simpleRow](ctx, conn, refl, qb, conn, 1)
 		assert.True(t, errors.Is(err, sql.ErrNoRows))
 	})
 

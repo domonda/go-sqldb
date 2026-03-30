@@ -122,8 +122,8 @@ func TestGetUser(t *testing.T) {
 | `QueryRowAs[T](ctx, query, args...) (T, error)` | Query a single row into a value or struct |
 | `QueryRowAsOr[T](ctx, defaultVal, query, args...) (T, error)` | Like `QueryRowAs` but returns `defaultVal` instead of `ErrNoRows` |
 | `QueryRowAsStmt[T](ctx, query) (func, closeStmt, error)` | Prepared statement returning a reusable query function |
-| `QueryRowByPK[S](ctx, pkValue, pkValues...) (S, error)` | Query a struct by primary key            |
-| `QueryRowByPKOr[S](ctx, defaultVal, pkValue, pkValues...) (S, error)` | Like `QueryRowByPK` but returns `defaultVal` instead of `ErrNoRows` |
+| `QueryRowByPrimaryKey[S](ctx, pkValue, pkValues...) (S, error)` | Query a struct by primary key            |
+| `QueryRowByPrimaryKeyOr[S](ctx, defaultVal, pkValue, pkValues...) (S, error)` | Like `QueryRowByPrimaryKey` but returns `defaultVal` instead of `ErrNoRows` |
 | `QueryRowAsMap[K, V](ctx, query, args...) (map[K]V, error)` | Query a single row into a map            |
 
 ### Query — multiple rows

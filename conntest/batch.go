@@ -91,9 +91,9 @@ func runBatchTests(t *testing.T, config Config) {
 
 		// then — only the third row remains
 		require.NoError(t, err)
-		_, err = sqldb.QueryRowByPK[simpleRow](ctx, conn, refl, qb, conn, 1)
+		_, err = sqldb.QueryRowByPrimaryKey[simpleRow](ctx, conn, refl, qb, conn, 1)
 		assert.True(t, errors.Is(err, sql.ErrNoRows))
-		_, err = sqldb.QueryRowByPK[simpleRow](ctx, conn, refl, qb, conn, 2)
+		_, err = sqldb.QueryRowByPrimaryKey[simpleRow](ctx, conn, refl, qb, conn, 2)
 		assert.True(t, errors.Is(err, sql.ErrNoRows))
 		got := querySimpleRow(t, conn, qb, 3)
 		assert.Equal(t, "c", got.Val)
@@ -123,7 +123,7 @@ func runBatchTests(t *testing.T, config Config) {
 
 		// then
 		require.NoError(t, err)
-		_, err = sqldb.QueryRowByPK[simpleRow](ctx, conn, refl, qb, conn, 1)
+		_, err = sqldb.QueryRowByPrimaryKey[simpleRow](ctx, conn, refl, qb, conn, 1)
 		assert.True(t, errors.Is(err, sql.ErrNoRows))
 	})
 

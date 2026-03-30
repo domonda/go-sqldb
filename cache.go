@@ -27,7 +27,7 @@ type queryCache struct {
 	structFieldIndices [][]int
 }
 
-type queryRowByPKCacheEntry struct {
+type queryRowByPrimaryKeyCacheEntry struct {
 	query        string
 	numPKColumns int
 }
@@ -48,8 +48,8 @@ var (
 	updateRowStructQueryCache    = make(map[reflect.Type]map[StructReflector]map[QueryBuilder]map[QueryFormatter]queryCache)
 	updateRowStructQueryCacheMtx sync.RWMutex
 
-	queryRowByPKCache    = make(map[reflect.Type]map[StructReflector]map[QueryBuilder]map[QueryFormatter]queryRowByPKCacheEntry)
-	queryRowByPKCacheMtx sync.RWMutex
+	queryRowByPrimaryKeyCache    = make(map[reflect.Type]map[StructReflector]map[QueryBuilder]map[QueryFormatter]queryRowByPrimaryKeyCacheEntry)
+	queryRowByPrimaryKeyCacheMtx sync.RWMutex
 )
 
 // reflectStruct returns the cached reflected struct data
@@ -145,7 +145,7 @@ func ClearQueryCaches() {
 	clear(updateRowStructQueryCache)
 	updateRowStructQueryCacheMtx.Unlock()
 
-	queryRowByPKCacheMtx.Lock()
-	clear(queryRowByPKCache)
-	queryRowByPKCacheMtx.Unlock()
+	queryRowByPrimaryKeyCacheMtx.Lock()
+	clear(queryRowByPrimaryKeyCache)
+	queryRowByPrimaryKeyCacheMtx.Unlock()
 }

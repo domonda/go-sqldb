@@ -53,13 +53,13 @@ func QueryRowAsStmt[T any](ctx context.Context, conn Preparer, refl StructReflec
 	return queryFunc, stmt.Close, nil
 }
 
-// QueryRowByPK queries a table row by primary key and scans it into a struct of type S.
+// QueryRowByPrimaryKey queries a table row by primary key and scans it into a struct of type S.
 // The table name is derived from the `db` struct tag of an embedded sqldb.TableName field
 // (e.g., sqldb.TableName `db:"my_table"`).
 // Primary key columns are identified by fields with the "primarykey" option
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
 // The number of pkValue+pkValues must match the number of primary key columns.
-func QueryRowByPK[S StructWithTableName](ctx context.Context, conn Querier, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, pkValue any, pkValues ...any) (S, error) {
+func QueryRowByPrimaryKey[S StructWithTableName](ctx context.Context, conn Querier, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, pkValue any, pkValues ...any) (S, error) {
 	// Using explicit first pkValue value
 	// to not be able to compile without any value
 	pkValues = append([]any{pkValue}, pkValues...)
@@ -72,9 +72,9 @@ func QueryRowByPK[S StructWithTableName](ctx context.Context, conn Querier, refl
 	}
 
 	// Try cache lookup
-	queryRowByPKCacheMtx.RLock()
-	cached, ok := queryRowByPKCache[t][refl][builder][fmtr]
-	queryRowByPKCacheMtx.RUnlock()
+	queryRowByPrimaryKeyCacheMtx.RLock()
+	cached, ok := queryRowByPrimaryKeyCache[t][refl][builder][fmtr]
+	queryRowByPrimaryKeyCacheMtx.RUnlock()
 	if ok {
 		if cached.numPKColumns != len(pkValues) {
 			return *new(S), fmt.Errorf("got %d primary key values, but struct %s has %d primary key fields", len(pkValues), t, cached.numPKColumns)
@@ -92,7 +92,7 @@ func QueryRowByPK[S StructWithTableName](ctx context.Context, conn Querier, refl
 		return *new(S), err
 	}
 	if len(pkColumns) == 0 {
-		return *new(S), fmt.Errorf("QueryRowByPK of table %s: %s has no primary key fields", table, t)
+		return *new(S), fmt.Errorf("QueryRowByPrimaryKey of table %s: %s has no primary key fields", table, t)
 	}
 	if len(pkColumns) != len(pkValues) {
 		return *new(S), fmt.Errorf("got %d primary key values, but struct %s has %d primary key fields", len(pkValues), t, len(pkColumns))
@@ -103,34 +103,34 @@ func QueryRowByPK[S StructWithTableName](ctx context.Context, conn Querier, refl
 	}
 
 	// Store in cache
-	queryRowByPKCacheMtx.Lock()
-	if _, ok := queryRowByPKCache[t]; !ok {
-		queryRowByPKCache[t] = make(map[StructReflector]map[QueryBuilder]map[QueryFormatter]queryRowByPKCacheEntry)
+	queryRowByPrimaryKeyCacheMtx.Lock()
+	if _, ok := queryRowByPrimaryKeyCache[t]; !ok {
+		queryRowByPrimaryKeyCache[t] = make(map[StructReflector]map[QueryBuilder]map[QueryFormatter]queryRowByPrimaryKeyCacheEntry)
 	}
-	if _, ok := queryRowByPKCache[t][refl]; !ok {
-		queryRowByPKCache[t][refl] = make(map[QueryBuilder]map[QueryFormatter]queryRowByPKCacheEntry)
+	if _, ok := queryRowByPrimaryKeyCache[t][refl]; !ok {
+		queryRowByPrimaryKeyCache[t][refl] = make(map[QueryBuilder]map[QueryFormatter]queryRowByPrimaryKeyCacheEntry)
 	}
-	if _, ok := queryRowByPKCache[t][refl][builder]; !ok {
-		queryRowByPKCache[t][refl][builder] = make(map[QueryFormatter]queryRowByPKCacheEntry)
+	if _, ok := queryRowByPrimaryKeyCache[t][refl][builder]; !ok {
+		queryRowByPrimaryKeyCache[t][refl][builder] = make(map[QueryFormatter]queryRowByPrimaryKeyCacheEntry)
 	}
-	queryRowByPKCache[t][refl][builder][fmtr] = queryRowByPKCacheEntry{
+	queryRowByPrimaryKeyCache[t][refl][builder][fmtr] = queryRowByPrimaryKeyCacheEntry{
 		query:        query,
 		numPKColumns: len(pkColumns),
 	}
-	queryRowByPKCacheMtx.Unlock()
+	queryRowByPrimaryKeyCacheMtx.Unlock()
 
 	return QueryRowAs[S](ctx, conn, refl, fmtr, query, pkValues...)
 }
 
-// QueryRowByPKOr queries a table row by primary key and scans it into a struct of type S.
+// QueryRowByPrimaryKeyOr queries a table row by primary key and scans it into a struct of type S.
 // Returns defaultVal and no error if no row was found.
 // The table name is derived from the `db` struct tag of an embedded sqldb.TableName field
 // (e.g., sqldb.TableName `db:"my_table"`).
 // Primary key columns are identified by fields with the "primarykey" option
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
 // The number of pkValue+pkValues must match the number of primary key columns.
-func QueryRowByPKOr[S StructWithTableName](ctx context.Context, conn Querier, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, defaultVal S, pkValue any, pkValues ...any) (S, error) {
-	row, err := QueryRowByPK[S](ctx, conn, refl, builder, fmtr, pkValue, pkValues...)
+func QueryRowByPrimaryKeyOr[S StructWithTableName](ctx context.Context, conn Querier, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, defaultVal S, pkValue any, pkValues ...any) (S, error) {
+	row, err := QueryRowByPrimaryKey[S](ctx, conn, refl, builder, fmtr, pkValue, pkValues...)
 	if errors.Is(err, sql.ErrNoRows) {
 		return defaultVal, nil
 	}
