@@ -92,7 +92,7 @@ func (conn *transaction) Begin(ctx context.Context, id uint64, opts *sql.TxOptio
 	}
 	tx, err := conn.parent.db.BeginTx(ctx, opts)
 	if err != nil {
-		return nil, err
+		return nil, wrapKnownErrors(err)
 	}
 	return newTransaction(conn.parent, tx, opts, id), nil
 }

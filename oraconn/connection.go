@@ -156,7 +156,7 @@ func (conn *connection) Begin(ctx context.Context, id uint64, opts *sql.TxOption
 	}
 	tx, err := conn.db.BeginTx(ctx, opts)
 	if err != nil {
-		return nil, err
+		return nil, wrapKnownErrors(err)
 	}
 	return newTransaction(conn, tx, opts, id), nil
 }
