@@ -121,7 +121,7 @@ The connection automatically sets:
 ### Limitations
 
 - **No LISTEN/NOTIFY**: SQLite does not support PostgreSQL's LISTEN/NOTIFY functionality. Calling these methods will return an error.
-- **Placeholder Syntax**: Use `?` for query placeholders (standard SQLite syntax). When using with `sqldb.StdQueryFormatter{}`, it automatically uses `?` placeholders.
+- **Placeholder Syntax**: Uses `?1`, `?2`, ... positional placeholders (SQLite numbered parameters). This is required so that query builders can reference arguments by index regardless of their order in the SQL statement.
 
 ## Error Handling
 

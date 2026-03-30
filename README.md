@@ -13,7 +13,7 @@
 
 | Database   | Package                                                                          | Underlying driver                                                                              |
 | ---------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| PostgreSQL.   | [pqconn](https://pkg.go.dev/github.com/domonda/go-sqldb/pqconn)                 | [github.com/lib/pq](https://github.com/lib/pq)                                                |
+| PostgreSQL    | [pqconn](https://pkg.go.dev/github.com/domonda/go-sqldb/pqconn)                 | [github.com/lib/pq](https://github.com/lib/pq)                                                |
 | MySQL/MariaDB | [mysqlconn](https://pkg.go.dev/github.com/domonda/go-sqldb/mysqlconn)           | [github.com/go-sql-driver/mysql](https://github.com/go-sql-driver/mysql)                      |
 | MS SQL Server | [mssqlconn](https://pkg.go.dev/github.com/domonda/go-sqldb/mssqlconn)           | [github.com/microsoft/go-mssqldb](https://github.com/microsoft/go-mssqldb)                    |
 | SQLite        | [sqliteconn](https://pkg.go.dev/github.com/domonda/go-sqldb/sqliteconn)         | [zombiezen.com/go/sqlite](https://pkg.go.dev/zombiezen.com/go/sqlite)                          |
@@ -25,7 +25,7 @@
 | Feature                       | pqconn              | mysqlconn           | mssqlconn           | sqliteconn          | oraconn             |
 | ----------------------------- | ------------------- | ------------------- | ------------------- | ------------------- | ------------------- |
 | Underlying driver             | lib/pq              | go-sql-driver/mysql | go-mssqldb          | zombiezen.com/sqlite| go-ora/v2           |
-| Placeholder style             | `$1`, `$2`, …       | `?`, `?`, …         | `@p1`, `@p2`, …     | `?`, `?`, …         | `:1`, `:2`, …       |
+| Placeholder style             | `$1`, `$2`, …       | `?`, `?`, …         | `@p1`, `@p2`, …     | `?1`, `?2`, …       | `:1`, `:2`, …       |
 | Max query arguments           | 65 535              | 65 535              | 2 100               | 32 766              | 65 535              |
 | Identifier quoting            | `"double quotes"`   | `` `backticks` ``   | `[brackets]`        | `"double quotes"`   | `"double quotes"`   |
 | Default isolation level       | Read Committed      | Repeatable Read     | Read Committed      | Serializable        | Read Committed      |
