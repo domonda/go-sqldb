@@ -5,25 +5,35 @@ set -e
 # Extra arguments are passed to go test, e.g.:
 # ./test-workspace.sh -v
 
+MODULES=$(go list -f '{{.Dir}}' -m | grep -v /tools$)
+
 echo "Found modules:"
-go list -f '  {{.Dir}}' -m | grep -v /tools$
+echo "$MODULES" | sed 's/^/  /'
 echo ""
 
 echo "Building"
 echo ""
 
-go list -f '{{.Dir}}' -m | grep -v /tools$ | xargs -I {} go build {}/...
-go list -f '{{.Dir}}' -m | grep -v /tools$ | xargs -I {} go clean {}/...
+for dir in $MODULES; do
+  (cd "$dir" && go build ./... && go clean ./...)
+done
 
 echo ""
 echo "Linting with go vet and gosec"
 echo ""
 
-go list -f '{{.Dir}}' -m | grep -v /tools$ | xargs -I {} go vet {}/...
-go list -f '{{.Dir}}' -m | grep -v /tools$ | grep -v /examples/ | xargs -I {} go tool gosec {}/...
+for dir in $MODULES; do
+  (cd "$dir" && go vet ./...)
+done
+for dir in $MODULES; do
+  case "$dir" in */examples/*) continue ;; esac
+  (cd "$dir" && go tool gosec ./...)
+done
 
 echo ""
 echo "Testing"
 echo ""
 
-go list -f '{{.Dir}}' -m | grep -v /tools$ | xargs -I {} go test -p 1 -count=1 "$@" {}/...
+for dir in $MODULES; do
+  (cd "$dir" && go test -p 1 -count=1 "$@" ./...)
+done
