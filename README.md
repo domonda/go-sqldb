@@ -2,6 +2,44 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/domonda/go-sqldb.svg)](https://pkg.go.dev/github.com/domonda/go-sqldb) [![Go Report Card](https://goreportcard.com/badge/github.com/domonda/go-sqldb)](https://goreportcard.com/report/github.com/domonda/go-sqldb) [![Go](https://github.com/domonda/go-sqldb/actions/workflows/go.yml/badge.svg)](https://github.com/domonda/go-sqldb/actions/workflows/go.yml) [![Go version](https://img.shields.io/github/go-mod/go-version/domonda/go-sqldb)](https://github.com/domonda/go-sqldb) [![license](https://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://github.com/domonda/go-sqldb/blob/master/LICENSE)
 
+## Table of contents
+
+- [Philosophy](#philosophy)
+- [Database drivers](#database-drivers)
+  - [Feature matrix](#feature-matrix)
+- [Query builders](#query-builders)
+  - [`QueryBuilder` — standard SQL](#querybuilder--standard-sql)
+  - [`UpsertQueryBuilder` — driver-specific upsert](#upsertquerybuilder--driver-specific-upsert)
+  - [`ReturningQueryBuilder` — RETURNING clause](#returningquerybuilder--returning-clause)
+  - [Configuring the query builder](#configuring-the-query-builder)
+- [Generic errors](#generic-errors)
+  - [Error mapping matrix](#error-mapping-matrix)
+- [Usage](#usage)
+  - [Creating a connection](#creating-a-connection)
+  - [Struct field mapping](#struct-field-mapping)
+  - [Slice and array column handling](#slice-and-array-column-handling)
+  - [Exec](#exec)
+  - [ExecRowsAffected](#execrowsaffected)
+  - [Querying a single row](#querying-a-single-row)
+  - [Querying a single row by primary key](#querying-a-single-row-by-primary-key)
+  - [Querying multiple rows](#querying-multiple-rows)
+  - [QueryCallback for per-row processing](#querycallback-for-per-row-processing)
+  - [Insert](#insert)
+  - [Update](#update)
+  - [Upsert](#upsert)
+  - [Transactions](#transactions)
+  - [Prepared statements](#prepared-statements)
+  - [LISTEN/NOTIFY (PostgreSQL)](#listennotify-postgresql)
+  - [Query options](#query-options)
+- [Low-level API](#low-level-api)
+- [Internal caching](#internal-caching)
+- [Testing](#testing)
+  - [MockConn for unit tests](#mockconn-for-unit-tests)
+  - [Integration tests](#integration-tests)
+    - [Shared test suite (`conntest`)](#shared-test-suite-conntest)
+- [History](#history)
+- [License](#license)
+
 ## Philosophy
 
 * Use reflection to map db rows to structs, but not as full blown ORM that replaces SQL queries (just as much ORM to increase productivity but not alienate developers who like the full power of SQL)
@@ -250,13 +288,16 @@ Slice and array column handling (like PostgreSQL arrays) is handled transparentl
 ### Exec
 
 ```go
-err = db.Exec(ctx, /*sql*/ `DELETE FROM public.user WHERE id = $1`, userID)
+err = db.Exec(ctx, `DELETE FROM public.user WHERE id = $1`, userID)
 ```
 
 ### ExecRowsAffected
 
 ```go
-n, err := db.ExecRowsAffected(ctx, /*sql*/ `UPDATE public.user SET name = $1 WHERE active = $2`, "Inactive", false)
+n, err := db.ExecRowsAffected(ctx, 
+    /*sql*/ `UPDATE public.user SET name = $1 WHERE active = $2`,
+    "Inactive", false,
+)
 fmt.Printf("%d rows updated\n", n)
 ```
 
@@ -265,26 +306,23 @@ fmt.Printf("%d rows updated\n", n)
 ```go
 // Scan into a struct
 user, err := db.QueryRowAs[User](ctx,
-    /*sql*/ `SELECT * FROM public.user WHERE id = $1`,
-    userID,
+    /*sql*/ `SELECT * FROM public.user WHERE id = $1`, userID,
 )
 
 // Scan a scalar value
 var count int64
-count, err = db.QueryRowAs[int64](ctx, /*sql*/ `SELECT count(*) FROM public.user`)
+count, err = db.QueryRowAs[int64](ctx, `SELECT count(*) FROM public.user`)
 
 // Return a default value instead of sql.ErrNoRows
 user, err = db.QueryRowAsOr(ctx, defaultUser,
-    /*sql*/ `SELECT * FROM public.user WHERE id = $1`,
-    userID,
+    /*sql*/ `SELECT * FROM public.user WHERE id = $1`, userID,
 )
 
 // Low-level: scan into individual variables
 var name string
 var email string
 err = db.QueryRow(ctx,
-    /*sql*/ `SELECT name, email FROM public.user WHERE id = $1`,
-    userID,
+    /*sql*/ `SELECT name, email FROM public.user WHERE id = $1`, userID,
 ).Scan(&name, &email)
 ```
 
@@ -303,10 +341,10 @@ user, err = db.QueryRowByPrimaryKeyOr(ctx, defaultUser, userID)
 
 ```go
 // Query into a slice of structs
-users, err := db.QueryRowsAsSlice[User](ctx, /*sql*/ `SELECT * FROM public.user`)
+users, err := db.QueryRowsAsSlice[User](ctx, `SELECT * FROM public.user`)
 
 // Query a single column into a scalar slice
-emails, err := db.QueryRowsAsSlice[string](ctx, /*sql*/ `SELECT email FROM public.user`)
+emails, err := db.QueryRowsAsSlice[string](ctx, `SELECT email FROM public.user`)
 ```
 
 ### QueryCallback for per-row processing
@@ -408,8 +446,7 @@ via `db.Conn(ctx)`, without needing to know whether they are inside a transactio
 ```go
 func GetUserOrNil(ctx context.Context, userID uu.ID) (user *User, err error) {
     err = db.QueryRow(ctx,
-        /*sql*/ `SELECT * FROM public.user WHERE id = $1`,
-        userID,
+        /*sql*/ `SELECT * FROM public.user WHERE id = $1`, userID,
     ).Scan(&user)
     if err != nil {
         return nil, db.ReplaceErrNoRows(err, nil)
@@ -427,7 +464,7 @@ func CreateOrUpdateUser(ctx context.Context, userID uu.ID) error {
         if user == nil {
             return db.InsertRowStruct(ctx, &User{ID: userID, Name: "New"})
         }
-        return db.Exec(ctx, /*sql*/ `UPDATE public.user SET name = $1 WHERE id = $2`, "Updated", userID)
+        return db.Exec(ctx, `UPDATE public.user SET name = $1 WHERE id = $2`, "Updated", userID)
     })
 }
 ```
@@ -458,7 +495,7 @@ err = db.DebugNoTransaction(ctx, func(ctx context.Context) error { ... })
 
 ```go
 // Prepared query statement
-queryUser, closeStmt, err := db.QueryRowAsStmt[User](ctx, /*sql*/ `SELECT * FROM public.user WHERE id = $1`)
+queryUser, closeStmt, err := db.QueryRowAsStmt[User](ctx, `SELECT * FROM public.user WHERE id = $1`)
 if err != nil {
     return err
 }
@@ -511,12 +548,12 @@ sqldb.IgnoreReadOnly    // Ignore read-only columns (applied automatically for i
 The root `sqldb` package exposes the same operations as the `db` package but with explicit connection, reflector, builder, and formatter arguments. This is useful when you need full control or are building your own abstractions:
 
 ```go
-user, err := sqldb.QueryRowAs[User](ctx, conn, reflector, conn, /*sql*/ `SELECT * FROM public.user WHERE id = $1`, userID)
+user, err := sqldb.QueryRowAs[User](ctx, conn, reflector, conn, `SELECT * FROM public.user WHERE id = $1`, userID)
 
 err = sqldb.InsertRowStruct(ctx, conn, reflector, queryBuilder, conn, &user)
 
 err = sqldb.Transaction(ctx, conn, &sql.TxOptions{ReadOnly: true}, func(tx sqldb.Connection) error {
-    return tx.Exec(ctx, /*sql*/ `UPDATE public.user SET name = $1 WHERE id = $2`, "Alice", userID)
+    return tx.Exec(ctx, `UPDATE public.user SET name = $1 WHERE id = $2`, "Alice", userID)
 })
 ```
 
@@ -716,6 +753,59 @@ After changing a database version in `docker-compose.yml`, reset the data direct
 ./mssqlconn/test/reset-mssql-data.sh
 # oraconn has no persistent data — use: docker compose -f oraconn/test/docker-compose.yml down
 ```
+
+#### Shared test suite (`conntest`)
+
+The `conntest` package provides a shared, driver-agnostic integration test suite. Instead of duplicating tests across every driver, the suite is written once and each driver calls `conntest.RunAll` with a driver-specific `Config`:
+
+```go
+func TestConnectionSuite(t *testing.T) {
+    conntest.RunAll(t, conntest.Config{
+        NewConn:      connectPQ,              // factory that creates a real connection per test
+        QueryBuilder: pqconn.QueryBuilder{},  // driver-specific query builder
+        DDL: conntest.DDL{
+            CreateSimpleTable:    `CREATE TABLE conntest_simple (id INTEGER PRIMARY KEY, val TEXT)`,
+            CreateUpsertTable:    `CREATE TABLE conntest_upsert (id INTEGER PRIMARY KEY, name TEXT NOT NULL, score INTEGER NOT NULL DEFAULT 0)`,
+            CreateReturningTable: `CREATE TABLE conntest_returning (id SERIAL PRIMARY KEY, name TEXT NOT NULL, score INTEGER NOT NULL DEFAULT 0)`,
+        },
+        DefaultIsolationLevel:        sql.LevelReadCommitted,
+        DriverName:                   pqconn.Driver,
+        DatabaseName:                 dbName,
+        SupportsReadOnlyTransaction:  true,
+        SupportsCustomIsolationLevel: true,
+        ExecAfterClosedTxErrors:      true,
+    })
+}
+```
+
+`conntest.Config` captures all vendor differences in one place:
+
+| Field                          | Purpose                                                              |
+| ------------------------------ | -------------------------------------------------------------------- |
+| `NewConn`                      | Factory that creates a fresh `Connection` for each test              |
+| `QueryBuilder`                 | Driver-specific `QueryBuilder` for insert/update/upsert SQL          |
+| `DDL`                          | `CREATE TABLE` statements using vendor-specific syntax               |
+| `DefaultIsolationLevel`        | Expected default isolation level (e.g. Read Committed for PostgreSQL)|
+| `SupportsReadOnlyTransaction`  | Skip read-only transaction tests when not supported                  |
+| `SupportsCustomIsolationLevel` | Skip custom isolation level tests when not supported                 |
+| `ExecAfterClosedTxErrors`      | Whether executing on a closed transaction returns an error           |
+
+`RunAll` executes the following sub-test groups against the real database:
+
+| Sub-test        | Coverage                                                    |
+| --------------- | ----------------------------------------------------------- |
+| Basic           | Connection config, ping, `SELECT 1`                         |
+| Exec            | INSERT, UPDATE, DELETE, rows affected                       |
+| Query           | Single row, multiple rows, scalar values, no-rows handling  |
+| Prepare         | Prepared statements                                         |
+| Transaction     | Commit, rollback, isolation levels, read-only, savepoints   |
+| QueryBuilder    | Struct-based insert, update, delete via query builder       |
+| Upsert          | Driver-specific upsert (ON CONFLICT / MERGE / ON DUPLICATE) |
+| Returning       | INSERT/UPDATE ... RETURNING (skipped when DDL is empty)     |
+| QueryCallback   | Per-row callback queries                                    |
+| Batch           | Bulk insert and upsert of struct slices                     |
+
+Each test gets a fresh connection via `NewConn` and creates/drops its own tables, so tests are fully isolated and safe to run in parallel. Adding a new test to `conntest` automatically covers all drivers.
 
 ## History
 
