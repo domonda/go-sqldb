@@ -54,6 +54,22 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
+      oracle:
+        image: gvenzl/oracle-free:23-slim-faststart
+        env:
+          ORACLE_PASSWORD: TestPass123
+          APP_USER: testuser
+          APP_USER_PASSWORD: TestPass123
+        ports:
+          - 1521:1521
+        options: >-
+          --health-cmd "healthcheck.sh"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 20
+          --health-start-period 30s
+          --shm-size 1g
+
     steps:
     - uses: actions/checkout@v6
 
@@ -67,4 +83,5 @@ jobs:
         POSTGRES_PORT: "5432"
         MYSQL_PORT: "3306"
         MSSQL_PORT: "1433"
+        ORACLE_PORT: "1521"
       run: ./test-workspace.sh -v
