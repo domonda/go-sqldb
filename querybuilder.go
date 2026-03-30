@@ -15,7 +15,7 @@ type QueryBuilder interface {
 	//   INSERT INTO table(col1,col2) VALUES($1,$2),($3,$4),($5,$6)
 	// numRows must be >= 1.
 	InsertRows(formatter QueryFormatter, table string, columns []ColumnInfo, numRows int) (query string, err error)
-	// Update updates a table rows with the passed values using the
+	// Update updates table rows with the passed values using the
 	// passed where clause. That where clause can contain placeholders
 	// starting at $1 for the passed whereArgs.
 	// It returns queryArgs to be used together with the returned query

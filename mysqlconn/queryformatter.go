@@ -79,7 +79,7 @@ var reservedWords = map[string]struct{}{
 }
 
 // EscapeIdentifier wraps a MySQL identifier in backticks when necessary,
-// escaping any backtick characters as ".
+// escaping any backtick characters as doubled backticks.
 // Quoting is applied when the identifier contains non-lowercase/non-underscore
 // characters or is a MySQL reserved word.
 func EscapeIdentifier(ident string) string {
