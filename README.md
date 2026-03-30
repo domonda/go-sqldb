@@ -22,26 +22,25 @@
 
 ### Feature matrix
 
-| Feature                       | pqconn              | mysqlconn           | mssqlconn           | sqliteconn          | oraconn             | MockConn          | ErrConn             |
-| ----------------------------- | ------------------- | ------------------- | ------------------- | ------------------- | ------------------- | ----------------- | ------------------- |
-| Underlying driver             | lib/pq              | go-sql-driver/mysql | go-mssqldb          | zombiezen.com/sqlite| go-ora/v2           | —                 | —                   |
-| Placeholder style             | `$1`, `$2`, …       | `?`, `?`, …         | `@p1`, `@p2`, …     | `?`, `?`, …         | `:1`, `:2`, …       | configurable      | `?`, `?`, …         |
-| Max query arguments           | 65 535              | 65 535              | 2 100               | 32 766              | 65 535              | 65 535            | 65 535              |
-| Identifier quoting            | `"double quotes"`   | `` `backticks` ``   | `[brackets]`        | `"double quotes"`   | `"double quotes"`   | configurable      | none                |
-| Default isolation level       | Read Committed      | Repeatable Read     | Read Committed      | Serializable        | Read Committed      | Default           | Default             |
-| `Connection`                  | yes                 | yes                 | yes                 | yes                 | yes                 | yes               | yes (returns error) |
-| `ListenerConnection`          | yes                 | —                   | —                   | —                   | —                   | yes (mock)        | yes (returns error) |
-| Transactions                  | yes                 | yes                 | yes                 | yes                 | yes                 | yes (mock)        | —                   |
-| Nested `Begin` uses savepoint | —                   | —                   | —                   | yes                 | —                   | —                 | —                   |
-| `db.TransactionSavepoint`     | yes                 | yes                 | yes                 | yes                 | yes                 | yes               | —                   |
-| Constraint error mapping      | yes                 | yes                 | yes                 | yes                 | yes                 | —                 | —                   |
-| Array column support          | yes                 | —                   | —                   | —                   | —                   | —                 | —                   |
-| Prepared statements           | yes                 | yes                 | yes                 | yes                 | yes                 | yes (mock)        | —                   |
-| Query recording               | —                   | —                   | —                   | —                   | —                   | yes               | —                   |
-| `ExecRowsAffected`            | yes                 | yes                 | yes                 | yes                 | yes                 | yes (mock)        | returns error       |
-| `QueryBuilder`                | yes                 | yes                 | yes                 | yes                 | yes                 | —                 | —                   |
-| `UpsertQueryBuilder`          | yes                 | yes                 | yes                 | yes                 | yes                 | —                 | —                   |
-| `ReturningQueryBuilder`       | yes                 | —                   | —                   | yes                 | —                   | —                 | —                   |
+| Feature                       | pqconn              | mysqlconn           | mssqlconn           | sqliteconn          | oraconn             |
+| ----------------------------- | ------------------- | ------------------- | ------------------- | ------------------- | ------------------- |
+| Underlying driver             | lib/pq              | go-sql-driver/mysql | go-mssqldb          | zombiezen.com/sqlite| go-ora/v2           |
+| Placeholder style             | `$1`, `$2`, …       | `?`, `?`, …         | `@p1`, `@p2`, …     | `?`, `?`, …         | `:1`, `:2`, …       |
+| Max query arguments           | 65 535              | 65 535              | 2 100               | 32 766              | 65 535              |
+| Identifier quoting            | `"double quotes"`   | `` `backticks` ``   | `[brackets]`        | `"double quotes"`   | `"double quotes"`   |
+| Default isolation level       | Read Committed      | Repeatable Read     | Read Committed      | Serializable        | Read Committed      |
+| `Connection`                  | yes                 | yes                 | yes                 | yes                 | yes                 |
+| `ListenerConnection`          | yes                 | —                   | —                   | —                   | —                   |
+| Transactions                  | yes                 | yes                 | yes                 | yes                 | yes                 |
+| Nested `Begin` uses savepoint | —                   | —                   | —                   | yes                 | —                   |
+| `db.TransactionSavepoint`     | yes                 | yes                 | yes                 | yes                 | yes                 |
+| Constraint error mapping      | yes                 | yes                 | yes                 | yes                 | yes                 |
+| Array column support          | yes                 | —                   | —                   | —                   | —                   |
+| Prepared statements           | yes                 | yes                 | yes                 | yes                 | yes                 |
+| `ExecRowsAffected`            | yes                 | yes                 | yes                 | yes                 | yes                 |
+| `QueryBuilder`                | yes                 | yes                 | yes                 | yes                 | yes                 |
+| `UpsertQueryBuilder`          | yes                 | yes                 | yes                 | yes                 | yes                 |
+| `ReturningQueryBuilder`       | yes                 | —                   | —                   | yes                 | —                   |
 
 **Notes:**
 - **Nested `Begin` uses savepoint**: Only `sqliteconn` converts nested `Begin` calls into SQL `SAVEPOINT` / `RELEASE` commands. All other real drivers start a new independent transaction on the underlying connection.
@@ -151,6 +150,7 @@ if errors.As(err, &uv) {
 | `ErrRestrictViolation`            | yes    | —         | —         | —          | —       |
 | `ErrExclusionViolation`           | yes    | —         | —         | —          | —       |
 | `ErrDeadlock`                     | yes    | yes       | yes       | —          | yes     |
+| `ErrSerializationFailure`         | yes    | —         | —         | —          | yes     |
 | `ErrRaisedException`              | yes    | yes       | yes       | —          | yes     |
 
 Driver packages also expose driver-specific helper functions (e.g. `pqconn.IsUniqueViolation`) for error conditions that have no generic `sqldb` type, such as query cancellations or text-representation errors. See each driver's README for the full list.

@@ -69,7 +69,7 @@ func (conn *transaction) Query(ctx context.Context, query string, args ...any) s
 func (conn *transaction) Prepare(ctx context.Context, query string) (sqldb.Stmt, error) {
 	s, err := conn.tx.PrepareContext(ctx, query)
 	if err != nil {
-		return nil, err
+		return nil, wrapKnownErrors(err)
 	}
 	return stmt{query, s}, nil
 }

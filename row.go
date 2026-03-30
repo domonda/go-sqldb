@@ -58,7 +58,7 @@ func (r *Row) Scan(dest ...any) (err error) {
 		}
 		v = v.Elem()
 		t := v.Type()
-		if t.Kind() == reflect.Struct || t.Kind() == reflect.Pointer && t.Elem().Kind() == reflect.Struct {
+		if t.Kind() == reflect.Struct || (t.Kind() == reflect.Pointer && t.Elem().Kind() == reflect.Struct) {
 			// dest[0] points to a struct or pointer to struct
 			if !t.Implements(typeOfSQLScanner) && !reflect.PointerTo(t).Implements(typeOfSQLScanner) {
 				// dest[0] does not implement sql.Scanner

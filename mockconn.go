@@ -370,7 +370,10 @@ func (c *MockConn) Prepare(ctx context.Context, query string) (Stmt, error) {
 				return err
 			}
 		}
-		return stmt, ctx.Err()
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		return stmt, nil
 	}
 	return c.MockPrepare(ctx, query)
 }

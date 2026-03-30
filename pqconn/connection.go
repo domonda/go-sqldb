@@ -115,7 +115,7 @@ func (conn *connection) Query(ctx context.Context, query string, args ...any) sq
 func (conn *connection) Prepare(ctx context.Context, query string) (sqldb.Stmt, error) {
 	s, err := conn.db.PrepareContext(ctx, query)
 	if err != nil {
-		return nil, err
+		return nil, wrapKnownErrors(err)
 	}
 	return stmt{query, s}, nil
 }

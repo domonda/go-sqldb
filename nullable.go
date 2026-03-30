@@ -59,7 +59,7 @@ func IsNull(val any) bool {
 }
 
 // IsNullOrZero returns if val would be interpreted as NULL by a SQL driver
-// or if it is the types zero value
+// or if it is the type's zero value
 // or if it implements interface{ IsZero() bool } returning true.
 func IsNullOrZero(val any) bool {
 	if IsNull(val) {

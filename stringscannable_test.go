@@ -34,5 +34,3 @@ func TestStringScannable_Scan(t *testing.T) {
 		})
 	}
 }
-
-//    int64
