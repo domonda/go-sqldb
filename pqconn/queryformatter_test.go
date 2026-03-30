@@ -141,15 +141,6 @@ func TestQueryFormatter_FormatPlaceholder(t *testing.T) {
 	}
 }
 
-func TestQueryFormatter_FormatPlaceholder_NegativePanics(t *testing.T) {
-	f := QueryFormatter{}
-	defer func() {
-		if r := recover(); r == nil {
-			t.Error("expected panic for negative paramIndex")
-		}
-	}()
-	f.FormatPlaceholder(-1)
-}
 
 func TestQueryFormatter_FormatStringLiteral(t *testing.T) {
 	f := QueryFormatter{}

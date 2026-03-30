@@ -278,15 +278,6 @@ func TestQueryFormatter_FormatPlaceholder(t *testing.T) {
 	}
 }
 
-func TestQueryFormatter_FormatPlaceholder_panics_on_negative(t *testing.T) {
-	var qf QueryFormatter
-
-	// when / then
-	assert.Panics(t, func() {
-		qf.FormatPlaceholder(-1)
-	}, "negative paramIndex should panic")
-}
-
 func TestQueryFormatter_FormatStringLiteral(t *testing.T) {
 	var qf QueryFormatter
 

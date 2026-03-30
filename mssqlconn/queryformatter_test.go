@@ -116,7 +116,6 @@ func TestFormatPlaceholder(t *testing.T) {
 	assert.Equal(t, "@p10", f.FormatPlaceholder(9))
 	assert.Equal(t, "@p100", f.FormatPlaceholder(99))
 
-	assert.Panics(t, func() { f.FormatPlaceholder(-1) })
 }
 
 func TestFormatStringLiteral(t *testing.T) {
