@@ -34,7 +34,7 @@ The connection automatically:
 
 SQLite-specific features:
   - Default isolation level is sql.LevelSerializable
-  - Uses ? for query placeholders (standard SQLite syntax)
+  - Uses ?1, ?2, ... positional placeholders (SQLite numbered parameters)
   - Does not support LISTEN/NOTIFY (PostgreSQL-specific feature)
   - All constraint violations are wrapped with appropriate sqldb.Err* types
 

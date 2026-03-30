@@ -56,15 +56,7 @@ func (r *Row) Scan(dest ...any) (err error) {
 		if v.IsNil() {
 			return fmt.Errorf("Row.Scan destination %T is nil", dest[0])
 		}
-		v = v.Elem()
-		t := v.Type()
-		if t.Kind() == reflect.Struct || (t.Kind() == reflect.Pointer && t.Elem().Kind() == reflect.Struct) {
-			// dest[0] points to a struct or pointer to struct
-			if !t.Implements(typeOfSQLScanner) && !reflect.PointerTo(t).Implements(typeOfSQLScanner) {
-				// dest[0] does not implement sql.Scanner
-				isStruct = true
-			}
-		}
+		isStruct = isNonSQLScannerStruct(v.Elem().Type())
 	}
 
 	// Check if there was an error even before preparing the row with Next()

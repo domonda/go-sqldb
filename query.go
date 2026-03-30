@@ -296,7 +296,7 @@ func QueryStructCallback[S any](ctx context.Context, conn Querier, refl StructRe
 	}
 
 	sqlRows := conn.Query(ctx, query, args...)
-	defer sqlRows.Close()
+	defer func() { err = errors.Join(err, sqlRows.Close()) }()
 
 	columns, err := sqlRows.Columns()
 	if err != nil {
@@ -382,7 +382,7 @@ func QueryCallback(ctx context.Context, conn Querier, refl StructReflector, fmtr
 	}
 
 	sqlRows := conn.Query(ctx, query, args...)
-	defer sqlRows.Close()
+	defer func() { err = errors.Join(err, sqlRows.Close()) }()
 
 	columns, err := sqlRows.Columns()
 	if err != nil {

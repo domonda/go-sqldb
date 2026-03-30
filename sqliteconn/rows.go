@@ -80,7 +80,7 @@ func (r *rows) Columns() ([]string, error) {
 
 	columnCount := r.stmt.ColumnCount()
 	columns := make([]string, columnCount)
-	for i := 0; i < columnCount; i++ {
+	for i := range columnCount {
 		columns[i] = r.stmt.ColumnName(i)
 	}
 	return columns, nil

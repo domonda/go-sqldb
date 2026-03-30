@@ -69,7 +69,7 @@ func formatDSN(config *sqldb.ConnConfig) string {
 	return mysqlCfg.FormatDSN()
 }
 
-// MustConnect creates a new sqldb.Connection using the passed sqldb.Config
+// MustConnect creates a new sqldb.Connection using the passed sqldb.ConnConfig
 // and github.com/go-sql-driver/mysql as driver implementation.
 // The connection is pinged with the passed context and only returned
 // when there was no error from the ping.

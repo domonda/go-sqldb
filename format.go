@@ -146,6 +146,10 @@ func FormatQuery(f QueryFormatter, query string, args ...any) string {
 		}
 	}
 
+	if len(lines) == 0 {
+		return ""
+	}
+
 	// Remove identical whitespace at beginning of each line
 	firstLineRune, runeSize := utf8.DecodeRuneInString(lines[0])
 	for unicode.IsSpace(firstLineRune) {

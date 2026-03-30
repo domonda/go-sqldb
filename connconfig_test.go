@@ -55,9 +55,15 @@ func TestParseConnConfig_NoExtra(t *testing.T) {
 	assert.Nil(t, got.Extra)
 }
 
+func TestParseConnConfig_MissingPort(t *testing.T) {
+	got, err := ParseConnConfig("postgres://user:pass@host/db")
+	assert.NoError(t, err, "missing port should be accepted as zero")
+	assert.Equal(t, uint16(0), got.Port)
+}
+
 func TestParseConnConfig_InvalidPort(t *testing.T) {
-	_, err := ParseConnConfig("postgres://user:pass@host/db")
-	assert.Error(t, err, "missing port should error")
+	_, err := ParseConnConfig("postgres://user:pass@host:abc/db")
+	assert.Error(t, err, "non-numeric port should error")
 }
 
 func TestConnConfig_Validate(t *testing.T) {

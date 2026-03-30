@@ -27,6 +27,9 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, e
 	if config.Driver != Driver {
 		return nil, fmt.Errorf(`invalid driver %q, expected %q`, config.Driver, Driver)
 	}
+	if err := config.Validate(); err != nil {
+		return nil, err
+	}
 
 	// Build connection flags
 	flags := sqlite.OpenReadWrite | sqlite.OpenCreate | sqlite.OpenURI

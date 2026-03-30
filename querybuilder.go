@@ -268,7 +268,7 @@ func (StdQueryBuilder) Delete(formatter QueryFormatter, table string, columns []
 
 // StdReturningQueryBuilder extends [StdQueryBuilder] with
 // PostgreSQL/SQLite-compatible RETURNING clause support.
-// It implements [QueryBuilder], [UpsertQueryBuilder], and [ReturningQueryBuilder].
+// It implements [QueryBuilder] and [ReturningQueryBuilder].
 type StdReturningQueryBuilder struct {
 	StdQueryBuilder
 }

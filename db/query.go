@@ -16,7 +16,9 @@ import (
 // Useful for getting the timestamp of a
 // SQL transaction for use in Go code.
 func CurrentTimestamp(ctx context.Context) time.Time {
-	t, err := QueryRowAs[time.Time](ctx, `SELECT CURRENT_TIMESTAMP`)
+	t, err := QueryRowAs[time.Time](ctx,
+		/*sql*/ `SELECT CURRENT_TIMESTAMP`,
+	)
 	if err != nil {
 		return time.Now()
 	}

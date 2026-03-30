@@ -31,23 +31,23 @@ func Connect(ctx context.Context, config *sqldb.ConnConfig) (sqldb.Connection, e
 	if config.ReadOnly {
 		_, err = db.ExecContext(ctx, `SET default_transaction_read_only = on`)
 		if err != nil {
-			return nil, fmt.Errorf("failed to set default_transaction_read_only: %w", err)
+			return nil, errors.Join(fmt.Errorf("failed to set default_transaction_read_only: %w", err), db.Close())
 		}
 		// transaction_read_only should be on after setting default_transaction_read_only
 		var readOnlyMode string
 		err = db.QueryRowContext(ctx, `SHOW transaction_read_only`).Scan(&readOnlyMode)
 		if err != nil {
-			return nil, fmt.Errorf("failed to check read-only mode: %w", err)
+			return nil, errors.Join(fmt.Errorf("failed to check read-only mode: %w", err), db.Close())
 		}
 		if readOnlyMode != "on" {
-			return nil, errors.New("read-only mode is not enabled")
+			return nil, errors.Join(errors.New("read-only mode is not enabled"), db.Close())
 		}
 	}
 
 	return &connection{db: db, config: config}, nil
 }
 
-// MustConnect creates a new sqldb.Connection using the passed sqldb.Config
+// MustConnect creates a new sqldb.Connection using the passed sqldb.ConnConfig
 // and github.com/lib/pq as driver implementation.
 // The connection is pinged with the passed context and only returned
 // when there was no error from the ping.

@@ -25,7 +25,7 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 	}
 	dest = dest.Elem()
 
-	// destPtr is a pointer to interface{} type
+	// destPtr is a pointer to any type
 	if dest.Kind() == reflect.Interface {
 		if value != nil {
 			dest.Set(reflect.ValueOf(value)) // Assign any

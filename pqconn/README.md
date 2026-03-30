@@ -66,6 +66,7 @@ PostgreSQL error codes are wrapped into typed `sqldb` errors. Helper functions c
 - [x] `ErrRestrictViolation`
 - [x] `ErrExclusionViolation`
 - [x] `ErrDeadlock`
+- [x] `ErrSerializationFailure`
 - [x] `ErrRaisedException`
 - [x] `ErrQueryCanceled`
 - [x] `ErrNullValueNotAllowed`

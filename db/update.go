@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/domonda/go-sqldb"
 )
@@ -16,6 +17,59 @@ func Update(ctx context.Context, table string, values sqldb.Values, where string
 		conn,
 		table,
 		values,
+		where,
+		args...,
+	)
+}
+
+// UpdateReturningRow updates a table row with values using the where clause
+// with passed in args starting at $1 and returns a Row for scanning
+// the columns specified in the returning argument.
+// The configured [QueryBuilder] must implement [sqldb.ReturningQueryBuilder].
+func UpdateReturningRow(ctx context.Context, table string, values sqldb.Values, returning, where string, args ...any) *sqldb.Row {
+	conn := Conn(ctx)
+	builder, ok := QueryBuilder(ctx).(sqldb.ReturningQueryBuilder)
+	if !ok {
+		return sqldb.NewRow(
+			sqldb.NewErrRows(fmt.Errorf("db.UpdateReturningRow: QueryBuilder %T does not implement sqldb.ReturningQueryBuilder", QueryBuilder(ctx))),
+			StructReflector(ctx),
+			conn, // formatter
+			"",   // query
+			nil,  // args
+		)
+	}
+	return sqldb.UpdateReturningRow(
+		ctx,
+		conn,
+		StructReflector(ctx),
+		builder,
+		conn,
+		table,
+		values,
+		returning,
+		where,
+		args...,
+	)
+}
+
+// UpdateReturningRows updates table rows with values using the where clause
+// with passed in args starting at $1 and returns Rows for scanning
+// the columns specified in the returning argument.
+// The configured [QueryBuilder] must implement [sqldb.ReturningQueryBuilder].
+func UpdateReturningRows(ctx context.Context, table string, values sqldb.Values, returning, where string, args ...any) sqldb.Rows {
+	conn := Conn(ctx)
+	builder, ok := QueryBuilder(ctx).(sqldb.ReturningQueryBuilder)
+	if !ok {
+		return sqldb.NewErrRows(fmt.Errorf("db.UpdateReturningRows: QueryBuilder %T does not implement sqldb.ReturningQueryBuilder", QueryBuilder(ctx)))
+	}
+	return sqldb.UpdateReturningRows(
+		ctx,
+		conn,
+		builder,
+		conn,
+		table,
+		values,
+		returning,
 		where,
 		args...,
 	)

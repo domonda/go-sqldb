@@ -58,6 +58,7 @@ Oracle errors are mapped to generic `sqldb` error types:
 | ORA-02291, ORA-02292 | `ErrForeignKeyViolation` | `IsForeignKeyViolation` |
 | ORA-02290 | `ErrCheckViolation` | `IsCheckViolation` |
 | ORA-00060 | `ErrDeadlock` | `IsDeadlockDetected` |
+| ORA-08177 | `ErrSerializationFailure` | `IsSerializationFailure` |
 | ORA-01013 | `ErrQueryCanceled` | `IsQueryCanceled` |
 | ORA-20000–20999 | `ErrRaisedException` | — |
 
