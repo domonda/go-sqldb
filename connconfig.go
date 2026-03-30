@@ -73,9 +73,12 @@ func ParseConnConfig(uri string) (*ConnConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	port, err := strconv.ParseUint(parsed.Port(), 10, 16)
-	if err != nil {
-		return nil, fmt.Errorf("invalid port %q in URI: %w", parsed.Port(), err)
+	var port uint64
+	if portStr := parsed.Port(); portStr != "" {
+		port, err = strconv.ParseUint(portStr, 10, 16)
+		if err != nil {
+			return nil, fmt.Errorf("invalid port %q in URI: %w", portStr, err)
+		}
 	}
 	password, _ := parsed.User.Password()
 	config := &ConnConfig{

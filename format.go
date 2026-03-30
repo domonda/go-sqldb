@@ -163,7 +163,7 @@ func FormatQuery(f QueryFormatter, query string, args ...any) string {
 		for i := range lines {
 			lines[i] = lines[i][runeSize:]
 		}
-		firstLineRune, _ = utf8.DecodeRuneInString(lines[0])
+		firstLineRune, runeSize = utf8.DecodeRuneInString(lines[0])
 	}
 
 	return strings.Join(lines, "\n")

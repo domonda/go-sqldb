@@ -519,7 +519,7 @@ err = sqldb.Transaction(ctx, conn, &sql.TxOptions{ReadOnly: true}, func(tx sqldb
 })
 ```
 
-Driver `Connect` functions return `ConnectionQueryFormatter` which combines `Connection` with `QueryFormatter`, so `conn` can be passed for both the connection and formatter arguments.
+Driver `Connect` functions return types that implement the `Connection` interface, which embeds `QueryFormatter`.
 
 
 ## Internal caching
@@ -587,7 +587,7 @@ If a query has no matching result registered, the returned `Rows` will have an e
 
 #### Using MockConn with the db package
 
-`MockConn` implements `ConnectionQueryFormatter`, so it can be used directly with the `db` package:
+`MockConn` implements `Connection`, so it can be used directly with the `db` package:
 
 ```go
 func TestGetUser(t *testing.T) {

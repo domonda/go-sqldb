@@ -42,7 +42,7 @@ func TableNameForStruct(t reflect.Type, tagKey string) (table string, err error)
 		return "", fmt.Errorf("TableNameForStruct: tagKey is empty")
 	}
 	tableNameType := reflect.TypeFor[TableName]()
-	for i := 0; i < structType.NumField(); i++ {
+	for i := range structType.NumField() {
 		field := structType.Field(i)
 		if field.Anonymous && field.Type == tableNameType {
 			table = field.Tag.Get(tagKey)

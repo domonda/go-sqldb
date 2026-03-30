@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -117,7 +118,10 @@ func (c *MockConn) Clone() *MockConn {
 		TxID:                     c.TxID,
 		StmtNo:                   c.StmtNo,
 		ListeningOn:              maps.Clone(c.ListeningOn),
-		Recordings:               c.Recordings,
+		Recordings: QueryRecordings{
+			Execs:   slices.Clone(c.Recordings.Execs),
+			Queries: slices.Clone(c.Recordings.Queries),
+		},
 		MockQueryResults:         maps.Clone(c.MockQueryResults),
 		MockConfig:               c.MockConfig,
 		MockPing:                 c.MockPing,

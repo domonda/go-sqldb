@@ -61,6 +61,9 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 			dest.SetInt(int64(src))
 			return nil
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+			if src < 0 {
+				return fmt.Errorf("unable to scan negative float64 value %f into %s", src, dest.Type())
+			}
 			dest.SetUint(uint64(src))
 			return nil
 		}

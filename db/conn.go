@@ -40,6 +40,9 @@ func SetConn(c sqldb.Connection) {
 // SetQueryBuilder sets the global [sqldb.QueryBuilder] that will be returned
 // by [QueryBuilder] if there is no other query builder in the context.
 func SetQueryBuilder(queryBuilder sqldb.QueryBuilder) {
+	if queryBuilder == nil {
+		panic("unable to set nil QueryBuilder")
+	}
 	globalQueryBuilderMtx.Lock()
 	globalQueryBuilder = queryBuilder
 	globalQueryBuilderMtx.Unlock()
@@ -48,6 +51,9 @@ func SetQueryBuilder(queryBuilder sqldb.QueryBuilder) {
 // SetStructReflector sets the global [sqldb.StructReflector] that will be returned
 // by [StructReflector] if there is no other struct reflector in the context.
 func SetStructReflector(structReflector sqldb.StructReflector) {
+	if structReflector == nil {
+		panic("unable to set nil StructReflector")
+	}
 	globalStructReflectorMtx.Lock()
 	globalStructReflector = structReflector
 	globalStructReflectorMtx.Unlock()
