@@ -17,29 +17,39 @@ type Stmt interface {
 }
 
 type wrappedStmt struct {
-	stmt  *sql.Stmt
-	query string
+	stmt    *sql.Stmt
+	query   string
+	wrapErr func(error) error
 }
 
 // NewStmt returns a Stmt wrapping a [*sql.Stmt] with the query string
 // that was used to prepare the statement.
-func NewStmt(stmt *sql.Stmt, query string) Stmt {
-	return wrappedStmt{stmt: stmt, query: query}
+// The optional wrapErr function is called on non-nil errors
+// to wrap them with driver-specific known error classifications.
+func NewStmt(stmt *sql.Stmt, query string, wrapErr func(error) error) Stmt {
+	return wrappedStmt{stmt: stmt, query: query, wrapErr: wrapErr}
 }
 
 func (s wrappedStmt) PreparedQuery() string {
 	return s.query
 }
 
+func (s wrappedStmt) wrapError(err error) error {
+	if err != nil && s.wrapErr != nil {
+		return s.wrapErr(err)
+	}
+	return err
+}
+
 func (s wrappedStmt) Exec(ctx context.Context, args ...any) error {
 	_, err := s.stmt.ExecContext(ctx, args...)
-	return err
+	return s.wrapError(err)
 }
 
 func (s wrappedStmt) ExecRowsAffected(ctx context.Context, args ...any) (int64, error) {
 	result, err := s.stmt.ExecContext(ctx, args...)
 	if err != nil {
-		return 0, err
+		return 0, s.wrapError(err)
 	}
 	return result.RowsAffected()
 }
@@ -47,7 +57,7 @@ func (s wrappedStmt) ExecRowsAffected(ctx context.Context, args ...any) (int64, 
 func (s wrappedStmt) Query(ctx context.Context, args ...any) Rows {
 	rows, err := s.stmt.QueryContext(ctx, args...)
 	if err != nil {
-		return NewErrRows(err)
+		return NewErrRows(s.wrapError(err))
 	}
 	return rows
 }

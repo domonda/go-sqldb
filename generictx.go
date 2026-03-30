@@ -75,7 +75,7 @@ func (conn *genericTx) Prepare(ctx context.Context, query string) (Stmt, error) 
 	if err != nil {
 		return nil, err
 	}
-	return NewStmt(stmt, query), nil
+	return NewStmt(stmt, query, nil), nil
 }
 
 func (conn *genericTx) DefaultIsolationLevel() sql.IsolationLevel {

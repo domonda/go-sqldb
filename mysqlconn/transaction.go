@@ -69,7 +69,7 @@ func (conn *transaction) Prepare(ctx context.Context, query string) (sqldb.Stmt,
 	if err != nil {
 		return nil, wrapKnownErrors(err)
 	}
-	return sqldb.NewStmt(stmt, query), nil
+	return sqldb.NewStmt(stmt, query, wrapKnownErrors), nil
 }
 
 func (*transaction) DefaultIsolationLevel() sql.IsolationLevel {
