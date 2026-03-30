@@ -13,14 +13,15 @@ import (
 // Oracle error codes for constraint violations and other mapped errors.
 // https://docs.oracle.com/en/database/oracle/oracle-database/23/errmg/
 const (
-	errUniqueViolation     = 1     // ORA-00001: unique constraint violated
-	errDeadlock            = 60    // ORA-00060: deadlock detected while waiting for resource
-	errCannotInsertNull    = 1400  // ORA-01400: cannot insert NULL
-	errQueryCanceled       = 1013  // ORA-01013: user requested cancel of current operation
-	errFKParentNotFound    = 2291  // ORA-02291: integrity constraint - parent key not found
-	errFKChildRecordFound  = 2292  // ORA-02292: integrity constraint - child record found
-	errCheckViolation      = 2290  // ORA-02290: check constraint violated
-	errRaisedUserException = 20000 // ORA-20000 through ORA-20999: user-defined exceptions
+	errUniqueViolation      = 1     // ORA-00001: unique constraint violated
+	errDeadlock             = 60    // ORA-00060: deadlock detected while waiting for resource
+	errCannotInsertNull     = 1400  // ORA-01400: cannot insert NULL
+	errQueryCanceled        = 1013  // ORA-01013: user requested cancel of current operation
+	errFKParentNotFound     = 2291  // ORA-02291: integrity constraint - parent key not found
+	errFKChildRecordFound   = 2292  // ORA-02292: integrity constraint - child record found
+	errCheckViolation       = 2290  // ORA-02290: check constraint violated
+	errSerializationFailure = 8177  // ORA-08177: can't serialize access for this transaction
+	errRaisedUserException  = 20000 // ORA-20000 through ORA-20999: user-defined exceptions
 )
 
 func wrapKnownErrors(err error) error {
@@ -43,6 +44,8 @@ func wrapKnownErrors(err error) error {
 		return errors.Join(sqldb.ErrCheckViolation{Constraint: constraint}, err)
 	case oraErr.ErrCode == errDeadlock:
 		return errors.Join(sqldb.ErrDeadlock, err)
+	case oraErr.ErrCode == errSerializationFailure:
+		return errors.Join(sqldb.ErrSerializationFailure, err)
 	case oraErr.ErrCode == errQueryCanceled:
 		return errors.Join(sqldb.ErrQueryCanceled, err)
 	case oraErr.ErrCode >= errRaisedUserException && oraErr.ErrCode <= 20999:

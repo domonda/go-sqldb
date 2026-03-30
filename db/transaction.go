@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"strings"
 	"sync/atomic"
 
 	"github.com/domonda/go-sqldb"
@@ -206,7 +205,7 @@ func SerializedTransaction(ctx context.Context, txFunc func(context.Context) err
 	opts := sql.TxOptions{Isolation: sql.LevelSerializable}
 	for i := 0; i < SerializedTransactionRetries; i++ {
 		err := TransactionOpts(ctx, &opts, txFunc)
-		if err == nil || !strings.Contains(err.Error(), "could not serialize access") {
+		if err == nil || !errors.Is(err, sqldb.ErrSerializationFailure) {
 			return err // nil or err
 		}
 	}

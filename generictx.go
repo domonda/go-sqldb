@@ -134,7 +134,7 @@ func (conn *genericTx) Close() error {
 
 // genericTxWithQueryBuilder wraps a [genericTx] with a non-nil [QueryBuilder].
 // Implements [QueryBuilder], [UpsertQueryBuilder], and [ReturningQueryBuilder]
-// via delegation, mirroring [genericConnQueryBuilder].
+// via delegation.
 type genericTxWithQueryBuilder struct {
 	*genericTx
 	QueryBuilder

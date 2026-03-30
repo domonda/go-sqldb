@@ -133,13 +133,16 @@ func TestGetUser(t *testing.T) {
 | `QueryRowsAsSlice[T](ctx, query, args...) ([]T, error)` | Query rows into a slice of values or structs |
 | `QueryRowsAsStrings(ctx, query, args...) ([][]string, error)` | Query rows as string slices              |
 | `QueryCallback(ctx, callback, query, args...) error` | Call a function for each row             |
+| `QueryStructCallback[S](ctx, callback, query, args...) error` | Call a function for each row scanned into a struct |
 
 ### Exec
 
 | Function                                 | Description                              |
 | ---------------------------------------- | ---------------------------------------- |
 | `Exec(ctx, query, args...) error`        | Execute a query without returning rows   |
+| `ExecRowsAffected(ctx, query, args...) (int64, error)` | Execute a query and return number of rows affected |
 | `ExecStmt(ctx, query) (func, closeStmt, error)` | Prepared statement returning a reusable exec function |
+| `ExecRowsAffectedStmt(ctx, query) (func, closeStmt, error)` | Prepared statement returning a reusable exec-rows-affected function |
 
 ### Insert
 
@@ -158,9 +161,17 @@ func TestGetUser(t *testing.T) {
 | Function                                 | Description                              |
 | ---------------------------------------- | ---------------------------------------- |
 | `Update(ctx, table, values, where, args...) error` | Update rows using a values map and WHERE clause |
-| `UpdateRowStruct(ctx, table, rowStruct, options...) error` | Update a row from a struct (WHERE from primary key) |
-| `UpdateRowStructStmt[S](ctx, table, options...) (func, closeStmt, error)` | Prepared statement for updating structs  |
-| `UpdateRowStructs[S](ctx, table, rowStructs, options...) error` | Batch update a slice of structs          |
+| `UpdateRowStruct(ctx, rowStruct, options...) error` | Update a row from a struct (WHERE from primary key) |
+| `UpdateRowStructStmt[S](ctx, options...) (func, closeStmt, error)` | Prepared statement for updating structs  |
+| `UpdateRowStructs[S](ctx, rowStructs, options...) error` | Batch update a slice of structs          |
+
+### Delete
+
+| Function                                 | Description                              |
+| ---------------------------------------- | ---------------------------------------- |
+| `DeleteRowStruct(ctx, rowStruct) error`  | Delete a row matching a struct's primary key |
+| `DeleteRowStructStmt[S](ctx) (func, closeStmt, error)` | Prepared statement for deleting structs  |
+| `DeleteRowStructs[S](ctx, rowStructs) error` | Batch delete a slice of structs          |
 
 ### Upsert
 

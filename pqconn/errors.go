@@ -32,6 +32,8 @@ func wrapKnownErrors(err error) error {
 			return errors.Join(sqldb.ErrCheckViolation{Constraint: e.Constraint}, err)
 		case pqerror.TRDeadlockDetected:
 			return errors.Join(sqldb.ErrDeadlock, err)
+		case pqerror.TRSerializationFailure:
+			return errors.Join(sqldb.ErrSerializationFailure, err)
 		case pqerror.QueryCanceled:
 			return errors.Join(sqldb.ErrQueryCanceled, err)
 		case pqerror.ExclusionViolation:

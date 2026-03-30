@@ -8,14 +8,6 @@ import (
 // interface for the information_schema.yes_or_no type.
 type YesNo bool
 
-// func (y YesNo) String() string {
-// 	if y {
-// 		return "YES"
-// 	} else {
-// 		return "NO"
-// 	}
-// }
-
 // Scan implements the sql.Scanner interface for YesNo.
 func (y *YesNo) Scan(value any) error {
 	switch x := value.(type) {

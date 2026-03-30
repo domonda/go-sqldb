@@ -13,7 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 - **Connection Interface**: Central abstraction for database connections and transactions (`connection.go`)
 - **DB Package**: Context-based connection management pattern (`db/` directory)
-- **Database Drivers**: Separate modules for PostgreSQL (`pqconn/`), MySQL (`mysqlconn/`), and SQL Server (`mssqlconn/`)
+- **Database Drivers**: Separate modules for PostgreSQL (`pqconn/`), MySQL (`mysqlconn/`), SQL Server (`mssqlconn/`), SQLite (`sqliteconn/`), and Oracle (`oraconn/`)
 - **Query Building**: Flexible query construction with struct mapping
 - **Transaction Management**: Nested transactions with savepoint support
 
@@ -57,7 +57,7 @@ func MyValueFromContext(ctx context.Context) string {
 ### SQL Rules
 - Write SQL string literals with backticks and prefix with `/*sql*/`
   and start such SQL string literals in a new line if not the first argument
-- Check for the positio of `/*sql*/` after running gofmt, move to next line if placement was moved the previous argument
+- Check for the position of `/*sql*/` after running gofmt, move to next line if placement was moved the previous argument
 - Use numbered parameters (`$1`, `$2`) for PostgreSQL driver
 - Avoid SQL code duplication, find existing functions first
 - Database lookup functions use `Get`, `Is`, or `Has` prefixes

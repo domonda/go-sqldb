@@ -73,6 +73,11 @@ const (
 // The caller should retry the transaction.
 const ErrDeadlock sentinelError = "deadlock detected"
 
+// ErrSerializationFailure indicates that a transaction could not be
+// committed because of a read/write dependency conflict with a concurrent
+// transaction. The caller should retry the transaction.
+const ErrSerializationFailure sentinelError = "serialization failure"
+
 // ErrRaisedException represents an exception explicitly raised by the database.
 type ErrRaisedException struct {
 	Message string

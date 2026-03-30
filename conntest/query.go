@@ -56,7 +56,7 @@ func runQueryTests(t *testing.T, config Config) {
 			insertSimpleRow(t, conn, qb, simpleRow{ID: 1, Val: "exists"})
 
 			// when
-			got, err := sqldb.QueryRowByPKOr[simpleRow](ctx, conn, refl, qb, conn, simpleRow{}, 1)
+			got, err := sqldb.QueryRowByPKOr(ctx, conn, refl, qb, conn, simpleRow{}, 1)
 
 			// then
 			require.NoError(t, err)
@@ -72,7 +72,7 @@ func runQueryTests(t *testing.T, config Config) {
 			defaultRow := simpleRow{ID: -1, Val: "default"}
 
 			// when
-			got, err := sqldb.QueryRowByPKOr[simpleRow](ctx, conn, refl, qb, conn, defaultRow, 999)
+			got, err := sqldb.QueryRowByPKOr(ctx, conn, refl, qb, conn, defaultRow, 999)
 
 			// then
 			require.NoError(t, err)

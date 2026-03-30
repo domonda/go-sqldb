@@ -97,11 +97,11 @@ All driver connections implement `QueryBuilder` automatically, so `db.SetQueryBu
 | ------------ | ----------------------------------- | :---: | :---: |
 | `pqconn`     | embeds `pqconn.QueryBuilder`        | yes | yes |
 | `sqliteconn` | embeds `sqliteconn.QueryBuilder`    | yes | yes |
-| `mysqlconn`  | `NewGenericConn` with `mysqlconn.QueryBuilder` | yes | no |
-| `mssqlconn`  | `NewGenericConn` with `mssqlconn.QueryBuilder` | yes | no |
+| `mysqlconn`  | embeds `mysqlconn.QueryBuilder`     | yes | no |
+| `mssqlconn`  | embeds `mssqlconn.QueryBuilder`     | yes | no |
 | `oraconn`    | embeds `oraconn.QueryBuilder`       | yes | no |
 
-PostgreSQL and SQLite connections embed their driver-specific `QueryBuilder`, which extends `StdReturningQueryBuilder` with `ON CONFLICT` upsert syntax, so the connection itself satisfies all three interfaces. MySQL, MSSQL, and Oracle pass their driver-specific builder to `NewGenericConn` or embed it directly, providing `QueryBuilder` and `UpsertQueryBuilder` support — but not `ReturningQueryBuilder` (Oracle's `RETURNING ... INTO` syntax is incompatible with the row-returning interface).
+PostgreSQL and SQLite connections embed their driver-specific `QueryBuilder`, which extends `StdReturningQueryBuilder` with `ON CONFLICT` upsert syntax, so the connection itself satisfies all three interfaces. MySQL, MSSQL, and Oracle embed their driver-specific builder directly, providing `QueryBuilder` and `UpsertQueryBuilder` support — but not `ReturningQueryBuilder` (Oracle's `RETURNING ... INTO` syntax is incompatible with the row-returning interface).
 
 Driver-specific builders embed `StdQueryBuilder` and override only the methods that differ, so standard SQL operations work identically across all drivers.
 
@@ -120,6 +120,7 @@ Each driver maps its database-specific errors to typed values defined in the roo
 | `ErrRestrictViolation`            | `Constraint` | RESTRICT constraint violated (PostgreSQL)     |
 | `ErrExclusionViolation`           | `Constraint` | Exclusion constraint violated (PostgreSQL)    |
 | `ErrDeadlock`                     | —            | Deadlock detected between transactions        |
+| `ErrSerializationFailure`         | —            | Transaction serialization conflict (retry)    |
 | `ErrRaisedException`              | `Message`    | User-defined exception (RAISE/SIGNAL/THROW)   |
 
 All specific types unwrap to `ErrIntegrityConstraintViolation`, so `errors.As` traverses the chain and matches any subtype:
