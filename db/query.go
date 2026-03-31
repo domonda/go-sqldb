@@ -53,6 +53,30 @@ func QueryRowAs[T any](ctx context.Context, query string, args ...any) (val T, e
 	)
 }
 
+// QueryRowAs2 queries a single row and scans it into 2 typed values.
+func QueryRowAs2[T0, T1 any](ctx context.Context, query string, args ...any) (val0 T0, val1 T1, err error) {
+	err = QueryRow(ctx, query, args...).Scan(&val0, &val1)
+	return
+}
+
+// QueryRowAs3 queries a single row and scans it into 3 typed values.
+func QueryRowAs3[T0, T1, T2 any](ctx context.Context, query string, args ...any) (val0 T0, val1 T1, val2 T2, err error) {
+	err = QueryRow(ctx, query, args...).Scan(&val0, &val1, &val2)
+	return
+}
+
+// QueryRowAs4 queries a single row and scans it into 4 typed values.
+func QueryRowAs4[T0, T1, T2, T3 any](ctx context.Context, query string, args ...any) (val0 T0, val1 T1, val2 T2, val3 T3, err error) {
+	err = QueryRow(ctx, query, args...).Scan(&val0, &val1, &val2, &val3)
+	return
+}
+
+// QueryRowAs5 queries a single row and scans it into 5 typed values.
+func QueryRowAs5[T0, T1, T2, T3, T4 any](ctx context.Context, query string, args ...any) (val0 T0, val1 T1, val2 T2, val3 T3, val4 T4, err error) {
+	err = QueryRow(ctx, query, args...).Scan(&val0, &val1, &val2, &val3, &val4)
+	return
+}
+
 // QueryRowAsOr queries a single row and scans it as the type T,
 // or returns the passed defaultVal in case of sql.ErrNoRows.
 func QueryRowAsOr[T any](ctx context.Context, defaultVal T, query string, args ...any) (val T, err error) {

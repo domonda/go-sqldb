@@ -43,6 +43,18 @@ err := db.Transaction(ctx, func(ctx context.Context) error {
 
 Nested `Transaction` calls reuse the parent transaction (no additional BEGIN/COMMIT). Use `IsolatedTransaction` to force a new transaction even when already inside one.
 
+### Multi-column queries
+
+When a query returns a fixed number of scalar columns, use `QueryRowAs2` through `QueryRowAs5` to scan them into separate typed variables without defining a struct:
+
+```go
+id, name, active, err := db.QueryRowAs3[int, string, bool](ctx,
+    `SELECT id, name, active FROM public.user WHERE id = $1`, userID)
+if err != nil {
+    return err
+}
+```
+
 ### Query builder and struct reflector
 
 Besides the connection, the `db` package manages two more components with the same global-plus-context pattern:
@@ -120,6 +132,10 @@ func TestGetUser(t *testing.T) {
 | ---------------------------------------- | ---------------------------------------- |
 | `QueryRow(ctx, query, args...) *Row`     | Query a single row for manual `Scan`     |
 | `QueryRowAs[T](ctx, query, args...) (T, error)` | Query a single row into a value or struct |
+| `QueryRowAs2[T0,T1](ctx, query, args...) (T0, T1, error)` | Query a single row into 2 typed values |
+| `QueryRowAs3[T0,T1,T2](ctx, query, args...) (T0, T1, T2, error)` | Query a single row into 3 typed values |
+| `QueryRowAs4[T0,T1,T2,T3](ctx, query, args...) (T0, T1, T2, T3, error)` | Query a single row into 4 typed values |
+| `QueryRowAs5[T0,T1,T2,T3,T4](ctx, query, args...) (T0, T1, T2, T3, T4, error)` | Query a single row into 5 typed values |
 | `QueryRowAsOr[T](ctx, defaultVal, query, args...) (T, error)` | Like `QueryRowAs` but returns `defaultVal` instead of `ErrNoRows` |
 | `QueryRowAsStmt[T](ctx, query) (func, closeStmt, error)` | Prepared statement returning a reusable query function |
 | `QueryRowByPrimaryKey[S](ctx, pkValue, pkValues...) (S, error)` | Query a struct by primary key            |
