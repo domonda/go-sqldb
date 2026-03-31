@@ -29,7 +29,7 @@ func runQueryTests(t *testing.T, config Config) {
 		assert.Equal(t, "hello", val)
 	})
 
-	t.Run("QueryRowByPrimaryKey", func(t *testing.T) {
+	t.Run("QueryRowStruct", func(t *testing.T) {
 		// given
 		conn := config.NewConn(t)
 		ctx := t.Context()
@@ -38,7 +38,7 @@ func runQueryTests(t *testing.T, config Config) {
 		insertSimpleRow(t, conn, qb, simpleRow{ID: 42, Val: "found"})
 
 		// when
-		got, err := sqldb.QueryRowByPrimaryKey[simpleRow](ctx, conn, refl, qb, conn, 42)
+		got, err := sqldb.QueryRowStruct[simpleRow](ctx, conn, refl, qb, conn, 42)
 
 		// then
 		require.NoError(t, err)
@@ -46,7 +46,7 @@ func runQueryTests(t *testing.T, config Config) {
 		assert.Equal(t, "found", got.Val)
 	})
 
-	t.Run("QueryRowByPrimaryKeyOr", func(t *testing.T) {
+	t.Run("QueryRowStructOr", func(t *testing.T) {
 		t.Run("Found", func(t *testing.T) {
 			// given
 			conn := config.NewConn(t)
@@ -56,7 +56,7 @@ func runQueryTests(t *testing.T, config Config) {
 			insertSimpleRow(t, conn, qb, simpleRow{ID: 1, Val: "exists"})
 
 			// when
-			got, err := sqldb.QueryRowByPrimaryKeyOr(ctx, conn, refl, qb, conn, simpleRow{}, 1)
+			got, err := sqldb.QueryRowStructOr(ctx, conn, refl, qb, conn, simpleRow{}, 1)
 
 			// then
 			require.NoError(t, err)
@@ -72,7 +72,7 @@ func runQueryTests(t *testing.T, config Config) {
 			defaultRow := simpleRow{ID: -1, Val: "default"}
 
 			// when
-			got, err := sqldb.QueryRowByPrimaryKeyOr(ctx, conn, refl, qb, conn, defaultRow, 999)
+			got, err := sqldb.QueryRowStructOr(ctx, conn, refl, qb, conn, defaultRow, 999)
 
 			// then
 			require.NoError(t, err)

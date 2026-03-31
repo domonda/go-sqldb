@@ -136,10 +136,10 @@ func insertSimpleRow(t *testing.T, conn sqldb.Connection, qb sqldb.QueryBuilder,
 	require.NoError(t, err)
 }
 
-// querySimpleRow queries a simpleRow by PK using sqldb.QueryRowByPrimaryKey.
+// querySimpleRow queries a simpleRow by PK using sqldb.QueryRowStruct.
 func querySimpleRow(t *testing.T, conn sqldb.Connection, qb sqldb.QueryBuilder, id int) simpleRow {
 	t.Helper()
-	row, err := sqldb.QueryRowByPrimaryKey[simpleRow](t.Context(), conn, refl, qb, conn, id)
+	row, err := sqldb.QueryRowStruct[simpleRow](t.Context(), conn, refl, qb, conn, id)
 	require.NoError(t, err)
 	return row
 }
@@ -151,10 +151,10 @@ func insertUpsertRow(t *testing.T, conn sqldb.Connection, qb sqldb.QueryBuilder,
 	require.NoError(t, err)
 }
 
-// queryUpsertRow queries an upsertRow by PK using sqldb.QueryRowByPrimaryKey.
+// queryUpsertRow queries an upsertRow by PK using sqldb.QueryRowStruct.
 func queryUpsertRow(t *testing.T, conn sqldb.Connection, qb sqldb.QueryBuilder, id int) upsertRow {
 	t.Helper()
-	row, err := sqldb.QueryRowByPrimaryKey[upsertRow](t.Context(), conn, refl, qb, conn, id)
+	row, err := sqldb.QueryRowStruct[upsertRow](t.Context(), conn, refl, qb, conn, id)
 	require.NoError(t, err)
 	return row
 }

@@ -333,10 +333,10 @@ err = db.QueryRow(ctx,
 For structs with an embedded `db.TableName`, you can query by primary key directly:
 
 ```go
-user, err := db.QueryRowByPrimaryKey[User](ctx, userID)
+user, err := db.QueryRowStruct[User](ctx, userID)
 
 // Return a default value instead of sql.ErrNoRows
-user, err = db.QueryRowByPrimaryKeyOr(ctx, defaultUser, userID)
+user, err = db.QueryRowStructOr(ctx, defaultUser, userID)
 ```
 
 ### Querying multiple rows
@@ -571,7 +571,7 @@ Cached data includes:
 - **INSERT queries**: The generated SQL query string and struct field indices, cached per struct type and connection configuration.
 - **UPDATE queries**: The generated SQL query string and struct field indices (reordered: non-PK first, then PK), cached per struct type and connection configuration.
 - **UPSERT queries**: Same as INSERT caching for upsert operations.
-- **QueryRowByPrimaryKey queries**: The generated SELECT query and primary key column count.
+- **QueryRowStruct queries**: The generated SELECT query and primary key column count.
 
 Query caches are bypassed when `QueryOption` arguments are provided, since options like `ColumnFilter` change which columns are included and are not part of the cache key.
 

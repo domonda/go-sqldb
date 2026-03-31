@@ -210,7 +210,7 @@ func TestArrayStructNullSlices(t *testing.T) {
 	}
 }
 
-func TestArrayStructQueryRowByPrimaryKey(t *testing.T) {
+func TestArrayStructQueryRowStruct(t *testing.T) {
 	ctx := context.Background()
 	c := testConn(t)
 
@@ -225,9 +225,9 @@ func TestArrayStructQueryRowByPrimaryKey(t *testing.T) {
 		t.Fatalf("InsertRowStruct: %v", err)
 	}
 
-	got, err := sqldb.QueryRowByPrimaryKey[testArraysRow](ctx, c, refl, pqconn.QueryBuilder{}, c, input.ID)
+	got, err := sqldb.QueryRowStruct[testArraysRow](ctx, c, refl, pqconn.QueryBuilder{}, c, input.ID)
 	if err != nil {
-		t.Fatalf("QueryRowByPrimaryKey: %v", err)
+		t.Fatalf("QueryRowStruct: %v", err)
 	}
 
 	assertInt64Slice(t, "IntArray", got.IntArray, []int64{42})

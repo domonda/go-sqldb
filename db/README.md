@@ -60,7 +60,7 @@ if err != nil {
 }
 
 // user.CreatedAt will contain the default value created for the new row
-user, err := db.QueryRowByPrimaryKey[User](ctx, userID)
+user, err := db.QueryRowStruct[User](ctx, userID)
 if err != nil {
     return err
 }
@@ -177,8 +177,8 @@ func TestGetUser(t *testing.T) {
 | `QueryRowAs5[T0,T1,T2,T3,T4](ctx, query, args...) (T0, T1, T2, T3, T4, error)` | Query a single row into 5 typed values |
 | `QueryRowAsOr[T](ctx, defaultVal, query, args...) (T, error)` | Like `QueryRowAs` but returns `defaultVal` instead of `ErrNoRows` |
 | `QueryRowAsStmt[T](ctx, query) (func, closeStmt, error)` | Prepared statement returning a reusable query function |
-| `QueryRowByPrimaryKey[S](ctx, pkValue, pkValues...) (S, error)` | Query a struct by primary key            |
-| `QueryRowByPrimaryKeyOr[S](ctx, defaultVal, pkValue, pkValues...) (S, error)` | Like `QueryRowByPrimaryKey` but returns `defaultVal` instead of `ErrNoRows` |
+| `QueryRowStruct[S](ctx, pkValue, pkValues...) (S, error)` | Query a struct by primary key            |
+| `QueryRowStructOr[S](ctx, defaultVal, pkValue, pkValues...) (S, error)` | Like `QueryRowStruct` but returns `defaultVal` instead of `ErrNoRows` |
 | `QueryRowAsMap[K, V](ctx, query, args...) (map[K]V, error)` | Query a single row into a map            |
 
 ### Query — multiple rows

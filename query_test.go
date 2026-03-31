@@ -200,7 +200,7 @@ func TestQueryRowAsStmt(t *testing.T) {
 	})
 }
 
-func TestQueryRowByPrimaryKey(t *testing.T) {
+func TestQueryRowStruct(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		conn, refl, builder, fmtr := newTestInterfaces()
 		var queryCount int
@@ -212,7 +212,7 @@ func TestQueryRowByPrimaryKey(t *testing.T) {
 			gotArgs = args
 			return NewMockRows("id", "name", "active").WithRow(int64(1), "Alice", true)
 		}
-		row, err := QueryRowByPrimaryKey[reflectTestStruct](t.Context(), conn, refl, builder, fmtr, int64(1))
+		row, err := QueryRowStruct[reflectTestStruct](t.Context(), conn, refl, builder, fmtr, int64(1))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -239,7 +239,7 @@ func TestQueryRowByPrimaryKey(t *testing.T) {
 		conn, refl, builder, fmtr := newTestInterfaces()
 		_ = conn
 		// reflectTestStruct has 1 PK but we pass 2 values
-		_, err := QueryRowByPrimaryKey[reflectTestStruct](t.Context(), conn, refl, builder, fmtr, 1, 2)
+		_, err := QueryRowStruct[reflectTestStruct](t.Context(), conn, refl, builder, fmtr, 1, 2)
 		if err == nil {
 			t.Error("expected error for PK count mismatch")
 		}
@@ -252,7 +252,7 @@ func TestQueryRowByPrimaryKey(t *testing.T) {
 			queryCount++
 			return NewMockRows("id", "name", "active")
 		}
-		_, err := QueryRowByPrimaryKey[reflectTestStruct](t.Context(), conn, refl, builder, fmtr, int64(999))
+		_, err := QueryRowStruct[reflectTestStruct](t.Context(), conn, refl, builder, fmtr, int64(999))
 		if !errors.Is(err, sql.ErrNoRows) {
 			t.Errorf("expected sql.ErrNoRows, got: %v", err)
 		}
