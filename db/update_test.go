@@ -1,14 +1,14 @@
-package db
+package db_test
 
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/db"
 )
 
 func TestUpdate(t *testing.T) {
@@ -25,7 +25,7 @@ func TestUpdate(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		err := Update(ctx, "users", sqldb.Values{"name": "Bob"}, "id = $1", 42)
+		err := db.Update(ctx, "users", sqldb.Values{"name": "Bob"}, "id = $1", 42)
 		require.NoError(t, err)
 		require.Equal(t, 1, execCount, "MockExec call count")
 		require.Equal(t, "UPDATE users SET name=$2 WHERE id = $1", gotQuery)
@@ -45,7 +45,7 @@ func TestUpdate(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		err := Update(ctx, "users", sqldb.Values{"name": "Bob", "active": true}, "id = $1", 42)
+		err := db.Update(ctx, "users", sqldb.Values{"name": "Bob", "active": true}, "id = $1", 42)
 		require.NoError(t, err)
 		require.Equal(t, 1, execCount, "MockExec call count")
 		// Values are sorted alphabetically: active, name
@@ -57,7 +57,7 @@ func TestUpdate(t *testing.T) {
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		ctx := testContext(t, mock)
 
-		err := Update(ctx, "users", sqldb.Values{}, "id = $1", 42)
+		err := db.Update(ctx, "users", sqldb.Values{}, "id = $1", 42)
 		require.Error(t, err)
 	})
 
@@ -71,7 +71,7 @@ func TestUpdate(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		err := Update(ctx, "users", sqldb.Values{"name": "Bob"}, "id = $1", 42)
+		err := db.Update(ctx, "users", sqldb.Values{"name": "Bob"}, "id = $1", 42)
 		require.ErrorIs(t, err, testErr)
 		require.Equal(t, 1, execCount, "MockExec call count")
 	})
@@ -79,10 +79,10 @@ func TestUpdate(t *testing.T) {
 
 func TestUpdateRowStruct(t *testing.T) {
 	type UserRow struct {
-		sqldb.TableName `db:"users"`
-		ID              int    `db:"id,primarykey"`
-		Name            string `db:"name"`
-		Active          bool   `db:"active"`
+		db.TableName `db:"users"`
+		ID           int    `db:"id,primarykey"`
+		Name         string `db:"name"`
+		Active       bool   `db:"active"`
 	}
 
 	t.Run("success", func(t *testing.T) {
@@ -98,7 +98,7 @@ func TestUpdateRowStruct(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		err := UpdateRowStruct(ctx, UserRow{ID: 1, Name: "Alice", Active: true})
+		err := db.UpdateRowStruct(ctx, UserRow{ID: 1, Name: "Alice", Active: true})
 		require.NoError(t, err)
 		require.Equal(t, 1, execCount, "MockExec call count")
 		// Columns in struct field order: id(PK), name, active
@@ -120,7 +120,7 @@ func TestUpdateRowStruct(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		err := UpdateRowStruct(ctx, &UserRow{ID: 2, Name: "Bob", Active: false})
+		err := db.UpdateRowStruct(ctx, &UserRow{ID: 2, Name: "Bob", Active: false})
 		require.NoError(t, err)
 		require.Equal(t, 1, execCount, "MockExec call count")
 		require.Equal(t, "UPDATE users SET name=$1, active=$2 WHERE id = $3", gotQuery)
@@ -140,7 +140,7 @@ func TestUpdateRowStruct(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		err := UpdateRowStruct(ctx, UserRow{ID: 1, Name: "Alice", Active: true}, sqldb.IgnoreColumns("active"))
+		err := db.UpdateRowStruct(ctx, UserRow{ID: 1, Name: "Alice", Active: true}, sqldb.IgnoreColumns("active"))
 		require.NoError(t, err)
 		require.Equal(t, 1, execCount, "MockExec call count")
 		require.Equal(t, "UPDATE users SET name=$1 WHERE id = $2", gotQuery)
@@ -149,13 +149,13 @@ func TestUpdateRowStruct(t *testing.T) {
 
 	t.Run("no primary key error", func(t *testing.T) {
 		type NoPKRow struct {
-			sqldb.TableName `db:"users"`
-			Name            string `db:"name"`
+			db.TableName `db:"users"`
+			Name         string `db:"name"`
 		}
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		ctx := testContext(t, mock)
 
-		err := UpdateRowStruct(ctx, NoPKRow{Name: "test"})
+		err := db.UpdateRowStruct(ctx, NoPKRow{Name: "test"})
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "no mapped primary key")
 	})
@@ -170,20 +170,8 @@ func TestUpdateRowStruct(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		err := UpdateRowStruct(ctx, UserRow{ID: 1, Name: "Alice"})
+		err := db.UpdateRowStruct(ctx, UserRow{ID: 1, Name: "Alice"})
 		require.ErrorIs(t, err, testErr)
 		require.Equal(t, 1, execCount, "MockExec call count")
 	})
-}
-
-// assertArgs is a test helper for comparing argument slices using fmt.Sprint
-// to handle type differences (e.g., int vs int64).
-func assertArgs(t *testing.T, got, want []any) {
-	t.Helper()
-	require.Equal(t, len(want), len(got), "args length")
-	for i := range want {
-		if fmt.Sprint(got[i]) != fmt.Sprint(want[i]) {
-			t.Errorf("args[%d] = %v (%T), want %v (%T)", i, got[i], got[i], want[i], want[i])
-		}
-	}
 }

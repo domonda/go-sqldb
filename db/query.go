@@ -109,7 +109,7 @@ func QueryRowAsStmt[T any](ctx context.Context, query string) (queryFunc func(ct
 // QueryRowByPrimaryKey queries a table row by primary key and scans it into a struct of type S.
 // Table name and primary key columns are determined by
 // the [StructReflector] from the context. The default reflector uses `db` struct tags
-// (e.g., sqldb.TableName `db:"my_table"`, field `db:"id,primarykey"`).
+// (e.g., db.TableName `db:"my_table"`, field `db:"id,primarykey"`).
 // The number of pkValue+pkValues must match the number of primary key columns.
 func QueryRowByPrimaryKey[S sqldb.StructWithTableName](ctx context.Context, pkValue any, pkValues ...any) (S, error) {
 	conn := Conn(ctx)
@@ -128,7 +128,7 @@ func QueryRowByPrimaryKey[S sqldb.StructWithTableName](ctx context.Context, pkVa
 // Returns defaultVal and no error if no row was found.
 // Table name and primary key columns are determined by
 // the [StructReflector] from the context. The default reflector uses `db` struct tags
-// (e.g., sqldb.TableName `db:"my_table"`, field `db:"id,primarykey"`).
+// (e.g., db.TableName `db:"my_table"`, field `db:"id,primarykey"`).
 // The number of pkValue+pkValues must match the number of primary key columns.
 func QueryRowByPrimaryKeyOr[S sqldb.StructWithTableName](ctx context.Context, defaultVal S, pkValue any, pkValues ...any) (S, error) {
 	conn := Conn(ctx)

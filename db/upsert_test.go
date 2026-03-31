@@ -11,10 +11,11 @@ import (
 
 func ExampleUpsertRowStructStmt() {
 	type User struct {
-		sqldb.TableName `db:"public.user"`
-		ID              int64  `db:"id,primarykey"`
-		Name            string `db:"name"`
-		Email           string `db:"email"`
+		db.TableName `db:"public.user"`
+
+		ID    int64  `db:"id,primarykey"`
+		Name  string `db:"name"`
+		Email string `db:"email"`
 	}
 
 	users := []User{

@@ -250,12 +250,12 @@ Available tag options:
 | `db:"column_name,default"`     | Has a database default, can be ignored on INSERT    |
 | `db:"-"`                       | Ignore field entirely                               |
 
-For struct-based insert, update, and upsert operations the struct must embed `sqldb.TableName`
+For struct-based insert, update, and upsert operations the struct must embed `db.TableName`
 with a `db` tag to specify the target table:
 
 ```go
 type User struct {
-    sqldb.TableName `db:"public.user"`
+    db.TableName `db:"public.user"`
 
     ID        uu.ID  `db:"id,primarykey,default"`
     Email     string `db:"email"`
@@ -330,7 +330,7 @@ err = db.QueryRow(ctx,
 
 ### Querying a single row by primary key
 
-For structs with an embedded `sqldb.TableName`, you can query by primary key directly:
+For structs with an embedded `db.TableName`, you can query by primary key directly:
 
 ```go
 user, err := db.QueryRowByPrimaryKey[User](ctx, userID)
@@ -380,7 +380,7 @@ err = db.QueryStructCallback[User](ctx,
 ### Insert
 
 ```go
-// Insert a struct (table name from embedded sqldb.TableName)
+// Insert a struct (table name from embedded db.TableName)
 newUser := &User{Name: "Alice", Email: "alice@example.com"}
 err = db.InsertRowStruct(ctx, newUser)
 

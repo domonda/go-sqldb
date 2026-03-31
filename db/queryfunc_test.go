@@ -1,4 +1,4 @@
-package db
+package db_test
 
 import (
 	"context"
@@ -9,13 +9,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/db"
 )
 
 type testUserRow struct {
-	sqldb.TableName `db:"users"`
-	ID              int64  `db:"id,primarykey"`
-	Name            string `db:"name"`
-	Active          bool   `db:"active"`
+	db.TableName `db:"users"`
+	ID           int64  `db:"id,primarykey"`
+	Name         string `db:"name"`
+	Active       bool   `db:"active"`
 }
 
 func TestQueryRow_DB(t *testing.T) {
@@ -32,7 +33,7 @@ func TestQueryRow_DB(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		row := QueryRow(ctx, "SELECT id, name FROM users WHERE id = $1", 1)
+		row := db.QueryRow(ctx, "SELECT id, name FROM users WHERE id = $1", 1)
 		var id int64
 		var name string
 		err := row.Scan(&id, &name)
@@ -57,7 +58,7 @@ func TestQueryRowAsStmt_DB(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		queryFunc, closeStmt, err := QueryRowAsStmt[string](ctx, "SELECT name FROM users WHERE id = $1")
+		queryFunc, closeStmt, err := db.QueryRowAsStmt[string](ctx, "SELECT name FROM users WHERE id = $1")
 		require.NoError(t, err)
 		defer closeStmt()
 
@@ -78,7 +79,7 @@ func TestQueryRowAsStmt_DB(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		_, _, err := QueryRowAsStmt[string](ctx, "SELECT name FROM users WHERE id = $1")
+		_, _, err := db.QueryRowAsStmt[string](ctx, "SELECT name FROM users WHERE id = $1")
 		require.ErrorIs(t, err, prepErr)
 		require.Equal(t, 1, prepareCount, "MockPrepare call count")
 	})
@@ -98,7 +99,7 @@ func TestQueryRowByPrimaryKey_DB(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		row, err := QueryRowByPrimaryKey[testUserRow](ctx, int64(1))
+		row, err := db.QueryRowByPrimaryKey[testUserRow](ctx, int64(1))
 		require.NoError(t, err)
 		require.Equal(t, int64(1), row.ID)
 		require.Equal(t, "Alice", row.Name)
@@ -117,7 +118,7 @@ func TestQueryRowByPrimaryKey_DB(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		_, err := QueryRowByPrimaryKey[testUserRow](ctx, int64(999))
+		_, err := db.QueryRowByPrimaryKey[testUserRow](ctx, int64(999))
 		require.ErrorIs(t, err, sql.ErrNoRows)
 		require.Equal(t, 1, queryCount, "MockQuery call count")
 	})
@@ -134,7 +135,7 @@ func TestQueryRowByPrimaryKeyOr_DB(t *testing.T) {
 		ctx := testContext(t, mock)
 
 		defaultVal := testUserRow{ID: 0, Name: "default"}
-		row, err := QueryRowByPrimaryKeyOr(ctx, defaultVal, int64(1))
+		row, err := db.QueryRowByPrimaryKeyOr(ctx, defaultVal, int64(1))
 		require.NoError(t, err)
 		require.Equal(t, int64(1), row.ID)
 		require.Equal(t, "Alice", row.Name)
@@ -151,7 +152,7 @@ func TestQueryRowByPrimaryKeyOr_DB(t *testing.T) {
 		ctx := testContext(t, mock)
 
 		defaultVal := testUserRow{ID: 0, Name: "default"}
-		row, err := QueryRowByPrimaryKeyOr(ctx, defaultVal, int64(999))
+		row, err := db.QueryRowByPrimaryKeyOr(ctx, defaultVal, int64(999))
 		require.NoError(t, err)
 		require.Equal(t, defaultVal, row)
 		require.Equal(t, 1, queryCount, "MockQuery call count")
@@ -172,7 +173,7 @@ func TestQueryRowAsMap_DB(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		m, err := QueryRowAsMap[string, any](ctx, "SELECT id, name FROM users WHERE id = $1", 1)
+		m, err := db.QueryRowAsMap[string, any](ctx, "SELECT id, name FROM users WHERE id = $1", 1)
 		require.NoError(t, err)
 		require.Len(t, m, 2)
 		require.Equal(t, int64(1), m["id"])
@@ -191,7 +192,7 @@ func TestQueryRowAsMap_DB(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		_, err := QueryRowAsMap[string, any](ctx, "SELECT id FROM users WHERE id = $1", 999)
+		_, err := db.QueryRowAsMap[string, any](ctx, "SELECT id FROM users WHERE id = $1", 999)
 		require.ErrorIs(t, err, sql.ErrNoRows)
 		require.Equal(t, 1, queryCount, "MockQuery call count")
 	})
@@ -209,7 +210,7 @@ func TestQueryRowsAsSlice_DB(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		names, err := QueryRowsAsSlice[string](ctx, "SELECT name FROM users")
+		names, err := db.QueryRowsAsSlice[string](ctx, "SELECT name FROM users")
 		require.NoError(t, err)
 		require.Equal(t, []string{"Alice", "Bob", "Charlie"}, names)
 		require.Equal(t, 1, queryCount, "MockQuery call count")
@@ -225,7 +226,7 @@ func TestQueryRowsAsSlice_DB(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		names, err := QueryRowsAsSlice[string](ctx, "SELECT name FROM users WHERE 1=0")
+		names, err := db.QueryRowsAsSlice[string](ctx, "SELECT name FROM users WHERE 1=0")
 		require.NoError(t, err)
 		require.Nil(t, names)
 		require.Equal(t, 1, queryCount, "MockQuery call count")
@@ -242,7 +243,7 @@ func TestQueryRowsAsSlice_DB(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		rows, err := QueryRowsAsSlice[testUserRow](ctx, "SELECT id, name, active FROM users")
+		rows, err := db.QueryRowsAsSlice[testUserRow](ctx, "SELECT id, name, active FROM users")
 		require.NoError(t, err)
 		require.Len(t, rows, 2)
 		require.Equal(t, int64(1), rows[0].ID)

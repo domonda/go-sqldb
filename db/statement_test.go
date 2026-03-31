@@ -1,4 +1,4 @@
-package db
+package db_test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/db"
 )
 
 func TestPrepare_Success(t *testing.T) {
@@ -23,7 +24,7 @@ func TestPrepare_Success(t *testing.T) {
 	query := /*sql*/ `SELECT id FROM users WHERE id = $1`
 
 	// when
-	stmt, err := Prepare(ctx, query)
+	stmt, err := db.Prepare(ctx, query)
 
 	// then
 	require.NoError(t, err)
@@ -44,7 +45,7 @@ func TestPrepare_Error(t *testing.T) {
 	query := /*sql*/ `SELECT 1`
 
 	// when
-	stmt, err := Prepare(ctx, query)
+	stmt, err := db.Prepare(ctx, query)
 
 	// then
 	require.ErrorIs(t, err, prepErr)
@@ -69,7 +70,7 @@ func TestStmtWithErrWrapping_Exec_Success(t *testing.T) {
 	ctx := testContext(t, mock)
 	query := /*sql*/ `DELETE FROM users WHERE id = $1`
 
-	stmt, err := Prepare(ctx, query)
+	stmt, err := db.Prepare(ctx, query)
 	require.NoError(t, err)
 	defer stmt.Close()
 
@@ -97,7 +98,7 @@ func TestStmtWithErrWrapping_Exec_Error(t *testing.T) {
 	ctx := testContext(t, mock)
 	query := /*sql*/ `DELETE FROM users WHERE id = $1`
 
-	stmt, err := Prepare(ctx, query)
+	stmt, err := db.Prepare(ctx, query)
 	require.NoError(t, err)
 	defer stmt.Close()
 
@@ -122,7 +123,7 @@ func TestStmtWithErrWrapping_Query_Success(t *testing.T) {
 	ctx := testContext(t, mock)
 	query := /*sql*/ `SELECT id FROM users WHERE id = $1`
 
-	stmt, err := Prepare(ctx, query)
+	stmt, err := db.Prepare(ctx, query)
 	require.NoError(t, err)
 	defer stmt.Close()
 
@@ -153,7 +154,7 @@ func TestStmtWithErrWrapping_Query_Error(t *testing.T) {
 	ctx := testContext(t, mock)
 	query := /*sql*/ `SELECT id FROM users WHERE id = $1`
 
-	stmt, err := Prepare(ctx, query)
+	stmt, err := db.Prepare(ctx, query)
 	require.NoError(t, err)
 	defer stmt.Close()
 

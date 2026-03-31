@@ -1,4 +1,4 @@
-package db
+package db_test
 
 import (
 	"context"
@@ -8,37 +8,38 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/db"
 )
 
 func TestSerializedTransaction(t *testing.T) {
 	ctx := testContext(t, new(sqldb.MockConn))
 
 	expectSerialized := func(ctx context.Context) error {
-		if !IsTransaction(ctx) {
+		if !db.IsTransaction(ctx) {
 			panic("not in transaction")
 		}
-		if ctx.Value(serializedTransactionCtxKey{}) == nil {
-			panic("no SerializedTransaction")
+		if !db.IsSerializedTransaction(ctx) {
+			panic("not a SerializedTransaction")
 		}
 		return nil
 	}
 
 	expectSerializedWithError := func(ctx context.Context) error {
-		if !IsTransaction(ctx) {
+		if !db.IsTransaction(ctx) {
 			panic("not in transaction")
 		}
-		if ctx.Value(serializedTransactionCtxKey{}) == nil {
-			panic("no SerializedTransaction")
+		if !db.IsSerializedTransaction(ctx) {
+			panic("not a SerializedTransaction")
 		}
 		return errors.New("expected error")
 	}
 
 	nestedSerializedTransaction := func(ctx context.Context) error {
-		return SerializedTransaction(ctx, expectSerialized)
+		return db.SerializedTransaction(ctx, expectSerialized)
 	}
 
 	okNestedTransaction := func(ctx context.Context) error {
-		return Transaction(ctx, nestedSerializedTransaction)
+		return db.Transaction(ctx, nestedSerializedTransaction)
 	}
 
 	type args struct {
@@ -57,7 +58,7 @@ func TestSerializedTransaction(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := SerializedTransaction(tt.args.ctx, tt.args.txFunc)
+			err := db.SerializedTransaction(tt.args.ctx, tt.args.txFunc)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {
@@ -71,31 +72,31 @@ func TestTransaction(t *testing.T) {
 	ctx := testContext(t, new(sqldb.MockConn))
 
 	expectNonSerialized := func(ctx context.Context) error {
-		if !IsTransaction(ctx) {
+		if !db.IsTransaction(ctx) {
 			panic("not in transaction")
 		}
-		if ctx.Value(serializedTransactionCtxKey{}) != nil {
-			panic("SerializedTransaction")
+		if db.IsSerializedTransaction(ctx) {
+			panic("unexpected SerializedTransaction")
 		}
 		return nil
 	}
 
 	expectNonSerializedWithError := func(ctx context.Context) error {
-		if !IsTransaction(ctx) {
+		if !db.IsTransaction(ctx) {
 			panic("not in transaction")
 		}
-		if ctx.Value(serializedTransactionCtxKey{}) != nil {
-			panic("SerializedTransaction")
+		if db.IsSerializedTransaction(ctx) {
+			panic("unexpected SerializedTransaction")
 		}
 		return errors.New("expected error")
 	}
 
 	nestedTransaction := func(ctx context.Context) error {
-		return Transaction(ctx, expectNonSerialized)
+		return db.Transaction(ctx, expectNonSerialized)
 	}
 
 	nestedSerializedTransaction := func(ctx context.Context) error {
-		return SerializedTransaction(ctx, nestedTransaction)
+		return db.SerializedTransaction(ctx, nestedTransaction)
 	}
 
 	type args struct {
@@ -114,7 +115,7 @@ func TestTransaction(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := Transaction(tt.args.ctx, tt.args.txFunc)
+			err := db.Transaction(tt.args.ctx, tt.args.txFunc)
 			if tt.wantErr {
 				require.Error(t, err)
 			} else {

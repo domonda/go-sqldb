@@ -11,7 +11,7 @@ import (
 // if inserting conflicts on the primary key column(s).
 // Table name, column names, and primary key columns are determined by
 // the [StructReflector] from the context. The default reflector uses `db` struct tags
-// (e.g., sqldb.TableName `db:"my_table"`, field `db:"id,primarykey"`).
+// (e.g., db.TableName `db:"my_table"`, field `db:"id,primarykey"`).
 // The struct must have at least one primary key field.
 // The configured [QueryBuilder] must implement [sqldb.UpsertQueryBuilder].
 func UpsertRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, options ...sqldb.QueryOption) error {
@@ -34,7 +34,7 @@ func UpsertRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, o
 // UpsertRowStructStmt prepares a statement for upserting rows of type S.
 // Table name, column names, and primary key columns are determined by
 // the [StructReflector] from the context. The default reflector uses `db` struct tags
-// (e.g., sqldb.TableName `db:"my_table"`, field `db:"id,primarykey"`).
+// (e.g., db.TableName `db:"my_table"`, field `db:"id,primarykey"`).
 // The struct must have at least one primary key field.
 // Returns an upsert function and a closeStmt function that must be called when done.
 // The configured [QueryBuilder] must implement [sqldb.UpsertQueryBuilder].
@@ -58,7 +58,7 @@ func UpsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, optio
 // using a prepared statement.
 // Table name, column names, and primary key columns are determined by
 // the [StructReflector] from the context. The default reflector uses `db` struct tags
-// (e.g., sqldb.TableName `db:"my_table"`, field `db:"id,primarykey"`).
+// (e.g., db.TableName `db:"my_table"`, field `db:"id,primarykey"`).
 // The configured [QueryBuilder] must implement [sqldb.UpsertQueryBuilder].
 func UpsertRowStructs[S sqldb.StructWithTableName](ctx context.Context, rowStructs []S, options ...sqldb.QueryOption) error {
 	conn := Conn(ctx)

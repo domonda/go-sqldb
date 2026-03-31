@@ -1,32 +1,19 @@
-package db
+package db_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/domonda/go-sqldb"
-	"github.com/domonda/go-sqldb/postgres"
+	"github.com/domonda/go-sqldb/db"
 )
-
-// testContext returns a context with the given connection
-// and the postgres QueryBuilder (which implements QueryBuilder,
-// UpsertQueryBuilder, and ReturningQueryBuilder) and StructReflector,
-// so that tests don't depend on global state.
-func testContext(t *testing.T, conn sqldb.Connection) context.Context {
-	t.Helper()
-	ctx := ContextWithConn(t.Context(), conn)
-	ctx = ContextWithQueryBuilder(ctx, postgres.QueryBuilder{})
-	ctx = ContextWithStructReflector(ctx, sqldb.NewTaggedStructReflector())
-	return ctx
-}
 
 func TestContextWithConn(t *testing.T) {
 	conn := new(sqldb.MockConn)
-	ctx := ContextWithConn(t.Context(), conn)
+	ctx := db.ContextWithConn(t.Context(), conn)
 
-	got := Conn(ctx)
+	got := db.Conn(ctx)
 	require.Equal(t, conn, got)
 }
 
@@ -38,13 +25,10 @@ func TestClose(t *testing.T) {
 			closeCount++
 			return nil
 		}
+		db.SetConn(conn)
+		t.Cleanup(func() { db.SetConn(sqldb.NewErrConn(sqldb.ErrNoDatabaseConnection)) })
 
-		// Save and restore global conn
-		saved := globalConn
-		defer func() { globalConn = saved }()
-
-		SetConn(conn)
-		err := Close()
+		err := db.Close()
 		require.NoError(t, err)
 		require.Equal(t, 1, closeCount, "MockClose call count")
 	})

@@ -16,7 +16,7 @@ import (
 )
 
 type User struct {
-	sqldb.TableName `db:"public.user"`
+	db.TableName `db:"public.user"`
 
 	ID uu.ID `db:"id,primarykey,default"`
 

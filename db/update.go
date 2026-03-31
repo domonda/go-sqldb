@@ -78,7 +78,7 @@ func UpdateReturningRows(ctx context.Context, table string, values sqldb.Values,
 // UpdateRowStruct updates a row in a table using the exported fields of rowStruct.
 // Table name, column names, and primary key columns are determined by
 // the [StructReflector] from the context. The default reflector uses `db` struct tags
-// (e.g., sqldb.TableName `db:"my_table"`, field `db:"column"`, `db:"id,primarykey"`).
+// (e.g., db.TableName `db:"my_table"`, field `db:"column"`, `db:"id,primarykey"`).
 // Struct fields can be filtered with options like [sqldb.IgnoreColumns] or [sqldb.OnlyColumns].
 // The struct must have at least one primary key field.
 func UpdateRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, options ...sqldb.QueryOption) error {
@@ -97,7 +97,7 @@ func UpdateRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, o
 // UpdateRowStructStmt prepares a statement for updating rows of type S.
 // Table name, column names, and primary key columns are determined by
 // the [StructReflector] from the context. The default reflector uses `db` struct tags
-// (e.g., sqldb.TableName `db:"my_table"`, field `db:"column"`, `db:"id,primarykey"`).
+// (e.g., db.TableName `db:"my_table"`, field `db:"column"`, `db:"id,primarykey"`).
 // The struct must have at least one primary key field.
 // Returns an updateFunc to update individual rows and a closeStmt
 // function that must be called when done.
@@ -117,7 +117,7 @@ func UpdateRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, optio
 // using a prepared statement for efficiency.
 // Table name, column names, and primary key columns are determined by
 // the [StructReflector] from the context. The default reflector uses `db` struct tags
-// (e.g., sqldb.TableName `db:"my_table"`, field `db:"column"`, `db:"id,primarykey"`).
+// (e.g., db.TableName `db:"my_table"`, field `db:"column"`, `db:"id,primarykey"`).
 // The struct must have at least one primary key field.
 func UpdateRowStructs[S sqldb.StructWithTableName](ctx context.Context, rowStructs []S, options ...sqldb.QueryOption) error {
 	conn := Conn(ctx)

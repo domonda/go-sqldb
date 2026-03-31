@@ -1,4 +1,4 @@
-package db
+package db_test
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/db"
 )
 
 func setupQueryCallbackCtx(t *testing.T, mock *sqldb.MockConn) context.Context {
@@ -28,7 +29,7 @@ func TestQueryCallback_ScalarSingle(t *testing.T) {
 	ctx := setupQueryCallbackCtx(t, conn)
 
 	var names []string
-	err := QueryCallback(ctx,
+	err := db.QueryCallback(ctx,
 		func(name string) { names = append(names, name) },
 		query,
 	)
@@ -54,7 +55,7 @@ func TestQueryCallback_ScalarMultiColumn(t *testing.T) {
 		age  int64
 	}
 	var entries []entry
-	err := QueryCallback(ctx,
+	err := db.QueryCallback(ctx,
 		func(name string, age int64) {
 			entries = append(entries, entry{name, age})
 		},
@@ -82,7 +83,7 @@ func TestQueryCallback_WithQueryArgs(t *testing.T) {
 	ctx := setupQueryCallbackCtx(t, conn)
 
 	got := make(map[string]string)
-	err := QueryCallback(ctx,
+	err := db.QueryCallback(ctx,
 		func(name, value string) { got[name] = value },
 		query,
 		"org-1",  // $1
@@ -103,7 +104,7 @@ func TestQueryCallback_WithContext(t *testing.T) {
 	ctx := setupQueryCallbackCtx(t, conn)
 
 	var ids []int64
-	err := QueryCallback(ctx,
+	err := db.QueryCallback(ctx,
 		func(ctx context.Context, id int64) {
 			require.NotNil(t, ctx)
 			ids = append(ids, id)
@@ -126,7 +127,7 @@ func TestQueryCallback_WithErrorReturn(t *testing.T) {
 
 	stopErr := errors.New("stop iteration")
 	var names []string
-	err := QueryCallback(ctx,
+	err := db.QueryCallback(ctx,
 		func(name string) error {
 			if name == "STOP" {
 				return stopErr
@@ -151,7 +152,7 @@ func TestQueryCallback_WithContextAndErrorReturn(t *testing.T) {
 	ctx := setupQueryCallbackCtx(t, conn)
 
 	var sum int64
-	err := QueryCallback(ctx,
+	err := db.QueryCallback(ctx,
 		func(ctx context.Context, value int64) error {
 			sum += value
 			return nil
@@ -173,7 +174,7 @@ func TestQueryCallback_ZeroRows(t *testing.T) {
 	ctx := setupQueryCallbackCtx(t, conn)
 
 	called := false
-	err := QueryCallback(ctx,
+	err := db.QueryCallback(ctx,
 		func(name string) { called = true },
 		query,
 	)
@@ -186,7 +187,7 @@ func TestQueryCallback_InvalidNotFunc(t *testing.T) {
 	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := setupQueryCallbackCtx(t, conn)
 
-	err := QueryCallback(ctx, "not a function", query)
+	err := db.QueryCallback(ctx, "not a function", query)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "expected callback function")
 }
@@ -196,7 +197,7 @@ func TestQueryCallback_InvalidVariadic(t *testing.T) {
 	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := setupQueryCallbackCtx(t, conn)
 
-	err := QueryCallback(ctx, func(args ...string) {}, query)
+	err := db.QueryCallback(ctx, func(args ...string) {}, query)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "variadic")
 }
@@ -206,7 +207,7 @@ func TestQueryCallback_InvalidNoArgs(t *testing.T) {
 	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := setupQueryCallbackCtx(t, conn)
 
-	err := QueryCallback(ctx, func() {}, query)
+	err := db.QueryCallback(ctx, func() {}, query)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no arguments")
 }
@@ -216,7 +217,7 @@ func TestQueryCallback_InvalidOnlyContext(t *testing.T) {
 	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := setupQueryCallbackCtx(t, conn)
 
-	err := QueryCallback(ctx, func(ctx context.Context) {}, query)
+	err := db.QueryCallback(ctx, func(ctx context.Context) {}, query)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no arguments")
 }
@@ -226,7 +227,7 @@ func TestQueryCallback_InvalidMultipleResults(t *testing.T) {
 	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := setupQueryCallbackCtx(t, conn)
 
-	err := QueryCallback(ctx, func(v int64) (int64, error) { return v, nil }, query)
+	err := db.QueryCallback(ctx, func(v int64) (int64, error) { return v, nil }, query)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "one result")
 }
@@ -236,7 +237,7 @@ func TestQueryCallback_InvalidNonErrorResult(t *testing.T) {
 	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := setupQueryCallbackCtx(t, conn)
 
-	err := QueryCallback(ctx, func(v int64) string { return "" }, query)
+	err := db.QueryCallback(ctx, func(v int64) string { return "" }, query)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "type error")
 }
@@ -246,7 +247,7 @@ func TestQueryCallback_InvalidChanArg(t *testing.T) {
 	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := setupQueryCallbackCtx(t, conn)
 
-	err := QueryCallback(ctx, func(ch chan int) {}, query)
+	err := db.QueryCallback(ctx, func(ch chan int) {}, query)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid argument type")
 }
@@ -256,7 +257,7 @@ func TestQueryCallback_InvalidFuncArg(t *testing.T) {
 	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := setupQueryCallbackCtx(t, conn)
 
-	err := QueryCallback(ctx, func(fn func()) {}, query)
+	err := db.QueryCallback(ctx, func(fn func()) {}, query)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid argument type")
 }
@@ -272,7 +273,7 @@ func TestQueryCallback_ColumnCountMismatch(t *testing.T) {
 	ctx := setupQueryCallbackCtx(t, conn)
 
 	// Callback takes 1 arg but query returns 2 columns
-	err := QueryCallback(ctx,
+	err := db.QueryCallback(ctx,
 		func(name string) {},
 		query,
 	)
@@ -298,7 +299,7 @@ func TestQueryCallback_ManyQueryArgsFewerCallbackArgs(t *testing.T) {
 	ctx := setupQueryCallbackCtx(t, conn)
 
 	var gotName, gotValue string
-	err := QueryCallback(ctx,
+	err := db.QueryCallback(ctx,
 		func(name, value string) {
 			gotName = name
 			gotValue = value

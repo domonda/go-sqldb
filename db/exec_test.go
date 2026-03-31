@@ -1,4 +1,4 @@
-package db
+package db_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/db"
 )
 
 func TestExec(t *testing.T) {
@@ -24,7 +25,7 @@ func TestExec(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		err := Exec(ctx, "DELETE FROM users WHERE id = $1", 42)
+		err := db.Exec(ctx, "DELETE FROM users WHERE id = $1", 42)
 		require.NoError(t, err)
 		require.Equal(t, 1, execCount, "MockExec call count")
 		require.Equal(t, "DELETE FROM users WHERE id = $1", gotQuery)
@@ -41,7 +42,7 @@ func TestExec(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		err := Exec(ctx, "DELETE FROM users WHERE id = $1", 42)
+		err := db.Exec(ctx, "DELETE FROM users WHERE id = $1", 42)
 		require.ErrorIs(t, err, testErr)
 		require.Equal(t, 1, execCount, "MockExec call count")
 	})
@@ -55,7 +56,7 @@ func TestExecRowsAffected(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		n, err := ExecRowsAffected(ctx, "UPDATE users SET active = $1", true)
+		n, err := db.ExecRowsAffected(ctx, "UPDATE users SET active = $1", true)
 		require.NoError(t, err)
 		require.Equal(t, int64(5), n)
 	})
@@ -68,7 +69,7 @@ func TestExecRowsAffected(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		n, err := ExecRowsAffected(ctx, "UPDATE users SET active = $1", true)
+		n, err := db.ExecRowsAffected(ctx, "UPDATE users SET active = $1", true)
 		require.ErrorIs(t, err, testErr)
 		require.Equal(t, int64(0), n)
 	})
@@ -88,7 +89,7 @@ func TestExecStmt(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		execFunc, closeStmt, err := ExecStmt(ctx, "DELETE FROM users WHERE id = $1")
+		execFunc, closeStmt, err := db.ExecStmt(ctx, "DELETE FROM users WHERE id = $1")
 		require.NoError(t, err)
 		defer closeStmt()
 
@@ -113,7 +114,7 @@ func TestExecStmt(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		_, _, err := ExecStmt(ctx, "DELETE FROM users WHERE id = $1")
+		_, _, err := db.ExecStmt(ctx, "DELETE FROM users WHERE id = $1")
 		require.ErrorIs(t, err, prepErr)
 		require.Equal(t, 1, prepareCount, "MockPrepare call count")
 	})
@@ -128,7 +129,7 @@ func TestExecStmt(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		execFunc, closeStmt, err := ExecStmt(ctx, "DELETE FROM users WHERE id = $1")
+		execFunc, closeStmt, err := db.ExecStmt(ctx, "DELETE FROM users WHERE id = $1")
 		require.NoError(t, err)
 		defer closeStmt()
 
@@ -148,7 +149,7 @@ func TestExecRowsAffectedStmt(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		execFunc, closeStmt, err := ExecRowsAffectedStmt(ctx, "UPDATE users SET active = $1")
+		execFunc, closeStmt, err := db.ExecRowsAffectedStmt(ctx, "UPDATE users SET active = $1")
 		require.NoError(t, err)
 		defer closeStmt()
 
@@ -167,7 +168,7 @@ func TestExecRowsAffectedStmt(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		execFunc, closeStmt, err := ExecRowsAffectedStmt(ctx, "DELETE FROM users WHERE id = $1")
+		execFunc, closeStmt, err := db.ExecRowsAffectedStmt(ctx, "DELETE FROM users WHERE id = $1")
 		require.NoError(t, err)
 		defer closeStmt()
 
@@ -190,7 +191,7 @@ func TestExecRowsAffectedStmt(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		_, _, err := ExecRowsAffectedStmt(ctx, "UPDATE users SET active = $1")
+		_, _, err := db.ExecRowsAffectedStmt(ctx, "UPDATE users SET active = $1")
 		require.ErrorIs(t, err, prepErr)
 	})
 
@@ -202,7 +203,7 @@ func TestExecRowsAffectedStmt(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		execFunc, closeStmt, err := ExecRowsAffectedStmt(ctx, "UPDATE users SET active = $1")
+		execFunc, closeStmt, err := db.ExecRowsAffectedStmt(ctx, "UPDATE users SET active = $1")
 		require.NoError(t, err)
 		defer closeStmt()
 

@@ -1,4 +1,4 @@
-package db
+package db_test
 
 import (
 	"database/sql"
@@ -9,13 +9,14 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/db"
 )
 
 func TestInsertRowStruct(t *testing.T) {
 	type Struct1 struct {
-		sqldb.TableName `db:"my_table"`
-		ID              int    `db:"id"`
-		Name            string `db:"name"`
+		db.TableName `db:"my_table"`
+		ID           int    `db:"id"`
+		Name         string `db:"name"`
 	}
 
 	tests := []struct {
@@ -43,7 +44,7 @@ func TestInsertRowStruct(t *testing.T) {
 		{
 			name: "TableName without name tag",
 			rowStruct: struct {
-				sqldb.TableName
+				db.TableName
 				ID   int    `db:"id"`
 				Name string `db:"name"`
 			}{},
@@ -54,7 +55,7 @@ func TestInsertRowStruct(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := testContext(t, tt.mock)
-			err := InsertRowStruct(ctx, tt.rowStruct, tt.options...)
+			err := db.InsertRowStruct(ctx, tt.rowStruct, tt.options...)
 			if tt.wantErr {
 				require.Error(t, err, "error from InsertStruct")
 				return
@@ -69,21 +70,21 @@ func TestInsertRowStruct_CacheWithoutOptions(t *testing.T) {
 	// Use a unique struct type so the global cache doesn't
 	// interfere with other tests or get influenced by them.
 	type CacheTestStruct struct {
-		sqldb.TableName `db:"cache_table"`
-		ID              int    `db:"id"`
-		Name            string `db:"name"`
-		Extra           string `db:"extra"`
+		db.TableName `db:"cache_table"`
+		ID           int    `db:"id"`
+		Name         string `db:"name"`
+		Extra        string `db:"extra"`
 	}
 
 	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := testContext(t, mock)
 
 	// First call populates the cache
-	err := InsertRowStruct(ctx, &CacheTestStruct{ID: 1, Name: "first", Extra: "a"})
+	err := db.InsertRowStruct(ctx, &CacheTestStruct{ID: 1, Name: "first", Extra: "a"})
 	require.NoError(t, err)
 
 	// Second call should use the cached query with same columns
-	err = InsertRowStruct(ctx, &CacheTestStruct{ID: 2, Name: "second", Extra: "b"})
+	err = db.InsertRowStruct(ctx, &CacheTestStruct{ID: 2, Name: "second", Extra: "b"})
 	require.NoError(t, err)
 
 	require.Len(t, mock.Recordings.Execs, 2)
@@ -98,21 +99,21 @@ func TestInsertRowStruct_CacheBypassedWithOptions(t *testing.T) {
 	// Use a unique struct type so the global cache doesn't
 	// interfere with other tests or get influenced by them.
 	type OptionsCacheTestStruct struct {
-		sqldb.TableName `db:"options_cache_table"`
-		ID              int    `db:"id"`
-		Name            string `db:"name"`
-		Extra           string `db:"extra"`
+		db.TableName `db:"options_cache_table"`
+		ID           int    `db:"id"`
+		Name         string `db:"name"`
+		Extra        string `db:"extra"`
 	}
 
 	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := testContext(t, mock)
 
 	// First call without options — all columns
-	err := InsertRowStruct(ctx, &OptionsCacheTestStruct{ID: 1, Name: "first", Extra: "a"})
+	err := db.InsertRowStruct(ctx, &OptionsCacheTestStruct{ID: 1, Name: "first", Extra: "a"})
 	require.NoError(t, err)
 
 	// Second call with IgnoreColumns("extra") — should produce a different query
-	err = InsertRowStruct(ctx, &OptionsCacheTestStruct{ID: 2, Name: "second"}, sqldb.IgnoreColumns("extra"))
+	err = db.InsertRowStruct(ctx, &OptionsCacheTestStruct{ID: 2, Name: "second"}, sqldb.IgnoreColumns("extra"))
 	require.NoError(t, err)
 
 	require.Len(t, mock.Recordings.Execs, 2)
@@ -132,22 +133,22 @@ func TestInsertRowStruct_CacheNotPollutedByOptions(t *testing.T) {
 	// Use a unique struct type so the global cache doesn't
 	// interfere with other tests or get influenced by them.
 	type PollutionTestStruct struct {
-		sqldb.TableName `db:"pollution_table"`
-		ID              int    `db:"id"`
-		Name            string `db:"name"`
-		Extra           string `db:"extra"`
+		db.TableName `db:"pollution_table"`
+		ID           int    `db:"id"`
+		Name         string `db:"name"`
+		Extra        string `db:"extra"`
 	}
 
 	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := testContext(t, mock)
 
 	// First call WITH options — should NOT populate the cache
-	err := InsertRowStruct(ctx, &PollutionTestStruct{ID: 1, Name: "first"}, sqldb.IgnoreColumns("extra"))
+	err := db.InsertRowStruct(ctx, &PollutionTestStruct{ID: 1, Name: "first"}, sqldb.IgnoreColumns("extra"))
 	require.NoError(t, err)
 
 	// Second call WITHOUT options — should generate query with all columns,
 	// not reuse the filtered query from the first call
-	err = InsertRowStruct(ctx, &PollutionTestStruct{ID: 2, Name: "second", Extra: "b"})
+	err = db.InsertRowStruct(ctx, &PollutionTestStruct{ID: 2, Name: "second", Extra: "b"})
 	require.NoError(t, err)
 
 	require.Len(t, mock.Recordings.Execs, 2)
@@ -205,7 +206,7 @@ func TestInsert(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := testContext(t, tt.mock)
-			err := Insert(ctx, tt.table, tt.values)
+			err := db.Insert(ctx, tt.table, tt.values)
 			if tt.wantErr {
 				require.Error(t, err, "error from Insert")
 				return

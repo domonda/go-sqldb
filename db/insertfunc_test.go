@@ -1,4 +1,4 @@
-package db
+package db_test
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/db"
 )
 
 func TestInsertUnique(t *testing.T) {
@@ -24,7 +25,7 @@ func TestInsertUnique(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		inserted, err := InsertUnique(ctx, "users", sqldb.Values{"id": 1, "name": "Alice"}, "(id)")
+		inserted, err := db.InsertUnique(ctx, "users", sqldb.Values{"id": 1, "name": "Alice"}, "(id)")
 		require.NoError(t, err)
 		require.True(t, inserted)
 		require.Equal(t, 1, execCount, "MockExecRowsAffected call count")
@@ -42,7 +43,7 @@ func TestInsertUnique(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		inserted, err := InsertUnique(ctx, "users", sqldb.Values{"id": 1, "name": "Alice"}, "(id)")
+		inserted, err := db.InsertUnique(ctx, "users", sqldb.Values{"id": 1, "name": "Alice"}, "(id)")
 		require.NoError(t, err)
 		require.False(t, inserted)
 		require.Equal(t, 1, execCount, "MockExecRowsAffected call count")
@@ -58,7 +59,7 @@ func TestInsertUnique(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		_, err := InsertUnique(ctx, "users", sqldb.Values{"id": 1}, "(id)")
+		_, err := db.InsertUnique(ctx, "users", sqldb.Values{"id": 1}, "(id)")
 		require.ErrorIs(t, err, testErr)
 		require.Equal(t, 1, execCount, "MockExecRowsAffected call count")
 	})
@@ -66,9 +67,9 @@ func TestInsertUnique(t *testing.T) {
 
 func TestInsertUniqueRowStruct(t *testing.T) {
 	type UserRow struct {
-		sqldb.TableName `db:"users"`
-		ID              int    `db:"id,primarykey"`
-		Name            string `db:"name"`
+		db.TableName `db:"users"`
+		ID           int    `db:"id,primarykey"`
+		Name         string `db:"name"`
 	}
 
 	t.Run("inserted", func(t *testing.T) {
@@ -84,7 +85,7 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		inserted, err := InsertUniqueRowStruct(ctx, &UserRow{ID: 1, Name: "Alice"}, "(id)")
+		inserted, err := db.InsertUniqueRowStruct(ctx, &UserRow{ID: 1, Name: "Alice"}, "(id)")
 		require.NoError(t, err)
 		require.True(t, inserted)
 		require.Equal(t, 1, execCount, "MockExecRowsAffected call count")
@@ -105,7 +106,7 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		inserted, err := InsertUniqueRowStruct(ctx, &UserRow{ID: 1, Name: "Alice"}, "(id)", sqldb.IgnoreColumns("name"))
+		inserted, err := db.InsertUniqueRowStruct(ctx, &UserRow{ID: 1, Name: "Alice"}, "(id)", sqldb.IgnoreColumns("name"))
 		require.NoError(t, err)
 		require.True(t, inserted)
 		require.Equal(t, 1, execCount, "MockExecRowsAffected call count")
@@ -116,9 +117,9 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 
 func TestInsertRowStructStmt(t *testing.T) {
 	type ItemRow struct {
-		sqldb.TableName `db:"items"`
-		ID              int    `db:"id"`
-		Name            string `db:"name"`
+		db.TableName `db:"items"`
+		ID           int    `db:"id"`
+		Name         string `db:"name"`
 	}
 
 	t.Run("success", func(t *testing.T) {
@@ -132,7 +133,7 @@ func TestInsertRowStructStmt(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		insertFunc, closeStmt, err := InsertRowStructStmt[ItemRow](ctx)
+		insertFunc, closeStmt, err := db.InsertRowStructStmt[ItemRow](ctx)
 		require.NoError(t, err)
 		defer closeStmt()
 
@@ -157,7 +158,7 @@ func TestInsertRowStructStmt(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		_, _, err := InsertRowStructStmt[ItemRow](ctx)
+		_, _, err := db.InsertRowStructStmt[ItemRow](ctx)
 		require.ErrorIs(t, err, prepErr)
 		require.Equal(t, 1, prepareCount, "MockPrepare call count")
 	})
@@ -165,16 +166,16 @@ func TestInsertRowStructStmt(t *testing.T) {
 
 func TestInsertRowStructs(t *testing.T) {
 	type ItemRow struct {
-		sqldb.TableName `db:"items"`
-		ID              int    `db:"id"`
-		Name            string `db:"name"`
+		db.TableName `db:"items"`
+		ID           int    `db:"id"`
+		Name         string `db:"name"`
 	}
 
 	t.Run("empty slice", func(t *testing.T) {
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		ctx := testContext(t, mock)
 
-		err := InsertRowStructs(ctx, []ItemRow{})
+		err := db.InsertRowStructs(ctx, []ItemRow{})
 		require.NoError(t, err)
 	})
 
@@ -189,7 +190,7 @@ func TestInsertRowStructs(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		err := InsertRowStructs(ctx, []ItemRow{{ID: 1, Name: "Item1"}})
+		err := db.InsertRowStructs(ctx, []ItemRow{{ID: 1, Name: "Item1"}})
 		require.NoError(t, err)
 		require.Equal(t, "INSERT INTO items(id,name) VALUES($1,$2)", gotQuery)
 		require.Equal(t, []any{1, "Item1"}, gotArgs)
@@ -213,7 +214,7 @@ func TestInsertRowStructs(t *testing.T) {
 			{ID: 2, Name: "Item2"},
 			{ID: 3, Name: "Item3"},
 		}
-		err := InsertRowStructs(ctx, rows)
+		err := db.InsertRowStructs(ctx, rows)
 		require.NoError(t, err)
 		require.Equal(t, 1, execCount, "single multi-row INSERT")
 		require.Equal(t, "INSERT INTO items(id,name) VALUES($1,$2),($3,$4),($5,$6)", gotQuery)
@@ -232,7 +233,7 @@ func TestInsertRowStructs(t *testing.T) {
 			{ID: 1, Name: "Item1"},
 			{ID: 2, Name: "Item2"},
 		}
-		err := InsertRowStructs(ctx, rows)
+		err := db.InsertRowStructs(ctx, rows)
 		require.ErrorIs(t, err, testErr)
 	})
 
@@ -258,7 +259,7 @@ func TestInsertRowStructs(t *testing.T) {
 			{ID: 3, Name: "C"},
 			{ID: 4, Name: "D"},
 		}
-		err := InsertRowStructs(ctx, rows)
+		err := db.InsertRowStructs(ctx, rows)
 		require.NoError(t, err)
 		require.Equal(t, 2, execCount, "2 full batch executions")
 		batchQuery := "INSERT INTO items(id,name) VALUES($1,$2),($3,$4)"
@@ -291,7 +292,7 @@ func TestInsertRowStructs(t *testing.T) {
 			{ID: 4, Name: "D"},
 			{ID: 5, Name: "E"},
 		}
-		err := InsertRowStructs(ctx, rows)
+		err := db.InsertRowStructs(ctx, rows)
 		require.NoError(t, err)
 		require.Equal(t, 3, execCount, "2 full batches + 1 remainder")
 		batchQuery := "INSERT INTO items(id,name) VALUES($1,$2),($3,$4)"
@@ -325,7 +326,7 @@ func TestInsertRowStructs(t *testing.T) {
 			{ID: 2, Name: "B"},
 			{ID: 3, Name: "C"},
 		}
-		err := InsertRowStructs(ctx, rows)
+		err := db.InsertRowStructs(ctx, rows)
 		require.NoError(t, err)
 		require.Equal(t, 2, execCount, "1 full batch + 1 remainder")
 		require.Equal(t, "INSERT INTO items(id,name) VALUES($1,$2),($3,$4)", gotQueries[0])
@@ -354,7 +355,7 @@ func TestInsertRowStructs(t *testing.T) {
 			{ID: 1, Name: "A"},
 			{ID: 2, Name: "B"},
 		}
-		err := InsertRowStructs(ctx, rows)
+		err := db.InsertRowStructs(ctx, rows)
 		require.NoError(t, err)
 		require.Equal(t, 1, execCount, "single batch exec")
 		require.Equal(t, "INSERT INTO items(id,name) VALUES($1,$2),($3,$4)", gotQuery)

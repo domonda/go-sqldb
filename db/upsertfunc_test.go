@@ -1,4 +1,4 @@
-package db
+package db_test
 
 import (
 	"context"
@@ -8,14 +8,15 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/db"
 )
 
 func TestUpsertRowStruct(t *testing.T) {
 	type UserRow struct {
-		sqldb.TableName `db:"users"`
-		ID              int    `db:"id,primarykey"`
-		Name            string `db:"name"`
-		Active          bool   `db:"active"`
+		db.TableName `db:"users"`
+		ID           int    `db:"id,primarykey"`
+		Name         string `db:"name"`
+		Active       bool   `db:"active"`
 	}
 
 	t.Run("success", func(t *testing.T) {
@@ -31,7 +32,7 @@ func TestUpsertRowStruct(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		err := UpsertRowStruct(ctx, &UserRow{ID: 1, Name: "Alice", Active: true})
+		err := db.UpsertRowStruct(ctx, &UserRow{ID: 1, Name: "Alice", Active: true})
 		require.NoError(t, err)
 		require.Equal(t, 1, execCount, "MockExec call count")
 		require.Equal(t, "INSERT INTO users(id,name,active) VALUES($1,$2,$3) ON CONFLICT (id) DO UPDATE SET name=$2, active=$3", gotQuery)
@@ -51,7 +52,7 @@ func TestUpsertRowStruct(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		err := UpsertRowStruct(ctx, &UserRow{ID: 1, Name: "Alice", Active: true}, sqldb.IgnoreColumns("active"))
+		err := db.UpsertRowStruct(ctx, &UserRow{ID: 1, Name: "Alice", Active: true}, sqldb.IgnoreColumns("active"))
 		require.NoError(t, err)
 		require.Equal(t, 1, execCount, "MockExec call count")
 		require.Equal(t, "INSERT INTO users(id,name) VALUES($1,$2) ON CONFLICT (id) DO UPDATE SET name=$2", gotQuery)
@@ -68,7 +69,7 @@ func TestUpsertRowStruct(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		err := UpsertRowStruct(ctx, &UserRow{ID: 1, Name: "Alice"})
+		err := db.UpsertRowStruct(ctx, &UserRow{ID: 1, Name: "Alice"})
 		require.ErrorIs(t, err, testErr)
 		require.Equal(t, 1, execCount, "MockExec call count")
 	})
@@ -77,16 +78,16 @@ func TestUpsertRowStruct(t *testing.T) {
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		ctx := testContext(t, mock)
 
-		err := UpsertRowStruct(ctx, (*UserRow)(nil))
+		err := db.UpsertRowStruct(ctx, (*UserRow)(nil))
 		require.Error(t, err)
 	})
 }
 
 func TestUpsertRowStructs(t *testing.T) {
 	type ItemRow struct {
-		sqldb.TableName `db:"items"`
-		ID              int    `db:"id,primarykey"`
-		Name            string `db:"name"`
+		db.TableName `db:"items"`
+		ID           int    `db:"id,primarykey"`
+		Name         string `db:"name"`
 	}
 
 	t.Run("success multiple rows", func(t *testing.T) {
@@ -106,7 +107,7 @@ func TestUpsertRowStructs(t *testing.T) {
 			{ID: 1, Name: "Item1"},
 			{ID: 2, Name: "Item2"},
 		}
-		err := UpsertRowStructs(ctx, rows)
+		err := db.UpsertRowStructs(ctx, rows)
 		require.NoError(t, err)
 		require.Equal(t, 2, execCount, "MockExec call count")
 		for _, q := range queries {
@@ -120,7 +121,7 @@ func TestUpsertRowStructs(t *testing.T) {
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		ctx := testContext(t, mock)
 
-		err := UpsertRowStructs(ctx, []ItemRow{})
+		err := db.UpsertRowStructs(ctx, []ItemRow{})
 		require.NoError(t, err)
 	})
 
@@ -141,7 +142,7 @@ func TestUpsertRowStructs(t *testing.T) {
 			{ID: 1, Name: "Item1"},
 			{ID: 2, Name: "Item2"},
 		}
-		err := UpsertRowStructs(ctx, rows)
+		err := db.UpsertRowStructs(ctx, rows)
 		require.ErrorIs(t, err, testErr)
 	})
 }

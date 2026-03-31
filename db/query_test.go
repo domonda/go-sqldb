@@ -1,4 +1,4 @@
-package db
+package db_test
 
 import (
 	"database/sql"
@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/db"
 )
 
 func TestQueryRowAs(t *testing.T) {
@@ -29,12 +30,12 @@ func TestQueryRowAs(t *testing.T) {
 	ctx := testContext(t, mock)
 
 	// id 666 has a row with the value true
-	value, err := QueryRowAs[bool](ctx, query, 666)
+	value, err := db.QueryRowAs[bool](ctx, query, 666)
 	require.NoError(t, err)
 	require.Equal(t, true, value, "QueryRowAs[bool] result")
 
 	// id 777 has no rows
-	value, err = QueryRowAs[bool](ctx, query, 777)
+	value, err = db.QueryRowAs[bool](ctx, query, 777)
 	require.ErrorIs(t, err, sql.ErrNoRows, "QueryRowAs[bool] result for 777 is sql.ErrNoRows")
 }
 
@@ -57,14 +58,14 @@ func TestQueryRowAs2(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		// int64 driver value can scan into int variable
-		id, name, err := QueryRowAs2[int, string](ctx, query, 1)
+		id, name, err := db.QueryRowAs2[int, string](ctx, query, 1)
 		require.NoError(t, err)
 		require.Equal(t, 1, id)
 		require.Equal(t, "Alice", name)
 	})
 
 	t.Run("no rows", func(t *testing.T) {
-		_, _, err := QueryRowAs2[int, string](ctx, query, 999)
+		_, _, err := db.QueryRowAs2[int, string](ctx, query, 999)
 		require.ErrorIs(t, err, sql.ErrNoRows)
 	})
 }
@@ -87,7 +88,7 @@ func TestQueryRowAs3(t *testing.T) {
 	ctx := testContext(t, mock)
 
 	t.Run("success", func(t *testing.T) {
-		id, name, active, err := QueryRowAs3[int, string, bool](ctx, query, 1)
+		id, name, active, err := db.QueryRowAs3[int, string, bool](ctx, query, 1)
 		require.NoError(t, err)
 		require.Equal(t, 1, id)
 		require.Equal(t, "Alice", name)
@@ -95,7 +96,7 @@ func TestQueryRowAs3(t *testing.T) {
 	})
 
 	t.Run("no rows", func(t *testing.T) {
-		_, _, _, err := QueryRowAs3[int, string, bool](ctx, query, 999)
+		_, _, _, err := db.QueryRowAs3[int, string, bool](ctx, query, 999)
 		require.ErrorIs(t, err, sql.ErrNoRows)
 	})
 }
@@ -118,7 +119,7 @@ func TestQueryRowAs4(t *testing.T) {
 	ctx := testContext(t, mock)
 
 	t.Run("success", func(t *testing.T) {
-		id, name, active, score, err := QueryRowAs4[int, string, bool, float64](ctx, query, 1)
+		id, name, active, score, err := db.QueryRowAs4[int, string, bool, float64](ctx, query, 1)
 		require.NoError(t, err)
 		require.Equal(t, 1, id)
 		require.Equal(t, "Alice", name)
@@ -127,7 +128,7 @@ func TestQueryRowAs4(t *testing.T) {
 	})
 
 	t.Run("no rows", func(t *testing.T) {
-		_, _, _, _, err := QueryRowAs4[int, string, bool, float64](ctx, query, 999)
+		_, _, _, _, err := db.QueryRowAs4[int, string, bool, float64](ctx, query, 999)
 		require.ErrorIs(t, err, sql.ErrNoRows)
 	})
 }
@@ -150,7 +151,7 @@ func TestQueryRowAs5(t *testing.T) {
 	ctx := testContext(t, mock)
 
 	t.Run("success", func(t *testing.T) {
-		id, name, active, score, label, err := QueryRowAs5[int, string, bool, float64, string](ctx, query, 1)
+		id, name, active, score, label, err := db.QueryRowAs5[int, string, bool, float64, string](ctx, query, 1)
 		require.NoError(t, err)
 		require.Equal(t, 1, id)
 		require.Equal(t, "Alice", name)
@@ -160,7 +161,7 @@ func TestQueryRowAs5(t *testing.T) {
 	})
 
 	t.Run("no rows", func(t *testing.T) {
-		_, _, _, _, _, err := QueryRowAs5[int, string, bool, float64, string](ctx, query, 999)
+		_, _, _, _, _, err := db.QueryRowAs5[int, string, bool, float64, string](ctx, query, 999)
 		require.ErrorIs(t, err, sql.ErrNoRows)
 	})
 }
@@ -183,12 +184,12 @@ func TestQueryRowAsOr(t *testing.T) {
 	ctx := testContext(t, mock)
 
 	// id 666 has a row with the value true
-	value, err := QueryRowAsOr(ctx, false, query, 666)
+	value, err := db.QueryRowAsOr(ctx, false, query, 666)
 	require.NoError(t, err)
 	require.Equal(t, true, value, "QueryRowAsOr[bool] result for 666")
 
 	// id 777 has no rows
-	value, err = QueryRowAsOr(ctx, false, query, 777)
+	value, err = db.QueryRowAsOr(ctx, false, query, 777)
 	require.NoError(t, err)
 	require.Equal(t, false, value, "QueryRowAsOr[bool] result for 777")
 }
@@ -242,7 +243,7 @@ func TestQueryStrings(t *testing.T) {
 	ctx := testContext(t, mock)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotRows, err := QueryRowsAsStrings(ctx, tt.query, tt.args...)
+			gotRows, err := db.QueryRowsAsStrings(ctx, tt.query, tt.args...)
 			if tt.wantErr {
 				require.Error(t, err, "QueryStrings() error")
 				return

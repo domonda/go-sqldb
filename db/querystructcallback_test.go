@@ -1,4 +1,4 @@
-package db
+package db_test
 
 import (
 	"database/sql/driver"
@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/db"
 )
 
 func TestQueryStructCallback_Struct(t *testing.T) {
@@ -30,7 +31,7 @@ func TestQueryStructCallback_Struct(t *testing.T) {
 	ctx := testContext(t, conn)
 
 	var got []user
-	err := QueryStructCallback(ctx,
+	err := db.QueryStructCallback(ctx,
 		func(u user) error {
 			got = append(got, u)
 			return nil
@@ -59,7 +60,7 @@ func TestQueryStructCallback_PointerToStruct(t *testing.T) {
 	ctx := testContext(t, conn)
 
 	var got []*user
-	err := QueryStructCallback(ctx,
+	err := db.QueryStructCallback(ctx,
 		func(u *user) error {
 			got = append(got, u)
 			return nil
@@ -87,7 +88,7 @@ func TestQueryStructCallback_ErrorInterruptsIteration(t *testing.T) {
 
 	stopErr := errors.New("stop iteration")
 	var got []string
-	err := QueryStructCallback(ctx,
+	err := db.QueryStructCallback(ctx,
 		func(r row) error {
 			if r.Name == "STOP" {
 				return stopErr
@@ -116,7 +117,7 @@ func TestQueryStructCallback_ZeroRows(t *testing.T) {
 	ctx := testContext(t, conn)
 
 	called := false
-	err := QueryStructCallback(ctx,
+	err := db.QueryStructCallback(ctx,
 		func(r row) error {
 			called = true
 			return nil
@@ -132,7 +133,7 @@ func TestQueryStructCallback_InvalidType(t *testing.T) {
 	conn := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 	ctx := testContext(t, conn)
 
-	err := QueryStructCallback(ctx,
+	err := db.QueryStructCallback(ctx,
 		func(s string) error { return nil },
 		query,
 	)

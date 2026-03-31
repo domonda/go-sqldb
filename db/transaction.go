@@ -35,6 +35,12 @@ func IsTransaction(ctx context.Context) bool {
 	return Conn(ctx).Transaction().Active()
 }
 
+// IsSerializedTransaction reports whether ctx is within
+// a [SerializedTransaction].
+func IsSerializedTransaction(ctx context.Context) bool {
+	return ctx.Value(serializedTransactionCtxKey{}) != nil
+}
+
 // ValidateWithinTransaction returns [sqldb.ErrNotWithinTransaction]
 // if the database connection from the context is not a transaction.
 func ValidateWithinTransaction(ctx context.Context) error {

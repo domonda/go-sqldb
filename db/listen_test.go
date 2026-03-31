@@ -1,4 +1,4 @@
-package db
+package db_test
 
 import (
 	"errors"
@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/domonda/go-sqldb"
+	"github.com/domonda/go-sqldb/db"
 )
 
 func TestListenOnChannel(t *testing.T) {
@@ -21,7 +22,7 @@ func TestListenOnChannel(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		err := ListenOnChannel(ctx, "my_channel", nil, nil)
+		err := db.ListenOnChannel(ctx, "my_channel", nil, nil)
 		require.NoError(t, err)
 		require.Equal(t, 1, listenCount, "MockListenOnChannel call count")
 		require.Equal(t, "my_channel", gotChannel)
@@ -37,7 +38,7 @@ func TestListenOnChannel(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		err := ListenOnChannel(ctx, "my_channel", nil, nil)
+		err := db.ListenOnChannel(ctx, "my_channel", nil, nil)
 		require.ErrorIs(t, err, testErr)
 		require.Equal(t, 1, listenCount, "MockListenOnChannel call count")
 	})
@@ -46,7 +47,7 @@ func TestListenOnChannel(t *testing.T) {
 		// NonConnForTest only implements Connection, not ListenerConnection
 		ctx := testContext(t, sqldb.NonConnForTest(t))
 
-		err := ListenOnChannel(ctx, "my_channel", nil, nil)
+		err := db.ListenOnChannel(ctx, "my_channel", nil, nil)
 		require.ErrorIs(t, err, errors.ErrUnsupported)
 	})
 }
@@ -63,7 +64,7 @@ func TestUnlistenChannel(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		err := UnlistenChannel(ctx, "my_channel")
+		err := db.UnlistenChannel(ctx, "my_channel")
 		require.NoError(t, err)
 		require.Equal(t, 1, unlistenCount, "MockUnlistenChannel call count")
 		require.Equal(t, "my_channel", gotChannel)
@@ -79,7 +80,7 @@ func TestUnlistenChannel(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		err := UnlistenChannel(ctx, "my_channel")
+		err := db.UnlistenChannel(ctx, "my_channel")
 		require.ErrorIs(t, err, testErr)
 		require.Equal(t, 1, unlistenCount, "MockUnlistenChannel call count")
 	})
@@ -87,7 +88,7 @@ func TestUnlistenChannel(t *testing.T) {
 	t.Run("non-listener connection returns unsupported", func(t *testing.T) {
 		ctx := testContext(t, sqldb.NonConnForTest(t))
 
-		err := UnlistenChannel(ctx, "my_channel")
+		err := db.UnlistenChannel(ctx, "my_channel")
 		require.ErrorIs(t, err, errors.ErrUnsupported)
 	})
 }
@@ -102,7 +103,7 @@ func TestIsListeningOnChannel(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		result := IsListeningOnChannel(ctx, "my_channel")
+		result := db.IsListeningOnChannel(ctx, "my_channel")
 		require.True(t, result)
 		require.Equal(t, 1, isListeningCount, "MockIsListeningOnChannel call count")
 	})
@@ -116,7 +117,7 @@ func TestIsListeningOnChannel(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		result := IsListeningOnChannel(ctx, "my_channel")
+		result := db.IsListeningOnChannel(ctx, "my_channel")
 		require.False(t, result)
 		require.Equal(t, 1, isListeningCount, "MockIsListeningOnChannel call count")
 	})
@@ -124,7 +125,7 @@ func TestIsListeningOnChannel(t *testing.T) {
 	t.Run("non-listener connection returns false", func(t *testing.T) {
 		ctx := testContext(t, sqldb.NonConnForTest(t))
 
-		result := IsListeningOnChannel(ctx, "my_channel")
+		result := db.IsListeningOnChannel(ctx, "my_channel")
 		require.False(t, result)
 	})
 }

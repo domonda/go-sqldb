@@ -27,6 +27,45 @@ defer conn.Close()
 db.SetConn(conn)
 ```
 
+### Struct-based operations
+
+Define a struct with an embedded `db.TableName` to specify the table and use `db` struct tags to map fields to columns. Mark primary key columns with `,primarykey` and columns that have database defaults with `,default`:
+
+```go
+type User struct {
+    db.TableName `db:"public.user"`
+
+    ID        uu.ID     `db:"id,primarykey"`
+    Email     string    `db:"email"`
+    Name      string    `db:"name"`
+    CreatedAt time.Time `db:"created_at,default"`
+}
+```
+
+Insert a row and then query it back by primary key:
+
+```go
+userID := uu.IDv4()
+
+err := db.InsertRowStruct(ctx, 
+    &User{
+        ID:    userID,
+        Email: "alice@example.com",
+        Name:  "Alice",
+    },
+    db.IgnoreHasDefault, // prevents the zero CreatedAt field to be inserted
+)
+if err != nil {
+    return err
+}
+
+// user.CreatedAt will contain the default value created for the new row
+user, err := db.QueryRowByPrimaryKey[User](ctx, userID)
+if err != nil {
+    return err
+}
+```
+
 ### Transactions
 
 `db.Transaction` wraps a callback in a database transaction. Inside the callback, `ctx` carries the transaction connection so all `db.*` calls use it transparently:
