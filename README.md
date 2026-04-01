@@ -34,6 +34,11 @@
   - [Query options](#query-options)
 - [Low-level API](#low-level-api)
 - [Internal caching](#internal-caching)
+- [Performance optimizations](#performance-optimizations)
+  - [Struct reflection caching](#struct-reflection-caching)
+  - [Batch insert optimization (`InsertRowStructs`)](#batch-insert-optimization-insertrowstructs)
+  - [Batch update and delete optimization (`UpdateRowStructs`, `DeleteRowStructs`)](#batch-update-and-delete-optimization-updaterowstructs-deleterowstructs)
+  - [Transaction nesting avoidance](#transaction-nesting-avoidance)
 - [Testing](#testing)
   - [MockConn for unit tests](#mockconn-for-unit-tests)
   - [Integration tests](#integration-tests)
@@ -660,6 +665,36 @@ Cached data includes:
 Query caches are bypassed when `QueryOption` arguments are provided, since options like `ColumnFilter` change which columns are included and are not part of the cache key.
 
 All caches can be cleared with `ClearQueryCaches()` which is useful for testing and debugging.
+
+
+## Performance optimizations
+
+### Struct reflection caching
+
+Struct reflection is expensive, so the package caches all reflected struct metadata on first use. The reflection cache stores flattened field metadata (column names, flags, multi-level field indices) keyed by the struct's `reflect.Type` and `StructReflector`. A read-lock fast path serves cached entries without contention; a write-lock slow path builds and stores entries on cache miss. Subsequent operations on the same struct type skip reflection entirely and use the cached field indices to extract values directly via `reflect.Value.FieldByIndex`.
+
+The same caching principle applies to generated SQL strings. Each struct-based operation (insert, update, upsert, delete, query) caches its generated query along with the struct field indices needed to collect argument values. On cache hit, the operation jumps straight to value extraction and query execution — no reflection, no string building.
+
+### Batch insert optimization (`InsertRowStructs`)
+
+`InsertRowStructs` uses a multi-level optimization strategy for inserting slices of structs:
+
+1. **Single row**: Delegates to `InsertRowStruct`, which benefits from the query cache described above.
+2. **Single batch** (all rows fit within `MaxArgs()`): Generates a single multi-row `INSERT INTO ... VALUES (...), (...), ...` statement and executes it directly — no transaction, no prepared statement.
+3. **Multiple batches**: Wraps all batches in a transaction for atomicity. The batch size is calculated as `MaxArgs() / numColumns` to maximize rows per statement while staying within the driver's parameter limit.
+   - When there are **2 or more full batches**, a prepared statement is created for the full-batch query and reused across all full batches. This avoids repeated query parsing and planning on the database server.
+   - A **single full batch** is executed directly without preparing.
+   - Any **remainder rows** (fewer than a full batch) are executed as a separate, smaller multi-row INSERT.
+
+This approach minimizes both round-trips to the database and per-statement overhead, while respecting each driver's maximum argument limit (e.g. 65,535 for PostgreSQL, 2,100 for SQL Server).
+
+### Batch update and delete optimization (`UpdateRowStructs`, `DeleteRowStructs`)
+
+`UpdateRowStructs` and `DeleteRowStructs` follow the same pattern as `InsertRowStructs`: all operations are wrapped in a transaction for atomicity, and a prepared statement is created once and reused across all rows. For a single row, both functions delegate to their single-row counterpart (`UpdateRowStruct` / `DeleteRowStruct`) to avoid transaction and prepare overhead.
+
+### Transaction nesting avoidance
+
+`Transaction()` detects when the connection is already inside an active transaction and reuses it instead of starting a nested one. This is particularly important for batch operations like `InsertRowStructs` that wrap themselves in a transaction — when called from within an existing transaction, no extra transaction setup or teardown occurs. (Use `IsolatedTransaction()` when a new, independent transaction is needed even within an existing one.)
 
 
 ## Testing

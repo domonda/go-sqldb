@@ -130,6 +130,17 @@ func InsertUniqueRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableN
 }
 
 // InsertRowStructs inserts a slice of structs as new rows into the table for the given struct type.
+// Rows are batched into multi-row INSERT statements respecting the driver's MaxArgs() limit.
+//
+// Optimization strategy:
+//   - Single row: delegates to [InsertRowStruct] (benefits from the query cache).
+//   - Single batch (all rows fit within MaxArgs): executes a single multi-row INSERT directly
+//     without a transaction or prepared statement.
+//   - Multiple batches: wraps all batches in a transaction for atomicity.
+//     When there are 2+ full batches, a prepared statement is created and reused
+//     across all full batches to avoid repeated query parsing on the server.
+//     Any remainder rows are executed as a separate, smaller multi-row INSERT.
+//
 // Table name and column names are determined by the [StructReflector] from the context.
 // The default reflector uses `db` struct tags
 // (e.g., db.TableName `db:"my_table"`, field `db:"column"`).
