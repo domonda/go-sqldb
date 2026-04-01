@@ -8,7 +8,7 @@ import (
 )
 
 // Insert a new row into table using the values.
-func Insert(ctx context.Context, table string, values sqldb.Values) error {
+func Insert(ctx context.Context, table string, values Values) error {
 	conn := Conn(ctx)
 	return sqldb.Insert(
 		ctx,
@@ -24,7 +24,7 @@ func Insert(ctx context.Context, table string, values sqldb.Values) error {
 // or does nothing if the onConflict statement applies.
 // Returns if a row was inserted.
 // The configured [QueryBuilder] must implement [sqldb.UpsertQueryBuilder].
-func InsertUnique(ctx context.Context, table string, values sqldb.Values, onConflict string) (inserted bool, err error) {
+func InsertUnique(ctx context.Context, table string, values Values, onConflict string) (inserted bool, err error) {
 	conn := Conn(ctx)
 	builder, ok := QueryBuilder(ctx).(sqldb.UpsertQueryBuilder)
 	if !ok {

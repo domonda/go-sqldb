@@ -25,7 +25,7 @@ func TestInsertUnique(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		inserted, err := db.InsertUnique(ctx, "users", sqldb.Values{"id": 1, "name": "Alice"}, "(id)")
+		inserted, err := db.InsertUnique(ctx, "users", db.Values{"id": 1, "name": "Alice"}, "(id)")
 		require.NoError(t, err)
 		require.True(t, inserted)
 		require.Equal(t, 1, execCount, "MockExecRowsAffected call count")
@@ -43,7 +43,7 @@ func TestInsertUnique(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		inserted, err := db.InsertUnique(ctx, "users", sqldb.Values{"id": 1, "name": "Alice"}, "(id)")
+		inserted, err := db.InsertUnique(ctx, "users", db.Values{"id": 1, "name": "Alice"}, "(id)")
 		require.NoError(t, err)
 		require.False(t, inserted)
 		require.Equal(t, 1, execCount, "MockExecRowsAffected call count")
@@ -59,7 +59,7 @@ func TestInsertUnique(t *testing.T) {
 		}
 		ctx := testContext(t, mock)
 
-		_, err := db.InsertUnique(ctx, "users", sqldb.Values{"id": 1}, "(id)")
+		_, err := db.InsertUnique(ctx, "users", db.Values{"id": 1}, "(id)")
 		require.ErrorIs(t, err, testErr)
 		require.Equal(t, 1, execCount, "MockExecRowsAffected call count")
 	})
