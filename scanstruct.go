@@ -35,9 +35,9 @@ func scanStruct(row rowScanner, columns []string, reflector StructReflector, des
 		return fmt.Errorf("scanStruct expected struct or pointer to struct but got %T", destStruct)
 	}
 
-	fieldPointers, err := ReflectStructColumnPointers(v, reflector, columns)
+	fieldPointers, err := reflector.ColumnPointers(v, columns)
 	if err != nil {
-		return fmt.Errorf("scanStruct error from ReflectStructColumnPointers: %w", err)
+		return fmt.Errorf("scanStruct error from ColumnPointers: %w", err)
 	}
 	err = row.Scan(fieldPointers...)
 	if err != nil {

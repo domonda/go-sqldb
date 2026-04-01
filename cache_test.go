@@ -291,7 +291,7 @@ func BenchmarkReflectStructColumnsAndValues(b *testing.B) {
 	})
 }
 
-func BenchmarkReflectStructColumnPointers(b *testing.B) {
+func BenchmarkColumnPointers(b *testing.B) {
 	reflector := NewTaggedStructReflector()
 
 	b.Run("flat", func(b *testing.B) {
@@ -299,7 +299,7 @@ func BenchmarkReflectStructColumnPointers(b *testing.B) {
 		v := reflect.ValueOf(&s).Elem()
 		columns := []string{"id", "name", "active"}
 		for range b.N {
-			_, _ = ReflectStructColumnPointers(v, reflector, columns)
+			_, _ = reflector.ColumnPointers(v, columns)
 		}
 	})
 	b.Run("embedded", func(b *testing.B) {
@@ -310,7 +310,7 @@ func BenchmarkReflectStructColumnPointers(b *testing.B) {
 		v := reflect.ValueOf(&s).Elem()
 		columns := []string{"id", "emb_val", "deep_val"}
 		for range b.N {
-			_, _ = ReflectStructColumnPointers(v, reflector, columns)
+			_, _ = reflector.ColumnPointers(v, columns)
 		}
 	})
 }
@@ -481,11 +481,11 @@ func TestReflectStructDuplicateColumnErrorPropagation(t *testing.T) {
 		}
 	})
 
-	t.Run("ReflectStructColumnPointers", func(t *testing.T) {
+	t.Run("ColumnPointers", func(t *testing.T) {
 		ClearQueryCaches()
 		s := reflectDuplicateColumnStruct{Name1: "a", Name2: "b"}
 		v := reflect.ValueOf(&s).Elem()
-		_, err := ReflectStructColumnPointers(v, reflector, []string{"name"})
+		_, err := reflector.ColumnPointers(v, []string{"name"})
 		if err == nil {
 			t.Fatal("expected error")
 		}

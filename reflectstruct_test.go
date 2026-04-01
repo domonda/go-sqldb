@@ -466,14 +466,14 @@ func TestReflectStructColumnsAndFields(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// ReflectStructColumnPointers
+// TaggedStructReflector.ColumnPointers
 // ---------------------------------------------------------------------------
 
-func TestReflectStructColumnPointers(t *testing.T) {
+func TestTaggedStructReflector_ColumnPointers(t *testing.T) {
 	t.Run("flat struct", func(t *testing.T) {
 		s := reflectTestStruct{ID: 1, Name: "Test", Active: true}
 		v := reflect.ValueOf(&s).Elem()
-		ptrs, err := ReflectStructColumnPointers(v, reflectTestReflector, []string{"id", "name", "active"})
+		ptrs, err := reflectTestReflector.ColumnPointers(v, []string{"id", "name", "active"})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -503,7 +503,7 @@ func TestReflectStructColumnPointers(t *testing.T) {
 			reflectEmbedded: reflectEmbedded{EmbVal: 77, reflectDeepEmbedded: reflectDeepEmbedded{DeepVal: "d"}},
 		}
 		v := reflect.ValueOf(&s).Elem()
-		ptrs, err := ReflectStructColumnPointers(v, reflectTestReflector, []string{"id", "emb_val", "deep_val"})
+		ptrs, err := reflectTestReflector.ColumnPointers(v, []string{"id", "emb_val", "deep_val"})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -522,25 +522,58 @@ func TestReflectStructColumnPointers(t *testing.T) {
 	t.Run("no columns error", func(t *testing.T) {
 		s := reflectTestStruct{}
 		v := reflect.ValueOf(&s).Elem()
-		_, err := ReflectStructColumnPointers(v, reflectTestReflector, nil)
+		_, err := reflectTestReflector.ColumnPointers(v, nil)
 		if err == nil {
 			t.Error("expected error for no columns")
 		}
 	})
 
-	t.Run("unmapped column error", func(t *testing.T) {
+	t.Run("unmapped column error with FailOnUnmappedColumns", func(t *testing.T) {
+		reflector := &TaggedStructReflector{
+			NameTag:               "db",
+			Ignore:                "-",
+			PrimaryKey:            "primarykey",
+			ReadOnly:              "readonly",
+			Default:               "default",
+			UntaggedNameFunc:      IgnoreStructField,
+			FailOnUnmappedColumns: true,
+		}
 		s := reflectTestStruct{}
 		v := reflect.ValueOf(&s).Elem()
-		_, err := ReflectStructColumnPointers(v, reflectTestReflector, []string{"nonexistent"})
+		_, err := reflector.ColumnPointers(v, []string{"nonexistent"})
 		if err == nil {
-			t.Error("expected error for unmapped column")
+			t.Error("expected error for unmapped column with FailOnUnmappedColumns")
+		}
+	})
+
+	t.Run("unmapped column ignored", func(t *testing.T) {
+		s := reflectTestStruct{ID: 42}
+		v := reflect.ValueOf(&s).Elem()
+		ptrs, err := reflectTestReflector.ColumnPointers(v, []string{"id", "nonexistent"})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(ptrs) != 2 {
+			t.Fatalf("got %d pointers, want 2", len(ptrs))
+		}
+		// First pointer should be the mapped struct field
+		idPtr, ok := ptrs[0].(*int64)
+		if !ok {
+			t.Fatalf("ptrs[0] is %T, want *int64", ptrs[0])
+		}
+		if *idPtr != 42 {
+			t.Errorf("*idPtr = %d, want 42", *idPtr)
+		}
+		// Second pointer should be a non-nil discard destination
+		if ptrs[1] == nil {
+			t.Error("ptrs[1] is nil, want non-nil discard pointer")
 		}
 	})
 
 	t.Run("mutation through pointer", func(t *testing.T) {
 		s := reflectTestStruct{ID: 0, Name: ""}
 		v := reflect.ValueOf(&s).Elem()
-		ptrs, err := ReflectStructColumnPointers(v, reflectTestReflector, []string{"id", "name"})
+		ptrs, err := reflectTestReflector.ColumnPointers(v, []string{"id", "name"})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

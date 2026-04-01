@@ -1,10 +1,8 @@
 package sqldb
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
-	"strings"
 )
 
 // PrimaryKeyColumnsOfStruct returns the column names of the primary key fields
@@ -114,43 +112,6 @@ func ReflectStructColumnsAndFields(structVal reflect.Value, reflector StructRefl
 		fields = append(fields, f.StructField.Type)
 	}
 	return columns, fields, nil
-}
-
-// ReflectStructColumnPointers returns addressable pointers to the struct fields
-// corresponding to the given column names, suitable for use with Rows.Scan.
-func ReflectStructColumnPointers(structVal reflect.Value, reflector StructReflector, columns []string) (pointers []any, err error) {
-	if len(columns) == 0 {
-		return nil, errors.New("no columns")
-	}
-	rs, err := reflectStruct(reflector, structVal.Type())
-	if err != nil {
-		return nil, err
-	}
-	pointers = make([]any, len(columns))
-	for i, col := range columns {
-		idx, ok := rs.ColumnIndex[col]
-		if !ok {
-			continue
-		}
-		pointers[i] = structVal.FieldByIndex(rs.Fields[idx].FieldIndex).Addr().Interface()
-	}
-	for _, ptr := range pointers {
-		if ptr != nil {
-			continue
-		}
-		nilCols := new(strings.Builder)
-		for i, ptr := range pointers {
-			if ptr != nil {
-				continue
-			}
-			if nilCols.Len() > 0 {
-				nilCols.WriteString(", ")
-			}
-			fmt.Fprintf(nilCols, "column=%s, index=%d", columns[i], i)
-		}
-		return nil, fmt.Errorf("columns have no mapped struct fields in %s: %s", structVal.Type(), nilCols)
-	}
-	return pointers, nil
 }
 
 func derefStruct(v reflect.Value) (reflect.Value, error) {

@@ -1,6 +1,7 @@
 package sqldb
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
@@ -17,17 +18,23 @@ type StructReflector interface {
 	// An empty name and true for use indicates an embedded struct
 	// field whose fields should be recursively mapped.
 	MapStructField(field reflect.StructField) (column ColumnInfo, use bool)
+
+	// ColumnPointers returns addressable pointers to the struct fields
+	// corresponding to the given query result column names,
+	// suitable for use with Rows.Scan.
+	ColumnPointers(structVal reflect.Value, columns []string) (pointers []any, err error)
 }
 
 // NewTaggedStructReflector returns a default mapping.
 func NewTaggedStructReflector() *TaggedStructReflector {
 	return &TaggedStructReflector{
-		NameTag:          "db",
-		Ignore:           "-",
-		PrimaryKey:       "primarykey",
-		ReadOnly:         "readonly",
-		Default:          "default",
-		UntaggedNameFunc: IgnoreStructField,
+		NameTag:               "db",
+		Ignore:                "-",
+		PrimaryKey:            "primarykey",
+		ReadOnly:              "readonly",
+		Default:               "default",
+		UntaggedNameFunc:      IgnoreStructField,
+		FailOnUnmappedColumns: false,
 	}
 }
 
@@ -52,6 +59,12 @@ type TaggedStructReflector struct {
 	// UntaggedNameFunc will be called with the struct field name to
 	// return a column name in case the struct field has no tag named NameTag.
 	UntaggedNameFunc func(fieldName string) string
+
+	// FailOnUnmappedColumns controls whether ColumnPointers returns an error
+	// when query result columns have no mapped struct fields.
+	// If false (the default), unmapped columns are silently ignored
+	// by using discard scan destinations.
+	FailOnUnmappedColumns bool
 }
 
 // TableNameForStruct implements StructReflector.TableNameForStruct.
@@ -102,6 +115,47 @@ func (m *TaggedStructReflector) MapStructField(field reflect.StructField) (colum
 		return ColumnInfo{}, false
 	}
 	return column, true
+}
+
+// ColumnPointers implements StructReflector.ColumnPointers.
+func (m *TaggedStructReflector) ColumnPointers(structVal reflect.Value, columns []string) (pointers []any, err error) {
+	if len(columns) == 0 {
+		return nil, errors.New("no columns")
+	}
+	rs, err := reflectStruct(m, structVal.Type())
+	if err != nil {
+		return nil, err
+	}
+	pointers = make([]any, len(columns))
+	for i, col := range columns {
+		idx, ok := rs.ColumnIndex[col]
+		if !ok {
+			continue
+		}
+		pointers[i] = structVal.FieldByIndex(rs.Fields[idx].FieldIndex).Addr().Interface()
+	}
+	for i, ptr := range pointers {
+		if ptr != nil {
+			continue
+		}
+		if !m.FailOnUnmappedColumns {
+			// Use discard destination for unmapped columns
+			pointers[i] = new(any)
+			continue
+		}
+		nilCols := new(strings.Builder)
+		for j, ptr := range pointers {
+			if ptr != nil {
+				continue
+			}
+			if nilCols.Len() > 0 {
+				nilCols.WriteString(", ")
+			}
+			fmt.Fprintf(nilCols, "column=%s, index=%d", columns[j], j)
+		}
+		return nil, fmt.Errorf("columns have no mapped struct fields in %s: %s", structVal.Type(), nilCols)
+	}
+	return pointers, nil
 }
 
 func (n TaggedStructReflector) String() string {

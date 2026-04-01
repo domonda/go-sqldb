@@ -17,6 +17,7 @@
 - [Usage](#usage)
   - [Creating a connection](#creating-a-connection)
   - [Struct field mapping](#struct-field-mapping)
+  - [Column and struct field mismatch behavior](#column-and-struct-field-mismatch-behavior)
   - [Slice and array column handling](#slice-and-array-column-handling)
   - [Exec](#exec)
   - [ExecRowsAffected](#execrowsaffected)
@@ -282,6 +283,26 @@ db.SetStructReflector(reflector)
 // Or set per context
 ctx = db.ContextWithStructReflector(ctx, reflector)
 ```
+
+### Column and struct field mismatch behavior
+
+When scanning query results into structs, the number of query result columns and mapped struct fields do not need to match exactly:
+
+**Query returns fewer columns than the struct has mapped fields:**
+Struct fields with no corresponding result column are silently skipped and left unchanged. This means you can use `SELECT col1, col2 FROM ...` with a struct that maps ten columns — only the two selected columns will be scanned into, while the remaining fields retain whatever value they had before scanning.
+
+**Query returns columns not mapped to any struct field:**
+By default, unmapped result columns are silently discarded during scanning. This is convenient when using `SELECT *` with structs that don't cover every column.
+
+To catch this as an error instead, set `FailOnUnmappedColumns` to `true` on the `TaggedStructReflector`:
+
+```go
+reflector := sqldb.NewTaggedStructReflector()
+reflector.FailOnUnmappedColumns = true
+db.SetStructReflector(reflector)
+```
+
+With `FailOnUnmappedColumns` enabled, scanning will return an error listing all result columns that have no corresponding struct field. This is useful for catching schema drift or accidental `SELECT *` queries that return unexpected columns.
 
 ### Slice and array column handling
 
