@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/domonda/go-sqldb"
 )
@@ -18,7 +19,7 @@ import (
 func ListenOnChannel(ctx context.Context, channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) error {
 	listener, ok := Conn(ctx).(sqldb.ListenerConnection)
 	if !ok {
-		return errors.ErrUnsupported
+		return fmt.Errorf("ListenOnChannel: %w", errors.ErrUnsupported)
 	}
 	return listener.ListenOnChannel(channel, onNotify, onUnlisten)
 }
@@ -30,7 +31,7 @@ func ListenOnChannel(ctx context.Context, channel string, onNotify sqldb.OnNotif
 func UnlistenChannel(ctx context.Context, channel string) error {
 	listener, ok := Conn(ctx).(sqldb.ListenerConnection)
 	if !ok {
-		return errors.ErrUnsupported
+		return fmt.Errorf("UnlistenChannel: %w", errors.ErrUnsupported)
 	}
 	return listener.UnlistenChannel(channel)
 }

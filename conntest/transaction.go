@@ -3,6 +3,7 @@ package conntest
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -385,7 +386,10 @@ func runTransactionTests(t *testing.T, config Config) {
 		defer txConn.Rollback() //nolint:errcheck
 
 		// INSERT inside read-only transaction should be rejected by the database
-		err = txConn.Exec(ctx /*sql*/, `INSERT INTO conntest_simple (id, val) VALUES (`+txConn.FormatPlaceholder(0)+`, `+txConn.FormatPlaceholder(1)+`)`, 1, "should-fail")
+		err = txConn.Exec(ctx,
+			fmt.Sprintf(`INSERT INTO conntest_simple (id, val) VALUES (%s, %s)`, txConn.FormatPlaceholder(0), txConn.FormatPlaceholder(1)),
+			1, "should-fail",
+		)
 		assert.Error(t, err, "INSERT in read-only transaction should error")
 	})
 
