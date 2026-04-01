@@ -37,7 +37,7 @@ func NewMockStructRows[S any](reflector StructReflector, rows ...S) *MockStructR
 		reflector = NewTaggedStructReflector()
 	}
 	var zero S
-	columnInfos, _, err := ReflectStructColumnsAndValues(reflect.ValueOf(&zero).Elem(), reflector)
+	columnInfos, _, err := reflector.ReflectStructColumnsAndValues(reflect.ValueOf(&zero).Elem())
 	if err != nil {
 		panic(fmt.Sprintf("sqldb.NewMockStructRows: %s", err))
 	}
@@ -84,7 +84,7 @@ func (m *MockStructRows[S]) Scan(dest ...any) error {
 	if m.current >= len(m.rows) {
 		return sql.ErrNoRows
 	}
-	_, values, err := ReflectStructColumnsAndValues(reflect.ValueOf(&m.rows[m.current]).Elem(), m.reflector)
+	_, values, err := m.reflector.ReflectStructColumnsAndValues(reflect.ValueOf(&m.rows[m.current]).Elem())
 	if err != nil {
 		return err
 	}

@@ -6,6 +6,7 @@ package conntest
 
 import (
 	"database/sql"
+	"net/mail"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -80,6 +81,11 @@ type DDL struct {
 	// The table name MUST be "conntest_returning".
 	// May be empty if the vendor does not support ReturningQueryBuilder.
 	CreateReturningTable string
+
+	// CreateMailAddressTable creates a table with columns:
+	//   id (int PK), email (text).
+	// The table name MUST be "conntest_mail_address".
+	CreateMailAddressTable string
 }
 
 // Shared struct types for test tables.
@@ -98,7 +104,15 @@ type upsertRow struct {
 	Score int    `db:"score"`
 }
 
+type mailAddressRow struct {
+	sqldb.TableName `db:"conntest_mail_address"`
+
+	ID    int           `db:"id,primarykey"`
+	Email *mail.Address `db:"email"`
+}
+
 var refl = sqldb.NewTaggedStructReflector()
+var mailAddressRefl = sqldb.NewTaggedStructReflector(sqldb.MailAddressTypeWrapper{})
 
 // RunAll runs the full shared Connection integration test suite.
 func RunAll(t *testing.T, config Config) {
@@ -114,6 +128,7 @@ func RunAll(t *testing.T, config Config) {
 	t.Run("Returning", func(t *testing.T) { runReturningTests(t, config) })
 	t.Run("QueryCallback", func(t *testing.T) { runQueryCallbackTests(t, config) })
 	t.Run("Batch", func(t *testing.T) { runBatchTests(t, config) })
+	t.Run("MailAddress", func(t *testing.T) { runMailAddressTests(t, config) })
 }
 
 // setupTable drops the table if it exists, creates it using the given DDL,
@@ -155,6 +170,21 @@ func insertUpsertRow(t *testing.T, conn sqldb.Connection, qb sqldb.QueryBuilder,
 func queryUpsertRow(t *testing.T, conn sqldb.Connection, qb sqldb.QueryBuilder, id int) upsertRow {
 	t.Helper()
 	row, err := sqldb.QueryRowStruct[upsertRow](t.Context(), conn, refl, qb, conn, id)
+	require.NoError(t, err)
+	return row
+}
+
+// insertMailAddressRow inserts a mailAddressRow using sqldb.InsertRowStruct.
+func insertMailAddressRow(t *testing.T, conn sqldb.Connection, qb sqldb.QueryBuilder, row mailAddressRow) {
+	t.Helper()
+	err := sqldb.InsertRowStruct(t.Context(), conn, mailAddressRefl, qb, conn, &row)
+	require.NoError(t, err)
+}
+
+// queryMailAddressRow queries a mailAddressRow by PK using sqldb.QueryRowStruct.
+func queryMailAddressRow(t *testing.T, conn sqldb.Connection, qb sqldb.QueryBuilder, id int) mailAddressRow {
+	t.Helper()
+	row, err := sqldb.QueryRowStruct[mailAddressRow](t.Context(), conn, mailAddressRefl, qb, conn, id)
 	require.NoError(t, err)
 	return row
 }

@@ -34,10 +34,14 @@ func TestConnectionSuite(t *testing.T) {
 				score INT NOT NULL DEFAULT 0
 			)`,
 			// MySQL does not support RETURNING clause
+			CreateMailAddressTable: /*sql*/ `CREATE TABLE conntest_mail_address (
+				id    INT PRIMARY KEY,
+				email TEXT
+			)`,
 		},
-		DefaultIsolationLevel:       sql.LevelRepeatableRead,
-		DriverName:                  mysqlconn.Driver,
-		DatabaseName:                dbName,
+		DefaultIsolationLevel:        sql.LevelRepeatableRead,
+		DriverName:                   mysqlconn.Driver,
+		DatabaseName:                 dbName,
 		SupportsReadOnlyTransaction:  true,
 		SupportsCustomIsolationLevel: true,
 		ExecAfterClosedTxErrors:      true,

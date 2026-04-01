@@ -46,7 +46,7 @@ func UpsertRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 	}
 	var cached queryCache
 	var columns []ColumnInfo
-	columns, cached.structFieldIndices, vals, err = ReflectStructColumnsFieldIndicesAndValues(structVal, refl, append(options, IgnoreReadOnly)...)
+	columns, cached.structFieldIndices, vals, err = refl.ReflectStructColumnsFieldIndicesAndValues(structVal, append(options, IgnoreReadOnly)...)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func UpsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 	}
 
 	options = append(options, IgnoreReadOnly)
-	columns, err := ReflectStructColumns(structType, refl, options...)
+	columns, err := refl.ReflectStructColumns(structType, options...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -132,7 +132,7 @@ func UpsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 		if err != nil {
 			return err
 		}
-		vals, err := ReflectStructValues(v, refl, options...)
+		vals, err := refl.ReflectStructValues(v, options...)
 		if err != nil {
 			return err
 		}

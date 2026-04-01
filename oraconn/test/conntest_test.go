@@ -34,6 +34,10 @@ func TestConnectionSuite(t *testing.T) {
 				score NUMBER(10) DEFAULT 0 NOT NULL
 			)`,
 			// Oracle does not support RETURNING via QueryBuilder
+			CreateMailAddressTable: /*sql*/ `CREATE TABLE conntest_mail_address (
+				id    NUMBER(10) PRIMARY KEY,
+				email VARCHAR2(255)
+			)`,
 		},
 		DefaultIsolationLevel:       sql.LevelReadCommitted,
 		DriverName:                  oraconn.Driver,

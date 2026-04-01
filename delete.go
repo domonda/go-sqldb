@@ -43,7 +43,7 @@ func DeleteRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 	}
 
 	var columns []ColumnInfo
-	columns, cached.structFieldIndices, vals, err = ReflectStructColumnsFieldIndicesAndValues(structVal, refl, OnlyPrimaryKey)
+	columns, cached.structFieldIndices, vals, err = refl.ReflectStructColumnsFieldIndicesAndValues(structVal, OnlyPrimaryKey)
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func DeleteRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 		return nil, nil, err
 	}
 
-	columns, err := ReflectStructColumns(structType, refl, OnlyPrimaryKey)
+	columns, err := refl.ReflectStructColumns(structType, OnlyPrimaryKey)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -126,7 +126,7 @@ func DeleteRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 		if err != nil {
 			return err
 		}
-		vals, err := ReflectStructValues(v, refl, OnlyPrimaryKey)
+		vals, err := refl.ReflectStructValues(v, OnlyPrimaryKey)
 		if err != nil {
 			return err
 		}

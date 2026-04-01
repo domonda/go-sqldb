@@ -87,7 +87,7 @@ func QueryRowStruct[S StructWithTableName](ctx context.Context, conn Querier, re
 	if err != nil {
 		return *new(S), err
 	}
-	pkColumns, err := PrimaryKeyColumnsOfStruct(refl, t)
+	pkColumns, err := refl.PrimaryKeyColumnsOfStruct(t)
 	if err != nil {
 		return *new(S), err
 	}

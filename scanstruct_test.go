@@ -2,7 +2,9 @@ package sqldb
 
 import (
 	"database/sql"
+	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -121,5 +123,85 @@ func TestScanStruct(t *testing.T) {
 		require.NotNil(t, inner)
 		assert.Equal(t, int64(7), inner.ID)
 		assert.Equal(t, "Charlie", inner.Name)
+	})
+}
+
+func Test_isNonSQLScannerStruct(t *testing.T) {
+	tests := []struct {
+		t    reflect.Type
+		want bool
+	}{
+		// Structs that do not implement sql.Scanner
+		{t: reflect.TypeFor[struct{ X int }](), want: true},
+
+		// Structs that implement sql.Scanner
+		{t: reflect.TypeFor[time.Time](), want: false},
+		{t: reflect.TypeFor[sql.NullTime](), want: false},
+
+		// Non struct types
+		{t: reflect.TypeFor[int](), want: false},
+		{t: reflect.TypeFor[string](), want: false},
+		{t: reflect.TypeFor[[]byte](), want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.t.String(), func(t *testing.T) {
+			if got := isNonSQLScannerStruct(tt.t); got != tt.want {
+				t.Errorf("isNonSQLScannerStruct(%s) = %v, want %v", tt.t, got, tt.want)
+			}
+		})
+	}
+}
+
+func Test_derefStruct(t *testing.T) {
+	type testStruct struct{ X int }
+
+	t.Run("plain struct", func(t *testing.T) {
+		s := testStruct{X: 42}
+		got, err := derefStruct(reflect.ValueOf(s))
+		require.NoError(t, err)
+		assert.Equal(t, 42, got.FieldByName("X").Interface())
+	})
+
+	t.Run("pointer to struct", func(t *testing.T) {
+		s := &testStruct{X: 7}
+		got, err := derefStruct(reflect.ValueOf(s))
+		require.NoError(t, err)
+		assert.Equal(t, 7, got.FieldByName("X").Interface())
+	})
+
+	t.Run("double pointer to struct", func(t *testing.T) {
+		s := &testStruct{X: 99}
+		p := &s
+		got, err := derefStruct(reflect.ValueOf(p))
+		require.NoError(t, err)
+		assert.Equal(t, 99, got.FieldByName("X").Interface())
+	})
+
+	t.Run("nil pointer", func(t *testing.T) {
+		var s *testStruct
+		_, err := derefStruct(reflect.ValueOf(s))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "nil pointer")
+	})
+
+	t.Run("nil double pointer", func(t *testing.T) {
+		var s *testStruct
+		p := &s
+		_, err := derefStruct(reflect.ValueOf(p))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "nil pointer")
+	})
+
+	t.Run("non-struct type", func(t *testing.T) {
+		_, err := derefStruct(reflect.ValueOf(42))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "expected struct")
+	})
+
+	t.Run("pointer to non-struct", func(t *testing.T) {
+		v := 42
+		_, err := derefStruct(reflect.ValueOf(&v))
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "expected struct")
 	})
 }

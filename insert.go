@@ -96,7 +96,7 @@ func InsertRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 	}
 	var cached queryCache
 	var columns []ColumnInfo
-	columns, cached.structFieldIndices, vals, err = ReflectStructColumnsFieldIndicesAndValues(structVal, refl, append(options, IgnoreReadOnly)...)
+	columns, cached.structFieldIndices, vals, err = refl.ReflectStructColumnsFieldIndicesAndValues(structVal, append(options, IgnoreReadOnly)...)
 	if err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 		return nil, nil, err
 	}
 	options = append(options, IgnoreReadOnly)
-	columns, err := ReflectStructColumns(structType, refl, options...)
+	columns, err := refl.ReflectStructColumns(structType, options...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -166,7 +166,7 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 		if err != nil {
 			return err
 		}
-		vals, err := ReflectStructValues(strct, refl, options...)
+		vals, err := refl.ReflectStructValues(strct, options...)
 		if err != nil {
 			return err
 		}
@@ -196,7 +196,7 @@ func InsertUniqueRowStruct(ctx context.Context, conn Executor, refl StructReflec
 		return false, err
 	}
 
-	columns, vals, err := ReflectStructColumnsAndValues(structVal, refl, append(options, IgnoreReadOnly)...)
+	columns, vals, err := refl.ReflectStructColumnsAndValues(structVal, append(options, IgnoreReadOnly)...)
 	if err != nil {
 		return false, err
 	}
@@ -237,7 +237,7 @@ func InsertRowStructs[S StructWithTableName](ctx context.Context, conn Connectio
 	for structType.Kind() == reflect.Pointer {
 		structType = structType.Elem()
 	}
-	columns, err := ReflectStructColumns(structType, refl, options...)
+	columns, err := refl.ReflectStructColumns(structType, options...)
 	if err != nil {
 		return err
 	}
@@ -268,7 +268,7 @@ func InsertRowStructs[S StructWithTableName](ctx context.Context, conn Connectio
 			if err != nil {
 				return nil, err
 			}
-			rowVals, err := ReflectStructValues(structVal, refl, options...)
+			rowVals, err := refl.ReflectStructValues(structVal, options...)
 			if err != nil {
 				return nil, err
 			}

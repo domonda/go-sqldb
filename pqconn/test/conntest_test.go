@@ -50,6 +50,10 @@ func TestConnectionSuite(t *testing.T) {
 				name  TEXT NOT NULL,
 				score INTEGER NOT NULL DEFAULT 0
 			)`,
+			CreateMailAddressTable: /*sql*/ `CREATE TABLE conntest_mail_address (
+				id    INTEGER PRIMARY KEY,
+				email TEXT
+			)`,
 		},
 		DefaultIsolationLevel:        sql.LevelReadCommitted,
 		DriverName:                   pqconn.Driver,

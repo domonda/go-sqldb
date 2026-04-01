@@ -18,7 +18,7 @@
   - [Creating a connection](#creating-a-connection)
   - [Struct field mapping](#struct-field-mapping)
   - [Column and struct field mismatch behavior](#column-and-struct-field-mismatch-behavior)
-  - [Slice and array column handling](#slice-and-array-column-handling)
+  - [Type wrappers](#type-wrappers)
   - [Exec](#exec)
   - [ExecRowsAffected](#execrowsaffected)
   - [Querying a single row](#querying-a-single-row)
@@ -314,9 +314,56 @@ db.SetStructReflector(reflector)
 
 Both flags can be enabled together for strict bidirectional checking where every query result column must map to a struct field and every struct field must have a corresponding query result column.
 
-### Slice and array column handling
+### Type wrappers
 
-Slice and array column handling (like PostgreSQL arrays) is handled transparently by driver implementations. For example, the `pqconn` driver automatically wraps Go slices and arrays with `pq.Array()` for both query arguments and row scanning, so you can use native Go slices in structs mapped to PostgreSQL array columns without any manual conversion.
+Type wrappers let you customize how Go types are serialized to and deserialized from database columns. A `TypeWrapper` implements two methods: `WrapAsScanner` for reading (returns an `sql.Scanner`) and `WrapAsValuer` for writing (returns a `driver.Valuer`). Each method returns nil if the wrapper does not handle the given type, allowing multiple wrappers to be composed.
+
+Pass type wrappers to `NewTaggedStructReflector`:
+
+```go
+reflector := sqldb.NewTaggedStructReflector(
+    sqldb.MailAddressTypeWrapper{},
+    myCustomTypeWrapper{},
+)
+db.SetStructReflector(reflector)
+```
+
+Or set them on an existing reflector:
+
+```go
+reflector := sqldb.NewTaggedStructReflector()
+reflector.TypeWrappers = sqldb.TypeWrappers{sqldb.MailAddressTypeWrapper{}}
+```
+
+#### Built-in type wrappers
+
+| Type wrapper             | Handles                        | Scanner behavior                                          | Valuer behavior                  |
+| ------------------------ | ------------------------------ | --------------------------------------------------------- | -------------------------------- |
+| `MailAddressTypeWrapper`  | `mail.Address`, `*mail.Address` | Parses RFC 5322 address via `mail.ParseAddress`; NULL → zero/nil | `mail.Address.String()`; nil → NULL |
+
+#### Driver-level wrapping
+
+Some type conversions are handled at the driver level rather than through `TypeWrapper`. For example, `pqconn` automatically wraps Go slices and arrays with `pq.Array()` for both query arguments and scan destinations, so PostgreSQL array columns work transparently without a type wrapper. This applies to all slices and arrays except `[]byte` (treated as a string) and types that already implement `driver.Valuer` or `sql.Scanner`.
+
+#### Implementing a custom type wrapper
+
+```go
+type moneyTypeWrapper struct{}
+
+func (moneyTypeWrapper) WrapAsScanner(val reflect.Value) sql.Scanner {
+    if val.Type() != reflect.TypeFor[Money]() {
+        return nil // not handled
+    }
+    return &moneyScanner{ptr: val.Addr()}
+}
+
+func (moneyTypeWrapper) WrapAsValuer(val reflect.Value) driver.Valuer {
+    if val.Type() != reflect.TypeFor[Money]() {
+        return nil // not handled
+    }
+    return moneyValuer{val: val.Interface().(Money)}
+}
+```
 
 ### Exec
 
@@ -343,7 +390,7 @@ user, err := db.QueryRowAs[User](ctx,
 )
 
 // Scan a scalar value
-count, err := db.QueryRowAs[int64](ctx, `SELECT count(*) FROM public.user`)
+count, err := db.QueryRowAs[int](ctx, `SELECT count(*) FROM public.user`)
 
 // Return a default value instead of sql.ErrNoRows
 user, err = db.QueryRowAsOr(ctx, defaultUser,
@@ -351,14 +398,14 @@ user, err = db.QueryRowAsOr(ctx, defaultUser,
 )
 
 // Scan multiple scalar values with generics
-name, email, err := db.QueryRowAs2[string, email.Address](ctx,
+name, email, err := db.QueryRowAs2[string, *mail.Address](ctx,
     `SELECT name, email FROM public.user WHERE id = $1`, userID,
 )
 
 // Low-level: scan into individual variables
 var (
     name  string
-    email email.Address
+    email *mail.Address
 )
 err = db.QueryRow(ctx,
     `SELECT name, email FROM public.user WHERE id = $1`, userID,
@@ -844,6 +891,7 @@ func TestConnectionSuite(t *testing.T) {
 | Returning       | INSERT/UPDATE ... RETURNING (skipped when DDL is empty)     |
 | QueryCallback   | Per-row callback queries                                    |
 | Batch           | Bulk insert and upsert of struct slices                     |
+| MailAddress     | Custom type wrapping with `MailAddressTypeWrapper`          |
 
 Each test gets a fresh connection via `NewConn` and creates/drops its own tables, so tests are fully isolated and safe to run in parallel. Adding a new test to `conntest` automatically covers all drivers.
 

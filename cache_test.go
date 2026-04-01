@@ -16,7 +16,7 @@ func TestReflectedStructCache(t *testing.T) {
 	typ := reflect.TypeFor[reflectTestStruct]()
 
 	// First call populates cache
-	cols1, err := ReflectStructColumns(typ, reflector)
+	cols1, err := reflector.ReflectStructColumns(typ)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +25,7 @@ func TestReflectedStructCache(t *testing.T) {
 	ClearQueryCaches()
 
 	// Second call repopulates cache, should produce identical results
-	cols2, err := ReflectStructColumns(typ, reflector)
+	cols2, err := reflector.ReflectStructColumns(typ)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,14 +45,14 @@ func TestReflectedStructCacheEmbedded(t *testing.T) {
 	typ := reflect.TypeFor[reflectTestEmbedded]()
 
 	// First call
-	cols1, err := ReflectStructColumns(typ, reflector)
+	cols1, err := reflector.ReflectStructColumns(typ)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// Clear and re-call
 	ClearQueryCaches()
-	cols2, err := ReflectStructColumns(typ, reflector)
+	cols2, err := reflector.ReflectStructColumns(typ)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,8 +87,8 @@ func TestReflectedStructCacheConcurrency(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for _, typ := range types {
-				_, _ = ReflectStructColumns(typ, reflector)
-				_, _ = PrimaryKeyColumnsOfStruct(reflector, typ)
+				_, _ = reflector.ReflectStructColumns(typ)
+				_, _ = reflector.PrimaryKeyColumnsOfStruct(typ)
 			}
 		}()
 	}
@@ -108,7 +108,7 @@ func TestReflectedStructCacheConcurrencyWithClear(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for range 100 {
-				cols, err := ReflectStructColumns(typ, reflector)
+				cols, err := reflector.ReflectStructColumns(typ)
 				if err != nil {
 					t.Errorf("unexpected error: %v", err)
 					return
@@ -258,13 +258,13 @@ func BenchmarkReflectStructColumns(b *testing.B) {
 
 	b.Run("flat", func(b *testing.B) {
 		for range b.N {
-			_, _ = ReflectStructColumns(typ, reflector)
+			_, _ = reflector.ReflectStructColumns(typ)
 		}
 	})
 	b.Run("embedded", func(b *testing.B) {
 		typ := reflect.TypeFor[reflectTestEmbedded]()
 		for range b.N {
-			_, _ = ReflectStructColumns(typ, reflector)
+			_, _ = reflector.ReflectStructColumns(typ)
 		}
 	})
 }
@@ -276,7 +276,7 @@ func BenchmarkReflectStructColumnsAndValues(b *testing.B) {
 		s := reflectTestStruct{ID: 1, Name: "Alice", Active: true}
 		v := reflect.ValueOf(s)
 		for range b.N {
-			_, _, _ = ReflectStructColumnsAndValues(v, reflector)
+			_, _, _ = reflector.ReflectStructColumnsAndValues(v)
 		}
 	})
 	b.Run("embedded", func(b *testing.B) {
@@ -286,12 +286,12 @@ func BenchmarkReflectStructColumnsAndValues(b *testing.B) {
 		}
 		v := reflect.ValueOf(s)
 		for range b.N {
-			_, _, _ = ReflectStructColumnsAndValues(v, reflector)
+			_, _, _ = reflector.ReflectStructColumnsAndValues(v)
 		}
 	})
 }
 
-func BenchmarkColumnPointers(b *testing.B) {
+func BenchmarkScanableStructFieldsForColumns(b *testing.B) {
 	reflector := NewTaggedStructReflector()
 
 	b.Run("flat", func(b *testing.B) {
@@ -299,7 +299,7 @@ func BenchmarkColumnPointers(b *testing.B) {
 		v := reflect.ValueOf(&s).Elem()
 		columns := []string{"id", "name", "active"}
 		for range b.N {
-			_, _ = reflector.ColumnPointers(v, columns)
+			_, _ = reflector.ScanableStructFieldsForColumns(v, columns)
 		}
 	})
 	b.Run("embedded", func(b *testing.B) {
@@ -310,7 +310,7 @@ func BenchmarkColumnPointers(b *testing.B) {
 		v := reflect.ValueOf(&s).Elem()
 		columns := []string{"id", "emb_val", "deep_val"}
 		for range b.N {
-			_, _ = reflector.ColumnPointers(v, columns)
+			_, _ = reflector.ScanableStructFieldsForColumns(v, columns)
 		}
 	})
 }
@@ -321,19 +321,19 @@ func BenchmarkPrimaryKeyColumnsOfStruct(b *testing.B) {
 	b.Run("single_pk", func(b *testing.B) {
 		typ := reflect.TypeFor[reflectTestStruct]()
 		for range b.N {
-			_, _ = PrimaryKeyColumnsOfStruct(reflector, typ)
+			_, _ = reflector.PrimaryKeyColumnsOfStruct(typ)
 		}
 	})
 	b.Run("composite_pk", func(b *testing.B) {
 		typ := reflect.TypeFor[reflectTestComposite]()
 		for range b.N {
-			_, _ = PrimaryKeyColumnsOfStruct(reflector, typ)
+			_, _ = reflector.PrimaryKeyColumnsOfStruct(typ)
 		}
 	})
 	b.Run("embedded", func(b *testing.B) {
 		typ := reflect.TypeFor[reflectTestEmbedded]()
 		for range b.N {
-			_, _ = PrimaryKeyColumnsOfStruct(reflector, typ)
+			_, _ = reflector.PrimaryKeyColumnsOfStruct(typ)
 		}
 	})
 }
@@ -345,7 +345,7 @@ func BenchmarkReflectStructColumnsFieldIndicesAndValues(b *testing.B) {
 		s := reflectTestStruct{ID: 5, Name: "Charlie", Active: true}
 		v := reflect.ValueOf(s)
 		for range b.N {
-			_, _, _, _ = ReflectStructColumnsFieldIndicesAndValues(v, reflector)
+			_, _, _, _ = reflector.ReflectStructColumnsFieldIndicesAndValues(v)
 		}
 	})
 	b.Run("embedded", func(b *testing.B) {
@@ -355,7 +355,7 @@ func BenchmarkReflectStructColumnsFieldIndicesAndValues(b *testing.B) {
 		}
 		v := reflect.ValueOf(s)
 		for range b.N {
-			_, _, _, _ = ReflectStructColumnsFieldIndicesAndValues(v, reflector)
+			_, _, _, _ = reflector.ReflectStructColumnsFieldIndicesAndValues(v)
 		}
 	})
 }
@@ -367,7 +367,7 @@ func BenchmarkReflectStructValues(b *testing.B) {
 		s := reflectTestStruct{ID: 7, Name: "Dana", Active: false}
 		v := reflect.ValueOf(s)
 		for range b.N {
-			_, _ = ReflectStructValues(v, reflector)
+			_, _ = reflector.ReflectStructValues(v)
 		}
 	})
 	b.Run("embedded", func(b *testing.B) {
@@ -377,7 +377,7 @@ func BenchmarkReflectStructValues(b *testing.B) {
 		}
 		v := reflect.ValueOf(s)
 		for range b.N {
-			_, _ = ReflectStructValues(v, reflector)
+			_, _ = reflector.ReflectStructValues(v)
 		}
 	})
 }
@@ -435,7 +435,7 @@ func TestReflectStructDuplicateColumnErrorPropagation(t *testing.T) {
 
 	t.Run("PrimaryKeyColumnsOfStruct", func(t *testing.T) {
 		ClearQueryCaches()
-		_, err := PrimaryKeyColumnsOfStruct(reflector, dupType)
+		_, err := reflector.PrimaryKeyColumnsOfStruct(dupType)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -443,7 +443,7 @@ func TestReflectStructDuplicateColumnErrorPropagation(t *testing.T) {
 
 	t.Run("ReflectStructColumns", func(t *testing.T) {
 		ClearQueryCaches()
-		_, err := ReflectStructColumns(dupType, reflector)
+		_, err := reflector.ReflectStructColumns(dupType)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -451,7 +451,7 @@ func TestReflectStructDuplicateColumnErrorPropagation(t *testing.T) {
 
 	t.Run("ReflectStructColumnsAndValues", func(t *testing.T) {
 		ClearQueryCaches()
-		_, _, err := ReflectStructColumnsAndValues(dupVal, reflector)
+		_, _, err := reflector.ReflectStructColumnsAndValues(dupVal)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -459,7 +459,7 @@ func TestReflectStructDuplicateColumnErrorPropagation(t *testing.T) {
 
 	t.Run("ReflectStructColumnsFieldIndicesAndValues", func(t *testing.T) {
 		ClearQueryCaches()
-		_, _, _, err := ReflectStructColumnsFieldIndicesAndValues(dupVal, reflector)
+		_, _, _, err := reflector.ReflectStructColumnsFieldIndicesAndValues(dupVal)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -467,7 +467,7 @@ func TestReflectStructDuplicateColumnErrorPropagation(t *testing.T) {
 
 	t.Run("ReflectStructValues", func(t *testing.T) {
 		ClearQueryCaches()
-		_, err := ReflectStructValues(dupVal, reflector)
+		_, err := reflector.ReflectStructValues(dupVal)
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -475,17 +475,17 @@ func TestReflectStructDuplicateColumnErrorPropagation(t *testing.T) {
 
 	t.Run("ReflectStructColumnsAndFields", func(t *testing.T) {
 		ClearQueryCaches()
-		_, _, err := ReflectStructColumnsAndFields(dupVal, reflector)
+		_, _, err := reflector.ReflectStructColumnsAndFields(dupVal)
 		if err == nil {
 			t.Fatal("expected error")
 		}
 	})
 
-	t.Run("ColumnPointers", func(t *testing.T) {
+	t.Run("ScanableStructFieldsForColumns", func(t *testing.T) {
 		ClearQueryCaches()
 		s := reflectDuplicateColumnStruct{Name1: "a", Name2: "b"}
 		v := reflect.ValueOf(&s).Elem()
-		_, err := reflector.ColumnPointers(v, []string{"name"})
+		_, err := reflector.ScanableStructFieldsForColumns(v, []string{"name"})
 		if err == nil {
 			t.Fatal("expected error")
 		}

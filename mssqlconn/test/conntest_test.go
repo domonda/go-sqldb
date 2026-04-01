@@ -34,10 +34,14 @@ func TestConnectionSuite(t *testing.T) {
 				score INT NOT NULL DEFAULT 0
 			)`,
 			// SQL Server does not support RETURNING clause
+			CreateMailAddressTable: /*sql*/ `CREATE TABLE conntest_mail_address (
+				id    INT PRIMARY KEY,
+				email NVARCHAR(255)
+			)`,
 		},
-		DefaultIsolationLevel:       sql.LevelReadCommitted,
-		DriverName:                  mssqlconn.Driver,
-		DatabaseName:                dbName,
+		DefaultIsolationLevel:        sql.LevelReadCommitted,
+		DriverName:                   mssqlconn.Driver,
+		DatabaseName:                 dbName,
 		SupportsReadOnlyTransaction:  false, // SQL Server does not support read-only transactions
 		SupportsCustomIsolationLevel: true,
 		ExecAfterClosedTxErrors:      true,
