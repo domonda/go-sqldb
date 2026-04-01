@@ -328,7 +328,7 @@ err = db.Exec(ctx, `DELETE FROM public.user WHERE id = $1`, userID)
 
 ```go
 n, err := db.ExecRowsAffected(ctx, 
-    /*sql*/ `UPDATE public.user SET name = $1 WHERE active = $2`,
+    `UPDATE public.user SET name = $1 WHERE active = $2`,
     "Inactive", false,
 )
 fmt.Printf("%d rows updated\n", n)
@@ -339,7 +339,7 @@ fmt.Printf("%d rows updated\n", n)
 ```go
 // Scan into a struct
 user, err := db.QueryRowAs[User](ctx,
-    /*sql*/ `SELECT * FROM public.user WHERE id = $1`, userID,
+    `SELECT * FROM public.user WHERE id = $1`, userID,
 )
 
 // Scan a scalar value
@@ -347,12 +347,12 @@ count, err := db.QueryRowAs[int64](ctx, `SELECT count(*) FROM public.user`)
 
 // Return a default value instead of sql.ErrNoRows
 user, err = db.QueryRowAsOr(ctx, defaultUser,
-    /*sql*/ `SELECT * FROM public.user WHERE id = $1`, userID,
+    `SELECT * FROM public.user WHERE id = $1`, userID,
 )
 
 // Scan multiple scalar values with generics
 name, email, err := db.QueryRowAs2[string, email.Address](ctx,
-    /*sql*/ `SELECT name, email FROM public.user WHERE id = $1`, userID,
+    `SELECT name, email FROM public.user WHERE id = $1`, userID,
 )
 
 // Low-level: scan into individual variables
@@ -361,7 +361,7 @@ var (
     email email.Address
 )
 err = db.QueryRow(ctx,
-    /*sql*/ `SELECT name, email FROM public.user WHERE id = $1`, userID,
+    `SELECT name, email FROM public.user WHERE id = $1`, userID,
 ).Scan(&name, &email)
 ```
 
@@ -394,7 +394,7 @@ err = db.QueryCallback(ctx,
     func(name, email string) {
         fmt.Printf("%q <%s>\n", name, email)
     },
-    /*sql*/ `SELECT name, email FROM public.user`,
+    `SELECT name, email FROM public.user`,
 )
 
 // With context and error return
@@ -402,7 +402,7 @@ err = db.QueryCallback(ctx,
     func(ctx context.Context, user *User) error {
         return processUser(ctx, user)
     },
-    /*sql*/ `SELECT * FROM public.user`,
+    `SELECT * FROM public.user`,
 )
 
 // Typed struct callback (generic, no reflection on the callback signature)
@@ -410,7 +410,7 @@ err = db.QueryStructCallback[User](ctx,
     func(user User) error {
         return processUser(ctx, user)
     },
-    /*sql*/ `SELECT * FROM public.user`,
+    `SELECT * FROM public.user`,
 )
 ```
 
@@ -422,26 +422,26 @@ newUser := &User{Name: "Alice", Email: "alice@example.com"}
 err = db.InsertRowStruct(ctx, newUser)
 
 // Ignore columns with database defaults
-err = db.InsertRowStruct(ctx, newUser, sqldb.IgnoreColumns("id", "created_at"))
+err = db.InsertRowStruct(ctx, newUser, db.IgnoreColumns("id", "created_at"))
 
 // Insert using a values map
-err = db.Insert(ctx, "public.user", sqldb.Values{
+err = db.Insert(ctx, "public.user", db.Values{
     "name":  "Erik Unger",
     "email": "erik@example.com",
 })
 
 // Insert with RETURNING clause
 var id uu.ID
-err = db.InsertReturning(ctx, "public.user", sqldb.Values{
+err = db.InsertReturning(ctx, "public.user", db.Values{
     "name":  "Erik Unger",
     "email": "erik@example.com",
 }, "id").Scan(&id)
 
 // Insert or do nothing on conflict
-inserted, err := db.InsertUnique(ctx, "public.user", sqldb.Values{
+inserted, err := db.InsertUnique(ctx, "public.user", db.Values{
     "email": "erik@example.com",
     "name":  "Erik Unger",
-}, "ON CONFLICT (email) DO NOTHING")
+}, `ON CONFLICT (email) DO NOTHING`)
 
 // Batch insert a slice of structs (uses a transaction + prepared statement)
 err = db.InsertRowStructs(ctx, users)
@@ -451,15 +451,15 @@ err = db.InsertRowStructs(ctx, users)
 
 ```go
 // Update with a values map and WHERE clause
-err = db.Update(ctx, "public.user", sqldb.Values{"name": "New Name"},
-    /*sql*/ `WHERE id = $1`, userID,
+err = db.Update(ctx, "public.user", db.Values{"name": "New Name"},
+    `WHERE id = $1`, userID,
 )
 
 // Update using a struct (WHERE clause built from primarykey fields)
 err = db.UpdateRowStruct(ctx, &user)
 
 // Update only specific columns
-err = db.UpdateRowStruct(ctx, &user, sqldb.OnlyColumns("name", "email"))
+err = db.UpdateRowStruct(ctx, &user, db.OnlyColumns("name", "email"))
 ```
 
 ### Upsert
@@ -471,7 +471,7 @@ Insert or update on primary key conflict:
 err = db.UpsertRowStruct(ctx, &user)
 
 // Upsert ignoring certain columns
-err = db.UpsertRowStruct(ctx, &user, sqldb.IgnoreColumns("created_at"))
+err = db.UpsertRowStruct(ctx, &user, db.IgnoreColumns("created_at"))
 
 // Batch upsert a slice of structs
 err = db.UpsertRowStructs(ctx, users)
@@ -485,7 +485,7 @@ via `db.Conn(ctx)`, without needing to know whether they are inside a transactio
 ```go
 func GetUserOrNil(ctx context.Context, userID uu.ID) (user *User, err error) {
     err = db.QueryRow(ctx,
-        /*sql*/ `SELECT * FROM public.user WHERE id = $1`, userID,
+        `SELECT * FROM public.user WHERE id = $1`, userID,
     ).Scan(&user)
     if err != nil {
         return nil, db.ReplaceErrNoRows(err, nil)
@@ -567,18 +567,18 @@ Filter which struct fields are included in insert, update, and upsert operations
 
 ```go
 // Ignore specific columns
-db.InsertRowStruct(ctx, &user, sqldb.IgnoreColumns("id", "created_at"))
+db.InsertRowStruct(ctx, &user, db.IgnoreColumns("id", "created_at"))
 
 // Include only specific columns
-db.UpdateRowStruct(ctx, &user, sqldb.OnlyColumns("name", "email"))
+db.UpdateRowStruct(ctx, &user, db.OnlyColumns("name", "email"))
 
 // Ignore by struct field name
-db.InsertRowStruct(ctx, &user, sqldb.IgnoreStructFields("Internal"))
+db.InsertRowStruct(ctx, &user, db.IgnoreStructFields("Internal"))
 
 // Built-in filters
-sqldb.IgnoreHasDefault  // Ignore columns with the "default" tag option
-sqldb.IgnorePrimaryKey  // Ignore primary key columns
-sqldb.IgnoreReadOnly    // Ignore read-only columns (applied automatically for insert/update)
+db.IgnoreHasDefault  // Ignore columns with the "default" tag option
+db.IgnorePrimaryKey  // Ignore primary key columns
+db.IgnoreReadOnly    // Ignore read-only columns (applied automatically for insert/update)
 ```
 
 

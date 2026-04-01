@@ -5,7 +5,7 @@ import (
 	"slices"
 )
 
-// Values is a map from column names to values
+// Values is a map from column names to values of any type.
 type Values map[string]any
 
 // SortedColumnsAndValues returns the column names and values
