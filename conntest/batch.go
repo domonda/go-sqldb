@@ -127,6 +127,20 @@ func runBatchTests(t *testing.T, config Config) {
 		assert.True(t, errors.Is(err, sql.ErrNoRows))
 	})
 
+	t.Run("DeleteRowStructs/NotFound", func(t *testing.T) {
+		// given — empty table, no rows to match
+		conn := config.NewConn(t)
+		ctx := t.Context()
+		qb := config.QueryBuilder
+		setupTable(t, conn, config.DDL.CreateSimpleTable, "conntest_simple")
+
+		// when
+		err := sqldb.DeleteRowStructs(ctx, conn, refl, qb, conn, []simpleRow{{ID: 999}})
+
+		// then
+		assert.ErrorIs(t, err, sql.ErrNoRows)
+	})
+
 	t.Run("ExecRowsAffectedStmt", func(t *testing.T) {
 		// given
 		conn := config.NewConn(t)

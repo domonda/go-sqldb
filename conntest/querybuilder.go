@@ -95,6 +95,20 @@ func runQueryBuilderTests(t *testing.T, config Config) {
 		assert.True(t, errors.Is(err, sql.ErrNoRows))
 	})
 
+	t.Run("DeleteRowStruct/NotFound", func(t *testing.T) {
+		// given — empty table, no row with ID 999
+		conn := config.NewConn(t)
+		ctx := t.Context()
+		qb := config.QueryBuilder
+		setupTable(t, conn, config.DDL.CreateSimpleTable, "conntest_simple")
+
+		// when
+		err := sqldb.DeleteRowStruct(ctx, conn, refl, qb, conn, &simpleRow{ID: 999})
+
+		// then
+		assert.ErrorIs(t, err, sql.ErrNoRows)
+	})
+
 	t.Run("InsertValues", func(t *testing.T) {
 		// given
 		conn := config.NewConn(t)

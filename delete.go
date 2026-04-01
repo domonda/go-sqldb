@@ -2,6 +2,7 @@ package sqldb
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"reflect"
@@ -13,6 +14,7 @@ import (
 // Primary key columns are identified by the "primarykey" option
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
 // The struct must have at least one primary key field.
+// Returns a wrapped [sql.ErrNoRows] error if no row was affected by the delete.
 func DeleteRowStruct(ctx context.Context, conn Executor, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, rowStruct StructWithTableName) error {
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
@@ -30,9 +32,12 @@ func DeleteRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 		for i, fieldIndex := range cached.structFieldIndices {
 			vals[i] = structVal.FieldByIndex(fieldIndex).Interface()
 		}
-		err = conn.Exec(ctx, cached.query, vals...)
+		n, err := conn.ExecRowsAffected(ctx, cached.query, vals...)
 		if err != nil {
 			return WrapErrorWithQuery(err, cached.query, vals, fmtr)
+		}
+		if n == 0 {
+			return WrapErrorWithQuery(sql.ErrNoRows, cached.query, vals, fmtr)
 		}
 		return nil
 	}
@@ -68,9 +73,12 @@ func DeleteRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 	deleteRowStructQueryCache[structType][refl][builder][fmtr] = cached
 	deleteRowStructQueryCacheMtx.Unlock()
 
-	err = conn.Exec(ctx, cached.query, vals...)
+	n, err := conn.ExecRowsAffected(ctx, cached.query, vals...)
 	if err != nil {
 		return WrapErrorWithQuery(err, cached.query, vals, fmtr)
+	}
+	if n == 0 {
+		return WrapErrorWithQuery(sql.ErrNoRows, cached.query, vals, fmtr)
 	}
 	return nil
 }
@@ -82,6 +90,8 @@ func DeleteRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 // Primary key columns are identified by the "primarykey" option
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
 // The struct must have at least one primary key field.
+// The returned deleteFunc returns a wrapped [sql.ErrNoRows] error
+// if no row was affected by the delete.
 // The returned closeStmt function must be called to release the prepared statement.
 func DeleteRowStructStmt[S StructWithTableName](ctx context.Context, conn Preparer, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter) (deleteFunc func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
 	structType := reflect.TypeFor[S]()
@@ -120,9 +130,12 @@ func DeleteRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 		if err != nil {
 			return err
 		}
-		err = stmt.Exec(ctx, vals...)
+		n, err := stmt.ExecRowsAffected(ctx, vals...)
 		if err != nil {
 			return WrapErrorWithQuery(err, query, vals, fmtr)
+		}
+		if n == 0 {
+			return WrapErrorWithQuery(sql.ErrNoRows, query, vals, fmtr)
 		}
 		return nil
 	}
@@ -135,6 +148,8 @@ func DeleteRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 // (e.g., sqldb.TableName `db:"my_table"`).
 // Primary key columns are identified by the "primarykey" option
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
+// Returns a wrapped [sql.ErrNoRows] error if no row was affected
+// by the delete of any of the structs.
 func DeleteRowStructs[S StructWithTableName](ctx context.Context, conn Connection, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, rowStructs []S) error {
 	switch len(rowStructs) {
 	case 0:

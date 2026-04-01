@@ -11,6 +11,7 @@ import (
 // the [StructReflector] from the context. The default reflector uses `db` struct tags
 // (e.g., db.TableName `db:"my_table"`, field `db:"id,primarykey"`).
 // The struct must have at least one primary key field.
+// Returns a wrapped [sql.ErrNoRows] error if no row was affected by the delete.
 func DeleteRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName) error {
 	conn := Conn(ctx)
 	return sqldb.DeleteRowStruct(
@@ -28,6 +29,8 @@ func DeleteRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName) e
 // the [StructReflector] from the context. The default reflector uses `db` struct tags
 // (e.g., db.TableName `db:"my_table"`, field `db:"id,primarykey"`).
 // The struct must have at least one primary key field.
+// The returned deleteFunc returns a wrapped [sql.ErrNoRows] error
+// if no row was affected by the delete.
 // Returns a delete function and a closeStmt function that must be called when done.
 func DeleteRowStructStmt[S sqldb.StructWithTableName](ctx context.Context) (deleteFunc func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
 	conn := Conn(ctx)
@@ -45,6 +48,8 @@ func DeleteRowStructStmt[S sqldb.StructWithTableName](ctx context.Context) (dele
 // Table name, column names, and primary key columns are determined by
 // the [StructReflector] from the context. The default reflector uses `db` struct tags
 // (e.g., db.TableName `db:"my_table"`, field `db:"id,primarykey"`).
+// Returns a wrapped [sql.ErrNoRows] error if no row was affected
+// by the delete of any of the structs.
 func DeleteRowStructs[S sqldb.StructWithTableName](ctx context.Context, rowStructs []S) error {
 	conn := Conn(ctx)
 	return sqldb.DeleteRowStructs(

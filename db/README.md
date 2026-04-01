@@ -224,9 +224,9 @@ func TestGetUser(t *testing.T) {
 
 | Function                                 | Description                              |
 | ---------------------------------------- | ---------------------------------------- |
-| `DeleteRowStruct(ctx, rowStruct) error`  | Delete a row matching a struct's primary key |
-| `DeleteRowStructStmt[S](ctx) (func, closeStmt, error)` | Prepared statement for deleting structs  |
-| `DeleteRowStructs[S](ctx, rowStructs) error` | Batch delete a slice of structs          |
+| `DeleteRowStruct(ctx, rowStruct) error`  | Delete a row matching a struct's primary key; returns wrapped `sql.ErrNoRows` if no row affected |
+| `DeleteRowStructStmt[S](ctx) (func, closeStmt, error)` | Prepared statement for deleting structs; deleteFunc returns wrapped `sql.ErrNoRows` if no row affected |
+| `DeleteRowStructs[S](ctx, rowStructs) error` | Batch delete a slice of structs; returns wrapped `sql.ErrNoRows` if any struct has no matching row |
 
 ### Upsert
 

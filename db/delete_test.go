@@ -2,6 +2,7 @@ package db_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 
@@ -24,17 +25,17 @@ func TestDbDeleteRowStruct(t *testing.T) {
 		var execCount int
 		var gotQuery string
 		var gotArgs []any
-		mock.MockExec = func(ctx context.Context, query string, args ...any) error {
+		mock.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
 			execCount++
 			gotQuery = query
 			gotArgs = args
-			return nil
+			return 1, nil
 		}
 		ctx := testContext(t, mock)
 
 		err := db.DeleteRowStruct(ctx, UserRow{ID: 1, Name: "Alice", Active: true})
 		require.NoError(t, err)
-		require.Equal(t, 1, execCount, "MockExec call count")
+		require.Equal(t, 1, execCount, "MockExecRowsAffected call count")
 		require.Equal(t, "DELETE FROM users WHERE id = $1", gotQuery)
 		assertArgs(t, gotArgs, []any{1})
 	})
@@ -44,17 +45,17 @@ func TestDbDeleteRowStruct(t *testing.T) {
 		var execCount int
 		var gotQuery string
 		var gotArgs []any
-		mock.MockExec = func(ctx context.Context, query string, args ...any) error {
+		mock.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
 			execCount++
 			gotQuery = query
 			gotArgs = args
-			return nil
+			return 1, nil
 		}
 		ctx := testContext(t, mock)
 
 		err := db.DeleteRowStruct(ctx, &UserRow{ID: 2, Name: "Bob", Active: false})
 		require.NoError(t, err)
-		require.Equal(t, 1, execCount, "MockExec call count")
+		require.Equal(t, 1, execCount, "MockExecRowsAffected call count")
 		require.Equal(t, "DELETE FROM users WHERE id = $1", gotQuery)
 		assertArgs(t, gotArgs, []any{2})
 	})
@@ -76,14 +77,25 @@ func TestDbDeleteRowStruct(t *testing.T) {
 		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
 		var execCount int
 		testErr := errors.New("delete failed")
-		mock.MockExec = func(ctx context.Context, query string, args ...any) error {
+		mock.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
 			execCount++
-			return testErr
+			return 0, testErr
 		}
 		ctx := testContext(t, mock)
 
 		err := db.DeleteRowStruct(ctx, UserRow{ID: 1, Name: "Alice"})
 		require.ErrorIs(t, err, testErr)
-		require.Equal(t, 1, execCount, "MockExec call count")
+		require.Equal(t, 1, execCount, "MockExecRowsAffected call count")
+	})
+
+	t.Run("no rows affected", func(t *testing.T) {
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+		mock.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			return 0, nil
+		}
+		ctx := testContext(t, mock)
+
+		err := db.DeleteRowStruct(ctx, UserRow{ID: 999, Name: "Ghost"})
+		require.ErrorIs(t, err, sql.ErrNoRows)
 	})
 }

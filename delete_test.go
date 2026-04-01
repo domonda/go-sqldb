@@ -2,6 +2,7 @@ package sqldb
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 )
@@ -14,11 +15,11 @@ func TestDeleteRowStruct(t *testing.T) {
 		var execCount int
 		var gotQuery string
 		var gotArgs []any
-		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
 			execCount++
 			gotQuery = query
 			gotArgs = args
-			return nil
+			return 1, nil
 		}
 		row := reflectTestStruct{ID: 1, Name: "Alice", Active: true}
 		err := DeleteRowStruct(t.Context(), conn, refl, builder, fmtr, row)
@@ -26,7 +27,7 @@ func TestDeleteRowStruct(t *testing.T) {
 			t.Fatal(err)
 		}
 		if execCount != 1 {
-			t.Errorf("MockExec called %d times, want 1", execCount)
+			t.Errorf("MockExecRowsAffected called %d times, want 1", execCount)
 		}
 		if gotQuery != wantQuery {
 			t.Errorf("query = %q, want %q", gotQuery, wantQuery)
@@ -38,10 +39,10 @@ func TestDeleteRowStruct(t *testing.T) {
 		conn, refl, builder, fmtr := newTestInterfaces()
 		var gotQuery string
 		var gotArgs []any
-		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
 			gotQuery = query
 			gotArgs = args
-			return nil
+			return 1, nil
 		}
 		row := &reflectTestStruct{ID: 2, Name: "Bob", Active: false}
 		err := DeleteRowStruct(t.Context(), conn, refl, builder, fmtr, row)
@@ -71,9 +72,9 @@ func TestDeleteRowStruct(t *testing.T) {
 		conn, refl, builder, fmtr := newTestInterfaces()
 		var execCount int
 		testErr := errors.New("delete failed")
-		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
 			execCount++
-			return testErr
+			return 0, testErr
 		}
 		row := reflectTestStruct{ID: 1, Name: "Alice"}
 		err := DeleteRowStruct(t.Context(), conn, refl, builder, fmtr, row)
@@ -81,7 +82,19 @@ func TestDeleteRowStruct(t *testing.T) {
 			t.Errorf("expected error wrapping %v, got: %v", testErr, err)
 		}
 		if execCount != 1 {
-			t.Errorf("MockExec called %d times, want 1", execCount)
+			t.Errorf("MockExecRowsAffected called %d times, want 1", execCount)
+		}
+	})
+
+	t.Run("no rows affected", func(t *testing.T) {
+		conn, refl, builder, fmtr := newTestInterfaces()
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			return 0, nil
+		}
+		row := reflectTestStruct{ID: 999, Name: "Ghost"}
+		err := DeleteRowStruct(t.Context(), conn, refl, builder, fmtr, row)
+		if !errors.Is(err, sql.ErrNoRows) {
+			t.Errorf("expected sql.ErrNoRows, got: %v", err)
 		}
 	})
 }
@@ -93,10 +106,10 @@ func TestDeleteRowStructStmt(t *testing.T) {
 		conn, refl, builder, fmtr := newTestInterfaces()
 		var execCount int
 		var gotQuery string
-		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
 			execCount++
 			gotQuery = query
-			return nil
+			return 1, nil
 		}
 		deleteFunc, closeStmt, err := DeleteRowStructStmt[reflectTestStruct](t.Context(), conn, refl, builder, fmtr)
 		if err != nil {
@@ -113,7 +126,7 @@ func TestDeleteRowStructStmt(t *testing.T) {
 			t.Fatal(err)
 		}
 		if execCount != 2 {
-			t.Errorf("MockExec called %d times, want 2", execCount)
+			t.Errorf("MockExecRowsAffected called %d times, want 2", execCount)
 		}
 		if gotQuery != wantQuery {
 			t.Errorf("query = %q, want %q", gotQuery, wantQuery)
@@ -124,10 +137,10 @@ func TestDeleteRowStructStmt(t *testing.T) {
 		conn, refl, builder, fmtr := newTestInterfaces()
 		var execCount int
 		var gotQuery string
-		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
 			execCount++
 			gotQuery = query
-			return nil
+			return 1, nil
 		}
 		deleteFunc, closeStmt, err := DeleteRowStructStmt[*reflectTestStruct](t.Context(), conn, refl, builder, fmtr)
 		if err != nil {
@@ -140,7 +153,7 @@ func TestDeleteRowStructStmt(t *testing.T) {
 			t.Fatal(err)
 		}
 		if execCount != 1 {
-			t.Errorf("MockExec called %d times, want 1", execCount)
+			t.Errorf("MockExecRowsAffected called %d times, want 1", execCount)
 		}
 		if gotQuery != wantQuery {
 			t.Errorf("query = %q, want %q", gotQuery, wantQuery)
@@ -159,6 +172,23 @@ func TestDeleteRowStructStmt(t *testing.T) {
 			t.Error("expected error for struct without primary key")
 		}
 	})
+
+	t.Run("no rows affected", func(t *testing.T) {
+		conn, refl, builder, fmtr := newTestInterfaces()
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			return 0, nil
+		}
+		deleteFunc, closeStmt, err := DeleteRowStructStmt[reflectTestStruct](t.Context(), conn, refl, builder, fmtr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer closeStmt()
+
+		err = deleteFunc(t.Context(), reflectTestStruct{ID: 999, Name: "Ghost"})
+		if !errors.Is(err, sql.ErrNoRows) {
+			t.Errorf("expected sql.ErrNoRows, got: %v", err)
+		}
+	})
 }
 
 func TestDeleteRowStructs(t *testing.T) {
@@ -175,11 +205,11 @@ func TestDeleteRowStructs(t *testing.T) {
 		var execCount int
 		var gotQuery string
 		var gotArgs []any
-		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
 			execCount++
 			gotQuery = query
 			gotArgs = args
-			return nil
+			return 1, nil
 		}
 		items := []reflectTestStruct{{ID: 1, Name: "Alice", Active: true}}
 		err := DeleteRowStructs(t.Context(), conn, refl, builder, fmtr, items)
@@ -187,7 +217,7 @@ func TestDeleteRowStructs(t *testing.T) {
 			t.Fatal(err)
 		}
 		if execCount != 1 {
-			t.Errorf("MockExec called %d times, want 1", execCount)
+			t.Errorf("MockExecRowsAffected called %d times, want 1", execCount)
 		}
 		wantQuery := "DELETE FROM test_table WHERE id = $1"
 		if gotQuery != wantQuery {
@@ -200,10 +230,10 @@ func TestDeleteRowStructs(t *testing.T) {
 		conn, refl, builder, fmtr := newTestInterfaces()
 		var execCount int
 		var gotQuery string
-		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
 			execCount++
 			gotQuery = query
-			return nil
+			return 1, nil
 		}
 		items := []reflectTestStruct{
 			{ID: 1, Name: "Alice", Active: true},
@@ -214,7 +244,7 @@ func TestDeleteRowStructs(t *testing.T) {
 			t.Fatal(err)
 		}
 		if execCount != 2 {
-			t.Errorf("MockExec called %d times, want 2", execCount)
+			t.Errorf("MockExecRowsAffected called %d times, want 2", execCount)
 		}
 		wantQuery := "DELETE FROM test_table WHERE id = $1"
 		if gotQuery != wantQuery {
@@ -225,9 +255,9 @@ func TestDeleteRowStructs(t *testing.T) {
 	t.Run("single pointer item", func(t *testing.T) {
 		conn, refl, builder, fmtr := newTestInterfaces()
 		var gotArgs []any
-		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
 			gotArgs = args
-			return nil
+			return 1, nil
 		}
 		items := []*reflectTestStruct{{ID: 1, Name: "Alice", Active: true}}
 		err := DeleteRowStructs(t.Context(), conn, refl, builder, fmtr, items)
@@ -240,9 +270,9 @@ func TestDeleteRowStructs(t *testing.T) {
 	t.Run("multiple pointer items", func(t *testing.T) {
 		conn, refl, builder, fmtr := newTestInterfaces()
 		var execCount int
-		conn.MockExec = func(ctx context.Context, query string, args ...any) error {
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
 			execCount++
-			return nil
+			return 1, nil
 		}
 		items := []*reflectTestStruct{
 			{ID: 1, Name: "Alice", Active: true},
@@ -253,7 +283,39 @@ func TestDeleteRowStructs(t *testing.T) {
 			t.Fatal(err)
 		}
 		if execCount != 2 {
-			t.Errorf("MockExec called %d times, want 2", execCount)
+			t.Errorf("MockExecRowsAffected called %d times, want 2", execCount)
+		}
+	})
+
+	t.Run("single no rows affected", func(t *testing.T) {
+		conn, refl, builder, fmtr := newTestInterfaces()
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			return 0, nil
+		}
+		items := []reflectTestStruct{{ID: 999, Name: "Ghost"}}
+		err := DeleteRowStructs(t.Context(), conn, refl, builder, fmtr, items)
+		if !errors.Is(err, sql.ErrNoRows) {
+			t.Errorf("expected sql.ErrNoRows, got: %v", err)
+		}
+	})
+
+	t.Run("multiple second no rows affected", func(t *testing.T) {
+		conn, refl, builder, fmtr := newTestInterfaces()
+		var execCount int
+		conn.MockExecRowsAffected = func(ctx context.Context, query string, args ...any) (int64, error) {
+			execCount++
+			if execCount == 1 {
+				return 1, nil
+			}
+			return 0, nil
+		}
+		items := []reflectTestStruct{
+			{ID: 1, Name: "Alice"},
+			{ID: 999, Name: "Ghost"},
+		}
+		err := DeleteRowStructs(t.Context(), conn, refl, builder, fmtr, items)
+		if !errors.Is(err, sql.ErrNoRows) {
+			t.Errorf("expected sql.ErrNoRows, got: %v", err)
 		}
 	})
 }
