@@ -53,6 +53,7 @@ func TestNewTaggedStructReflector(t *testing.T) {
 	assert.NotNil(t, r.UntaggedNameFunc)
 	assert.Equal(t, "", r.UntaggedNameFunc("AnyField"), "default UntaggedNameFunc should be IgnoreStructField")
 	assert.False(t, r.FailOnUnmappedColumns)
+	assert.False(t, r.FailOnUnmappedStructFields)
 }
 
 func TestTaggedStructReflector_String(t *testing.T) {
@@ -344,4 +345,94 @@ func TestTaggedStructReflector_ColumnPointers_ColumnOrder(t *testing.T) {
 	namePtr, ok := ptrs[2].(*string)
 	require.True(t, ok)
 	assert.Equal(t, "Test", *namePtr)
+}
+
+func TestTaggedStructReflector_ColumnPointers_FailOnUnmappedStructFields(t *testing.T) {
+	failReflector := &TaggedStructReflector{
+		NameTag:                    "db",
+		Ignore:                     "-",
+		PrimaryKey:                 "primarykey",
+		ReadOnly:                   "readonly",
+		Default:                    "default",
+		UntaggedNameFunc:           IgnoreStructField,
+		FailOnUnmappedStructFields: true,
+	}
+
+	t.Run("all struct fields covered succeeds", func(t *testing.T) {
+		s := reflectTestStruct{ID: 1, Name: "Test", Active: true}
+		v := reflect.ValueOf(&s).Elem()
+		ptrs, err := failReflector.ColumnPointers(v, []string{"id", "name", "active"})
+		require.NoError(t, err)
+		assert.Len(t, ptrs, 3)
+	})
+
+	t.Run("single unmapped struct field errors", func(t *testing.T) {
+		s := reflectTestStruct{}
+		v := reflect.ValueOf(&s).Elem()
+		// Query omits "active"
+		_, err := failReflector.ColumnPointers(v, []string{"id", "name"})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "active")
+	})
+
+	t.Run("multiple unmapped struct fields lists all in error", func(t *testing.T) {
+		s := reflectTestStruct{}
+		v := reflect.ValueOf(&s).Elem()
+		// Query only has "id", missing "name" and "active"
+		_, err := failReflector.ColumnPointers(v, []string{"id"})
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "name")
+		assert.Contains(t, err.Error(), "active")
+		// The covered field "id" should not appear in the error
+		assert.NotContains(t, err.Error(), "id")
+	})
+
+	t.Run("extra query columns don't trigger error", func(t *testing.T) {
+		// All struct fields are covered, extra query column is fine for this flag
+		s := reflectTestStruct{ID: 1, Name: "Test", Active: true}
+		v := reflect.ValueOf(&s).Elem()
+		ptrs, err := failReflector.ColumnPointers(v, []string{"id", "name", "active", "extra"})
+		require.NoError(t, err)
+		assert.Len(t, ptrs, 4)
+		// The extra column should get a discard destination (FailOnUnmappedColumns is false)
+		assert.NotNil(t, ptrs[3])
+	})
+
+	t.Run("both flags enabled unmapped column errors first", func(t *testing.T) {
+		bothReflector := &TaggedStructReflector{
+			NameTag:                    "db",
+			Ignore:                     "-",
+			PrimaryKey:                 "primarykey",
+			ReadOnly:                   "readonly",
+			Default:                    "default",
+			UntaggedNameFunc:           IgnoreStructField,
+			FailOnUnmappedColumns:      true,
+			FailOnUnmappedStructFields: true,
+		}
+		s := reflectTestStruct{}
+		v := reflect.ValueOf(&s).Elem()
+		// "extra" is unmapped column, "active" is unmapped struct field
+		_, err := bothReflector.ColumnPointers(v, []string{"id", "name", "extra"})
+		require.Error(t, err)
+		// FailOnUnmappedColumns check runs first
+		assert.Contains(t, err.Error(), "extra")
+	})
+
+	t.Run("both flags enabled all matched succeeds", func(t *testing.T) {
+		bothReflector := &TaggedStructReflector{
+			NameTag:                    "db",
+			Ignore:                     "-",
+			PrimaryKey:                 "primarykey",
+			ReadOnly:                   "readonly",
+			Default:                    "default",
+			UntaggedNameFunc:           IgnoreStructField,
+			FailOnUnmappedColumns:      true,
+			FailOnUnmappedStructFields: true,
+		}
+		s := reflectTestStruct{ID: 1, Name: "Test", Active: true}
+		v := reflect.ValueOf(&s).Elem()
+		ptrs, err := bothReflector.ColumnPointers(v, []string{"id", "name", "active"})
+		require.NoError(t, err)
+		assert.Len(t, ptrs, 3)
+	})
 }

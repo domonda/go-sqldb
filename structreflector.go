@@ -28,13 +28,14 @@ type StructReflector interface {
 // NewTaggedStructReflector returns a default mapping.
 func NewTaggedStructReflector() *TaggedStructReflector {
 	return &TaggedStructReflector{
-		NameTag:               "db",
-		Ignore:                "-",
-		PrimaryKey:            "primarykey",
-		ReadOnly:              "readonly",
-		Default:               "default",
-		UntaggedNameFunc:      IgnoreStructField,
-		FailOnUnmappedColumns: false,
+		NameTag:                    "db",
+		Ignore:                     "-",
+		PrimaryKey:                 "primarykey",
+		ReadOnly:                   "readonly",
+		Default:                    "default",
+		UntaggedNameFunc:           IgnoreStructField,
+		FailOnUnmappedColumns:      false,
+		FailOnUnmappedStructFields: false,
 	}
 }
 
@@ -65,6 +66,11 @@ type TaggedStructReflector struct {
 	// If false (the default), unmapped columns are silently ignored
 	// by using discard scan destinations.
 	FailOnUnmappedColumns bool
+
+	// FailOnUnmappedStructFields controls whether ColumnPointers returns an error
+	// when the struct has mapped fields with no corresponding query result column.
+	// If false (the default), unmapped struct fields are silently left unchanged.
+	FailOnUnmappedStructFields bool
 }
 
 // TableNameForStruct implements StructReflector.TableNameForStruct.
@@ -154,6 +160,27 @@ func (m *TaggedStructReflector) ColumnPointers(structVal reflect.Value, columns 
 			fmt.Fprintf(nilCols, "column=%s, index=%d", columns[j], j)
 		}
 		return nil, fmt.Errorf("columns have no mapped struct fields in %s: %s", structVal.Type(), nilCols)
+	}
+	if m.FailOnUnmappedStructFields {
+		columnSet := make(map[string]struct{}, len(columns))
+		for _, col := range columns {
+			columnSet[col] = struct{}{}
+		}
+		var unmapped *strings.Builder
+		for _, f := range rs.Fields {
+			if _, ok := columnSet[f.Column.Name]; !ok {
+				if unmapped == nil {
+					unmapped = new(strings.Builder)
+				}
+				if unmapped.Len() > 0 {
+					unmapped.WriteString(", ")
+				}
+				unmapped.WriteString(f.Column.Name)
+			}
+		}
+		if unmapped != nil {
+			return nil, fmt.Errorf("struct fields have no mapped columns in query result for %s: %s", structVal.Type(), unmapped)
+		}
 	}
 	return pointers, nil
 }

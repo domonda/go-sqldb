@@ -304,6 +304,16 @@ db.SetStructReflector(reflector)
 
 With `FailOnUnmappedColumns` enabled, scanning will return an error listing all result columns that have no corresponding struct field. This is useful for catching schema drift or accidental `SELECT *` queries that return unexpected columns.
 
+Similarly, `FailOnUnmappedStructFields` catches the reverse: struct fields that have no corresponding column in the query result. This is useful for catching incomplete `SELECT` queries that accidentally omit columns:
+
+```go
+reflector := sqldb.NewTaggedStructReflector()
+reflector.FailOnUnmappedStructFields = true
+db.SetStructReflector(reflector)
+```
+
+Both flags can be enabled together for strict bidirectional checking where every query result column must map to a struct field and every struct field must have a corresponding query result column.
+
 ### Slice and array column handling
 
 Slice and array column handling (like PostgreSQL arrays) is handled transparently by driver implementations. For example, the `pqconn` driver automatically wraps Go slices and arrays with `pq.Array()` for both query arguments and row scanning, so you can use native Go slices in structs mapped to PostgreSQL array columns without any manual conversion.
