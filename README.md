@@ -343,17 +343,23 @@ user, err := db.QueryRowAs[User](ctx,
 )
 
 // Scan a scalar value
-var count int64
-count, err = db.QueryRowAs[int64](ctx, `SELECT count(*) FROM public.user`)
+count, err := db.QueryRowAs[int64](ctx, `SELECT count(*) FROM public.user`)
 
 // Return a default value instead of sql.ErrNoRows
 user, err = db.QueryRowAsOr(ctx, defaultUser,
     /*sql*/ `SELECT * FROM public.user WHERE id = $1`, userID,
 )
 
+// Scan multiple scalar values with generics
+name, email, err := db.QueryRowAs2[string, email.Address](ctx,
+    /*sql*/ `SELECT name, email FROM public.user WHERE id = $1`, userID,
+)
+
 // Low-level: scan into individual variables
-var name string
-var email string
+var (
+    name  string
+    email email.Address
+)
 err = db.QueryRow(ctx,
     /*sql*/ `SELECT name, email FROM public.user WHERE id = $1`, userID,
 ).Scan(&name, &email)
