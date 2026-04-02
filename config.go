@@ -11,6 +11,13 @@ import (
 	"time"
 )
 
+// Logger has a Printf method used for logging
+// information that could not be returned by
+// any of the package functions directly.
+type Logger interface {
+	Printf(format string, v ...any)
+}
+
 // Config for a connection.
 // For tips see https://www.alexedwards.net/blog/configuring-sqldb
 type Config struct {
@@ -56,6 +63,29 @@ type Config struct {
 	//
 	// If ConnMaxLifetime <= 0, connections are not closed due to a connection's age.
 	ConnMaxLifetime time.Duration `json:"connMaxLifetime,omitempty"`
+
+	// ListenerMinReconnectInterval is the minimum interval between
+	// reconnection attempts for a LISTEN/NOTIFY listener.
+	// Zero value means a default defined by the vendor package is used.
+	ListenerMinReconnectInterval time.Duration `json:"listenerMinReconnectInterval,omitempty"`
+
+	// ListenerMaxReconnectInterval is the maximum interval between
+	// reconnection attempts for a LISTEN/NOTIFY listener.
+	// Zero value means a default defined by the vendor package is used.
+	ListenerMaxReconnectInterval time.Duration `json:"listenerMaxReconnectInterval,omitempty"`
+
+	// ListenerPingInterval is the interval between keep-alive pings
+	// for a LISTEN/NOTIFY listener.
+	// Zero value means a default defined by the vendor package is used.
+	ListenerPingInterval time.Duration `json:"listenerPingInterval,omitempty"`
+
+	// ListenerEventLogger will log all listener connection events if not nil.
+	ListenerEventLogger Logger `json:"-"`
+
+	// ErrLogger is used to log errors that could not be returned
+	// by any of the package functions directly.
+	// If nil, errors are silently discarded.
+	ErrLogger Logger `json:"-"`
 }
 
 // ParseConfig parses a connection URI string and returns a Config.

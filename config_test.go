@@ -1,6 +1,7 @@
 package sqldb
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -172,4 +173,58 @@ func TestConfig_URL(t *testing.T) {
 		u := c.URL()
 		assert.Empty(t, u.RawQuery)
 	})
+}
+
+// mockLogger records Printf calls for testing.
+type mockLogger struct {
+	messages []string
+}
+
+func (m *mockLogger) Printf(format string, v ...any) {
+	m.messages = append(m.messages, fmt.Sprintf(format, v...))
+}
+
+func TestConfig_ErrLogger_NilByDefault(t *testing.T) {
+	var c Config
+	assert.Nil(t, c.ErrLogger, "ErrLogger should be nil by default")
+}
+
+func TestConfig_ErrLogger_Custom(t *testing.T) {
+	logger := &mockLogger{}
+	c := Config{
+		Driver:    "postgres",
+		Database:  "mydb",
+		ErrLogger: logger,
+	}
+
+	require.NotNil(t, c.ErrLogger)
+	c.ErrLogger.Printf("test error %d", 42)
+	require.Len(t, logger.messages, 1)
+	assert.Equal(t, "test error 42", logger.messages[0])
+}
+
+func TestConfig_ListenerEventLogger_NilByDefault(t *testing.T) {
+	var c Config
+	assert.Nil(t, c.ListenerEventLogger, "ListenerEventLogger should be nil by default")
+}
+
+func TestConfig_ListenerEventLogger_Custom(t *testing.T) {
+	logger := &mockLogger{}
+	c := Config{
+		Driver:              "postgres",
+		Database:            "mydb",
+		ListenerEventLogger: logger,
+	}
+
+	require.NotNil(t, c.ListenerEventLogger)
+	c.ListenerEventLogger.Printf("event %s", "connected")
+	require.Len(t, logger.messages, 1)
+	assert.Equal(t, "event connected", logger.messages[0])
+}
+
+func TestParseConfig_LoggersNotSet(t *testing.T) {
+	c, err := ParseConfig("postgres://user:pass@localhost:5432/mydb")
+	require.NoError(t, err)
+	assert.Nil(t, c.ErrLogger, "ParseConfig should not set ErrLogger")
+	assert.Nil(t, c.ListenerEventLogger, "ParseConfig should not set ListenerEventLogger")
 }

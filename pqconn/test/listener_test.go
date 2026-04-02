@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,6 +16,35 @@ import (
 	"github.com/domonda/go-sqldb"
 	"github.com/domonda/go-sqldb/pqconn"
 )
+
+// testLogger is a thread-safe logger that captures log messages for assertions.
+type testLogger struct {
+	mu       sync.Mutex
+	messages []string
+}
+
+func (l *testLogger) Printf(format string, v ...any) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.messages = append(l.messages, fmt.Sprintf(format, v...))
+}
+
+func (l *testLogger) Messages() []string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return append([]string(nil), l.messages...)
+}
+
+func (l *testLogger) ContainsSubstring(sub string) bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	for _, msg := range l.messages {
+		if strings.Contains(msg, sub) {
+			return true
+		}
+	}
+	return false
+}
 
 func openHelperDB(t *testing.T) *sql.DB {
 	t.Helper()
@@ -75,23 +106,50 @@ func terminateBackend(t *testing.T, db *sql.DB, pid int) {
 	require.True(t, terminated, "failed to terminate backend %d", pid)
 }
 
-func setShortReconnectIntervals(t *testing.T) {
+func pqConnectWithShortReconnect(t *testing.T) sqldb.Connection {
 	t.Helper()
-	origMin := pqconn.ListenerMinReconnectInterval
-	origMax := pqconn.ListenerMaxReconnectInterval
-	pqconn.ListenerMinReconnectInterval = 100 * time.Millisecond
-	pqconn.ListenerMaxReconnectInterval = time.Second
-	t.Cleanup(func() {
-		pqconn.ListenerMinReconnectInterval = origMin
-		pqconn.ListenerMaxReconnectInterval = origMax
-	})
+	port, err := strconv.ParseUint(postgresPort, 10, 16)
+	require.NoError(t, err)
+	config := &sqldb.Config{
+		Driver:                       "postgres",
+		Host:                         postgresHost,
+		Port:                         uint16(port),
+		User:                         postgresUser,
+		Password:                     postgresPassword,
+		Database:                     dbName,
+		Extra:                        map[string]string{"sslmode": "disable"},
+		ListenerMinReconnectInterval: 100 * time.Millisecond,
+		ListenerMaxReconnectInterval: time.Second,
+	}
+	conn, err := pqconn.Connect(t.Context(), config)
+	require.NoError(t, err)
+	t.Cleanup(func() { conn.Close() })
+	return conn
+}
+
+func pqConnectWithLogger(t *testing.T, errLogger sqldb.Logger) sqldb.Connection {
+	t.Helper()
+	port, err := strconv.ParseUint(postgresPort, 10, 16)
+	require.NoError(t, err)
+	config := &sqldb.Config{
+		Driver:    "postgres",
+		Host:      postgresHost,
+		Port:      uint16(port),
+		User:      postgresUser,
+		Password:  postgresPassword,
+		Database:  dbName,
+		Extra:     map[string]string{"sslmode": "disable"},
+		ErrLogger: errLogger,
+	}
+	conn, err := pqconn.Connect(t.Context(), config)
+	require.NoError(t, err)
+	t.Cleanup(func() { conn.Close() })
+	return conn
 }
 
 func TestListenerReconnect(t *testing.T) {
 	// given
-	setShortReconnectIntervals(t)
-
-	conn := pqConnect(t)
+	conn := pqConnectWithShortReconnect(t)
 	listenerConn := conn.(sqldb.ListenerConnection)
 	helperDB := openHelperDB(t)
 
@@ -141,9 +199,7 @@ func TestListenerReconnect(t *testing.T) {
 
 func TestListenerUnlistenNotResubscribedAfterReconnect(t *testing.T) {
 	// given
-	setShortReconnectIntervals(t)
-
-	conn := pqConnect(t)
+	conn := pqConnectWithShortReconnect(t)
 	listenerConn := conn.(sqldb.ListenerConnection)
 	helperDB := openHelperDB(t)
 
@@ -328,4 +384,135 @@ func TestListenerOnlyUnlistenCallback(t *testing.T) {
 		t.Fatal("timeout waiting for unlisten callback")
 	}
 	assert.False(t, listenerConn.IsListeningOnChannel("test_only_unlisten"))
+}
+
+func TestListenerNotifyCallbackPanic(t *testing.T) {
+	// given - two callbacks on the same channel, one panics
+	errLog := &testLogger{}
+	conn := pqConnectWithLogger(t, errLog)
+	listenerConn := conn.(sqldb.ListenerConnection)
+	helperDB := openHelperDB(t)
+
+	goodCh := make(chan string, 10)
+	err := listenerConn.ListenOnChannel("test_notify_panic",
+		func(_, payload string) { panic("boom from notify") },
+		nil,
+	)
+	require.NoError(t, err)
+
+	err = listenerConn.ListenOnChannel("test_notify_panic",
+		func(_, payload string) { goodCh <- payload },
+		nil,
+	)
+	require.NoError(t, err)
+
+	// when - send a notification
+	_, err = helperDB.Exec("NOTIFY test_notify_panic, 'hello'")
+	require.NoError(t, err)
+
+	// then - the non-panicking callback still receives the notification
+	select {
+	case payload := <-goodCh:
+		assert.Equal(t, "hello", payload)
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout waiting for notification on non-panicking callback")
+	}
+
+	// and the panic was logged
+	require.Eventually(t, func() bool {
+		return errLog.ContainsSubstring("notify callback on channel")
+	}, 5*time.Second, 50*time.Millisecond, "expected panic log from notify callback")
+
+	// Cleanup
+	err = listenerConn.UnlistenChannel("test_notify_panic")
+	require.NoError(t, err)
+}
+
+func TestListenerUnlistenCallbackPanic(t *testing.T) {
+	// given - a panicking and a normal unlisten callback
+	errLog := &testLogger{}
+	conn := pqConnectWithLogger(t, errLog)
+	listenerConn := conn.(sqldb.ListenerConnection)
+
+	goodCh := make(chan string, 10)
+	err := listenerConn.ListenOnChannel("test_unlisten_panic",
+		nil,
+		func(channel string) { panic("boom from unlisten") },
+	)
+	require.NoError(t, err)
+
+	err = listenerConn.ListenOnChannel("test_unlisten_panic",
+		nil,
+		func(channel string) { goodCh <- channel },
+	)
+	require.NoError(t, err)
+
+	// when
+	err = listenerConn.UnlistenChannel("test_unlisten_panic")
+	require.NoError(t, err)
+
+	// then - the non-panicking unlisten callback was called
+	select {
+	case channel := <-goodCh:
+		assert.Equal(t, "test_unlisten_panic", channel)
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout waiting for non-panicking unlisten callback")
+	}
+
+	// and the panic was logged
+	require.Eventually(t, func() bool {
+		return errLog.ContainsSubstring("unlisten callback on channel")
+	}, 5*time.Second, 50*time.Millisecond, "expected panic log from unlisten callback")
+
+	assert.False(t, listenerConn.IsListeningOnChannel("test_unlisten_panic"))
+}
+
+func TestListenerCloseWithPanickingUnlistenCallback(t *testing.T) {
+	// given - a dedicated connection so closing doesn't affect other tests
+	errLog := &testLogger{}
+	port, err := strconv.ParseUint(postgresPort, 10, 16)
+	require.NoError(t, err)
+	config := &sqldb.Config{
+		Driver:    "postgres",
+		Host:      postgresHost,
+		Port:      uint16(port),
+		User:      postgresUser,
+		Password:  postgresPassword,
+		Database:  dbName,
+		Extra:     map[string]string{"sslmode": "disable"},
+		ErrLogger: errLog,
+	}
+	conn, err := pqconn.Connect(t.Context(), config)
+	require.NoError(t, err)
+	listenerConn := conn.(sqldb.ListenerConnection)
+
+	goodCh := make(chan string, 10)
+	err = listenerConn.ListenOnChannel("test_close_panic",
+		nil,
+		func(channel string) { panic("boom from close") },
+	)
+	require.NoError(t, err)
+
+	err = listenerConn.ListenOnChannel("test_close_panic",
+		nil,
+		func(channel string) { goodCh <- channel },
+	)
+	require.NoError(t, err)
+
+	// when - close the connection
+	err = conn.Close()
+	require.NoError(t, err)
+
+	// then - the non-panicking unlisten callback was called
+	select {
+	case channel := <-goodCh:
+		assert.Equal(t, "test_close_panic", channel)
+	case <-time.After(5 * time.Second):
+		t.Fatal("timeout waiting for non-panicking unlisten callback on close")
+	}
+
+	// and the panic was logged
+	require.Eventually(t, func() bool {
+		return errLog.ContainsSubstring("unlisten callback on channel")
+	}, 5*time.Second, 50*time.Millisecond, "expected panic log from unlisten callback on close")
 }

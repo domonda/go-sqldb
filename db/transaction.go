@@ -81,7 +81,7 @@ func DebugNoTransactionResult[T any](ctx context.Context, nonTxFunc func(context
 // IsolatedTransaction returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, a brand new transaction will begin on the parent's connection.
 // Errors and panics from txFunc will rollback the transaction.
-// Recovered panics are re-panicked and rollback errors after a panic are logged with [sqldb.ErrLogger].
+// Recovered panics are re-panicked after rollback.
 func IsolatedTransaction(ctx context.Context, txFunc func(context.Context) error) error {
 	if IsContextWithoutTransactions(ctx) {
 		return txFunc(ctx)
@@ -95,7 +95,7 @@ func IsolatedTransaction(ctx context.Context, txFunc func(context.Context) error
 // IsolatedTransactionResult returns all errors from txFunc or transaction commit errors happening after txFunc.
 // If parentConn is already a transaction, a brand new transaction will begin on the parent's connection.
 // Errors and panics from txFunc will rollback the transaction.
-// Recovered panics are re-panicked and rollback errors after a panic are logged with [sqldb.ErrLogger].
+// Recovered panics are re-panicked after rollback.
 func IsolatedTransactionResult[T any](ctx context.Context, txFunc func(context.Context) (T, error)) (result T, err error) {
 	err = IsolatedTransaction(ctx, func(ctx context.Context) error {
 		result, err = txFunc(ctx)
@@ -110,7 +110,7 @@ func IsolatedTransactionResult[T any](ctx context.Context, txFunc func(context.C
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx [sqldb.Connection].
 // and no parentConn.Begin, Commit, or Rollback calls will occur within this Transaction call.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
-// Recovered panics are re-panicked and rollback errors after a panic are logged with [sqldb.ErrLogger].
+// Recovered panics are re-panicked after rollback.
 func Transaction(ctx context.Context, txFunc func(context.Context) error) error {
 	if IsContextWithoutTransactions(ctx) {
 		return txFunc(ctx)
@@ -126,7 +126,7 @@ func Transaction(ctx context.Context, txFunc func(context.Context) error) error 
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
 // and no parentConn.Begin, Commit, or Rollback calls will occur within this TransactionResult call.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
-// Recovered panics are re-panicked and rollback errors after a panic are logged with [sqldb.ErrLogger].
+// Recovered panics are re-panicked after rollback.
 func TransactionResult[T any](ctx context.Context, txFunc func(context.Context) (T, error)) (result T, err error) {
 	err = Transaction(ctx, func(ctx context.Context) error {
 		result, err = txFunc(ctx)
@@ -163,7 +163,7 @@ func OptionalTransactionResult[T any](ctx context.Context, useTransaction bool, 
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
 // and no parentConn.Begin, Commit, or Rollback calls will occur within this SerializedTransaction call.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
-// Recovered panics are re-panicked and rollback errors after a panic are logged with [sqldb.ErrLogger].
+// Recovered panics are re-panicked after rollback.
 //
 // Serialized transactions are typically necessary when an insert depends on a previous select within
 // the transaction, but that pre-insert select can't lock the table like it's possible with SELECT FOR UPDATE.
@@ -236,7 +236,7 @@ func SerializedTransactionResult[T any](ctx context.Context, txFunc func(context
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
 // and no parentConn.Begin, Commit, or Rollback calls will occur within this TransactionOpts call.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
-// Recovered panics are re-panicked and rollback errors after a panic are logged with [sqldb.ErrLogger].
+// Recovered panics are re-panicked after rollback.
 func TransactionOpts(ctx context.Context, opts *sql.TxOptions, txFunc func(context.Context) error) error {
 	if IsContextWithoutTransactions(ctx) {
 		return txFunc(ctx)
@@ -262,7 +262,7 @@ func TransactionOptsResult[T any](ctx context.Context, opts *sql.TxOptions, txFu
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
 // and no parentConn.Begin, Commit, or Rollback calls will occur within this TransactionReadOnly call.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
-// Recovered panics are re-panicked and rollback errors after a panic are logged with [sqldb.ErrLogger].
+// Recovered panics are re-panicked after rollback.
 func TransactionReadOnly(ctx context.Context, txFunc func(context.Context) error) error {
 	if IsContextWithoutTransactions(ctx) {
 		return txFunc(ctx)
@@ -279,7 +279,7 @@ func TransactionReadOnly(ctx context.Context, txFunc func(context.Context) error
 // If parentConn is already a transaction, then it is passed through to txFunc unchanged as tx sqldb.Connection
 // and no parentConn.Begin, Commit, or Rollback calls will occur within this TransactionReadOnlyResult call.
 // Errors and panics from txFunc will rollback the transaction if parentConn was not already a transaction.
-// Recovered panics are re-panicked and rollback errors after a panic are logged with [sqldb.ErrLogger].
+// Recovered panics are re-panicked after rollback.
 func TransactionReadOnlyResult[T any](ctx context.Context, txFunc func(context.Context) (T, error)) (result T, err error) {
 	err = TransactionReadOnly(ctx, func(ctx context.Context) error {
 		result, err = txFunc(ctx)
