@@ -11,9 +11,6 @@ import (
 )
 
 var (
-	globalListeners    = make(map[string]*listener)
-	globalListenersMtx sync.RWMutex
-
 	// ListenerMinReconnectInterval is the minimum interval between reconnection attempts
 	// for the PostgreSQL LISTEN/NOTIFY listener.
 	ListenerMinReconnectInterval = time.Second * 10
@@ -26,7 +23,6 @@ var (
 )
 
 type listener struct {
-	connURL  string
 	conn     *pq.Listener
 	ping     *time.Ticker
 	stop     chan struct{}
@@ -38,18 +34,13 @@ type listener struct {
 }
 
 func (conn *connection) getOrCreateListener() *listener {
-	connURL := conn.config.URL().String()
+	conn.listenerMtx.Lock()
+	defer conn.listenerMtx.Unlock()
 
-	globalListenersMtx.Lock()
-	defer globalListenersMtx.Unlock()
-
-	l := globalListeners[connURL]
-
-	if l == nil {
-		l = &listener{
-			connURL: connURL,
+	if conn.listener == nil {
+		conn.listener = &listener{
 			conn: pq.NewListener(
-				connURL,
+				conn.config.URL().String(),
 				ListenerMinReconnectInterval,
 				ListenerMaxReconnectInterval,
 				logListenerConnectionEvent,
@@ -59,22 +50,18 @@ func (conn *connection) getOrCreateListener() *listener {
 			notifyCallbacks:   make(map[string][]sqldb.OnNotifyFunc),
 			unlistenCallbacks: make(map[string][]sqldb.OnUnlistenFunc),
 		}
-		globalListeners[connURL] = l
 
-		go l.listen()
+		go conn.listener.listen()
 	}
 
-	return l
+	return conn.listener
 }
 
 func (conn *connection) getListenerOrNil() *listener {
-	connURL := conn.config.URL().String()
+	conn.listenerMtx.RLock()
+	defer conn.listenerMtx.RUnlock()
 
-	globalListenersMtx.RLock()
-	l := globalListeners[connURL]
-	globalListenersMtx.RUnlock()
-
-	return l
+	return conn.listener
 }
 
 func (l *listener) listen() {
@@ -131,10 +118,6 @@ func (l *listener) close() {
 	}
 	l.stopOnce.Do(func() {
 		close(l.stop)
-
-		globalListenersMtx.Lock()
-		delete(globalListeners, l.connURL)
-		globalListenersMtx.Unlock()
 
 		l.ping.Stop()
 		l.conn.Close() //#nosec G104 -- Don't care about close errors

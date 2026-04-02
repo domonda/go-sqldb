@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/domonda/go-sqldb"
@@ -66,6 +67,9 @@ type connection struct {
 
 	db     *sql.DB
 	config *sqldb.Config
+
+	listenerMtx sync.RWMutex
+	listener    *listener
 }
 
 func (conn *connection) Config() *sqldb.Config {
