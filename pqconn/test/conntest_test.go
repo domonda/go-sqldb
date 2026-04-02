@@ -12,7 +12,7 @@ import (
 	"github.com/domonda/go-sqldb/pqconn"
 )
 
-func connectPQ(t *testing.T) sqldb.Connection {
+func pqConnect(t *testing.T) sqldb.Connection {
 	t.Helper()
 	port, err := strconv.ParseUint(postgresPort, 10, 16)
 	require.NoError(t, err)
@@ -33,7 +33,7 @@ func connectPQ(t *testing.T) sqldb.Connection {
 
 func TestConnectionSuite(t *testing.T) {
 	conntest.RunAll(t, conntest.Config{
-		NewConn:      connectPQ,
+		NewConn:      pqConnect,
 		QueryBuilder: pqconn.QueryBuilder{},
 		DDL: conntest.DDL{
 			CreateSimpleTable: /*sql*/ `CREATE TABLE conntest_simple (
