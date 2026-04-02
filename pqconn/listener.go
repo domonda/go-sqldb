@@ -41,17 +41,17 @@ func (conn *connection) getOrCreateListener() *listener {
 
 	if conn.listener == nil {
 		conn.listener = &listener{
-			conn: pq.NewListener(
-				conn.config.URL().String(),
-				ListenerMinReconnectInterval,
-				ListenerMaxReconnectInterval,
-				logListenerConnectionEvent,
-			),
 			ping:              time.NewTicker(ListenerPingInterval),
 			stop:              make(chan struct{}),
 			notifyCallbacks:   make(map[string][]sqldb.OnNotifyFunc),
 			unlistenCallbacks: make(map[string][]sqldb.OnUnlistenFunc),
 		}
+		conn.listener.conn = pq.NewListener(
+			conn.config.URL().String(),
+			ListenerMinReconnectInterval,
+			ListenerMaxReconnectInterval,
+			conn.listener.handleConnectionEvent,
+		)
 
 		go conn.listener.listen()
 	}
@@ -125,11 +125,6 @@ func (l *listener) resubscribeChannels() {
 	if l.isStopped() {
 		return
 	}
-	l.stopOnce.Do(func() {
-		close(l.stop)
-
-		l.ping.Stop()
-		l.conn.Close() //#nosec G104 -- Don't care about close errors
 
 	l.callbacksMtx.RLock()
 	channels := make([]string, 0, len(l.notifyCallbacks)+len(l.unlistenCallbacks))
@@ -259,10 +254,6 @@ func (l *listener) close() {
 	}
 	l.stopOnce.Do(func() {
 		close(l.stop)
-
-		globalListenersMtx.Lock()
-		delete(globalListeners, l.connURL)
-		globalListenersMtx.Unlock()
 
 		l.ping.Stop()
 		l.conn.Close() //#nosec G104 -- Don't care about close errors
