@@ -11,9 +11,6 @@ import (
 )
 
 var (
-	globalListeners    = make(map[string]*listener)
-	globalListenersMtx sync.RWMutex
-
 	// ListenerMinReconnectInterval is the minimum interval between reconnection attempts
 	// for the PostgreSQL LISTEN/NOTIFY listener.
 	ListenerMinReconnectInterval = time.Second * 10
@@ -26,7 +23,6 @@ var (
 )
 
 type listener struct {
-	connURL  string
 	conn     *pq.Listener
 	ping     *time.Ticker
 	stop     chan struct{}
@@ -40,43 +36,34 @@ type listener struct {
 // getOrCreateListener returns the global listener for the connection URL,
 // creating a new one if none exists.
 func (conn *connection) getOrCreateListener() *listener {
-	connURL := conn.config.URL().String()
+	conn.listenerMtx.Lock()
+	defer conn.listenerMtx.Unlock()
 
-	globalListenersMtx.Lock()
-	defer globalListenersMtx.Unlock()
-
-	l := globalListeners[connURL]
-
-	if l == nil {
-		l = &listener{
-			connURL:           connURL,
+	if conn.listener == nil {
+		conn.listener = &listener{
+			conn: pq.NewListener(
+				conn.config.URL().String(),
+				ListenerMinReconnectInterval,
+				ListenerMaxReconnectInterval,
+				logListenerConnectionEvent,
+			),
 			ping:              time.NewTicker(ListenerPingInterval),
 			stop:              make(chan struct{}),
 			notifyCallbacks:   make(map[string][]sqldb.OnNotifyFunc),
 			unlistenCallbacks: make(map[string][]sqldb.OnUnlistenFunc),
 		}
-		l.conn = pq.NewListener(
-			connURL,
-			ListenerMinReconnectInterval,
-			ListenerMaxReconnectInterval,
-			l.handleConnectionEvent,
-		)
-		globalListeners[connURL] = l
 
-		go l.listen()
+		go conn.listener.listen()
 	}
 
-	return l
+	return conn.listener
 }
 
 func (conn *connection) getListenerOrNil() *listener {
-	connURL := conn.config.URL().String()
+	conn.listenerMtx.RLock()
+	defer conn.listenerMtx.RUnlock()
 
-	globalListenersMtx.RLock()
-	l := globalListeners[connURL]
-	globalListenersMtx.RUnlock()
-
-	return l
+	return conn.listener
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -138,6 +125,11 @@ func (l *listener) resubscribeChannels() {
 	if l.isStopped() {
 		return
 	}
+	l.stopOnce.Do(func() {
+		close(l.stop)
+
+		l.ping.Stop()
+		l.conn.Close() //#nosec G104 -- Don't care about close errors
 
 	l.callbacksMtx.RLock()
 	channels := make([]string, 0, len(l.notifyCallbacks)+len(l.unlistenCallbacks))
