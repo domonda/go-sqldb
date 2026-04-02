@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -387,8 +388,15 @@ func TestIsolatedTransaction(t *testing.T) {
 			if r == nil {
 				t.Error("expected panic to be re-thrown")
 			}
-			if r != "test panic" {
-				t.Errorf("unexpected panic value: %v", r)
+			rErr, ok := r.(error)
+			if !ok {
+				t.Fatalf("expected panic value to be an error, got: %v", r)
+			}
+			if !errors.Is(rErr, rbErr) {
+				t.Errorf("expected panic error to wrap rollback error, got: %v", rErr)
+			}
+			if !strings.Contains(rErr.Error(), "test panic") {
+				t.Errorf("expected panic error to contain original panic message, got: %v", rErr)
 			}
 		}()
 		IsolatedTransaction(t.Context(), conn, nil, func(tx Connection) error {
