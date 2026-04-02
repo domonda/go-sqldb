@@ -33,6 +33,8 @@ type listener struct {
 	unlistenCallbacks map[string][]sqldb.OnUnlistenFunc
 }
 
+// getOrCreateListener returns the global listener for the connection URL,
+// creating a new one if none exists.
 func (conn *connection) getOrCreateListener() *listener {
 	conn.listenerMtx.Lock()
 	defer conn.listenerMtx.Unlock()
@@ -64,6 +66,10 @@ func (conn *connection) getListenerOrNil() *listener {
 	return conn.listener
 }
 
+///////////////////////////////////////////////////////////////////////////////
+// Main loop and connection event handling
+///////////////////////////////////////////////////////////////////////////////
+
 func (l *listener) listen() {
 	for {
 		select {
@@ -80,14 +86,91 @@ func (l *listener) listen() {
 			}
 
 		case <-l.ping.C:
-			err := l.conn.Ping()
-			if err != nil {
-				l.close()
-				return
+			// Ping serves as a keep-alive to detect dead connections.
+			// On failure we only log because pq.Listener handles
+			// reconnection internally — closing here would prevent
+			// automatic recovery and channel re-subscription.
+			if err := l.conn.Ping(); err != nil {
+				sqldb.ErrLogger.Printf("pqconn: listener ping failed: %v", err)
 			}
 		}
 	}
 }
+
+// handleConnectionEvent is the callback for pq.Listener connection events.
+// On pq.ListenerEventReconnected we must re-subscribe all channels because
+// a dropped TCP connection can cause the PostgreSQL backend to terminate
+// the session, which removes all LISTEN registrations on the server side.
+// lib/pq's Listener.resync re-issues LISTEN for channels it tracks internally,
+// but does not verify that the server-side subscriptions are still active
+// after reconnect, so we explicitly re-apply all channel subscriptions
+// to guarantee no notifications are lost.
+func (l *listener) handleConnectionEvent(event pq.ListenerEventType, err error) {
+	switch {
+	case err != nil:
+		sqldb.ErrLogger.Printf("pqconn: got listener connection event=%q error=%v", connectionEvent(event), err)
+	case ListenerEventLogger != nil:
+		ListenerEventLogger.Printf("pqconn: got listener connection event=%q", connectionEvent(event))
+	}
+	if event == pq.ListenerEventReconnected {
+		l.resubscribeChannels()
+	}
+}
+
+// resubscribeChannels re-issues LISTEN for every channel that has
+// registered notify or unlisten callbacks. This is called after
+// pq.Listener reconnects to ensure the PostgreSQL session is
+// subscribed to all expected channels.
+func (l *listener) resubscribeChannels() {
+	if l.isStopped() {
+		return
+	}
+	l.stopOnce.Do(func() {
+		close(l.stop)
+
+		l.ping.Stop()
+		l.conn.Close() //#nosec G104 -- Don't care about close errors
+
+	l.callbacksMtx.RLock()
+	channels := make([]string, 0, len(l.notifyCallbacks)+len(l.unlistenCallbacks))
+	for ch := range l.notifyCallbacks {
+		channels = append(channels, ch)
+	}
+	for ch := range l.unlistenCallbacks {
+		if _, hasNotify := l.notifyCallbacks[ch]; !hasNotify {
+			channels = append(channels, ch)
+		}
+	}
+	l.callbacksMtx.RUnlock()
+
+	for _, channel := range channels {
+		if err := l.conn.Listen(channel); err != nil && err != pq.ErrChannelAlreadyOpen {
+			// pq.Listener.resync may have already re-subscribed the channel,
+			// in which case we get ErrChannelAlreadyOpen which is expected.
+			// Any other error means the channel was not re-subscribed.
+			sqldb.ErrLogger.Printf("pqconn: failed to resubscribe to channel %q after reconnect: %v", channel, err)
+		}
+	}
+}
+
+func connectionEvent(event pq.ListenerEventType) string {
+	switch event {
+	case pq.ListenerEventConnected:
+		return "connected"
+	case pq.ListenerEventDisconnected:
+		return "disconnected"
+	case pq.ListenerEventReconnected:
+		return "reconnected"
+	case pq.ListenerEventConnectionAttemptFailed:
+		return "connection attempt failed"
+	default:
+		return fmt.Sprintf("unknown(%d)", event)
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Notification dispatch
+///////////////////////////////////////////////////////////////////////////////
 
 func (l *listener) notify(notification *pq.Notification) {
 	l.callbacksMtx.RLock()
@@ -106,60 +189,13 @@ func (l *listener) safeNotifyCallback(callback sqldb.OnNotifyFunc, channel, payl
 	callback(channel, payload)
 }
 
-func (l *listener) safeUnlistenCallback(callback sqldb.OnUnlistenFunc, channel string) {
-	defer recoverAndLogListenerPanic("unlisten", channel)
-
-	callback(channel)
-}
-
-func (l *listener) close() {
-	if l == nil {
-		return
-	}
-	l.stopOnce.Do(func() {
-		close(l.stop)
-
-		l.ping.Stop()
-		l.conn.Close() //#nosec G104 -- Don't care about close errors
-
-		l.callbacksMtx.Lock()
-		unlistenCallbacks := make(map[string][]sqldb.OnUnlistenFunc, len(l.unlistenCallbacks))
-		for ch, cbs := range l.unlistenCallbacks {
-			unlistenCallbacks[ch] = cbs
-		}
-		l.callbacksMtx.Unlock()
-
-		for channel, callbacks := range unlistenCallbacks {
-			for _, callback := range callbacks {
-				l.safeUnlistenCallback(callback, channel)
-			}
-		}
-	})
-}
-
-func (l *listener) isStopped() bool {
-	select {
-	case <-l.stop:
-		return true
-	default:
-		return false
-	}
-}
-
-func (l *listener) isListeningOnChannel(channel string) bool {
-	if l == nil {
-		return false
-	}
-
-	l.callbacksMtx.RLock()
-	defer l.callbacksMtx.RUnlock()
-
-	return len(l.notifyCallbacks[channel]) > 0 || len(l.unlistenCallbacks[channel]) > 0
-}
+///////////////////////////////////////////////////////////////////////////////
+// Channel subscription management
+///////////////////////////////////////////////////////////////////////////////
 
 func (l *listener) listenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, onUnlisten sqldb.OnUnlistenFunc) (err error) {
 	err = l.conn.Listen(channel)
-	if err != nil {
+	if err != nil && err != pq.ErrChannelAlreadyOpen {
 		return fmt.Errorf("pqconn failed to listenOnChannel %q: %w", channel, err)
 	}
 
@@ -176,7 +212,9 @@ func (l *listener) listenOnChannel(channel string, onNotify sqldb.OnNotifyFunc, 
 	return nil
 }
 
-// called on nil listener will return an error
+// unlistenChannel removes all callbacks for the channel
+// and calls the registered unlisten callbacks.
+// Called on nil listener will return an error.
 func (l *listener) unlistenChannel(channel string) (err error) {
 	if l == nil || l.isStopped() {
 		return fmt.Errorf("pqconn unable to unlistenChannel %q: no db connection", channel)
@@ -200,27 +238,63 @@ func (l *listener) unlistenChannel(channel string) (err error) {
 	return nil
 }
 
-func logListenerConnectionEvent(event pq.ListenerEventType, err error) {
-	switch {
-	case err != nil:
-		sqldb.ErrLogger.Printf("pqconn: got listener connection event=%q error=%v", connectionEvent(event), err)
+func (l *listener) isListeningOnChannel(channel string) bool {
+	if l == nil {
+		return false
+	}
 
-	case ListenerEventLogger != nil:
-		ListenerEventLogger.Printf("pqconn: got listener connection event=%q", connectionEvent(event))
+	l.callbacksMtx.RLock()
+	defer l.callbacksMtx.RUnlock()
+
+	return len(l.notifyCallbacks[channel]) > 0 || len(l.unlistenCallbacks[channel]) > 0
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Lifecycle
+///////////////////////////////////////////////////////////////////////////////
+
+func (l *listener) close() {
+	if l == nil {
+		return
+	}
+	l.stopOnce.Do(func() {
+		close(l.stop)
+
+		globalListenersMtx.Lock()
+		delete(globalListeners, l.connURL)
+		globalListenersMtx.Unlock()
+
+		l.ping.Stop()
+		l.conn.Close() //#nosec G104 -- Don't care about close errors
+
+		l.callbacksMtx.Lock()
+		unlistenCallbacks := make(map[string][]sqldb.OnUnlistenFunc, len(l.unlistenCallbacks))
+		for ch, cbs := range l.unlistenCallbacks {
+			unlistenCallbacks[ch] = cbs
+		}
+		clear(l.notifyCallbacks)
+		clear(l.unlistenCallbacks)
+		l.callbacksMtx.Unlock()
+
+		for channel, callbacks := range unlistenCallbacks {
+			for _, callback := range callbacks {
+				l.safeUnlistenCallback(callback, channel)
+			}
+		}
+	})
+}
+
+func (l *listener) isStopped() bool {
+	select {
+	case <-l.stop:
+		return true
+	default:
+		return false
 	}
 }
 
-func connectionEvent(event pq.ListenerEventType) string {
-	switch event {
-	case pq.ListenerEventConnected:
-		return "connected"
-	case pq.ListenerEventDisconnected:
-		return "disconnected"
-	case pq.ListenerEventReconnected:
-		return "reconnected"
-	case pq.ListenerEventConnectionAttemptFailed:
-		return "connection attempt failed"
-	default:
-		return fmt.Sprintf("unknown(%d)", event)
-	}
+func (l *listener) safeUnlistenCallback(callback sqldb.OnUnlistenFunc, channel string) {
+	defer recoverAndLogListenerPanic("unlisten", channel)
+
+	callback(channel)
 }

@@ -17,7 +17,7 @@ import (
 
 var (
 	postgresUser     = envOrDefault("POSTGRES_USER", "testuser")
-	postgresPassword = envOrDefault("POSTGRES_PASSWORD", "testpassword")
+	postgresPassword = envOrDefault("POSTGRES_PASSWORD", envOrDefault("PGPASSWORD", "testpassword"))
 	postgresHost     = envOrDefault("POSTGRES_HOST", "localhost")
 	postgresPort     = envOrDefaultInt("POSTGRES_PORT", 5433)
 	dbName           = envOrDefault("POSTGRES_DB", "testdb")
