@@ -27,7 +27,7 @@ Set `config.ReadOnly = true` to open a connection with `default_transaction_read
 
 ## LISTEN/NOTIFY
 
-The connection supports PostgreSQL `LISTEN`/`NOTIFY` via `ListenOnChannel`, `UnlistenChannel`, and `IsListeningOnChannel`. Listeners are shared per connection URL and automatically reconnect.
+The connection supports PostgreSQL `LISTEN`/`NOTIFY` via `ListenOnChannel`, `UnlistenChannel`, and `IsListeningOnChannel`. Listeners are shared per connection URL and automatically reconnect with channel resubscription, so no notifications are lost after a connection drop. Calling `ListenOnChannel` multiple times for the same channel adds additional callbacks. `UnlistenChannel` removes all callbacks for the channel.
 
 ## Error Inspection
 

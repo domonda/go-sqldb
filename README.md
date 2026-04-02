@@ -611,7 +611,7 @@ err = db.ListenOnChannel(ctx, "user_changes",
 err = db.UnlistenChannel(ctx, "user_changes")
 ```
 
-Returns `errors.ErrUnsupported` if the connection does not implement `ListenerConnection`.
+Calling `ListenOnChannel` multiple times for the same channel adds additional callbacks. `UnlistenChannel` removes all callbacks for the channel. Returns `errors.ErrUnsupported` if the connection does not implement `ListenerConnection`. The `pqconn` implementation automatically reconnects and resubscribes all channels after a connection drop.
 
 ### Query options
 

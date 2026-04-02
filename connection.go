@@ -125,12 +125,16 @@ type ListenerConnection interface {
 	// and onUnlisten if the channel gets unlistened
 	// or the listener connection gets closed for some reason.
 	// It is valid to pass nil for onNotify or onUnlisten to not get those callbacks.
+	// Calling ListenOnChannel multiple times for the same channel
+	// adds additional callbacks; all registered callbacks will be invoked
+	// for each notification.
 	// Note that the callbacks are called in sequence from a single go routine,
 	// so callbacks should offload long running or potentially blocking code to other go routines.
 	// Panics from callbacks will be recovered and logged.
 	ListenOnChannel(channel string, onNotify OnNotifyFunc, onUnlisten OnUnlistenFunc) error
 
-	// UnlistenChannel will stop listening on the channel.
+	// UnlistenChannel will stop listening on the channel
+	// and remove all registered callbacks for it.
 	// An error is returned, when the channel was not listened to
 	// or the listener connection is closed.
 	UnlistenChannel(channel string) error
