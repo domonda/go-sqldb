@@ -30,6 +30,7 @@ func (TableName) HasTableName() {}
 
 // TableNameForStruct returns the table name for a struct type
 // by looking for an embedded [TableName] field with the given tagKey.
+// It searches recursively through anonymous embedded struct fields.
 func TableNameForStruct(t reflect.Type, tagKey string) (table string, err error) {
 	structType := t
 	for structType.Kind() == reflect.Pointer {
@@ -41,16 +42,41 @@ func TableNameForStruct(t reflect.Type, tagKey string) (table string, err error)
 	if tagKey == "" {
 		return "", fmt.Errorf("TableNameForStruct: tagKey is empty")
 	}
+	table, found, err := tableNameForStructRecursive(structType, tagKey)
+	if err != nil {
+		return "", err
+	}
+	if !found {
+		return "", fmt.Errorf("TableNameForStruct: struct type %s has no embedded TableName field", t)
+	}
+	return table, nil
+}
+
+func tableNameForStructRecursive(structType reflect.Type, tagKey string) (table string, found bool, err error) {
 	tableNameType := reflect.TypeFor[TableName]()
 	for i := range structType.NumField() {
 		field := structType.Field(i)
-		if field.Anonymous && field.Type == tableNameType {
+		if !field.Anonymous {
+			continue
+		}
+		if field.Type == tableNameType {
 			table = field.Tag.Get(tagKey)
 			if table == "" {
-				return "", fmt.Errorf("TableNameForStruct: embedded TableName has no tag %q", tagKey)
+				return "", false, fmt.Errorf("TableNameForStruct: embedded TableName has no tag %q", tagKey)
 			}
-			return table, nil
+			return table, true, nil
+		}
+		// Recurse into anonymous embedded struct fields
+		fieldType := field.Type
+		for fieldType.Kind() == reflect.Pointer {
+			fieldType = fieldType.Elem()
+		}
+		if fieldType.Kind() == reflect.Struct {
+			table, found, err = tableNameForStructRecursive(fieldType, tagKey)
+			if found || err != nil {
+				return table, found, err
+			}
 		}
 	}
-	return "", fmt.Errorf("TableNameForStruct: struct type %s has no embedded TableName field", t)
+	return "", false, nil
 }

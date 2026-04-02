@@ -31,6 +31,47 @@ func TestTableNameForStruct(t *testing.T) {
 			tagKey:    "db",
 			wantTable: "table_name",
 		},
+		{
+			name: "nested embedded struct",
+			t: reflect.TypeFor[struct {
+				Inner struct {
+					TableName `db:"inner_table"`
+				}
+			}](),
+			tagKey:  "db",
+			wantErr: true, // Inner is not anonymous, so TableName should not be found
+		},
+		{
+			name: "anonymous nested embedded struct",
+			t: func() reflect.Type {
+				type Inner struct {
+					TableName `db:"inner_table"`
+				}
+				type Outer struct {
+					Inner
+				}
+				return reflect.TypeFor[Outer]()
+			}(),
+			tagKey:    "db",
+			wantTable: "inner_table",
+		},
+		{
+			name: "deeply nested anonymous embedded struct",
+			t: func() reflect.Type {
+				type Base struct {
+					TableName `db:"deep_table"`
+				}
+				type Middle struct {
+					Base
+				}
+				type Outer struct {
+					Middle
+				}
+				return reflect.TypeFor[Outer]()
+			}(),
+			tagKey:    "db",
+			wantTable: "deep_table",
+		},
 		// Error cases
 		{
 			name:    "empty",
