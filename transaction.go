@@ -48,7 +48,7 @@ func IsolatedTransaction(ctx context.Context, parentConn Connection, opts *sql.T
 	id := NextTransactionID()
 	tx, e := parentConn.Begin(ctx, id, opts)
 	if e != nil {
-		return fmt.Errorf("Transaction %d Begin error: %w", id, e)
+		return fmt.Errorf("transaction %d BEGIN error: %w", id, e)
 	}
 
 	defer func() {
@@ -56,8 +56,8 @@ func IsolatedTransaction(ctx context.Context, parentConn Connection, opts *sql.T
 			// txFunc panicked
 			e := tx.Rollback()
 			if e != nil && !errors.Is(e, sql.ErrTxDone) {
-				// Double error situation, log e so it doesn't get lost
-				ErrLogger.Printf("Transaction %d error (%s) from rollback after panic: %+v", id, e, r)
+				// Double error situation, add rollback error to panic message
+				r = fmt.Errorf("transaction %d ROLLBACK error (%w) after panic: %+v", id, e, r)
 			}
 			panic(r) // re-throw panic after Rollback
 		}
@@ -67,7 +67,7 @@ func IsolatedTransaction(ctx context.Context, parentConn Connection, opts *sql.T
 			e := tx.Rollback()
 			if e != nil && !errors.Is(e, sql.ErrTxDone) {
 				// Double error situation, wrap err with e so it doesn't get lost
-				err = fmt.Errorf("Transaction %d error (%s) from rollback after error: %w", id, e, err)
+				err = fmt.Errorf("transaction %d ROLLBACK error (%w) after error: %w", id, e, err)
 			}
 			return
 		}
@@ -75,7 +75,7 @@ func IsolatedTransaction(ctx context.Context, parentConn Connection, opts *sql.T
 		e := tx.Commit()
 		if e != nil {
 			// Set Commit error as function return value
-			err = fmt.Errorf("Transaction %d Commit error: %w", id, e)
+			err = fmt.Errorf("transaction %d COMMIT error: %w", id, e)
 		}
 	}()
 
