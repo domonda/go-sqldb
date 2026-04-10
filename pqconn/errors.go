@@ -54,6 +54,87 @@ func IsConnectionExceptionClass(err error) bool {
 	return e != nil && e.Code.Class() == pqerror.ClassConnectionException
 }
 
+// Class 09 — Triggered Action Exception
+
+// IsTriggeredActionExceptionClass indicates if the error belongs to
+// the PostgreSQL triggered action exception class (09xxx).
+func IsTriggeredActionExceptionClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassTriggeredActionException
+}
+
+// Class 0A — Feature Not Supported
+
+// IsFeatureNotSupportedClass indicates if the error belongs to
+// the PostgreSQL feature not supported class (0Axxx).
+func IsFeatureNotSupportedClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassFeatureNotSupported
+}
+
+// Class 0B — Invalid Transaction Initiation
+
+// IsInvalidTransactionInitiationClass indicates if the error belongs to
+// the PostgreSQL invalid transaction initiation class (0Bxxx).
+func IsInvalidTransactionInitiationClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassInvalidTransactionInitiation
+}
+
+// Class 0F — Locator Exception
+
+// IsLocatorExceptionClass indicates if the error belongs to
+// the PostgreSQL locator exception class (0Fxxx).
+func IsLocatorExceptionClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassLocatorException
+}
+
+// Class 0L — Invalid Grantor
+
+// IsInvalidGrantorClass indicates if the error belongs to
+// the PostgreSQL invalid grantor class (0Lxxx).
+func IsInvalidGrantorClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassInvalidGrantor
+}
+
+// Class 0P — Invalid Role Specification
+
+// IsInvalidRoleSpecificationClass indicates if the error belongs to
+// the PostgreSQL invalid role specification class (0Pxxx).
+func IsInvalidRoleSpecificationClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassInvalidRoleSpecification
+}
+
+// Class 0Z — Diagnostics Exception
+
+// IsDiagnosticsExceptionClass indicates if the error belongs to
+// the PostgreSQL diagnostics exception class (0Zxxx).
+func IsDiagnosticsExceptionClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassDiagnosticsException
+}
+
+// Class 20 — Case Not Found
+
+// IsCaseNotFoundClass indicates if the error belongs to
+// the PostgreSQL case not found class (20xxx).
+func IsCaseNotFoundClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassCaseNotFound
+}
+
+// Class 21 — Cardinality Violation
+
+// IsCardinalityViolationClass indicates if the error belongs to
+// the PostgreSQL cardinality violation class (21xxx).
+func IsCardinalityViolationClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassCardinalityViolation
+}
+
 // Class 22 — Data Exception
 
 // IsDataExceptionClass indicates if the error belongs to
@@ -116,7 +197,23 @@ func IsExclusionViolation(err error) bool {
 	return pq.As(err, pqerror.ExclusionViolation) != nil
 }
 
+// Class 24 — Invalid Cursor State
+
+// IsInvalidCursorStateClass indicates if the error belongs to
+// the PostgreSQL invalid cursor state class (24xxx).
+func IsInvalidCursorStateClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassInvalidCursorState
+}
+
 // Class 25 — Invalid Transaction State
+
+// IsInvalidTransactionStateClass indicates if the error belongs to
+// the PostgreSQL invalid transaction state class (25xxx).
+func IsInvalidTransactionStateClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassInvalidTransactionState
+}
 
 // IsInFailedTransaction indicates if the error was caused by
 // executing a statement in a transaction that has already failed.
@@ -152,6 +249,114 @@ func IsReadOnlySQLTransaction(err error) bool {
 	return pq.As(err, pqerror.ReadOnlySQLTransaction) != nil
 }
 
+// Class 26 — Invalid SQL Statement Name
+
+// IsInvalidSQLStatementNameClass indicates if the error belongs to
+// the PostgreSQL invalid SQL statement name class (26xxx).
+func IsInvalidSQLStatementNameClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassInvalidSQLStatementName
+}
+
+// Class 27 — Triggered Data Change Violation
+
+// IsTriggeredDataChangeViolationClass indicates if the error belongs to
+// the PostgreSQL triggered data change violation class (27xxx).
+func IsTriggeredDataChangeViolationClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassTriggeredDataChangeViolation
+}
+
+// Class 28 — Invalid Authorization Specification
+
+// IsInvalidAuthorizationSpecificationClass indicates if the error belongs to
+// the PostgreSQL invalid authorization specification class (28xxx).
+func IsInvalidAuthorizationSpecificationClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassInvalidAuthorizationSpecification
+}
+
+// Class 2B — Dependent Privilege Descriptors Still Exist
+
+// IsDependentPrivilegeDescriptorsStillExistClass indicates if the error belongs to
+// the PostgreSQL dependent privilege descriptors still exist class (2Bxxx).
+func IsDependentPrivilegeDescriptorsStillExistClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassDependentPrivilegeDescriptorsStillExist
+}
+
+// Class 2D — Invalid Transaction Termination
+
+// IsInvalidTransactionTerminationClass indicates if the error belongs to
+// the PostgreSQL invalid transaction termination class (2Dxxx).
+func IsInvalidTransactionTerminationClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassInvalidTransactionTermination
+}
+
+// Class 2F — SQL Routine Exception
+
+// IsSQLRoutineExceptionClass indicates if the error belongs to
+// the PostgreSQL SQL routine exception class (2Fxxx).
+func IsSQLRoutineExceptionClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassSQLRoutineException
+}
+
+// Class 34 — Invalid Cursor Name
+
+// IsInvalidCursorNameClass indicates if the error belongs to
+// the PostgreSQL invalid cursor name class (34xxx).
+func IsInvalidCursorNameClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassInvalidCursorName
+}
+
+// Class 38 — External Routine Exception
+
+// IsExternalRoutineExceptionClass indicates if the error belongs to
+// the PostgreSQL external routine exception class (38xxx).
+func IsExternalRoutineExceptionClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassExternalRoutineException
+}
+
+// Class 39 — External Routine Invocation Exception
+
+// IsExternalRoutineInvocationExceptionClass indicates if the error belongs to
+// the PostgreSQL external routine invocation exception class (39xxx).
+func IsExternalRoutineInvocationExceptionClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassExternalRoutineInvocationException
+}
+
+// Class 3B — Savepoint Exception
+
+// IsSavepointExceptionClass indicates if the error belongs to
+// the PostgreSQL savepoint exception class (3Bxxx).
+func IsSavepointExceptionClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassSavepointException
+}
+
+// Class 3D — Invalid Catalog Name
+
+// IsInvalidCatalogNameClass indicates if the error belongs to
+// the PostgreSQL invalid catalog name class (3Dxxx).
+func IsInvalidCatalogNameClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassInvalidCatalogName
+}
+
+// Class 3F — Invalid Schema Name
+
+// IsInvalidSchemaNameClass indicates if the error belongs to
+// the PostgreSQL invalid schema name class (3Fxxx).
+func IsInvalidSchemaNameClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassInvalidSchemaName
+}
+
 // Class 40 — Transaction Rollback
 
 // IsTransactionRollbackClass indicates if the error belongs to
@@ -180,6 +385,13 @@ func IsDeadlockDetected(err error) bool {
 
 // Class 42 — Syntax Error or Access Rule Violation
 
+// IsSyntaxErrorOrAccessRuleViolationClass indicates if the error belongs to
+// the PostgreSQL syntax error or access rule violation class (42xxx).
+func IsSyntaxErrorOrAccessRuleViolationClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassSyntaxErrorOrAccessRuleViolation
+}
+
 // IsInsufficientPrivilege indicates if the error was caused by
 // the current user lacking the required permissions for the operation.
 func IsInsufficientPrivilege(err error) bool {
@@ -198,7 +410,25 @@ func IsUndefinedColumn(err error) bool {
 	return pq.As(err, pqerror.UndefinedColumn) != nil
 }
 
+// Class 44 — WITH CHECK OPTION Violation
+
+// IsWithCheckOptionViolationClass indicates if the error belongs to
+// the PostgreSQL WITH CHECK OPTION violation class (44xxx).
+func IsWithCheckOptionViolationClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassWithCheckOptionViolation
+}
+
 // Class 53 — Insufficient Resources
+
+// IsInsufficientResourcesClass indicates if the error belongs to
+// the PostgreSQL insufficient resources class (53xxx).
+// This covers disk full, out of memory, too many connections,
+// and configuration limit exceeded.
+func IsInsufficientResourcesClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassInsufficientResources
+}
 
 // IsTooManyConnections indicates if the error was caused by
 // exceeding the maximum number of allowed connections.
@@ -206,7 +436,24 @@ func IsTooManyConnections(err error) bool {
 	return pq.As(err, pqerror.TooManyConnections) != nil
 }
 
+// Class 54 — Program Limit Exceeded
+
+// IsProgramLimitExceededClass indicates if the error belongs to
+// the PostgreSQL program limit exceeded class (54xxx).
+// This covers statement too complex, too many columns, and too many arguments.
+func IsProgramLimitExceededClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassProgramLimitExceeded
+}
+
 // Class 55 — Object Not In Prerequisite State
+
+// IsObjectNotInPrerequisiteStateClass indicates if the error belongs to
+// the PostgreSQL object not in prerequisite state class (55xxx).
+func IsObjectNotInPrerequisiteStateClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassObjectNotInPrerequisiteState
+}
 
 // IsLockNotAvailable indicates if the error was caused by
 // a lock that could not be acquired, e.g. from SELECT ... FOR UPDATE NOWAIT.
@@ -214,7 +461,16 @@ func IsLockNotAvailable(err error) bool {
 	return pq.As(err, pqerror.LockNotAvailable) != nil
 }
 
-// Class 57 - Operator Intervention
+// Class 57 — Operator Intervention
+
+// IsOperatorInterventionClass indicates if the error belongs to
+// the PostgreSQL operator intervention class (57xxx).
+// This covers query cancellation, admin shutdown, crash shutdown,
+// inability to connect, database dropped, and idle session timeout.
+func IsOperatorInterventionClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassOperatorIntervention
+}
 
 // IsQueryCanceled indicates if the passed error
 // was caused by a user cancellation of a query.
@@ -228,6 +484,35 @@ func IsQueryCanceled(err error) bool {
 // the database server shutting down, e.g. during a restart or maintenance.
 func IsAdminShutdown(err error) bool {
 	return pq.As(err, pqerror.AdminShutdown) != nil
+}
+
+// Class 58 — System Error
+
+// IsSystemErrorClass indicates if the error belongs to
+// the PostgreSQL system error class (58xxx).
+// These are errors external to PostgreSQL itself,
+// such as I/O errors or file system problems.
+func IsSystemErrorClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassSystemError
+}
+
+// Class F0 — Configuration File Error
+
+// IsConfigFileErrorClass indicates if the error belongs to
+// the PostgreSQL configuration file error class (F0xxx).
+func IsConfigFileErrorClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassConfigFileError
+}
+
+// Class HV — Foreign Data Wrapper Error
+
+// IsFDWErrorClass indicates if the error belongs to
+// the PostgreSQL foreign data wrapper error class (HVxxx).
+func IsFDWErrorClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassFDWError
 }
 
 // Class P0 — PL/pgSQL Error
@@ -251,4 +536,14 @@ func GetRaisedException(err error) string {
 		return e.Message
 	}
 	return ""
+}
+
+// Class XX — Internal Error
+
+// IsInternalErrorClass indicates if the error belongs to
+// the PostgreSQL internal error class (XXxxx).
+// This covers data corruption and index corruption.
+func IsInternalErrorClass(err error) bool {
+	e := pq.As(err)
+	return e != nil && e.Code.Class() == pqerror.ClassInternalError
 }
