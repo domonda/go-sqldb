@@ -7,7 +7,7 @@ replace github.com/domonda/go-sqldb => ..
 require github.com/domonda/go-sqldb v0.0.0-00010101000000-000000000000 // replaced
 
 require (
-	github.com/lib/pq v1.12.2
+	github.com/lib/pq v1.12.3
 	github.com/stretchr/testify v1.11.1
 )
 
