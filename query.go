@@ -182,6 +182,35 @@ func QueryRowAsMap[K ~string, V any](ctx context.Context, conn Querier, fmtr Que
 	return m, nil
 }
 
+// QueryRowAsStrings queries a single row and returns its column values as strings.
+//
+// Byte slices will be interpreted as strings,
+// nil (SQL NULL) will be converted to an empty string,
+// all other types are converted with `fmt.Sprint`.
+func QueryRowAsStrings(ctx context.Context, conn Querier, fmtr QueryFormatter, query string, args ...any) ([]string, error) {
+	return QueryRow(ctx, conn, nil, fmtr, query, args...).ScanStrings()
+}
+
+// QueryRowAsStringsWithHeader queries a single row and returns a [][]string
+// where the first slice contains the column names and the second slice
+// contains the row values as strings.
+//
+// Byte slices will be interpreted as strings,
+// nil (SQL NULL) will be converted to an empty string,
+// all other types are converted with `fmt.Sprint`.
+func QueryRowAsStringsWithHeader(ctx context.Context, conn Querier, fmtr QueryFormatter, query string, args ...any) ([][]string, error) {
+	row := QueryRow(ctx, conn, nil, fmtr, query, args...)
+	cols, err := row.Columns()
+	if err != nil {
+		return nil, err
+	}
+	vals, err := row.ScanStrings()
+	if err != nil {
+		return nil, err
+	}
+	return [][]string{cols, vals}, nil
+}
+
 // QueryRowsAsSlice returns queried rows as slice of the generic type T
 // using the passed reflector to scan column values as struct fields.
 func QueryRowsAsSlice[T any](ctx context.Context, conn Querier, refl StructReflector, fmtr QueryFormatter, query string, args ...any) (rows []T, err error) {

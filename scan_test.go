@@ -360,3 +360,86 @@ func TestScanDriverValue_Errors(t *testing.T) {
 		}
 	})
 }
+
+func TestBytesToStringScanConverter(t *testing.T) {
+	c := BytesToStringScanConverter(`\x`)
+
+	t.Run("valid utf8", func(t *testing.T) {
+		val, ok := c.ConvertValue([]byte("hello"))
+		if !ok {
+			t.Fatal("expected ok=true for []byte input")
+		}
+		if val != "hello" {
+			t.Errorf("got %q, want %q", val, "hello")
+		}
+	})
+
+	t.Run("valid utf8 with multibyte runes", func(t *testing.T) {
+		val, ok := c.ConvertValue([]byte("héllo 世界"))
+		if !ok {
+			t.Fatal("expected ok=true")
+		}
+		if val != "héllo 世界" {
+			t.Errorf("got %q, want %q", val, "héllo 世界")
+		}
+	})
+
+	t.Run("invalid utf8 hex encoded", func(t *testing.T) {
+		val, ok := c.ConvertValue([]byte{0xde, 0xad, 0xbe, 0xef})
+		if !ok {
+			t.Fatal("expected ok=true")
+		}
+		if val != `\xdeadbeef` {
+			t.Errorf("got %q, want %q", val, `\xdeadbeef`)
+		}
+	})
+
+	t.Run("empty bytes", func(t *testing.T) {
+		val, ok := c.ConvertValue([]byte{})
+		if !ok {
+			t.Fatal("expected ok=true")
+		}
+		if val != "" {
+			t.Errorf("got %q, want empty string", val)
+		}
+	})
+
+	t.Run("nil bytes", func(t *testing.T) {
+		val, ok := c.ConvertValue([]byte(nil))
+		if !ok {
+			t.Fatal("expected ok=true")
+		}
+		if val != "" {
+			t.Errorf("got %q, want empty string", val)
+		}
+	})
+
+	t.Run("non-bytes value passes through", func(t *testing.T) {
+		_, ok := c.ConvertValue(int64(42))
+		if ok {
+			t.Error("expected ok=false for non-[]byte input")
+		}
+	})
+
+	t.Run("custom prefix", func(t *testing.T) {
+		c := BytesToStringScanConverter("0x")
+		val, ok := c.ConvertValue([]byte{0x01, 0xff})
+		if !ok {
+			t.Fatal("expected ok=true")
+		}
+		if val != "0x01ff" {
+			t.Errorf("got %q, want %q", val, "0x01ff")
+		}
+	})
+
+	t.Run("empty prefix", func(t *testing.T) {
+		c := BytesToStringScanConverter("")
+		val, ok := c.ConvertValue([]byte{0xff})
+		if !ok {
+			t.Fatal("expected ok=true")
+		}
+		if val != "ff" {
+			t.Errorf("got %q, want %q", val, "ff")
+		}
+	})
+}

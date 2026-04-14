@@ -127,6 +127,36 @@ func TestRow_ScanValues(t *testing.T) {
 	}
 }
 
+func TestRow_ScanMap(t *testing.T) {
+	rows := NewMockRows("id", "name", "data", "missing").
+		WithRow(int64(1), "Alice", []byte("raw"), nil)
+	row := NewRow(rows, NewTaggedStructReflector(), testFormatter, "SELECT id, name, data, missing", nil)
+
+	m, err := row.ScanMap()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(m) != 4 {
+		t.Fatalf("got %d entries, want 4", len(m))
+	}
+	if m["id"] != int64(1) {
+		t.Errorf(`m["id"]: got %v, want 1`, m["id"])
+	}
+	if m["name"] != "Alice" {
+		t.Errorf(`m["name"]: got %v, want Alice`, m["name"])
+	}
+	b, ok := m["data"].([]byte)
+	if !ok {
+		t.Fatalf(`m["data"]: expected []byte, got %T`, m["data"])
+	}
+	if string(b) != "raw" {
+		t.Errorf(`m["data"]: got %q, want %q`, b, "raw")
+	}
+	if m["missing"] != nil {
+		t.Errorf(`m["missing"]: got %v, want nil`, m["missing"])
+	}
+}
+
 func TestRow_ScanStrings(t *testing.T) {
 	rows := NewMockRows("num", "str", "null_val", "flag", "data").
 		WithRow(int64(99), "hello", nil, true, []byte("bytes"))

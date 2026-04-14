@@ -157,6 +157,40 @@ func QueryRowAsMap[K ~string, V any](ctx context.Context, query string, args ...
 	)
 }
 
+// QueryRowAsStrings queries a single row and returns its column values as strings.
+//
+// Byte slices will be interpreted as strings,
+// nil (SQL NULL) will be converted to an empty string,
+// all other types are converted with `fmt.Sprint`.
+func QueryRowAsStrings(ctx context.Context, query string, args ...any) ([]string, error) {
+	conn := Conn(ctx)
+	return sqldb.QueryRowAsStrings(
+		ctx,
+		conn,
+		conn,
+		query,
+		args...,
+	)
+}
+
+// QueryRowAsStringsWithHeader queries a single row and returns a [][]string
+// where the first slice contains the column names and the second slice
+// contains the row values as strings.
+//
+// Byte slices will be interpreted as strings,
+// nil (SQL NULL) will be converted to an empty string,
+// all other types are converted with `fmt.Sprint`.
+func QueryRowAsStringsWithHeader(ctx context.Context, query string, args ...any) ([][]string, error) {
+	conn := Conn(ctx)
+	return sqldb.QueryRowAsStringsWithHeader(
+		ctx,
+		conn,
+		conn,
+		query,
+		args...,
+	)
+}
+
 // QueryRowsAsSlice returns queried rows as slice of the generic type T.
 // If T is a struct, column values are scanned into fields
 // using the [StructReflector] from the context.

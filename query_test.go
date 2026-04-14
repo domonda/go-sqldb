@@ -467,6 +467,179 @@ func TestQueryRowsAsStrings(t *testing.T) {
 	})
 }
 
+func TestQueryRowAsStrings(t *testing.T) {
+	t.Run("mixed types and null", func(t *testing.T) {
+		// given
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("id", "name", "active", "data", "missing").
+				WithRow(int64(7), "Alice", true, []byte("raw"), nil)
+		}
+
+		// when
+		vals, err := QueryRowAsStrings(t.Context(), conn, fmtr, "SELECT id, name, active, data, missing FROM users WHERE id = $1", 7)
+
+		// then
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := []string{"7", "Alice", "true", "raw", ""}
+		if len(vals) != len(want) {
+			t.Fatalf("len = %d, want %d", len(vals), len(want))
+		}
+		for i := range want {
+			if vals[i] != want[i] {
+				t.Errorf("vals[%d]: got %q, want %q", i, vals[i], want[i])
+			}
+		}
+	})
+
+	t.Run("single column", func(t *testing.T) {
+		// given
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("count").WithRow(int64(42))
+		}
+
+		// when
+		vals, err := QueryRowAsStrings(t.Context(), conn, fmtr, "SELECT count FROM t")
+
+		// then
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(vals) != 1 || vals[0] != "42" {
+			t.Errorf("vals = %v, want [42]", vals)
+		}
+	})
+
+	t.Run("no rows returns sql.ErrNoRows", func(t *testing.T) {
+		// given
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("id")
+		}
+
+		// when
+		_, err := QueryRowAsStrings(t.Context(), conn, fmtr, "SELECT id FROM t WHERE 1=0")
+
+		// then
+		if !errors.Is(err, sql.ErrNoRows) {
+			t.Errorf("expected sql.ErrNoRows, got: %v", err)
+		}
+	})
+
+	t.Run("query error propagates", func(t *testing.T) {
+		// given
+		conn, _, _, fmtr := newTestInterfaces()
+		queryErr := errors.New("query failed")
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewErrRows(queryErr)
+		}
+
+		// when
+		_, err := QueryRowAsStrings(t.Context(), conn, fmtr, "SELECT 1")
+
+		// then
+		if !errors.Is(err, queryErr) {
+			t.Errorf("expected error wrapping %v, got: %v", queryErr, err)
+		}
+	})
+}
+
+func TestQueryRowAsStringsWithHeader(t *testing.T) {
+	t.Run("header plus row", func(t *testing.T) {
+		// given
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("id", "name", "active").
+				WithRow(int64(1), "Alice", true)
+		}
+
+		// when
+		rows, err := QueryRowAsStringsWithHeader(t.Context(), conn, fmtr, "SELECT id, name, active FROM users WHERE id = $1", 1)
+
+		// then
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rows) != 2 {
+			t.Fatalf("len = %d, want 2 (header + row)", len(rows))
+		}
+		wantHeader := []string{"id", "name", "active"}
+		for i := range wantHeader {
+			if rows[0][i] != wantHeader[i] {
+				t.Errorf("header[%d]: got %q, want %q", i, rows[0][i], wantHeader[i])
+			}
+		}
+		wantRow := []string{"1", "Alice", "true"}
+		for i := range wantRow {
+			if rows[1][i] != wantRow[i] {
+				t.Errorf("row[%d]: got %q, want %q", i, rows[1][i], wantRow[i])
+			}
+		}
+	})
+
+	t.Run("null and bytes", func(t *testing.T) {
+		// given
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("data", "missing").
+				WithRow([]byte("raw"), nil)
+		}
+
+		// when
+		rows, err := QueryRowAsStringsWithHeader(t.Context(), conn, fmtr, "SELECT data, missing FROM t")
+
+		// then
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rows) != 2 {
+			t.Fatalf("len = %d, want 2", len(rows))
+		}
+		if rows[0][0] != "data" || rows[0][1] != "missing" {
+			t.Errorf("header = %v, want [data missing]", rows[0])
+		}
+		if rows[1][0] != "raw" || rows[1][1] != "" {
+			t.Errorf("row = %v, want [raw \"\"]", rows[1])
+		}
+	})
+
+	t.Run("no rows returns sql.ErrNoRows", func(t *testing.T) {
+		// given
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("id")
+		}
+
+		// when
+		_, err := QueryRowAsStringsWithHeader(t.Context(), conn, fmtr, "SELECT id FROM t WHERE 1=0")
+
+		// then
+		if !errors.Is(err, sql.ErrNoRows) {
+			t.Errorf("expected sql.ErrNoRows, got: %v", err)
+		}
+	})
+
+	t.Run("query error propagates", func(t *testing.T) {
+		// given
+		conn, _, _, fmtr := newTestInterfaces()
+		queryErr := errors.New("query failed")
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewErrRows(queryErr)
+		}
+
+		// when
+		_, err := QueryRowAsStringsWithHeader(t.Context(), conn, fmtr, "SELECT 1")
+
+		// then
+		if !errors.Is(err, queryErr) {
+			t.Errorf("expected error wrapping %v, got: %v", queryErr, err)
+		}
+	})
+}
+
 func TestQueryCallback(t *testing.T) {
 	t.Run("scalar single column", func(t *testing.T) {
 		// given

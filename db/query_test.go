@@ -194,6 +194,67 @@ func TestQueryRowAsOr(t *testing.T) {
 	require.Equal(t, false, value, "QueryRowAsOr[bool] result for 777")
 }
 
+func TestQueryRowAsStrings(t *testing.T) {
+	query := /*sql*/ `SELECT id, name, active, data, missing FROM my_table WHERE id = $1`
+	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
+		WithQueryResult(
+			[]string{"id", "name", "active", "data", "missing"},
+			[][]driver.Value{{int64(7), "Alice", true, []byte("raw"), nil}},
+			query,
+			7,
+		).
+		WithQueryResult(
+			[]string{"id", "name", "active", "data", "missing"},
+			nil,
+			query,
+			999,
+		)
+	ctx := testContext(t, mock)
+
+	t.Run("success", func(t *testing.T) {
+		vals, err := db.QueryRowAsStrings(ctx, query, 7)
+		require.NoError(t, err)
+		require.Equal(t, []string{"7", "Alice", "true", "raw", ""}, vals)
+	})
+
+	t.Run("no rows", func(t *testing.T) {
+		_, err := db.QueryRowAsStrings(ctx, query, 999)
+		require.ErrorIs(t, err, sql.ErrNoRows)
+	})
+}
+
+func TestQueryRowAsStringsWithHeader(t *testing.T) {
+	query := /*sql*/ `SELECT id, name, active FROM my_table WHERE id = $1`
+	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
+		WithQueryResult(
+			[]string{"id", "name", "active"},
+			[][]driver.Value{{int64(1), "Alice", true}},
+			query,
+			1,
+		).
+		WithQueryResult(
+			[]string{"id", "name", "active"},
+			nil,
+			query,
+			999,
+		)
+	ctx := testContext(t, mock)
+
+	t.Run("success", func(t *testing.T) {
+		rows, err := db.QueryRowAsStringsWithHeader(ctx, query, 1)
+		require.NoError(t, err)
+		require.Equal(t, [][]string{
+			{"id", "name", "active"},
+			{"1", "Alice", "true"},
+		}, rows)
+	})
+
+	t.Run("no rows", func(t *testing.T) {
+		_, err := db.QueryRowAsStringsWithHeader(ctx, query, 999)
+		require.ErrorIs(t, err, sql.ErrNoRows)
+	})
+}
+
 func TestQueryStrings(t *testing.T) {
 	query := /*sql*/ `SELECT test_no, col1, col2, col3 FROM my_table WHERE test_no = $1`
 	tests := []struct {

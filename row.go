@@ -83,9 +83,13 @@ func (r *Row) Scan(dest ...any) (err error) {
 }
 
 // ScanValues returns the values of a row exactly how they are
-// passed from the database driver to an `sql.Scanner`.
+// passed from the database driver to an [sql.Scanner].
 // Byte slices will be copied.
-func (r *Row) ScanValues() (vals []any, err error) {
+//
+// The optional converters are applied to each scanned value;
+// the first converter that reports a successful conversion
+// replaces the value in the returned slice.
+func (r *Row) ScanValues(converters ...ScanConverter) (vals []any, err error) {
 	cols, err := r.Columns()
 	if err != nil {
 		return nil, err // Error is already wrapped with query
@@ -105,7 +109,40 @@ func (r *Row) ScanValues() (vals []any, err error) {
 	// don't return pointers to AnyValue
 	// but what internal value has been scanned
 	for i := range result {
-		result[i] = anys[i].Val
+		result[i] = ScanConvertValueOrUnchanged(anys[i].Val, converters...)
+	}
+	return result, nil
+}
+
+// ScanMap returns the values of a row as a map keyed by column name.
+// Values are returned exactly how they are passed from the database driver
+// to an [sql.Scanner]. Byte slices will be copied.
+//
+// The optional converters are applied to each scanned value;
+// the first converter that reports a successful conversion
+// replaces the value in the returned map.
+//
+// If the row contains duplicate column names,
+// later columns overwrite earlier ones in the map.
+func (r *Row) ScanMap(converters ...ScanConverter) (map[string]any, error) {
+	cols, err := r.Columns()
+	if err != nil {
+		return nil, err // Error is already wrapped with query
+	}
+	var (
+		anys     = make([]AnyValue, len(cols))
+		scanPtrs = make([]any, len(cols))
+	)
+	for i := range scanPtrs {
+		scanPtrs[i] = &anys[i]
+	}
+	err = r.Scan(scanPtrs...)
+	if err != nil {
+		return nil, err // Error is already wrapped with query
+	}
+	result := make(map[string]any, len(cols))
+	for i, col := range cols {
+		result[col] = ScanConvertValueOrUnchanged(anys[i].Val, converters...)
 	}
 	return result, nil
 }

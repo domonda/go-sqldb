@@ -180,6 +180,8 @@ func TestGetUser(t *testing.T) {
 | `QueryRowStruct[S](ctx, pkValue, pkValues...) (S, error)` | Query a struct by primary key            |
 | `QueryRowStructOr[S](ctx, defaultVal, pkValue, pkValues...) (S, error)` | Like `QueryRowStruct` but returns `defaultVal` instead of `ErrNoRows` |
 | `QueryRowAsMap[K, V](ctx, query, args...) (map[K]V, error)` | Query a single row into a map            |
+| `QueryRowAsStrings(ctx, query, args...) ([]string, error)` | Query a single row as a slice of strings |
+| `QueryRowAsStringsWithHeader(ctx, query, args...) ([][]string, error)` | Query a single row as `[][]string` where the first slice is the column names and the second is the row values |
 
 ### Query — multiple rows
 
