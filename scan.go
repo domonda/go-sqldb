@@ -66,6 +66,24 @@ func BytesToStringScanConverter(hexPrefix string) ScanConverterFunc {
 	}
 }
 
+// TimeToStringScanConverter returns a [ScanConverterFunc] that formats
+// [driver.Value] of type [time.Time] as a string using the given layout
+// (see [time.Time.Format]).
+// Values that are not of type [time.Time] are returned as (nil, false)
+// so the converter can be chained with others.
+//
+// Common layouts are [time.RFC3339], [time.RFC3339Nano],
+// or [time.DateTime].
+func TimeToStringScanConverter(layout string) ScanConverterFunc {
+	return func(value driver.Value) (any, bool) {
+		t, ok := value.(time.Time)
+		if !ok {
+			return nil, false
+		}
+		return t.Format(layout), true
+	}
+}
+
 var (
 	_ ScanConverter = ScanConverterFunc(nil)
 	_ ScanConverter = ScanConverters(nil)

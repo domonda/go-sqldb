@@ -2,8 +2,11 @@ package sqldb
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
+	"time"
 )
 
 func TestRow_Scan_Scalars(t *testing.T) {
@@ -125,6 +128,45 @@ func TestRow_ScanValues(t *testing.T) {
 	if string(b) != "raw" {
 		t.Errorf("vals[2]: got %q, want %q", b, "raw")
 	}
+}
+
+func ExampleRow_ScanMap() {
+	// A typical use of Row.ScanMap is to turn a single database row into a
+	// JSON object keyed by column name. The mock rows below stand in for a
+	// real database query result.
+	createdAt := time.Date(2026, 4, 14, 9, 30, 0, 0, time.UTC)
+	rows := NewMockRows("id", "name", "data", "created_at", "deleted_at").
+		WithRow(int64(42), "Alice", []byte("hello"), createdAt, nil)
+	row := NewRow(rows, NewTaggedStructReflector(), testFormatter, "SELECT id, name, data, created_at, deleted_at FROM users WHERE id = $1", []any{42})
+
+	// BytesToStringScanConverter turns []byte columns into plain strings,
+	// otherwise json.MarshalIndent would base64-encode them.
+	// TimeToStringScanConverter formats time.Time columns with the given
+	// layout instead of relying on time.Time's default JSON encoding.
+	m, err := row.ScanMap(
+		BytesToStringScanConverter(`\x`),
+		TimeToStringScanConverter(time.DateTime),
+	)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	out, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(string(out))
+
+	// Output:
+	// {
+	//   "created_at": "2026-04-14 09:30:00",
+	//   "data": "hello",
+	//   "deleted_at": null,
+	//   "id": 42,
+	//   "name": "Alice"
+	// }
 }
 
 func TestRow_ScanMap(t *testing.T) {
