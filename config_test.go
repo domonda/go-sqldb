@@ -192,8 +192,6 @@ func TestConfig_ErrLogger_NilByDefault(t *testing.T) {
 func TestConfig_ErrLogger_Custom(t *testing.T) {
 	logger := &mockLogger{}
 	c := Config{
-		Driver:    "postgres",
-		Database:  "mydb",
 		ErrLogger: logger,
 	}
 
@@ -211,8 +209,6 @@ func TestConfig_ListenerEventLogger_NilByDefault(t *testing.T) {
 func TestConfig_ListenerEventLogger_Custom(t *testing.T) {
 	logger := &mockLogger{}
 	c := Config{
-		Driver:              "postgres",
-		Database:            "mydb",
 		ListenerEventLogger: logger,
 	}
 

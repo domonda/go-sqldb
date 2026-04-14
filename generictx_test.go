@@ -310,8 +310,7 @@ func TestGenericTxWithQueryBuilder_DelegatesConfig(t *testing.T) {
 	// given
 	tx := newTestGenericTx(t, nil, 1)
 	conn := &genericTxWithQueryBuilder{
-		genericTx:    tx,
-		QueryBuilder: StdQueryBuilder{},
+		genericTx: tx,
 	}
 
 	// when
@@ -327,8 +326,7 @@ func TestGenericTxWithQueryBuilder_DelegatesTransaction(t *testing.T) {
 	opts := &sql.TxOptions{Isolation: sql.LevelSerializable}
 	tx := newTestGenericTx(t, opts, 99)
 	conn := &genericTxWithQueryBuilder{
-		genericTx:    tx,
-		QueryBuilder: StdQueryBuilder{},
+		genericTx: tx,
 	}
 
 	// when
