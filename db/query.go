@@ -191,6 +191,29 @@ func QueryRowAsStringsWithHeader(ctx context.Context, query string, args ...any)
 	)
 }
 
+// QueryRowsAsMapSlice queries rows and returns them as a slice of maps
+// keyed by column name. The values are exactly how they are passed
+// from the database driver to an [sql.Scanner]. Byte slices will be copied.
+//
+// If converter is not nil, it is applied to each scanned value and
+// replaces the value in the returned map when it reports a successful
+// conversion. Multiple converters can be combined by passing a
+// [sqldb.ScanConverters] slice.
+//
+// Use this as the multi-row counterpart of [sqldb.Row.ScanMap],
+// for example to encode a query result as a JSON array.
+func QueryRowsAsMapSlice(ctx context.Context, converter sqldb.ScanConverter, query string, args ...any) ([]map[string]any, error) {
+	conn := Conn(ctx)
+	return sqldb.QueryRowsAsMapSlice(
+		ctx,
+		conn,
+		conn,
+		converter,
+		query,
+		args...,
+	)
+}
+
 // QueryRowsAsSlice returns queried rows as slice of the generic type T.
 // If T is a struct, column values are scanned into fields
 // using the [StructReflector] from the context.

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"testing"
+	"time"
 )
 
 func TestQueryRow(t *testing.T) {
@@ -632,6 +633,138 @@ func TestQueryRowAsStringsWithHeader(t *testing.T) {
 
 		// when
 		_, err := QueryRowAsStringsWithHeader(t.Context(), conn, fmtr, "SELECT 1")
+
+		// then
+		if !errors.Is(err, queryErr) {
+			t.Errorf("expected error wrapping %v, got: %v", queryErr, err)
+		}
+	})
+}
+
+func TestQueryRowsAsMapSlice(t *testing.T) {
+	t.Run("multiple rows", func(t *testing.T) {
+		// given
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("id", "name", "data").
+				WithRow(int64(1), "Alice", []byte("raw1")).
+				WithRow(int64(2), "Bob", []byte("raw2"))
+		}
+
+		// when
+		rows, err := QueryRowsAsMapSlice(t.Context(), conn, fmtr, nil, "SELECT id, name, data FROM users")
+
+		// then
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rows) != 2 {
+			t.Fatalf("len = %d, want 2", len(rows))
+		}
+		if rows[0]["id"] != int64(1) || rows[0]["name"] != "Alice" {
+			t.Errorf("rows[0] = %v, want id=1 name=Alice", rows[0])
+		}
+		if rows[1]["id"] != int64(2) || rows[1]["name"] != "Bob" {
+			t.Errorf("rows[1] = %v, want id=2 name=Bob", rows[1])
+		}
+		if string(rows[0]["data"].([]byte)) != "raw1" {
+			t.Errorf(`rows[0]["data"] = %v, want "raw1"`, rows[0]["data"])
+		}
+	})
+
+	t.Run("with bytes converter", func(t *testing.T) {
+		// given
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("data").
+				WithRow([]byte("hello")).
+				WithRow([]byte{0xff, 0xfe})
+		}
+
+		// when
+		rows, err := QueryRowsAsMapSlice(t.Context(), conn, fmtr, BytesToStringScanConverter(`\x`), "SELECT data FROM t")
+
+		// then
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rows) != 2 {
+			t.Fatalf("len = %d, want 2", len(rows))
+		}
+		if rows[0]["data"] != "hello" {
+			t.Errorf(`rows[0]["data"] = %v, want "hello"`, rows[0]["data"])
+		}
+		if rows[1]["data"] != `\xfffe` {
+			t.Errorf(`rows[1]["data"] = %v, want "\xfffe"`, rows[1]["data"])
+		}
+	})
+
+	t.Run("with chained converters", func(t *testing.T) {
+		// given
+		conn, _, _, fmtr := newTestInterfaces()
+		createdAt := time.Date(2026, 4, 14, 9, 30, 0, 0, time.UTC)
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("data", "created_at").
+				WithRow([]byte("hello"), createdAt).
+				WithRow([]byte{0xff, 0xfe}, createdAt.Add(time.Hour))
+		}
+
+		// when
+		rows, err := QueryRowsAsMapSlice(t.Context(), conn, fmtr, ScanConverters{
+			BytesToStringScanConverter(`\x`),
+			TimeToStringScanConverter(time.DateTime),
+		}, "SELECT data, created_at FROM t")
+
+		// then
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rows) != 2 {
+			t.Fatalf("len = %d, want 2", len(rows))
+		}
+		if rows[0]["data"] != "hello" {
+			t.Errorf(`rows[0]["data"] = %v, want "hello"`, rows[0]["data"])
+		}
+		if rows[0]["created_at"] != "2026-04-14 09:30:00" {
+			t.Errorf(`rows[0]["created_at"] = %v, want "2026-04-14 09:30:00"`, rows[0]["created_at"])
+		}
+		if rows[1]["data"] != `\xfffe` {
+			t.Errorf(`rows[1]["data"] = %v, want "\xfffe"`, rows[1]["data"])
+		}
+		if rows[1]["created_at"] != "2026-04-14 10:30:00" {
+			t.Errorf(`rows[1]["created_at"] = %v, want "2026-04-14 10:30:00"`, rows[1]["created_at"])
+		}
+	})
+
+	t.Run("empty result returns nil", func(t *testing.T) {
+		// given
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("id")
+		}
+
+		// when
+		rows, err := QueryRowsAsMapSlice(t.Context(), conn, fmtr, nil, "SELECT id FROM t WHERE 1=0")
+
+		// then
+		if err != nil {
+			t.Fatal(err)
+		}
+		if rows != nil {
+			t.Errorf("expected nil, got %v", rows)
+		}
+	})
+
+	t.Run("query error propagates", func(t *testing.T) {
+		// given
+		conn, _, _, fmtr := newTestInterfaces()
+		queryErr := errors.New("query failed")
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewErrRows(queryErr)
+		}
+
+		// when
+		_, err := QueryRowsAsMapSlice(t.Context(), conn, fmtr, nil, "SELECT 1")
 
 		// then
 		if !errors.Is(err, queryErr) {

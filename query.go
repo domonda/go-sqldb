@@ -211,6 +211,65 @@ func QueryRowAsStringsWithHeader(ctx context.Context, conn Querier, fmtr QueryFo
 	return [][]string{cols, vals}, nil
 }
 
+// QueryRowsAsMapSlice queries rows and returns them as a slice of maps
+// keyed by column name. The values are exactly how they are passed
+// from the database driver to an [sql.Scanner]. Byte slices will be copied.
+//
+// If converter is not nil, it is applied to each scanned value and
+// replaces the value in the returned map when it reports a successful
+// conversion. Multiple converters can be combined by passing a
+// [ScanConverters] slice.
+//
+// If a row contains duplicate column names,
+// later columns overwrite earlier ones in its map.
+//
+// Use this as the multi-row counterpart of [Row.ScanMap],
+// for example to encode a query result as a JSON array.
+func QueryRowsAsMapSlice(ctx context.Context, conn Querier, fmtr QueryFormatter, converter ScanConverter, query string, args ...any) (result []map[string]any, err error) {
+	sqlRows := conn.Query(ctx, query, args...)
+	defer func() {
+		err = errors.Join(err, sqlRows.Close())
+		if err != nil {
+			err = WrapErrorWithQuery(err, query, args, fmtr)
+		}
+	}()
+
+	cols, err := sqlRows.Columns()
+	if err != nil {
+		return nil, err
+	}
+	var (
+		anys     = make([]AnyValue, len(cols))
+		scanPtrs = make([]any, len(cols))
+	)
+	for i := range scanPtrs {
+		scanPtrs[i] = &anys[i]
+	}
+	for sqlRows.Next() {
+		if err = ctx.Err(); err != nil {
+			return nil, err
+		}
+		if err = sqlRows.Scan(scanPtrs...); err != nil {
+			return nil, err
+		}
+		row := make(map[string]any, len(cols))
+		for i, col := range cols {
+			v := anys[i].Val
+			if converter != nil {
+				if cv, ok := converter.ConvertValue(v); ok {
+					v = cv
+				}
+			}
+			row[col] = v
+		}
+		result = append(result, row)
+	}
+	if err = sqlRows.Err(); err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 // QueryRowsAsSlice returns queried rows as slice of the generic type T
 // using the passed reflector to scan column values as struct fields.
 func QueryRowsAsSlice[T any](ctx context.Context, conn Querier, refl StructReflector, fmtr QueryFormatter, query string, args ...any) (rows []T, err error) {

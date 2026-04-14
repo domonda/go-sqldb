@@ -1,8 +1,11 @@
 package db_test
 
 import (
+	"context"
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -252,6 +255,106 @@ func TestQueryRowAsStringsWithHeader(t *testing.T) {
 	t.Run("no rows", func(t *testing.T) {
 		_, err := db.QueryRowAsStringsWithHeader(ctx, query, 999)
 		require.ErrorIs(t, err, sql.ErrNoRows)
+	})
+}
+
+func ExampleQueryRowsAsMapSlice() {
+	// A typical use of QueryRowsAsMapSlice is to turn a query result
+	// into a JSON array of objects keyed by column name. The mock connection
+	// below stands in for a real database.
+	createdAt := time.Date(2026, 4, 14, 9, 30, 0, 0, time.UTC)
+	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+	mock.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
+		return sqldb.NewMockRows("id", "name", "data", "created_at").
+			WithRow(int64(1), "Alice", []byte("hello"), createdAt).
+			WithRow(int64(2), "Bob", []byte{0xff, 0xfe}, createdAt.Add(time.Hour))
+	}
+	ctx := db.ContextWithConn(context.Background(), mock)
+
+	// BytesToStringScanConverter turns []byte columns into plain strings
+	// (or hex with the given prefix for non-UTF-8), otherwise
+	// json.MarshalIndent would base64-encode them.
+	// TimeToStringScanConverter formats time.Time columns with the given
+	// layout instead of relying on time.Time's default JSON encoding.
+	// Multiple converters are combined with sqldb.ScanConverters.
+	rows, err := db.QueryRowsAsMapSlice(ctx,
+		sqldb.ScanConverters{
+			sqldb.BytesToStringScanConverter(`\x`),
+			sqldb.TimeToStringScanConverter(time.DateTime),
+		},
+		`SELECT id, name, data, created_at FROM users`,
+	)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	out, err := json.MarshalIndent(rows, "", "  ")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println(string(out))
+
+	// Output:
+	// [
+	//   {
+	//     "created_at": "2026-04-14 09:30:00",
+	//     "data": "hello",
+	//     "id": 1,
+	//     "name": "Alice"
+	//   },
+	//   {
+	//     "created_at": "2026-04-14 10:30:00",
+	//     "data": "\\xfffe",
+	//     "id": 2,
+	//     "name": "Bob"
+	//   }
+	// ]
+}
+
+func TestQueryRowsAsMapSlice(t *testing.T) {
+	query := /*sql*/ `SELECT id, name, data FROM my_table WHERE active = $1`
+
+	t.Run("without converters", func(t *testing.T) {
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
+			WithQueryResult(
+				[]string{"id", "name", "data"},
+				[][]driver.Value{
+					{int64(1), "Alice", []byte("hello")},
+					{int64(2), "Bob", []byte{0xff, 0xfe}},
+				},
+				query,
+				true,
+			)
+		ctx := testContext(t, mock)
+
+		rows, err := db.QueryRowsAsMapSlice(ctx, nil, query, true)
+		require.NoError(t, err)
+		require.Len(t, rows, 2)
+		require.Equal(t, int64(1), rows[0]["id"])
+		require.Equal(t, "Alice", rows[0]["name"])
+		require.Equal(t, []byte("hello"), rows[0]["data"])
+	})
+
+	t.Run("with bytes converter", func(t *testing.T) {
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
+			WithQueryResult(
+				[]string{"id", "name", "data"},
+				[][]driver.Value{
+					{int64(1), "Alice", []byte("hello")},
+					{int64(2), "Bob", []byte{0xff, 0xfe}},
+				},
+				query,
+				true,
+			)
+		ctx := testContext(t, mock)
+
+		rows, err := db.QueryRowsAsMapSlice(ctx, sqldb.BytesToStringScanConverter(`\x`), query, true)
+		require.NoError(t, err)
+		require.Len(t, rows, 2)
+		require.Equal(t, "hello", rows[0]["data"])
+		require.Equal(t, `\xfffe`, rows[1]["data"])
 	})
 }
 

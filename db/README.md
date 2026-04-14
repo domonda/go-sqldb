@@ -189,6 +189,7 @@ func TestGetUser(t *testing.T) {
 | ---------------------------------------- | ---------------------------------------- |
 | `QueryRowsAsSlice[T](ctx, query, args...) ([]T, error)` | Query rows into a slice of values or structs |
 | `QueryRowsAsStrings(ctx, query, args...) ([][]string, error)` | Query rows as string slices              |
+| `QueryRowsAsMapSlice(ctx, converter, query, args...) ([]map[string]any, error)` | Query rows as a slice of maps keyed by column name; `converter` may be nil or a `sqldb.ScanConverters` slice to combine multiple |
 | `QueryCallback(ctx, callback, query, args...) error` | Call a function for each row             |
 | `QueryStructCallback[S](ctx, callback, query, args...) error` | Call a function for each row scanned into a struct |
 
