@@ -8,7 +8,7 @@ import (
 )
 
 // Update table row(s) with values using the where statement with passed in args starting at $1.
-func Update(ctx context.Context, table string, values sqldb.Values, where string, args ...any) error {
+func Update(ctx context.Context, table string, values Values, where string, args ...any) error {
 	conn := Conn(ctx)
 	return sqldb.Update(
 		ctx,
@@ -26,7 +26,7 @@ func Update(ctx context.Context, table string, values sqldb.Values, where string
 // with passed in args starting at $1 and returns a Row for scanning
 // the columns specified in the returning argument.
 // The configured [QueryBuilder] must implement [sqldb.ReturningQueryBuilder].
-func UpdateReturningRow(ctx context.Context, table string, values sqldb.Values, returning, where string, args ...any) *sqldb.Row {
+func UpdateReturningRow(ctx context.Context, table string, values Values, returning, where string, args ...any) *sqldb.Row {
 	conn := Conn(ctx)
 	builder, ok := QueryBuilder(ctx).(sqldb.ReturningQueryBuilder)
 	if !ok {
@@ -56,7 +56,7 @@ func UpdateReturningRow(ctx context.Context, table string, values sqldb.Values, 
 // with passed in args starting at $1 and returns Rows for scanning
 // the columns specified in the returning argument.
 // The configured [QueryBuilder] must implement [sqldb.ReturningQueryBuilder].
-func UpdateReturningRows(ctx context.Context, table string, values sqldb.Values, returning, where string, args ...any) sqldb.Rows {
+func UpdateReturningRows(ctx context.Context, table string, values Values, returning, where string, args ...any) sqldb.Rows {
 	conn := Conn(ctx)
 	builder, ok := QueryBuilder(ctx).(sqldb.ReturningQueryBuilder)
 	if !ok {
@@ -79,9 +79,9 @@ func UpdateReturningRows(ctx context.Context, table string, values sqldb.Values,
 // Table name, column names, and primary key columns are determined by
 // the [StructReflector] from the context. The default reflector uses `db` struct tags
 // (e.g., db.TableName `db:"my_table"`, field `db:"column"`, `db:"id,primarykey"`).
-// Struct fields can be filtered with options like [sqldb.IgnoreColumns] or [sqldb.OnlyColumns].
+// Struct fields can be filtered with options like [IgnoreColumns] or [OnlyColumns].
 // The struct must have at least one primary key field.
-func UpdateRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, options ...sqldb.QueryOption) error {
+func UpdateRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, options ...QueryOption) error {
 	conn := Conn(ctx)
 	return sqldb.UpdateRowStruct(
 		ctx,
@@ -101,7 +101,7 @@ func UpdateRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, o
 // The struct must have at least one primary key field.
 // Returns an updateFunc to update individual rows and a closeStmt
 // function that must be called when done.
-func UpdateRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, options ...sqldb.QueryOption) (updateFunc func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
+func UpdateRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, options ...QueryOption) (updateFunc func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
 	conn := Conn(ctx)
 	return sqldb.UpdateRowStructStmt[S](
 		ctx,
@@ -119,7 +119,7 @@ func UpdateRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, optio
 // the [StructReflector] from the context. The default reflector uses `db` struct tags
 // (e.g., db.TableName `db:"my_table"`, field `db:"column"`, `db:"id,primarykey"`).
 // The struct must have at least one primary key field.
-func UpdateRowStructs[S sqldb.StructWithTableName](ctx context.Context, rowStructs []S, options ...sqldb.QueryOption) error {
+func UpdateRowStructs[S sqldb.StructWithTableName](ctx context.Context, rowStructs []S, options ...QueryOption) error {
 	conn := Conn(ctx)
 	return sqldb.UpdateRowStructs(
 		ctx,

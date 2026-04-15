@@ -21,7 +21,7 @@ func runQueryTests(t *testing.T, config Config) {
 		insertSimpleRow(t, conn, qb, simpleRow{ID: 1, Val: "hello"})
 
 		// when
-		query := "SELECT val FROM conntest_simple WHERE id = " + conn.FormatPlaceholder(0)
+		query := /*sql*/ `SELECT val FROM conntest_simple WHERE id = ` + conn.FormatPlaceholder(0)
 		val, err := sqldb.QueryRowAs[string](ctx, conn, refl, conn, query, 1)
 
 		// then
@@ -93,7 +93,9 @@ func runQueryTests(t *testing.T, config Config) {
 		}))
 
 		// when
-		got, err := sqldb.QueryRowsAsSlice[simpleRow](ctx, conn, refl, conn, "SELECT * FROM conntest_simple ORDER BY id")
+		got, err := sqldb.QueryRowsAsSlice[simpleRow](ctx, conn, refl, conn, sqldb.UnlimitedMaxNumRows,
+			/*sql*/ `SELECT * FROM conntest_simple ORDER BY id`,
+		)
 
 		// then
 		require.NoError(t, err)
@@ -120,7 +122,9 @@ func runQueryTests(t *testing.T, config Config) {
 		err := sqldb.QueryStructCallback(ctx, conn, refl, conn, func(row simpleRow) error {
 			collected = append(collected, row)
 			return nil
-		}, "SELECT * FROM conntest_simple ORDER BY id")
+		},
+			/*sql*/ `SELECT * FROM conntest_simple ORDER BY id`,
+		)
 
 		// then
 		require.NoError(t, err)
@@ -136,7 +140,7 @@ func runQueryTests(t *testing.T, config Config) {
 		setupTable(t, conn, config.DDL.CreateSimpleTable, "conntest_simple")
 
 		// when
-		query := "SELECT val FROM conntest_simple WHERE id = " + conn.FormatPlaceholder(0)
+		query := /*sql*/ `SELECT val FROM conntest_simple WHERE id = ` + conn.FormatPlaceholder(0)
 		_, err := sqldb.QueryRowAs[string](ctx, conn, refl, conn, query, 999)
 
 		// then
@@ -152,7 +156,9 @@ func runQueryTests(t *testing.T, config Config) {
 		insertSimpleRow(t, conn, qb, simpleRow{ID: 1, Val: "cols"})
 
 		// when
-		rows := conn.Query(ctx, "SELECT * FROM conntest_simple")
+		rows := conn.Query(ctx,
+			/*sql*/ `SELECT * FROM conntest_simple`,
+		)
 		defer rows.Close() //nolint:errcheck
 		cols, err := rows.Columns()
 
@@ -174,7 +180,9 @@ func runQueryTests(t *testing.T, config Config) {
 		}))
 
 		// when — close before iterating all rows
-		rows := conn.Query(ctx, "SELECT * FROM conntest_simple ORDER BY id")
+		rows := conn.Query(ctx,
+			/*sql*/ `SELECT * FROM conntest_simple ORDER BY id`,
+		)
 		require.True(t, rows.Next())
 		err := rows.Close()
 

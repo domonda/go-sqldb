@@ -21,7 +21,7 @@ func runQueryCallbackTests(t *testing.T, config Config) {
 		insertSimpleRow(t, conn, qb, simpleRow{ID: 1, Val: "mapped"})
 
 		// when
-		query := "SELECT id, val FROM conntest_simple WHERE id = " + conn.FormatPlaceholder(0)
+		query := /*sql*/ `SELECT id, val FROM conntest_simple WHERE id = ` + conn.FormatPlaceholder(0)
 		m, err := sqldb.QueryRowAsMap[string, any](ctx, conn, conn, query, 1)
 
 		// then
@@ -38,7 +38,7 @@ func runQueryCallbackTests(t *testing.T, config Config) {
 		setupTable(t, conn, config.DDL.CreateSimpleTable, "conntest_simple")
 
 		// when
-		query := "SELECT id, val FROM conntest_simple WHERE id = " + conn.FormatPlaceholder(0)
+		query := /*sql*/ `SELECT id, val FROM conntest_simple WHERE id = ` + conn.FormatPlaceholder(0)
 		_, err := sqldb.QueryRowAsMap[string, any](ctx, conn, conn, query, 999)
 
 		// then
@@ -63,7 +63,7 @@ func runQueryCallbackTests(t *testing.T, config Config) {
 			func(id int, val string) {
 				collected = append(collected, val)
 			},
-			"SELECT id, val FROM conntest_simple ORDER BY id",
+			/*sql*/ `SELECT id, val FROM conntest_simple ORDER BY id`,
 		)
 
 		// then
@@ -88,7 +88,7 @@ func runQueryCallbackTests(t *testing.T, config Config) {
 			func(row simpleRow) {
 				collected = append(collected, row)
 			},
-			"SELECT * FROM conntest_simple ORDER BY id",
+			/*sql*/ `SELECT * FROM conntest_simple ORDER BY id`,
 		)
 
 		// then
@@ -121,7 +121,7 @@ func runQueryCallbackTests(t *testing.T, config Config) {
 				}
 				return nil
 			},
-			"SELECT * FROM conntest_simple ORDER BY id",
+			/*sql*/ `SELECT * FROM conntest_simple ORDER BY id`,
 		)
 
 		// then — should propagate error and stop iteration
@@ -141,7 +141,7 @@ func runQueryCallbackTests(t *testing.T, config Config) {
 			func(id int, val string) {
 				called = true
 			},
-			"SELECT id, val FROM conntest_simple",
+			/*sql*/ `SELECT id, val FROM conntest_simple`,
 		)
 
 		// then — no error, callback never called
@@ -158,7 +158,7 @@ func runQueryCallbackTests(t *testing.T, config Config) {
 		insertSimpleRow(t, conn, qb, simpleRow{ID: 1, Val: "real"})
 
 		// when
-		query := "SELECT val FROM conntest_simple WHERE id = " + conn.FormatPlaceholder(0)
+		query := /*sql*/ `SELECT val FROM conntest_simple WHERE id = ` + conn.FormatPlaceholder(0)
 		val, err := sqldb.QueryRowAsOr(ctx, conn, refl, conn, "default", query, 1)
 
 		// then
@@ -173,7 +173,7 @@ func runQueryCallbackTests(t *testing.T, config Config) {
 		setupTable(t, conn, config.DDL.CreateSimpleTable, "conntest_simple")
 
 		// when
-		query := "SELECT val FROM conntest_simple WHERE id = " + conn.FormatPlaceholder(0)
+		query := /*sql*/ `SELECT val FROM conntest_simple WHERE id = ` + conn.FormatPlaceholder(0)
 		val, err := sqldb.QueryRowAsOr(ctx, conn, refl, conn, "default", query, 999)
 
 		// then

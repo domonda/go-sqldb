@@ -48,7 +48,9 @@ func runQueryBuilderTests(t *testing.T, config Config) {
 		err := sqldb.InsertRowStructs(ctx, conn, refl, qb, conn, rows)
 		require.NoError(t, err)
 
-		got, err := sqldb.QueryRowsAsSlice[simpleRow](ctx, conn, refl, conn, "SELECT * FROM conntest_simple ORDER BY id")
+		got, err := sqldb.QueryRowsAsSlice[simpleRow](ctx, conn, refl, conn, sqldb.UnlimitedMaxNumRows,
+			/*sql*/ `SELECT * FROM conntest_simple ORDER BY id`,
+		)
 
 		// then
 		require.NoError(t, err)

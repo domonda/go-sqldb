@@ -198,17 +198,18 @@ func QueryRowAsStringsWithHeader(ctx context.Context, query string, args ...any)
 // If converter is not nil, it is applied to each scanned value and
 // replaces the value in the returned map when it reports a successful
 // conversion. Multiple converters can be combined by passing a
-// [sqldb.ScanConverters] slice.
+// [ScanConverters] slice.
 //
 // Use this as the multi-row counterpart of [sqldb.Row.ScanMap],
 // for example to encode a query result as a JSON array.
-func QueryRowsAsMapSlice(ctx context.Context, converter sqldb.ScanConverter, query string, args ...any) ([]map[string]any, error) {
+func QueryRowsAsMapSlice(ctx context.Context, converter ScanConverter, query string, args ...any) ([]map[string]any, error) {
 	conn := Conn(ctx)
 	return sqldb.QueryRowsAsMapSlice(
 		ctx,
 		conn,
 		conn,
 		converter,
+		MaxNumRowsFromContext(ctx),
 		query,
 		args...,
 	)
@@ -217,6 +218,14 @@ func QueryRowsAsMapSlice(ctx context.Context, converter sqldb.ScanConverter, que
 // QueryRowsAsSlice returns queried rows as slice of the generic type T.
 // If T is a struct, column values are scanned into fields
 // using the [StructReflector] from the context.
+//
+// The maximum number of rows is read from the context via
+// [MaxNumRowsFromContext]; use [ContextWithMaxNumRows] to set it.
+// A negative value (the default) disables the limit. A value of 0 is
+// enforced as a hard cap that permits no rows. Exceeding the cap returns
+// [ErrMaxNumRowsExceeded] along with the rows scanned so far.
+//
+// On any error the already-scanned rows are returned together with the error.
 func QueryRowsAsSlice[T any](ctx context.Context, query string, args ...any) (rows []T, err error) {
 	conn := Conn(ctx)
 	return sqldb.QueryRowsAsSlice[T](
@@ -224,6 +233,7 @@ func QueryRowsAsSlice[T any](ctx context.Context, query string, args ...any) (ro
 		conn,
 		StructReflector(ctx),
 		conn,
+		MaxNumRowsFromContext(ctx),
 		query,
 		args...,
 	)
@@ -236,6 +246,13 @@ func QueryRowsAsSlice[T any](ctx context.Context, query string, args ...any) (ro
 // nil (SQL NULL) will be converted to an empty string,
 // all other types are converted with `fmt.Sprint`.
 //
+// The maximum number of data rows (rows[0] is the header and is not counted)
+// is read from the context via [MaxNumRowsFromContext]; use
+// [ContextWithMaxNumRows] to set it. A negative value (the default) disables
+// the limit. A value of 0 is enforced as a hard cap that permits no data rows.
+// Exceeding the cap returns [ErrMaxNumRowsExceeded] along with the
+// header and the data rows scanned so far.
+//
 // If the query result has no rows, then only the header row
 // and no error will be returned.
 func QueryRowsAsStrings(ctx context.Context, query string, args ...any) (rows [][]string, err error) {
@@ -244,6 +261,7 @@ func QueryRowsAsStrings(ctx context.Context, query string, args ...any) (rows []
 		ctx,
 		conn,
 		conn,
+		MaxNumRowsFromContext(ctx),
 		query,
 		args...,
 	)

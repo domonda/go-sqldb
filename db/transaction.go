@@ -12,6 +12,12 @@ import (
 
 type noTransactionsCtxKey struct{}
 
+type serializedTransactionCtxKey struct{}
+
+// SerializedTransactionRetries is the number of retries
+// for a SerializedTransaction before it fails.
+var SerializedTransactionRetries = 10
+
 // ContextWithoutTransactions returns a context that signals
 // to [IsTransaction] and related functions that no transaction
 // should be used, even if the connection is within a transaction.

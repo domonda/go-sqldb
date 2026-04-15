@@ -3,7 +3,6 @@ package sqldb
 import (
 	"database/sql"
 	"database/sql/driver"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"reflect"
@@ -46,8 +45,10 @@ func (converters ScanConverters) ConvertValue(value driver.Value) (any, bool) {
 
 // BytesToStringScanConverter returns a [ScanConverterFunc] that converts
 // [driver.Value] of type []byte to a string.
-// If the bytes are valid UTF-8 they are returned as a string,
-// otherwise they are hex-encoded and prefixed with hexPrefix.
+// If the bytes are valid UTF-8 they are returned as a string unchanged.
+// Otherwise they are encoded as uppercase hex (via fmt's %X verb) and
+// prefixed with hexPrefix, producing strings like "\xDEADBEEF" or
+// "0xDEADBEEF" depending on the prefix.
 // Values that are not of type []byte are returned as (nil, false)
 // so the converter can be chained with others.
 //
@@ -62,7 +63,7 @@ func BytesToStringScanConverter(hexPrefix string) ScanConverterFunc {
 		if utf8.Valid(b) {
 			return string(b), true
 		}
-		return hexPrefix + hex.EncodeToString(b), true
+		return fmt.Sprintf("%s%X", hexPrefix, b), true
 	}
 }
 

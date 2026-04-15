@@ -26,8 +26,8 @@ func DropAllTables(ctx context.Context, conn sqldb.Connection) error {
 			return err
 		}
 		fkStmts = append(fkStmts,
-			"ALTER TABLE "+EscapeIdentifier(table)+
-				" DROP CONSTRAINT "+EscapeIdentifier(constraint))
+			/*sql*/ `ALTER TABLE `+EscapeIdentifier(table)+
+				/*sql*/ ` DROP CONSTRAINT `+EscapeIdentifier(constraint))
 	}
 	if err := fkRows.Err(); err != nil {
 		_ = fkRows.Close()
@@ -53,7 +53,7 @@ func DropAllTables(ctx context.Context, conn sqldb.Connection) error {
 			return err
 		}
 		tableStmts = append(tableStmts,
-			"DROP TABLE "+EscapeIdentifier(table)+" CASCADE CONSTRAINTS")
+			/*sql*/ `DROP TABLE `+EscapeIdentifier(table)+ /*sql*/ ` CASCADE CONSTRAINTS`)
 	}
 	if err := tableRows.Err(); err != nil {
 		_ = tableRows.Close()
@@ -85,7 +85,7 @@ func DropAllTypes(ctx context.Context, conn sqldb.Connection) error {
 			return err
 		}
 		stmts = append(stmts,
-			"DROP TYPE "+EscapeIdentifier(typeName)+" FORCE")
+			/*sql*/ `DROP TYPE `+EscapeIdentifier(typeName)+ /*sql*/ ` FORCE`)
 	}
 	if err := rows.Err(); err != nil {
 		_ = rows.Close()

@@ -153,7 +153,7 @@ func runBatchTests(t *testing.T, config Config) {
 			{ID: 3, Val: "c"},
 		}))
 
-		query := "DELETE FROM conntest_simple WHERE id = " + conn.FormatPlaceholder(0)
+		query := /*sql*/ `DELETE FROM conntest_simple WHERE id = ` + conn.FormatPlaceholder(0)
 		execFunc, closeStmt, err := sqldb.ExecRowsAffectedStmt(ctx, conn, conn, query)
 		require.NoError(t, err)
 		defer closeStmt() //nolint:errcheck
@@ -185,7 +185,7 @@ func runBatchTests(t *testing.T, config Config) {
 		}))
 
 		query := fmt.Sprintf(
-			"UPDATE conntest_simple SET val = %s WHERE id <= %s",
+			/*sql*/ `UPDATE conntest_simple SET val = %s WHERE id <= %s`,
 			conn.FormatPlaceholder(0),
 			conn.FormatPlaceholder(1),
 		)

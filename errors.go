@@ -228,3 +228,20 @@ func (e errWithQuery) Unwrap() error { return e.err }
 func (e errWithQuery) Error() string {
 	return fmt.Sprintf("%s from query: %s", e.err, FormatQuery(e.queryFmt, e.query, e.args...))
 }
+
+// ErrMaxNumRowsExceeded is returned by the multi-row query functions
+// (for example [QueryRowsAsSlice], [QueryRowsAsStrings], [QueryRowsAsMapSlice])
+// when the query would produce more rows than the caller-supplied cap.
+// The rows scanned up to the cap are still returned together with this error,
+// so callers that want to consume the partial result can do so after using
+// [errors.As] to recognize the sentinel.
+type ErrMaxNumRowsExceeded struct {
+	// MaxNumRows is the cap that was exceeded, matching the argument
+	// originally passed to the query function.
+	MaxNumRows int
+}
+
+// Error implements the error interface.
+func (e ErrMaxNumRowsExceeded) Error() string {
+	return fmt.Sprintf("max number of rows (%d) exceeded", e.MaxNumRows)
+}

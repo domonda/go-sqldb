@@ -16,7 +16,7 @@ func runPrepareTests(t *testing.T, config Config) {
 		conn := config.NewConn(t)
 		ctx := t.Context()
 		setupTable(t, conn, config.DDL.CreateSimpleTable, "conntest_simple")
-		query := fmt.Sprintf("INSERT INTO conntest_simple (id, val) VALUES (%s, %s)", conn.FormatPlaceholder(0), conn.FormatPlaceholder(1))
+		query := fmt.Sprintf( /*sql*/ `INSERT INTO conntest_simple (id, val) VALUES (%s, %s)`, conn.FormatPlaceholder(0), conn.FormatPlaceholder(1))
 
 		// when
 		stmt, err := conn.Prepare(ctx, query)
@@ -33,7 +33,7 @@ func runPrepareTests(t *testing.T, config Config) {
 		ctx := t.Context()
 		qb := config.QueryBuilder
 		setupTable(t, conn, config.DDL.CreateSimpleTable, "conntest_simple")
-		query := fmt.Sprintf("INSERT INTO conntest_simple (id, val) VALUES (%s, %s)", conn.FormatPlaceholder(0), conn.FormatPlaceholder(1))
+		query := fmt.Sprintf( /*sql*/ `INSERT INTO conntest_simple (id, val) VALUES (%s, %s)`, conn.FormatPlaceholder(0), conn.FormatPlaceholder(1))
 
 		stmt, err := conn.Prepare(ctx, query)
 		require.NoError(t, err)
@@ -59,7 +59,7 @@ func runPrepareTests(t *testing.T, config Config) {
 			{ID: 2, Val: "b"},
 		}))
 
-		query := "DELETE FROM conntest_simple WHERE id = " + conn.FormatPlaceholder(0)
+		query := /*sql*/ `DELETE FROM conntest_simple WHERE id = ` + conn.FormatPlaceholder(0)
 		stmt, err := conn.Prepare(ctx, query)
 		require.NoError(t, err)
 		defer stmt.Close() //nolint:errcheck
@@ -80,7 +80,7 @@ func runPrepareTests(t *testing.T, config Config) {
 		setupTable(t, conn, config.DDL.CreateSimpleTable, "conntest_simple")
 		insertSimpleRow(t, conn, qb, simpleRow{ID: 1, Val: "queried"})
 
-		query := "SELECT val FROM conntest_simple WHERE id = " + conn.FormatPlaceholder(0)
+		query := /*sql*/ `SELECT val FROM conntest_simple WHERE id = ` + conn.FormatPlaceholder(0)
 		stmt, err := conn.Prepare(ctx, query)
 		require.NoError(t, err)
 		defer stmt.Close() //nolint:errcheck
@@ -103,7 +103,7 @@ func runPrepareTests(t *testing.T, config Config) {
 		qb := config.QueryBuilder
 		setupTable(t, conn, config.DDL.CreateSimpleTable, "conntest_simple")
 
-		query := fmt.Sprintf("INSERT INTO conntest_simple (id, val) VALUES (%s, %s)", conn.FormatPlaceholder(0), conn.FormatPlaceholder(1))
+		query := fmt.Sprintf( /*sql*/ `INSERT INTO conntest_simple (id, val) VALUES (%s, %s)`, conn.FormatPlaceholder(0), conn.FormatPlaceholder(1))
 		stmt, err := conn.Prepare(ctx, query)
 		require.NoError(t, err)
 		defer stmt.Close() //nolint:errcheck
@@ -125,7 +125,7 @@ func runPrepareTests(t *testing.T, config Config) {
 		ctx := t.Context()
 		setupTable(t, conn, config.DDL.CreateSimpleTable, "conntest_simple")
 
-		query := "SELECT val FROM conntest_simple WHERE id = " + conn.FormatPlaceholder(0)
+		query := /*sql*/ `SELECT val FROM conntest_simple WHERE id = ` + conn.FormatPlaceholder(0)
 		stmt, err := conn.Prepare(ctx, query)
 		require.NoError(t, err)
 
@@ -143,7 +143,7 @@ func runPrepareTests(t *testing.T, config Config) {
 		qb := config.QueryBuilder
 		setupTable(t, conn, config.DDL.CreateSimpleTable, "conntest_simple")
 
-		query := fmt.Sprintf("INSERT INTO conntest_simple (id, val) VALUES (%s, %s)", conn.FormatPlaceholder(0), conn.FormatPlaceholder(1))
+		query := fmt.Sprintf( /*sql*/ `INSERT INTO conntest_simple (id, val) VALUES (%s, %s)`, conn.FormatPlaceholder(0), conn.FormatPlaceholder(1))
 		execFunc, closeStmt, err := sqldb.ExecStmt(ctx, conn, conn, query)
 		require.NoError(t, err)
 		defer closeStmt() //nolint:errcheck
@@ -165,7 +165,7 @@ func runPrepareTests(t *testing.T, config Config) {
 		setupTable(t, conn, config.DDL.CreateSimpleTable, "conntest_simple")
 		insertSimpleRow(t, conn, qb, simpleRow{ID: 1, Val: "stmt-query"})
 
-		query := "SELECT val FROM conntest_simple WHERE id = " + conn.FormatPlaceholder(0)
+		query := /*sql*/ `SELECT val FROM conntest_simple WHERE id = ` + conn.FormatPlaceholder(0)
 		queryFunc, closeStmt, err := sqldb.QueryRowAsStmt[string](ctx, conn, refl, conn, query)
 		require.NoError(t, err)
 		defer closeStmt() //nolint:errcheck

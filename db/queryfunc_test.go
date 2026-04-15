@@ -254,4 +254,21 @@ func TestQueryRowsAsSlice_DB(t *testing.T) {
 		require.False(t, rows[1].Active)
 		require.Equal(t, 1, queryCount, "MockQuery call count")
 	})
+
+	t.Run("context maxNumRows cap exceeded", func(t *testing.T) {
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+		mock.MockQuery = func(ctx context.Context, query string, args ...any) sqldb.Rows {
+			return sqldb.NewMockRows("name").
+				WithRow("Alice").
+				WithRow("Bob").
+				WithRow("Charlie")
+		}
+		ctx := db.ContextWithMaxNumRows(testContext(t, mock), 2)
+
+		names, err := db.QueryRowsAsSlice[string](ctx, "SELECT name FROM users")
+		var maxErr sqldb.ErrMaxNumRowsExceeded
+		require.ErrorAs(t, err, &maxErr)
+		require.Equal(t, 2, maxErr.MaxNumRows)
+		require.Equal(t, []string{"Alice", "Bob"}, names)
+	})
 }

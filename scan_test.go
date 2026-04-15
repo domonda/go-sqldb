@@ -389,8 +389,8 @@ func TestBytesToStringScanConverter(t *testing.T) {
 		if !ok {
 			t.Fatal("expected ok=true")
 		}
-		if val != `\xdeadbeef` {
-			t.Errorf("got %q, want %q", val, `\xdeadbeef`)
+		if val != `\xDEADBEEF` {
+			t.Errorf("got %q, want %q", val, `\xDEADBEEF`)
 		}
 	})
 
@@ -427,8 +427,8 @@ func TestBytesToStringScanConverter(t *testing.T) {
 		if !ok {
 			t.Fatal("expected ok=true")
 		}
-		if val != "0x01ff" {
-			t.Errorf("got %q, want %q", val, "0x01ff")
+		if val != "0x01FF" {
+			t.Errorf("got %q, want %q", val, "0x01FF")
 		}
 	})
 
@@ -438,8 +438,8 @@ func TestBytesToStringScanConverter(t *testing.T) {
 		if !ok {
 			t.Fatal("expected ok=true")
 		}
-		if val != "ff" {
-			t.Errorf("got %q, want %q", val, "ff")
+		if val != "FF" {
+			t.Errorf("got %q, want %q", val, "FF")
 		}
 	})
 }

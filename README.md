@@ -24,6 +24,7 @@
   - [Querying a single row](#querying-a-single-row)
   - [Querying a single row by primary key](#querying-a-single-row-by-primary-key)
   - [Querying multiple rows](#querying-multiple-rows)
+  - [Capping multi-row queries with `ContextWithMaxNumRows`](#capping-multi-row-queries-with-contextwithmaxnumrows)
   - [QueryCallback for per-row processing](#querycallback-for-per-row-processing)
   - [Insert](#insert)
   - [Update](#update)
@@ -437,6 +438,51 @@ users, err := db.QueryRowsAsSlice[User](ctx, `SELECT * FROM public.user`)
 // Query a single column into a scalar slice
 emails, err := db.QueryRowsAsSlice[string](ctx, `SELECT email FROM public.user`)
 ```
+
+### Capping multi-row queries with `ContextWithMaxNumRows`
+
+Every multi-row slice returning function in the `db` package
+(`QueryRowsAsSlice`, `QueryRowsAsStrings`, `QueryRowsAsMapSlice`)
+honors an optional per-context row cap. Think of it as an application
+side safety net: set a generous but finite limit at a request or job
+boundary and a buggy query or an unexpectedly large result set cannot
+exhaust memory. It does not replace SQL level `LIMIT` clauses, which
+should still be used whenever the business logic actually wants a
+specific limit pushed down to the database.
+
+```go
+// Apply a 1000 row safety net for the whole request.
+ctx = db.ContextWithMaxNumRows(ctx, 1000)
+
+users, err := db.QueryRowsAsSlice[User](ctx, `SELECT * FROM public.user`)
+if err != nil {
+    var capped db.ErrMaxNumRowsExceeded
+    if errors.As(err, &capped) {
+        // users contains the first 1000 rows scanned before the cap was hit.
+        // Decide whether to consume the partial result or fail the operation.
+    }
+    return err
+}
+```
+
+`maxNumRows` semantics:
+
+- `db.UnlimitedMaxNumRows` (the default, any negative integer) disables
+  the cap.
+- `0` is a deliberate hard cap that prevents any rows from being
+  returned. A non-empty query result returns an empty slice together
+  with `db.ErrMaxNumRowsExceeded`. An empty query result returns an
+  empty slice with no error because the cap was never exceeded.
+- A positive value `N` allows up to `N` rows to be scanned. If the
+  driver delivers an `(N+1)`th row, the query function stops, returns
+  the `N` rows already scanned, and wraps `db.ErrMaxNumRowsExceeded`
+  into the error chain. Use `errors.As` to recognize the sentinel and
+  decide whether to consume the partial result or fail.
+
+The cap is stored as a context value, so it propagates through nested
+`Transaction` callbacks and any helper function that takes a
+`context.Context`. Wrapping a child context tightens or loosens the
+cap for a subtree of calls.
 
 ### QueryCallback for per-row processing
 

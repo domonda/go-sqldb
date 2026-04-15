@@ -5,8 +5,15 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 )
+
+// UnlimitedMaxNumRows is the sentinel value for the maxNumRows argument
+// of [QueryRowsAsSlice], [QueryRowsAsStrings] and [QueryRowsAsMapSlice]
+// that disables the row cap. Any negative integer has the same effect,
+// but using this named constant makes the intent explicit at call sites.
+const UnlimitedMaxNumRows = -1
 
 // QueryRow queries a single row and returns a Row for the results.
 func QueryRow(ctx context.Context, conn Querier, refl StructReflector, fmtr QueryFormatter, query string, args ...any) *Row {
@@ -220,12 +227,23 @@ func QueryRowAsStringsWithHeader(ctx context.Context, conn Querier, fmtr QueryFo
 // conversion. Multiple converters can be combined by passing a
 // [ScanConverters] slice.
 //
+// Pass [UnlimitedMaxNumRows] (or any negative integer) for maxNumRows
+// to disable the limit. A value of 0 is enforced as a hard cap that
+// permits no rows: an empty query returns no rows and no error, a
+// non-empty query returns no rows together with [ErrMaxNumRowsExceeded].
+// Non-negative values cap the number of rows; exceeding the cap returns
+// [ErrMaxNumRowsExceeded] along with the rows scanned so far.
+//
+// On any error (context cancellation, scan failure, or the final rows.Err()),
+// the function returns whatever was scanned before the error together with
+// the wrapped error, so callers may still consume the partial result.
+//
 // If a row contains duplicate column names,
 // later columns overwrite earlier ones in its map.
 //
 // Use this as the multi-row counterpart of [Row.ScanMap],
 // for example to encode a query result as a JSON array.
-func QueryRowsAsMapSlice(ctx context.Context, conn Querier, fmtr QueryFormatter, converter ScanConverter, query string, args ...any) (result []map[string]any, err error) {
+func QueryRowsAsMapSlice(ctx context.Context, conn Querier, fmtr QueryFormatter, converter ScanConverter, maxNumRows int, query string, args ...any) (result []map[string]any, err error) {
 	sqlRows := conn.Query(ctx, query, args...)
 	defer func() {
 		err = errors.Join(err, sqlRows.Close())
@@ -233,6 +251,10 @@ func QueryRowsAsMapSlice(ctx context.Context, conn Querier, fmtr QueryFormatter,
 			err = WrapErrorWithQuery(err, query, args, fmtr)
 		}
 	}()
+
+	if maxNumRows < 0 {
+		maxNumRows = math.MaxInt // Practically unlimited
+	}
 
 	cols, err := sqlRows.Columns()
 	if err != nil {
@@ -246,11 +268,14 @@ func QueryRowsAsMapSlice(ctx context.Context, conn Querier, fmtr QueryFormatter,
 		scanPtrs[i] = &anys[i]
 	}
 	for sqlRows.Next() {
+		if len(result) >= maxNumRows {
+			return result, ErrMaxNumRowsExceeded{MaxNumRows: maxNumRows}
+		}
 		if err = ctx.Err(); err != nil {
-			return nil, err
+			return result, err
 		}
 		if err = sqlRows.Scan(scanPtrs...); err != nil {
-			return nil, err
+			return result, err
 		}
 		row := make(map[string]any, len(cols))
 		for i, col := range cols {
@@ -265,14 +290,25 @@ func QueryRowsAsMapSlice(ctx context.Context, conn Querier, fmtr QueryFormatter,
 		result = append(result, row)
 	}
 	if err = sqlRows.Err(); err != nil {
-		return nil, err
+		return result, err
 	}
 	return result, nil
 }
 
 // QueryRowsAsSlice returns queried rows as slice of the generic type T
 // using the passed reflector to scan column values as struct fields.
-func QueryRowsAsSlice[T any](ctx context.Context, conn Querier, refl StructReflector, fmtr QueryFormatter, query string, args ...any) (rows []T, err error) {
+//
+// Pass [UnlimitedMaxNumRows] (or any negative integer) for maxNumRows
+// to disable the limit. A value of 0 is enforced as a hard cap that
+// permits no rows: an empty query returns no rows and no error, a
+// non-empty query returns no rows together with [ErrMaxNumRowsExceeded].
+// Non-negative values cap the number of rows; exceeding the cap returns
+// [ErrMaxNumRowsExceeded] along with the rows scanned so far.
+//
+// On any error (context cancellation, scan failure, or the final rows.Err()),
+// the function returns whatever was scanned before the error together with
+// the wrapped error, so callers may still consume the partial result.
+func QueryRowsAsSlice[T any](ctx context.Context, conn Querier, refl StructReflector, fmtr QueryFormatter, maxNumRows int, query string, args ...any) (rows []T, err error) {
 	sqlRows := conn.Query(ctx, query, args...)
 	defer func() {
 		err = errors.Join(err, sqlRows.Close())
@@ -280,6 +316,10 @@ func QueryRowsAsSlice[T any](ctx context.Context, conn Querier, refl StructRefle
 			err = WrapErrorWithQuery(err, query, args, fmtr)
 		}
 	}()
+
+	if maxNumRows < 0 {
+		maxNumRows = math.MaxInt // Practically unlimited
+	}
 
 	sliceElemType := reflect.TypeFor[T]()
 	rowStructs := isNonSQLScannerStruct(sliceElemType)
@@ -293,8 +333,11 @@ func QueryRowsAsSlice[T any](ctx context.Context, conn Querier, refl StructRefle
 	}
 
 	for sqlRows.Next() {
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
+		if len(rows) >= maxNumRows {
+			return rows, ErrMaxNumRowsExceeded{MaxNumRows: maxNumRows}
+		}
+		if err = ctx.Err(); err != nil {
+			return rows, err
 		}
 		rows = append(rows, *new(T))
 		if rowStructs {
@@ -303,26 +346,44 @@ func QueryRowsAsSlice[T any](ctx context.Context, conn Querier, refl StructRefle
 			err = sqlRows.Scan(&rows[len(rows)-1])
 		}
 		if err != nil {
-			return nil, err
+			// Drop the row we appended for this iteration; Scan may have
+			// partially filled it before failing, and callers consuming the
+			// partial result should not see a half-scanned tail.
+			rows = rows[:len(rows)-1]
+			return rows, err
 		}
 	}
-	if sqlRows.Err() != nil {
-		return nil, sqlRows.Err()
+	if err = sqlRows.Err(); err != nil {
+		return rows, err
 	}
-
 	return rows, nil
 }
 
 // QueryRowsAsStrings scans the query result into a table of strings
 // where the first row is a header row with the column names.
+// The returned [][]string therefore always has rows[0] set to the column
+// header when [Rows.Columns] succeeds, even when an error occurs mid-scan.
 //
 // Byte slices will be interpreted as strings,
 // nil (SQL NULL) will be converted to an empty string,
 // all other types are converted with `fmt.Sprint`.
 //
+// Pass [UnlimitedMaxNumRows] (or any negative integer) for maxNumRows
+// to disable the limit. A value of 0 is enforced as a hard cap that
+// permits no data rows: an empty query returns just the header row with
+// no error, a non-empty query returns just the header row together with
+// [ErrMaxNumRowsExceeded]. Non-negative values cap the number of data
+// rows (rows[0] is always the header and is not counted); exceeding the
+// cap returns [ErrMaxNumRowsExceeded] along with the header and the
+// data rows scanned so far.
+//
+// On any error (context cancellation, scan failure, or the final rows.Err()),
+// the function returns the header plus whatever data rows were scanned
+// before the error, together with the wrapped error.
+//
 // If the query result has no rows, then only the header row
 // and no error will be returned.
-func QueryRowsAsStrings(ctx context.Context, conn Querier, fmtr QueryFormatter, query string, args ...any) (rows [][]string, err error) {
+func QueryRowsAsStrings(ctx context.Context, conn Querier, fmtr QueryFormatter, maxNumRows int, query string, args ...any) (rows [][]string, err error) {
 	sqlRows := conn.Query(ctx, query, args...)
 	defer func() {
 		err = errors.Join(err, sqlRows.Close())
@@ -331,6 +392,10 @@ func QueryRowsAsStrings(ctx context.Context, conn Querier, fmtr QueryFormatter, 
 		}
 	}()
 
+	if maxNumRows < 0 {
+		maxNumRows = math.MaxInt // Practically unlimited
+	}
+
 	cols, err := sqlRows.Columns()
 	if err != nil {
 		return nil, err
@@ -338,22 +403,24 @@ func QueryRowsAsStrings(ctx context.Context, conn Querier, fmtr QueryFormatter, 
 	rows = [][]string{cols}
 	stringScannablePtrs := make([]any, len(cols))
 	for sqlRows.Next() {
+		if len(rows)-1 >= maxNumRows {
+			return rows, ErrMaxNumRowsExceeded{MaxNumRows: maxNumRows}
+		}
 		if err = ctx.Err(); err != nil {
-			return nil, err
+			return rows, err
 		}
 		row := make([]string, len(cols))
 		// Modify stringScannablePtrs to point to the row values
 		for i := range stringScannablePtrs {
 			stringScannablePtrs[i] = (*StringScannable)(&row[i])
 		}
-		err := sqlRows.Scan(stringScannablePtrs...)
-		if err != nil {
-			return nil, err
+		if err = sqlRows.Scan(stringScannablePtrs...); err != nil {
+			return rows, err
 		}
 		rows = append(rows, row)
 	}
 	if err = sqlRows.Err(); err != nil {
-		return nil, err
+		return rows, err
 	}
 	return rows, nil
 }

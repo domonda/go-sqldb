@@ -44,7 +44,10 @@ func DropAllTables(ctx context.Context, conn sqldb.Connection) (err error) {
 		err = errors.Join(err, conn.Exec(ctx, `SET FOREIGN_KEY_CHECKS = 1`))
 	}()
 	for _, table := range tables {
-		if err = conn.Exec(ctx, "DROP TABLE IF EXISTS "+EscapeIdentifier(table)); err != nil {
+		err = conn.Exec(ctx,
+			/*sql*/ `DROP TABLE IF EXISTS `+EscapeIdentifier(table),
+		)
+		if err != nil {
 			return err
 		}
 	}
