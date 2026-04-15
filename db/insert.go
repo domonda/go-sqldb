@@ -44,7 +44,7 @@ func InsertUnique(ctx context.Context, table string, values Values, onConflict s
 // InsertReturning inserts a new row into table using values
 // and returns values from the inserted row listed in returning.
 // The configured [QueryBuilder] must implement [sqldb.ReturningQueryBuilder].
-func InsertReturning(ctx context.Context, table string, values sqldb.Values, returning string) *sqldb.Row {
+func InsertReturning(ctx context.Context, table string, values Values, returning string) *sqldb.Row {
 	conn := Conn(ctx)
 	builder, ok := QueryBuilder(ctx).(sqldb.ReturningQueryBuilder)
 	if !ok {
@@ -73,7 +73,7 @@ func InsertReturning(ctx context.Context, table string, values sqldb.Values, ret
 // The default reflector uses `db` struct tags
 // (e.g., db.TableName `db:"my_table"`, field `db:"column"`).
 // Optional QueryOption can be passed to ignore mapped columns.
-func InsertRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, options ...sqldb.QueryOption) error {
+func InsertRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, options ...QueryOption) error {
 	conn := Conn(ctx)
 	return sqldb.InsertRowStruct(
 		ctx,
@@ -92,7 +92,7 @@ func InsertRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, o
 // (e.g., db.TableName `db:"my_table"`, field `db:"column"`).
 // Returns an insertFunc to insert individual rows and a closeStmt
 // function that must be called when done.
-func InsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, options ...sqldb.QueryOption) (insertFunc func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
+func InsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, options ...QueryOption) (insertFunc func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
 	conn := Conn(ctx)
 	return sqldb.InsertRowStructStmt[S](
 		ctx,
@@ -111,7 +111,7 @@ func InsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, optio
 // (e.g., db.TableName `db:"my_table"`, field `db:"column"`).
 // Optional QueryOption can be passed to ignore mapped columns.
 // The configured [QueryBuilder] must implement [sqldb.UpsertQueryBuilder].
-func InsertUniqueRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, onConflict string, options ...sqldb.QueryOption) (inserted bool, err error) {
+func InsertUniqueRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, onConflict string, options ...QueryOption) (inserted bool, err error) {
 	conn := Conn(ctx)
 	builder, ok := QueryBuilder(ctx).(sqldb.UpsertQueryBuilder)
 	if !ok {
@@ -145,7 +145,7 @@ func InsertUniqueRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableN
 // The default reflector uses `db` struct tags
 // (e.g., db.TableName `db:"my_table"`, field `db:"column"`).
 // Optional QueryOption can be passed to ignore mapped columns.
-func InsertRowStructs[S sqldb.StructWithTableName](ctx context.Context, rowStructs []S, options ...sqldb.QueryOption) error {
+func InsertRowStructs[S sqldb.StructWithTableName](ctx context.Context, rowStructs []S, options ...QueryOption) error {
 	conn := Conn(ctx)
 	return sqldb.InsertRowStructs(
 		ctx,

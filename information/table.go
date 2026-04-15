@@ -63,9 +63,7 @@ func TableExists(ctx context.Context, conn sqldb.Connection, qualifiedName strin
 
 // GetAllTables returns all rows from information_schema.tables.
 func GetAllTables(ctx context.Context, conn sqldb.Connection) (tables []*Table, err error) {
-	return sqldb.QueryRowsAsSlice[*Table](ctx, conn, structReflector, conn,
-		/*sql*/ `
-			SELECT * FROM information_schema.tables
-		`,
+	return sqldb.QueryRowsAsSlice[*Table](ctx, conn, structReflector, conn, sqldb.UnlimitedMaxNumRows,
+		/*sql*/ `SELECT * FROM information_schema.tables`,
 	)
 }

@@ -69,7 +69,9 @@ func runUpsertTests(t *testing.T, config Config) {
 
 		// then
 		require.NoError(t, err)
-		got, err := sqldb.QueryRowsAsSlice[upsertRow](ctx, conn, refl, conn, "SELECT * FROM conntest_upsert ORDER BY id")
+		got, err := sqldb.QueryRowsAsSlice[upsertRow](ctx, conn, refl, conn, sqldb.UnlimitedMaxNumRows,
+			/*sql*/ `SELECT * FROM conntest_upsert ORDER BY id`,
+		)
 		require.NoError(t, err)
 		require.Len(t, got, 3)
 		assert.Equal(t, "alice", got[0].Name)

@@ -150,7 +150,7 @@ func runExecTests(t *testing.T, config Config) {
 			}))
 
 			// when — delete rows with id <= 2
-			query := "DELETE FROM conntest_simple WHERE id <= " + conn.FormatPlaceholder(0)
+			query := /*sql*/ `DELETE FROM conntest_simple WHERE id <= ` + conn.FormatPlaceholder(0)
 			n, err := sqldb.ExecRowsAffected(ctx, conn, conn, query, 2)
 
 			// then
@@ -172,7 +172,7 @@ func runExecTests(t *testing.T, config Config) {
 
 			// when — update rows with id >= 2
 			query := fmt.Sprintf(
-				"UPDATE conntest_simple SET val = %s WHERE id >= %s",
+				/*sql*/ `UPDATE conntest_simple SET val = %s WHERE id >= %s`,
 				conn.FormatPlaceholder(0),
 				conn.FormatPlaceholder(1),
 			)
@@ -191,7 +191,7 @@ func runExecTests(t *testing.T, config Config) {
 
 			// when — delete from empty table
 			query := fmt.Sprintf(
-				"DELETE FROM conntest_simple WHERE id = %s",
+				/*sql*/ `DELETE FROM conntest_simple WHERE id = %s`,
 				conn.FormatPlaceholder(0),
 			)
 			n, err := sqldb.ExecRowsAffected(ctx, conn, conn, query, 999)

@@ -324,7 +324,7 @@ func TestQueryRowsAsSlice(t *testing.T) {
 			gotQuery = query
 			return NewMockRows("name").WithRow("Alice").WithRow("Bob").WithRow("Charlie")
 		}
-		names, err := QueryRowsAsSlice[string](t.Context(), conn, refl, fmtr, "SELECT name FROM users")
+		names, err := QueryRowsAsSlice[string](t.Context(), conn, refl, fmtr, UnlimitedMaxNumRows, "SELECT name FROM users")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -356,7 +356,7 @@ func TestQueryRowsAsSlice(t *testing.T) {
 				WithRow(int64(1), "Alice", true).
 				WithRow(int64(2), "Bob", false)
 		}
-		rows, err := QueryRowsAsSlice[reflectTestStruct](t.Context(), conn, refl, fmtr, "SELECT id, name, active FROM test_table")
+		rows, err := QueryRowsAsSlice[reflectTestStruct](t.Context(), conn, refl, fmtr, UnlimitedMaxNumRows, "SELECT id, name, active FROM test_table")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -377,6 +377,73 @@ func TestQueryRowsAsSlice(t *testing.T) {
 		}
 	})
 
+	t.Run("maxNumRows cap exceeded", func(t *testing.T) {
+		conn, refl, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("name").WithRow("Alice").WithRow("Bob").WithRow("Charlie")
+		}
+		names, err := QueryRowsAsSlice[string](t.Context(), conn, refl, fmtr, 2, "SELECT name FROM users")
+		var maxErr ErrMaxNumRowsExceeded
+		if !errors.As(err, &maxErr) {
+			t.Fatalf("expected ErrMaxNumRowsExceeded, got: %v", err)
+		}
+		if maxErr.MaxNumRows != 2 {
+			t.Errorf("maxErr.MaxNumRows = %d, want 2", maxErr.MaxNumRows)
+		}
+		if len(names) != 2 {
+			t.Fatalf("len = %d, want 2 (partial result)", len(names))
+		}
+		if names[0] != "Alice" || names[1] != "Bob" {
+			t.Errorf("partial names = %v, want [Alice Bob]", names)
+		}
+	})
+
+	t.Run("maxNumRows exact match no error", func(t *testing.T) {
+		conn, refl, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("name").WithRow("Alice").WithRow("Bob")
+		}
+		names, err := QueryRowsAsSlice[string](t.Context(), conn, refl, fmtr, 2, "SELECT name FROM users")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(names) != 2 {
+			t.Errorf("len = %d, want 2", len(names))
+		}
+	})
+
+	t.Run("maxNumRows zero cap non-empty query", func(t *testing.T) {
+		conn, refl, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("name").WithRow("Alice")
+		}
+		names, err := QueryRowsAsSlice[string](t.Context(), conn, refl, fmtr, 0, "SELECT name FROM users")
+		var maxErr ErrMaxNumRowsExceeded
+		if !errors.As(err, &maxErr) {
+			t.Fatalf("expected ErrMaxNumRowsExceeded, got: %v", err)
+		}
+		if maxErr.MaxNumRows != 0 {
+			t.Errorf("maxErr.MaxNumRows = %d, want 0", maxErr.MaxNumRows)
+		}
+		if names != nil {
+			t.Errorf("names = %v, want nil", names)
+		}
+	})
+
+	t.Run("maxNumRows zero cap empty query", func(t *testing.T) {
+		conn, refl, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("name")
+		}
+		names, err := QueryRowsAsSlice[string](t.Context(), conn, refl, fmtr, 0, "SELECT name FROM users WHERE 1=0")
+		if err != nil {
+			t.Fatalf("expected nil error, got: %v", err)
+		}
+		if names != nil {
+			t.Errorf("names = %v, want nil", names)
+		}
+	})
+
 	t.Run("empty result", func(t *testing.T) {
 		conn, refl, _, fmtr := newTestInterfaces()
 		var queryCount int
@@ -384,7 +451,7 @@ func TestQueryRowsAsSlice(t *testing.T) {
 			queryCount++
 			return NewMockRows("name")
 		}
-		names, err := QueryRowsAsSlice[string](t.Context(), conn, refl, fmtr, "SELECT name FROM users WHERE 1=0")
+		names, err := QueryRowsAsSlice[string](t.Context(), conn, refl, fmtr, UnlimitedMaxNumRows, "SELECT name FROM users WHERE 1=0")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -408,7 +475,7 @@ func TestQueryRowsAsStrings(t *testing.T) {
 		}
 
 		// when
-		rows, err := QueryRowsAsStrings(t.Context(), conn, fmtr, "SELECT id, name FROM users")
+		rows, err := QueryRowsAsStrings(t.Context(), conn, fmtr, UnlimitedMaxNumRows, "SELECT id, name FROM users")
 
 		// then
 		if err != nil {
@@ -436,7 +503,7 @@ func TestQueryRowsAsStrings(t *testing.T) {
 		}
 
 		// when
-		rows, err := QueryRowsAsStrings(t.Context(), conn, fmtr, "SELECT col1, col2 FROM t WHERE 1=0")
+		rows, err := QueryRowsAsStrings(t.Context(), conn, fmtr, UnlimitedMaxNumRows, "SELECT col1, col2 FROM t WHERE 1=0")
 
 		// then
 		if err != nil {
@@ -459,11 +526,70 @@ func TestQueryRowsAsStrings(t *testing.T) {
 		}
 
 		// when
-		_, err := QueryRowsAsStrings(t.Context(), conn, fmtr, "SELECT 1")
+		_, err := QueryRowsAsStrings(t.Context(), conn, fmtr, UnlimitedMaxNumRows, "SELECT 1")
 
 		// then
 		if !errors.Is(err, queryErr) {
 			t.Errorf("expected error wrapping %v, got: %v", queryErr, err)
+		}
+	})
+
+	t.Run("maxNumRows cap exceeded keeps header", func(t *testing.T) {
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("id", "name").
+				WithRow(int64(1), "Alice").
+				WithRow(int64(2), "Bob").
+				WithRow(int64(3), "Charlie")
+		}
+		rows, err := QueryRowsAsStrings(t.Context(), conn, fmtr, 2, "SELECT id, name FROM users")
+		var maxErr ErrMaxNumRowsExceeded
+		if !errors.As(err, &maxErr) {
+			t.Fatalf("expected ErrMaxNumRowsExceeded, got: %v", err)
+		}
+		if maxErr.MaxNumRows != 2 {
+			t.Errorf("maxErr.MaxNumRows = %d, want 2", maxErr.MaxNumRows)
+		}
+		if len(rows) != 3 {
+			t.Fatalf("len = %d, want 3 (header + 2 data rows)", len(rows))
+		}
+		if rows[0][0] != "id" || rows[0][1] != "name" {
+			t.Errorf("header = %v, want [id name]", rows[0])
+		}
+		if rows[1][1] != "Alice" || rows[2][1] != "Bob" {
+			t.Errorf("data rows = %v %v, want Alice and Bob", rows[1], rows[2])
+		}
+	})
+
+	t.Run("maxNumRows zero cap non-empty query returns only header", func(t *testing.T) {
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("id", "name").WithRow(int64(1), "Alice")
+		}
+		rows, err := QueryRowsAsStrings(t.Context(), conn, fmtr, 0, "SELECT id, name FROM users")
+		var maxErr ErrMaxNumRowsExceeded
+		if !errors.As(err, &maxErr) {
+			t.Fatalf("expected ErrMaxNumRowsExceeded, got: %v", err)
+		}
+		if len(rows) != 1 {
+			t.Fatalf("len = %d, want 1 (header only)", len(rows))
+		}
+		if rows[0][0] != "id" || rows[0][1] != "name" {
+			t.Errorf("header = %v, want [id name]", rows[0])
+		}
+	})
+
+	t.Run("maxNumRows zero cap empty query no error", func(t *testing.T) {
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("id", "name")
+		}
+		rows, err := QueryRowsAsStrings(t.Context(), conn, fmtr, 0, "SELECT id, name FROM t WHERE 1=0")
+		if err != nil {
+			t.Fatalf("expected nil error, got: %v", err)
+		}
+		if len(rows) != 1 {
+			t.Errorf("len = %d, want 1 (header only)", len(rows))
 		}
 	})
 }
@@ -652,7 +778,7 @@ func TestQueryRowsAsMapSlice(t *testing.T) {
 		}
 
 		// when
-		rows, err := QueryRowsAsMapSlice(t.Context(), conn, fmtr, nil, "SELECT id, name, data FROM users")
+		rows, err := QueryRowsAsMapSlice(t.Context(), conn, fmtr, nil, UnlimitedMaxNumRows, "SELECT id, name, data FROM users")
 
 		// then
 		if err != nil {
@@ -682,7 +808,7 @@ func TestQueryRowsAsMapSlice(t *testing.T) {
 		}
 
 		// when
-		rows, err := QueryRowsAsMapSlice(t.Context(), conn, fmtr, BytesToStringScanConverter(`\x`), "SELECT data FROM t")
+		rows, err := QueryRowsAsMapSlice(t.Context(), conn, fmtr, BytesToStringScanConverter(`\x`), UnlimitedMaxNumRows, "SELECT data FROM t")
 
 		// then
 		if err != nil {
@@ -694,8 +820,8 @@ func TestQueryRowsAsMapSlice(t *testing.T) {
 		if rows[0]["data"] != "hello" {
 			t.Errorf(`rows[0]["data"] = %v, want "hello"`, rows[0]["data"])
 		}
-		if rows[1]["data"] != `\xfffe` {
-			t.Errorf(`rows[1]["data"] = %v, want "\xfffe"`, rows[1]["data"])
+		if rows[1]["data"] != `\xFFFE` {
+			t.Errorf(`rows[1]["data"] = %v, want "\xFFFE"`, rows[1]["data"])
 		}
 	})
 
@@ -713,7 +839,7 @@ func TestQueryRowsAsMapSlice(t *testing.T) {
 		rows, err := QueryRowsAsMapSlice(t.Context(), conn, fmtr, ScanConverters{
 			BytesToStringScanConverter(`\x`),
 			TimeToStringScanConverter(time.DateTime),
-		}, "SELECT data, created_at FROM t")
+		}, UnlimitedMaxNumRows, "SELECT data, created_at FROM t")
 
 		// then
 		if err != nil {
@@ -728,8 +854,8 @@ func TestQueryRowsAsMapSlice(t *testing.T) {
 		if rows[0]["created_at"] != "2026-04-14 09:30:00" {
 			t.Errorf(`rows[0]["created_at"] = %v, want "2026-04-14 09:30:00"`, rows[0]["created_at"])
 		}
-		if rows[1]["data"] != `\xfffe` {
-			t.Errorf(`rows[1]["data"] = %v, want "\xfffe"`, rows[1]["data"])
+		if rows[1]["data"] != `\xFFFE` {
+			t.Errorf(`rows[1]["data"] = %v, want "\xFFFE"`, rows[1]["data"])
 		}
 		if rows[1]["created_at"] != "2026-04-14 10:30:00" {
 			t.Errorf(`rows[1]["created_at"] = %v, want "2026-04-14 10:30:00"`, rows[1]["created_at"])
@@ -744,7 +870,7 @@ func TestQueryRowsAsMapSlice(t *testing.T) {
 		}
 
 		// when
-		rows, err := QueryRowsAsMapSlice(t.Context(), conn, fmtr, nil, "SELECT id FROM t WHERE 1=0")
+		rows, err := QueryRowsAsMapSlice(t.Context(), conn, fmtr, nil, UnlimitedMaxNumRows, "SELECT id FROM t WHERE 1=0")
 
 		// then
 		if err != nil {
@@ -764,11 +890,64 @@ func TestQueryRowsAsMapSlice(t *testing.T) {
 		}
 
 		// when
-		_, err := QueryRowsAsMapSlice(t.Context(), conn, fmtr, nil, "SELECT 1")
+		_, err := QueryRowsAsMapSlice(t.Context(), conn, fmtr, nil, UnlimitedMaxNumRows, "SELECT 1")
 
 		// then
 		if !errors.Is(err, queryErr) {
 			t.Errorf("expected error wrapping %v, got: %v", queryErr, err)
+		}
+	})
+
+	t.Run("maxNumRows cap exceeded", func(t *testing.T) {
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("id").
+				WithRow(int64(1)).
+				WithRow(int64(2)).
+				WithRow(int64(3))
+		}
+		rows, err := QueryRowsAsMapSlice(t.Context(), conn, fmtr, nil, 2, "SELECT id FROM users")
+		var maxErr ErrMaxNumRowsExceeded
+		if !errors.As(err, &maxErr) {
+			t.Fatalf("expected ErrMaxNumRowsExceeded, got: %v", err)
+		}
+		if maxErr.MaxNumRows != 2 {
+			t.Errorf("maxErr.MaxNumRows = %d, want 2", maxErr.MaxNumRows)
+		}
+		if len(rows) != 2 {
+			t.Fatalf("len = %d, want 2 (partial result)", len(rows))
+		}
+		if rows[0]["id"] != int64(1) || rows[1]["id"] != int64(2) {
+			t.Errorf("partial rows = %v, want id=1 then id=2", rows)
+		}
+	})
+
+	t.Run("maxNumRows zero cap non-empty query", func(t *testing.T) {
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("id").WithRow(int64(1))
+		}
+		rows, err := QueryRowsAsMapSlice(t.Context(), conn, fmtr, nil, 0, "SELECT id FROM users")
+		var maxErr ErrMaxNumRowsExceeded
+		if !errors.As(err, &maxErr) {
+			t.Fatalf("expected ErrMaxNumRowsExceeded, got: %v", err)
+		}
+		if rows != nil {
+			t.Errorf("rows = %v, want nil", rows)
+		}
+	})
+
+	t.Run("maxNumRows zero cap empty query", func(t *testing.T) {
+		conn, _, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("id")
+		}
+		rows, err := QueryRowsAsMapSlice(t.Context(), conn, fmtr, nil, 0, "SELECT id FROM t WHERE 1=0")
+		if err != nil {
+			t.Fatalf("expected nil error, got: %v", err)
+		}
+		if rows != nil {
+			t.Errorf("rows = %v, want nil", rows)
 		}
 	})
 }
@@ -995,7 +1174,7 @@ func TestQueryRowsAsSlice_MockQueryResults(t *testing.T) {
 	refl := NewTaggedStructReflector()
 	fmtr := NewQueryFormatter("$")
 
-	users, err := QueryRowsAsSlice[User](t.Context(), conn, refl, fmtr, "SELECT * FROM user")
+	users, err := QueryRowsAsSlice[User](t.Context(), conn, refl, fmtr, UnlimitedMaxNumRows, "SELECT * FROM user")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -62,7 +62,7 @@ func (c *Config) selectOneQuery() string {
 	if c.SelectOneQuery != "" {
 		return c.SelectOneQuery
 	}
-	return "SELECT 1"
+	return /*sql*/ `SELECT 1`
 }
 
 // DDL holds vendor-specific CREATE TABLE statements for the test suite.
@@ -136,11 +136,15 @@ func RunAll(t *testing.T, config Config) {
 func setupTable(t *testing.T, conn sqldb.Connection, createDDL, tableName string) {
 	t.Helper()
 	ctx := t.Context()
-	_ = conn.Exec(ctx, "DROP TABLE IF EXISTS "+tableName)
+	_ = conn.Exec(ctx,
+		/*sql*/ `DROP TABLE IF EXISTS `+tableName,
+	)
 	err := conn.Exec(ctx, createDDL)
 	require.NoError(t, err, "creating table %s", tableName)
 	t.Cleanup(func() {
-		_ = conn.Exec(ctx, "DROP TABLE IF EXISTS "+tableName)
+		_ = conn.Exec(ctx,
+			/*sql*/ `DROP TABLE IF EXISTS `+tableName,
+		)
 	})
 }
 

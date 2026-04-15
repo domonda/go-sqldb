@@ -276,11 +276,11 @@ func ExampleQueryRowsAsMapSlice() {
 	// json.MarshalIndent would base64-encode them.
 	// TimeToStringScanConverter formats time.Time columns with the given
 	// layout instead of relying on time.Time's default JSON encoding.
-	// Multiple converters are combined with sqldb.ScanConverters.
+	// Multiple converters are combined with db.ScanConverters.
 	rows, err := db.QueryRowsAsMapSlice(ctx,
-		sqldb.ScanConverters{
-			sqldb.BytesToStringScanConverter(`\x`),
-			sqldb.TimeToStringScanConverter(time.DateTime),
+		db.ScanConverters{
+			db.BytesToStringScanConverter(`\x`),
+			db.TimeToStringScanConverter(time.DateTime),
 		},
 		`SELECT id, name, data, created_at FROM users`,
 	)
@@ -306,7 +306,7 @@ func ExampleQueryRowsAsMapSlice() {
 	//   },
 	//   {
 	//     "created_at": "2026-04-14 10:30:00",
-	//     "data": "\\xfffe",
+	//     "data": "\\xFFFE",
 	//     "id": 2,
 	//     "name": "Bob"
 	//   }
@@ -350,11 +350,34 @@ func TestQueryRowsAsMapSlice(t *testing.T) {
 			)
 		ctx := testContext(t, mock)
 
-		rows, err := db.QueryRowsAsMapSlice(ctx, sqldb.BytesToStringScanConverter(`\x`), query, true)
+		rows, err := db.QueryRowsAsMapSlice(ctx, db.BytesToStringScanConverter(`\x`), query, true)
 		require.NoError(t, err)
 		require.Len(t, rows, 2)
 		require.Equal(t, "hello", rows[0]["data"])
-		require.Equal(t, `\xfffe`, rows[1]["data"])
+		require.Equal(t, `\xFFFE`, rows[1]["data"])
+	})
+
+	t.Run("context maxNumRows cap exceeded", func(t *testing.T) {
+		mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$")).
+			WithQueryResult(
+				[]string{"id", "name", "data"},
+				[][]driver.Value{
+					{int64(1), "Alice", []byte("hello")},
+					{int64(2), "Bob", []byte("world")},
+					{int64(3), "Charlie", []byte("hi")},
+				},
+				query,
+				true,
+			)
+		ctx := db.ContextWithMaxNumRows(testContext(t, mock), 2)
+
+		rows, err := db.QueryRowsAsMapSlice(ctx, nil, query, true)
+		var maxErr db.ErrMaxNumRowsExceeded
+		require.ErrorAs(t, err, &maxErr)
+		require.Equal(t, 2, maxErr.MaxNumRows)
+		require.Len(t, rows, 2)
+		require.Equal(t, int64(1), rows[0]["id"])
+		require.Equal(t, int64(2), rows[1]["id"])
 	})
 }
 

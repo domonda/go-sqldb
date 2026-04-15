@@ -44,7 +44,7 @@ type PrimaryKeyColumn struct {
 // GetPrimaryKeyColumns returns all primary key columns across all tables,
 // including whether each column is also a foreign key.
 func GetPrimaryKeyColumns(ctx context.Context, conn sqldb.Connection) (cols []PrimaryKeyColumn, err error) {
-	return sqldb.QueryRowsAsSlice[PrimaryKeyColumn](ctx, conn, structReflector, conn,
+	return sqldb.QueryRowsAsSlice[PrimaryKeyColumn](ctx, conn, structReflector, conn, sqldb.UnlimitedMaxNumRows,
 		/*sql*/ `
 		SELECT
 			tc.table_schema||'.'||tc.table_name AS "table",
@@ -81,7 +81,7 @@ func GetPrimaryKeyColumns(ctx context.Context, conn sqldb.Connection) (cols []Pr
 // GetPrimaryKeyColumnsOfType returns all primary key columns with the given data type,
 // including whether each column is also a foreign key.
 func GetPrimaryKeyColumnsOfType(ctx context.Context, conn sqldb.Connection, pkType string) (cols []PrimaryKeyColumn, err error) {
-	return sqldb.QueryRowsAsSlice[PrimaryKeyColumn](ctx, conn, structReflector, conn,
+	return sqldb.QueryRowsAsSlice[PrimaryKeyColumn](ctx, conn, structReflector, conn, sqldb.UnlimitedMaxNumRows,
 		/*sql*/ `
 		SELECT
 			tc.table_schema||'.'||tc.table_name AS "table",
@@ -130,7 +130,7 @@ type TableRowWithPrimaryKey struct {
 func GetTableRowsWithPrimaryKey(ctx context.Context, conn sqldb.Connection, pkCols []PrimaryKeyColumn, pk any) (tableRows []TableRowWithPrimaryKey, err error) {
 	for _, col := range pkCols {
 		query := fmt.Sprintf(`SELECT * FROM %s WHERE "%s" = $1`, col.Table, col.Column)
-		strs, err := sqldb.QueryRowsAsStrings(ctx, conn, conn, query, pk)
+		strs, err := sqldb.QueryRowsAsStrings(ctx, conn, conn, sqldb.UnlimitedMaxNumRows, query, pk)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				continue

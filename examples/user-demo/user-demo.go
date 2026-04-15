@@ -52,7 +52,7 @@ func main() {
 	}
 
 	// Query all users as struct slice
-	users, err := sqldb.QueryRowsAsSlice[User](ctx, conn, refl, conn,
+	users, err := sqldb.QueryRowsAsSlice[User](ctx, conn, refl, conn, sqldb.UnlimitedMaxNumRows,
 		/*sql*/ `SELECT * FROM public.user`,
 	)
 	if err != nil {
@@ -61,7 +61,7 @@ func main() {
 	fmt.Println(users)
 
 	// Query single column as slice
-	userEmails, err := sqldb.QueryRowsAsSlice[string](ctx, conn, refl, conn,
+	userEmails, err := sqldb.QueryRowsAsSlice[string](ctx, conn, refl, conn, sqldb.UnlimitedMaxNumRows,
 		/*sql*/ `SELECT email FROM public.user`,
 	)
 	if err != nil {

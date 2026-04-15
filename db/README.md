@@ -164,6 +164,8 @@ func TestGetUser(t *testing.T) {
 | `SetStructReflector(sr)`                 | Set the global struct reflector          |
 | `StructReflector(ctx) StructReflector`   | Get the struct reflector from context or global |
 | `ContextWithStructReflector(ctx, sr) context.Context` | Override struct reflector in context     |
+| `ContextWithMaxNumRows(ctx, n) context.Context` | Cap the rows scanned by any `QueryRows*` call on this context (`UnlimitedMaxNumRows` = unlimited, `0` = hard cap of zero rows) |
+| `MaxNumRowsFromContext(ctx) int`         | Read the current row cap from the context (`UnlimitedMaxNumRows` if unset) |
 
 ### Query — single row
 
@@ -185,13 +187,65 @@ func TestGetUser(t *testing.T) {
 
 ### Query — multiple rows
 
+All multi-row slice returning functions honor a per-context row cap set with
+`ContextWithMaxNumRows`. A negative value (the default, or the
+`db.UnlimitedMaxNumRows` constant) disables the cap. A value of `0` is
+enforced as a hard cap that permits no data rows. Exceeding the cap returns
+`db.ErrMaxNumRowsExceeded` along with the rows scanned so far. On any error
+(context cancellation, scan failure, or a driver error from the final
+`rows.Err()`), these functions return the rows scanned before the error
+together with the wrapped error.
+
+```go
+// Cap a request handler to at most 1000 rows across all db.QueryRows* calls.
+ctx = db.ContextWithMaxNumRows(ctx, 1000)
+
+users, err := db.QueryRowsAsSlice[User](ctx, `SELECT * FROM public.user`)
+if err != nil {
+    var capped db.ErrMaxNumRowsExceeded
+    if errors.As(err, &capped) {
+        // users contains the first 1000 rows, decide how to proceed
+    }
+    return err
+}
+```
+
 | Function                                 | Description                              |
 | ---------------------------------------- | ---------------------------------------- |
-| `QueryRowsAsSlice[T](ctx, query, args...) ([]T, error)` | Query rows into a slice of values or structs |
-| `QueryRowsAsStrings(ctx, query, args...) ([][]string, error)` | Query rows as string slices              |
-| `QueryRowsAsMapSlice(ctx, converter, query, args...) ([]map[string]any, error)` | Query rows as a slice of maps keyed by column name; `converter` may be nil or a `sqldb.ScanConverters` slice to combine multiple |
+| `QueryRowsAsSlice[T](ctx, query, args...) ([]T, error)` | Query rows into a slice of values or structs; row cap via context |
+| `QueryRowsAsStrings(ctx, query, args...) ([][]string, error)` | Query rows as string slices (header at `rows[0]`); row cap via context counts data rows only |
+| `QueryRowsAsMapSlice(ctx, converter, query, args...) ([]map[string]any, error)` | Query rows as a slice of maps keyed by column name; `converter` may be nil or a `ScanConverters` slice to combine multiple; row cap via context |
 | `QueryCallback(ctx, callback, query, args...) error` | Call a function for each row             |
 | `QueryStructCallback[S](ctx, callback, query, args...) error` | Call a function for each row scanned into a struct |
+
+### Scan converters
+
+Scan converters transform raw `driver.Value` values as they are scanned, so you
+can normalize driver-specific types before they reach your code or a JSON
+encoder. `QueryRowsAsMapSlice` and the `Row.ScanMap` / `Row.ScanValues` methods
+accept a converter; pass a `ScanConverters` slice to combine several.
+
+All identifiers below are aliased from the root `sqldb` package, so you do not
+need to import `sqldb` to use them.
+
+| Identifier                                          | Description                                                                                             |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `ScanConverter`                                     | Interface with `ConvertValue(driver.Value) (any, bool)`                                                 |
+| `ScanConverterFunc`                                 | Function adapter that implements `ScanConverter`                                                        |
+| `ScanConverters`                                    | Slice of `ScanConverter` that tries each in order                                                       |
+| `ScanConvertValueOrUnchanged(value, converters...)` | Apply the first matching converter or return value unchanged                                            |
+| `BytesToStringScanConverter(hexPrefix)`             | `[]byte` → string (UTF-8 passthrough, otherwise `hexPrefix + uppercase hex`, e.g. `\xDEADBEEF`)         |
+| `TimeToStringScanConverter(layout)`                 | `time.Time` → formatted string using the given layout                                                   |
+
+```go
+rows, err := db.QueryRowsAsMapSlice(ctx,
+    db.ScanConverters{
+        db.BytesToStringScanConverter(`\x`),
+        db.TimeToStringScanConverter(time.DateTime),
+    },
+    `SELECT id, name, data, created_at FROM public.event`,
+)
+```
 
 ### Exec
 

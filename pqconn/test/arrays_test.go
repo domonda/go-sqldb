@@ -147,7 +147,7 @@ func TestArrayStructQueryRowsAsSlice(t *testing.T) {
 		}
 	}
 
-	got, err := sqldb.QueryRowsAsSlice[testArraysRow](ctx, c, refl, c,
+	got, err := sqldb.QueryRowsAsSlice[testArraysRow](ctx, c, refl, c, sqldb.UnlimitedMaxNumRows,
 		/*sql*/ `SELECT * FROM test_arrays ORDER BY int_array[1]`,
 	)
 	if err != nil {
@@ -347,7 +347,7 @@ func TestArraySliceAsQueryArg(t *testing.T) {
 	}
 
 	// Use array containment operator with a slice argument
-	got, err := sqldb.QueryRowsAsSlice[testArraysRow](ctx, c, refl, c,
+	got, err := sqldb.QueryRowsAsSlice[testArraysRow](ctx, c, refl, c, sqldb.UnlimitedMaxNumRows,
 		/*sql*/ `SELECT * FROM test_arrays WHERE int_array @> $1`,
 		[]int64{10, 20},
 	)
