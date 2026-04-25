@@ -2,8 +2,14 @@ package sqliteconn
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
+)
+
+var (
+	tableNameRegexp  = regexp.MustCompile(`^([a-zA-Z_][a-zA-Z0-9_]{0,127}\.)?[a-zA-Z_][a-zA-Z0-9_]{0,127}$`)
+	columnNameRegexp = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]{0,127}$`)
 )
 
 // EscapeIdentifier wraps a SQLite identifier in double-quotes,
@@ -21,29 +27,35 @@ func EscapeIdentifier(ident string) string {
 type QueryFormatter struct{}
 
 // FormatTableName implements [sqldb.QueryFormatter.FormatTableName].
-// It validates that the name is not empty and escapes it
-// with double-quotes using [EscapeIdentifier].
-// An optional schema prefix separated by a dot is supported.
+// The name must match the regex
+// `^([a-zA-Z_][a-zA-Z0-9_]{0,127}\.)?[a-zA-Z_][a-zA-Z0-9_]{0,127}$`,
+// optionally with a schema prefix separated by a dot. The name is then
+// escaped with double-quotes using [EscapeIdentifier].
+//
+// SECURITY: this regex blocks identifier injection at the API surface.
+// Even though [EscapeIdentifier] would handle embedded double-quotes
+// correctly via doubling, validating the input shape gives defense in
+// depth against accidental misuse and matches the behaviour of the other
+// driver formatters in this module.
 func (QueryFormatter) FormatTableName(name string) (string, error) {
-	if name == "" {
-		return "", fmt.Errorf("empty table name")
+	if !tableNameRegexp.MatchString(name) {
+		return "", fmt.Errorf("invalid table name %q", name)
 	}
-	schema, table, hasSchema := strings.Cut(name, ".")
-	if hasSchema {
-		if schema == "" || table == "" {
-			return "", fmt.Errorf("invalid table name %q", name)
-		}
+	if schema, table, ok := strings.Cut(name, "."); ok {
 		return EscapeIdentifier(schema) + "." + EscapeIdentifier(table), nil
 	}
 	return EscapeIdentifier(name), nil
 }
 
 // FormatColumnName implements [sqldb.QueryFormatter.FormatColumnName].
-// It validates that the name is not empty and escapes it
-// with double-quotes using [EscapeIdentifier].
+// The name must match the regex `^[a-zA-Z_][a-zA-Z0-9_]{0,127}$` and is
+// then escaped with double-quotes using [EscapeIdentifier].
+//
+// SECURITY: this regex blocks identifier injection at the API surface.
+// See [QueryFormatter.FormatTableName] for the rationale.
 func (QueryFormatter) FormatColumnName(name string) (string, error) {
-	if name == "" {
-		return "", fmt.Errorf("empty column name")
+	if !columnNameRegexp.MatchString(name) {
+		return "", fmt.Errorf("invalid column name %q", name)
 	}
 	return EscapeIdentifier(name), nil
 }
