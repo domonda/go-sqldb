@@ -35,6 +35,7 @@
   - [LISTEN/NOTIFY (PostgreSQL)](#listennotify-postgresql)
   - [Query options](#query-options)
 - [Low-level API](#low-level-api)
+- [Schema introspection](#schema-introspection)
 - [Internal caching](#internal-caching)
 - [Performance optimizations](#performance-optimizations)
   - [Struct reflection caching](#struct-reflection-caching)
@@ -754,6 +755,21 @@ err = sqldb.Transaction(ctx, conn, &sql.TxOptions{ReadOnly: true}, func(tx sqldb
 ```
 
 Driver `Connect` functions return types that implement the `Connection` interface, which embeds `QueryFormatter`.
+
+
+## Schema introspection
+
+The [information](https://pkg.go.dev/github.com/domonda/go-sqldb/information) subpackage queries
+ISO/IEC 9075-11 `information_schema` views (tables, views, columns, key usage, primary keys,
+domains, check constraints) and exposes typed Go structs and helper functions like `TableExists`,
+`ColumnExists`, `GetPrimaryKeyColumns`, and `GetTableRowsWithPrimaryKey`. Queries route
+placeholders and identifiers through the connection's `QueryFormatter`, so the same Go calls
+emit vendor-correct SQL.
+
+Vendor coverage in short: PostgreSQL is the reference, MySQL/MariaDB and SQL Server work for
+the ISO subset (many extension columns scan as empty), SQLite and Oracle don't expose
+`information_schema` at all. See the [information package README](information/README.md) for
+the full compatibility matrix and per-helper caveats.
 
 
 ## Internal caching

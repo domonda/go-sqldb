@@ -2,12 +2,24 @@ package information
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/domonda/go-sqldb"
 )
 
 // Column maps a row from information_schema.columns.
+//
+// Vendor support:
+//   - PostgreSQL: all fields populated.
+//   - MySQL/MariaDB: TableCatalog is always "def"; CharacterSet*,
+//     Collation*, Domain*, UDT*, Scope*, MaximumCardinality, DTDIdentifier,
+//     IsSelfReferencing are not populated. Identity* is populated on
+//     MySQL 8.0+; IsGenerated/GenerationExpression on MySQL 5.7+.
+//   - SQL Server: only the ISO base columns are populated; identity,
+//     generation, scope, UDT, domain, character set and collation
+//     metadata require sys.* catalog views instead.
+//   - SQLite, Oracle: information_schema is not implemented.
 type Column struct {
 	TableCatalog           String `db:"table_catalog"`
 	TableSchema            String `db:"table_schema"`
@@ -56,6 +68,9 @@ type Column struct {
 }
 
 // KeyColumnUsage maps a row from information_schema.key_column_usage.
+//
+// Vendor support: PostgreSQL, MySQL, MariaDB, SQL Server. SQLite and
+// Oracle do not expose information_schema.
 type KeyColumnUsage struct {
 	ConstraintCatalog          String `db:"constraint_catalog"`
 	ConstraintSchema           String `db:"constraint_schema"`
@@ -68,27 +83,37 @@ type KeyColumnUsage struct {
 	PositionInUniqueConstraint *int   `db:"position_in_unique_constraint"`
 }
 
-// ColumnExists checks if a column exists in the given table.
-// The table name can be schema-qualified as "schema.table";
-// if no schema is provided, "public" is assumed.
+// ColumnExists reports whether a column exists in the given table.
+//
+// table may be schema-qualified as "schema.table" or unqualified. When
+// unqualified the schema is not constrained, so the function returns
+// true if any schema in the current database contains a table with the
+// given name and a column with the given name.
+//
+// Vendor notes:
+//   - PostgreSQL, MySQL, MariaDB, SQL Server: supported.
+//   - SQLite, Oracle: not supported (no information_schema).
 func ColumnExists(ctx context.Context, conn sqldb.Connection, table, column string) (bool, error) {
-	tableSchema, tableName, ok := strings.Cut(table, ".")
-	if !ok {
-		tableSchema = "public"
-		tableName = table
-	}
-
-	return sqldb.QueryRowAs[bool](ctx, conn, structReflector, conn,
-		/*sql*/ `
-			SELECT EXISTS (
-				SELECT FROM information_schema.columns
-				WHERE table_schema = $1
-					AND table_name = $2
-					AND column_name = $3
-			)
-		`,
-		tableSchema, // $1
-		tableName,   // $2
-		column,      // $3
+	var (
+		query string
+		args  []any
 	)
+	if schema, name, ok := strings.Cut(table, "."); ok {
+		query = fmt.Sprintf(
+			/*sql*/ `SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = %s AND table_name = %s AND column_name = %s) THEN 1 ELSE 0 END`,
+			conn.FormatPlaceholder(0),
+			conn.FormatPlaceholder(1),
+			conn.FormatPlaceholder(2),
+		)
+		args = []any{schema, name, column}
+	} else {
+		query = fmt.Sprintf(
+			/*sql*/ `SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = %s AND column_name = %s) THEN 1 ELSE 0 END`,
+			conn.FormatPlaceholder(0),
+			conn.FormatPlaceholder(1),
+		)
+		args = []any{table, column}
+	}
+	n, err := sqldb.QueryRowAs[int](ctx, conn, structReflector, conn, query, args...)
+	return n != 0, err
 }

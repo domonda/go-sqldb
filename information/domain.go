@@ -1,6 +1,14 @@
 package information
 
 // Domain maps a row from information_schema.domains.
+//
+// Vendor support:
+//   - PostgreSQL: all fields populated.
+//   - MariaDB 10.5+: the view exists; only the ISO base columns are
+//     populated.
+//   - MySQL: domains are not supported; the view does not exist.
+//   - SQL Server: domains are not supported; the view does not exist.
+//   - SQLite, Oracle: information_schema is not implemented.
 type Domain struct {
 	DomainCatalog          String `db:"domain_catalog"`
 	DomainSchema           String `db:"domain_schema"`

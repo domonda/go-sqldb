@@ -4,6 +4,8 @@ use (
 	.
 	./examples/sqldb-dump
 	./examples/user-demo
+	./information/mssql_information_test
+	./information/mysql_information_test
 	./information/postgres_information_test
 	./mssqlconn
 	./mysqlconn

@@ -34,87 +34,119 @@ func parseUUID(s string) (string, error) {
 
 // PrimaryKeyColumn holds information about a primary key column
 // including whether it is also a foreign key.
+//
+// The Table field is composed in Go as "schema.table" rather than via
+// SQL string concatenation so the query stays portable across vendors.
 type PrimaryKeyColumn struct {
-	Table      string `db:"table"`
-	Column     string `db:"column"`
-	Type       string `db:"type"`
-	ForeignKey bool   `db:"foreign_key"`
+	Table      string
+	Column     string
+	Type       string
+	ForeignKey bool
 }
+
+// pkRow scans the raw row returned by the primary-key SELECT.
+// schema/table are returned as separate columns and composed into
+// PrimaryKeyColumn.Table in Go to avoid the vendor-specific `||` vs
+// `CONCAT()` split. ForeignKey is returned as 0/1 because the portable
+// EXISTS form (CASE WHEN EXISTS(...) THEN 1 ELSE 0 END) yields an
+// integer and not all drivers convert that to bool on Scan.
+type pkRow struct {
+	Schema     string `db:"table_schema"`
+	TableName  string `db:"table_name"`
+	Column     string `db:"column_name"`
+	Type       string `db:"data_type"`
+	ForeignKey int    `db:"foreign_key"`
+}
+
+func (r pkRow) toPrimaryKeyColumn() PrimaryKeyColumn {
+	return PrimaryKeyColumn{
+		Table:      r.Schema + "." + r.TableName,
+		Column:     r.Column,
+		Type:       r.Type,
+		ForeignKey: r.ForeignKey != 0,
+	}
+}
+
+const pkColumnsBaseQuery = /*sql*/ `
+SELECT
+	tc.table_schema AS table_schema,
+	tc.table_name   AS table_name,
+	kc.column_name  AS column_name,
+	col.data_type   AS data_type,
+	CASE WHEN EXISTS (
+		SELECT 1
+		FROM information_schema.table_constraints AS fk_tc
+		JOIN information_schema.key_column_usage AS fk_kc
+			ON fk_kc.table_schema = fk_tc.table_schema
+			AND fk_kc.table_name = fk_tc.table_name
+			AND fk_kc.constraint_name = fk_tc.constraint_name
+		WHERE fk_tc.constraint_type = 'FOREIGN KEY'
+			AND fk_tc.table_schema = tc.table_schema
+			AND fk_tc.table_name = tc.table_name
+			AND fk_kc.column_name = kc.column_name
+	) THEN 1 ELSE 0 END AS foreign_key
+FROM information_schema.table_constraints AS tc
+JOIN information_schema.key_column_usage AS kc
+	ON kc.table_schema = tc.table_schema
+	AND kc.table_name = tc.table_name
+	AND kc.constraint_name = tc.constraint_name
+JOIN information_schema.columns AS col
+	ON col.table_schema = tc.table_schema
+	AND col.table_name = tc.table_name
+	AND col.column_name = kc.column_name
+WHERE tc.constraint_type = 'PRIMARY KEY'
+	AND kc.ordinal_position IS NOT NULL`
 
 // GetPrimaryKeyColumns returns all primary key columns across all tables,
 // including whether each column is also a foreign key.
-func GetPrimaryKeyColumns(ctx context.Context, conn sqldb.Connection) (cols []PrimaryKeyColumn, err error) {
-	return sqldb.QueryRowsAsSlice[PrimaryKeyColumn](ctx, conn, structReflector, conn, sqldb.UnlimitedMaxNumRows,
-		/*sql*/ `
-		SELECT
-			tc.table_schema||'.'||tc.table_name AS "table",
-			kc.column_name                      AS "column",
-			col.data_type                       AS "type",
-			(SELECT EXISTS(
-				SELECT FROM information_schema.table_constraints AS fk_tc
-				JOIN information_schema.key_column_usage AS fk_kc
-					ON fk_kc.table_schema = fk_tc.table_schema
-					AND fk_kc.table_name = fk_tc.table_name
-					AND fk_kc.constraint_name = fk_tc.constraint_name
-				WHERE fk_tc.constraint_type = 'FOREIGN KEY'
-					AND fk_tc.table_schema = tc.table_schema
-					AND fk_tc.table_name = tc.table_name
-					AND fk_kc.column_name = kc.column_name
-			)) AS "foreign_key"
-		FROM information_schema.table_constraints AS tc
-		JOIN information_schema.key_column_usage AS kc
-			ON kc.table_schema = tc.table_schema
-			AND kc.table_name = tc.table_name
-			AND kc.constraint_name = tc.constraint_name
-		JOIN information_schema.columns AS col
-			ON col.table_schema = tc.table_schema
-			AND col.table_name = tc.table_name
-			AND col.column_name = kc.column_name
-		WHERE tc.constraint_type = 'PRIMARY KEY'
-			AND kc.ordinal_position IS NOT NULL
-		ORDER BY
-			tc.table_schema,
-			tc.table_name`,
+//
+// Vendor notes:
+//   - PostgreSQL, MySQL, MariaDB, SQL Server: supported.
+//   - SQLite, Oracle: not supported (no information_schema).
+func GetPrimaryKeyColumns(ctx context.Context, conn sqldb.Connection) ([]PrimaryKeyColumn, error) {
+	rows, err := sqldb.QueryRowsAsSlice[pkRow](ctx, conn, structReflector, conn, sqldb.UnlimitedMaxNumRows,
+		pkColumnsBaseQuery+/*sql*/ `
+ORDER BY tc.table_schema, tc.table_name`,
 	)
+	if err != nil {
+		return nil, err
+	}
+	cols := make([]PrimaryKeyColumn, len(rows))
+	for i, r := range rows {
+		cols[i] = r.toPrimaryKeyColumn()
+	}
+	return cols, nil
 }
 
-// GetPrimaryKeyColumnsOfType returns all primary key columns with the given data type,
-// including whether each column is also a foreign key.
-func GetPrimaryKeyColumnsOfType(ctx context.Context, conn sqldb.Connection, pkType string) (cols []PrimaryKeyColumn, err error) {
-	return sqldb.QueryRowsAsSlice[PrimaryKeyColumn](ctx, conn, structReflector, conn, sqldb.UnlimitedMaxNumRows,
+// GetPrimaryKeyColumnsOfType returns all primary key columns with the
+// given data type, including whether each column is also a foreign key.
+//
+// pkType is matched against information_schema.columns.data_type, whose
+// spelling is vendor-specific. Examples:
+//   - PostgreSQL: "uuid", "integer", "bigint", "character varying", "jsonb".
+//   - MySQL/MariaDB: "int", "bigint", "varchar", "json"; "uuid" only on
+//     MariaDB 10.7+.
+//   - SQL Server: "int", "bigint", "uniqueidentifier", "nvarchar".
+//
+// Vendor notes:
+//   - PostgreSQL, MySQL, MariaDB, SQL Server: supported.
+//   - SQLite, Oracle: not supported (no information_schema).
+func GetPrimaryKeyColumnsOfType(ctx context.Context, conn sqldb.Connection, pkType string) ([]PrimaryKeyColumn, error) {
+	query := pkColumnsBaseQuery + fmt.Sprintf(
 		/*sql*/ `
-		SELECT
-			tc.table_schema||'.'||tc.table_name AS "table",
-			kc.column_name                      AS "column",
-			col.data_type                       AS "type",
-			(SELECT EXISTS(
-				SELECT FROM information_schema.table_constraints AS fk_tc
-				JOIN information_schema.key_column_usage AS fk_kc
-					ON fk_kc.table_schema = fk_tc.table_schema
-					AND fk_kc.table_name = fk_tc.table_name
-					AND fk_kc.constraint_name = fk_tc.constraint_name
-				WHERE fk_tc.constraint_type = 'FOREIGN KEY'
-					AND fk_tc.table_schema = tc.table_schema
-					AND fk_tc.table_name = tc.table_name
-					AND fk_kc.column_name = kc.column_name
-			)) AS "foreign_key"
-		FROM information_schema.table_constraints AS tc
-		JOIN information_schema.key_column_usage AS kc
-			ON kc.table_schema = tc.table_schema
-			AND kc.table_name = tc.table_name
-			AND kc.constraint_name = tc.constraint_name
-		JOIN information_schema.columns AS col
-			ON col.table_schema = tc.table_schema
-			AND col.table_name = tc.table_name
-			AND col.column_name = kc.column_name
-		WHERE tc.constraint_type = 'PRIMARY KEY'
-			AND kc.ordinal_position IS NOT NULL
-			AND col.data_type = $1
-		ORDER BY
-			tc.table_schema,
-			tc.table_name`,
-		pkType,
+	AND col.data_type = %s
+ORDER BY tc.table_schema, tc.table_name`,
+		conn.FormatPlaceholder(0),
 	)
+	rows, err := sqldb.QueryRowsAsSlice[pkRow](ctx, conn, structReflector, conn, sqldb.UnlimitedMaxNumRows, query, pkType)
+	if err != nil {
+		return nil, err
+	}
+	cols := make([]PrimaryKeyColumn, len(rows))
+	for i, r := range rows {
+		cols[i] = r.toPrimaryKeyColumn()
+	}
+	return cols, nil
 }
 
 // TableRowWithPrimaryKey holds a table row that matched a primary key lookup,
@@ -127,9 +159,23 @@ type TableRowWithPrimaryKey struct {
 
 // GetTableRowsWithPrimaryKey queries each table identified by pkCols for a row
 // matching pk and returns the results with their column headers.
+//
+// Identifiers and the placeholder are produced via the connection's
+// [sqldb.QueryFormatter], so the emitted SQL adapts to each vendor's
+// quoting and placeholder syntax. The function itself contains no
+// information_schema reference and will work on any vendor as long as
+// pkCols was populated for that vendor.
 func GetTableRowsWithPrimaryKey(ctx context.Context, conn sqldb.Connection, pkCols []PrimaryKeyColumn, pk any) (tableRows []TableRowWithPrimaryKey, err error) {
 	for _, col := range pkCols {
-		query := fmt.Sprintf(`SELECT * FROM %s WHERE "%s" = $1`, col.Table, col.Column)
+		table, err := conn.FormatTableName(col.Table)
+		if err != nil {
+			return nil, err
+		}
+		column, err := conn.FormatColumnName(col.Column)
+		if err != nil {
+			return nil, err
+		}
+		query := fmt.Sprintf(`SELECT * FROM %s WHERE %s = %s`, table, column, conn.FormatPlaceholder(0))
 		strs, err := sqldb.QueryRowsAsStrings(ctx, conn, conn, sqldb.UnlimitedMaxNumRows, query, pk)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
@@ -151,6 +197,13 @@ func GetTableRowsWithPrimaryKey(ctx context.Context, conn sqldb.Connection, pkCo
 
 // RenderUUIDPrimaryKeyRefsHTML returns an http.Handler that renders an HTML page
 // for looking up all table rows referencing a given UUID primary key.
+//
+// This handler is effectively PostgreSQL-only: it filters
+// information_schema.columns.data_type by the literal string "uuid", which
+// is Postgres' canonical spelling. MariaDB 10.7+ uses the same name; SQL
+// Server reports "uniqueidentifier"; Oracle uses "RAW(16)"; SQLite has no
+// native UUID type. On vendors that report a different spelling the page
+// will simply find no matching primary key columns.
 func RenderUUIDPrimaryKeyRefsHTML(conn sqldb.Connection) http.Handler {
 	return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		var (

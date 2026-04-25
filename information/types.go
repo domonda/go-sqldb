@@ -6,6 +6,11 @@ import (
 
 // YesNo is a bool type that implements the sql.Scanner
 // interface for the information_schema.yes_or_no type.
+//
+// PostgreSQL, MySQL/MariaDB, and SQL Server all return YES/NO columns
+// (e.g. is_nullable, is_updatable) as the literal strings "YES"/"NO",
+// which Scan converts to true/false. Some PostgreSQL drivers expose the
+// underlying domain as a real bool; that case is handled too.
 type YesNo bool
 
 // Scan implements the sql.Scanner interface for YesNo.

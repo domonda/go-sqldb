@@ -1,6 +1,14 @@
 package information
 
 // View maps a row from information_schema.views.
+//
+// Vendor support:
+//   - PostgreSQL: all fields populated.
+//   - MySQL/MariaDB: TableCatalog is "def"; CheckOption, IsUpdatable,
+//     IsInsertableInto are populated; the IsTrigger* fields scan as empty.
+//   - SQL Server: only TableCatalog, TableSchema, TableName,
+//     ViewDefinition, CheckOption, IsUpdatable are populated.
+//   - SQLite, Oracle: information_schema is not implemented.
 type View struct {
 	TableCatalog             String `db:"table_catalog"`
 	TableSchema              String `db:"table_schema"`

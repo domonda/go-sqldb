@@ -2,12 +2,27 @@ package information
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/domonda/go-sqldb"
 )
 
 // Table maps a row from information_schema.tables.
+//
+// Vendor support:
+//   - PostgreSQL: all fields populated.
+//   - MySQL/MariaDB: TableCatalog is always the literal string "def".
+//     The view does not contain SelfReferencingColumnName,
+//     ReferenceGeneration, UserDefinedType*, IsInsertableInto, IsTyped,
+//     or CommitAction at all (MariaDB/MySQL use a different set of
+//     extension columns like ENGINE / ROW_FORMAT that are not exposed
+//     by this struct), so those fields scan as their zero values.
+//   - SQL Server: only the ISO base columns (TableCatalog, TableSchema,
+//     TableName, TableType) are populated; the remaining ISO extension
+//     fields scan as empty.
+//   - SQLite, Oracle: information_schema is not implemented; queries that
+//     reference it (including the helpers in this package) will fail.
 type Table struct {
 	TableCatalog              String `db:"table_catalog"`
 	TableSchema               String `db:"table_schema"`
@@ -23,46 +38,62 @@ type Table struct {
 	CommitAction              String `db:"commit_action"`
 }
 
-// GetTable returns the information_schema.tables row for the given catalog, schema, and table name.
-func GetTable(ctx context.Context, conn sqldb.Connection, catalog, schema, name string) (table *Table, err error) {
-	return sqldb.QueryRowAs[*Table](ctx, conn, structReflector, conn,
-		/*sql*/ `
-			SELECT *
-			FROM information_schema.tables
-			WHERE table_catalog = $1
-				AND table_schema = $2
-				AND table_name = $3
-		`,
-		catalog, // $1
-		schema,  // $2
-		name,    // $3
+// GetTable returns the information_schema.tables row for the given catalog,
+// schema, and table name.
+//
+// Vendor notes:
+//   - PostgreSQL: catalog is the database name.
+//   - MySQL/MariaDB: catalog must be the literal string "def".
+//   - SQL Server: catalog is the database name; many returned fields will
+//     be empty (see [Table]).
+//   - SQLite, Oracle: not supported (no information_schema).
+func GetTable(ctx context.Context, conn sqldb.Connection, catalog, schema, name string) (*Table, error) {
+	query := fmt.Sprintf(
+		/*sql*/ `SELECT * FROM information_schema.tables WHERE table_catalog = %s AND table_schema = %s AND table_name = %s`,
+		conn.FormatPlaceholder(0),
+		conn.FormatPlaceholder(1),
+		conn.FormatPlaceholder(2),
 	)
+	return sqldb.QueryRowAs[*Table](ctx, conn, structReflector, conn, query, catalog, schema, name)
 }
 
-// TableExists checks if a table exists in the database
-// qualifiedName is in the format "schema.table" or "table"
-// If no schema is provided, "public" is assumed.
-func TableExists(ctx context.Context, conn sqldb.Connection, qualifiedName string) (exists bool, err error) {
-	schema, table, ok := strings.Cut(qualifiedName, ".")
-	if !ok {
-		schema = "public"
-		table = qualifiedName
-	}
-	return sqldb.QueryRowAs[bool](ctx, conn, structReflector, conn,
-		/*sql*/ `
-			SELECT EXISTS (
-				SELECT FROM information_schema.tables
-				WHERE table_schema = $1
-					AND table_name = $2
-			)
-		`,
-		schema, // $1
-		table,  // $2
+// TableExists reports whether a table exists in information_schema.tables.
+//
+// qualifiedName may be "schema.table" or just "table". When unqualified
+// the schema is not constrained, so the function returns true if any
+// schema in the current database contains a table with that name.
+//
+// Vendor notes:
+//   - PostgreSQL, MySQL, MariaDB, SQL Server: supported.
+//   - SQLite, Oracle: not supported (no information_schema).
+func TableExists(ctx context.Context, conn sqldb.Connection, qualifiedName string) (bool, error) {
+	var (
+		query string
+		args  []any
 	)
+	if schema, name, ok := strings.Cut(qualifiedName, "."); ok {
+		query = fmt.Sprintf(
+			/*sql*/ `SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = %s AND table_name = %s) THEN 1 ELSE 0 END`,
+			conn.FormatPlaceholder(0),
+			conn.FormatPlaceholder(1),
+		)
+		args = []any{schema, name}
+	} else {
+		query = fmt.Sprintf(
+			/*sql*/ `SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = %s) THEN 1 ELSE 0 END`,
+			conn.FormatPlaceholder(0),
+		)
+		args = []any{qualifiedName}
+	}
+	n, err := sqldb.QueryRowAs[int](ctx, conn, structReflector, conn, query, args...)
+	return n != 0, err
 }
 
 // GetAllTables returns all rows from information_schema.tables.
-func GetAllTables(ctx context.Context, conn sqldb.Connection) (tables []*Table, err error) {
+//
+// Vendor notes: see [Table] for which fields are populated on each
+// vendor. SQLite and Oracle do not expose information_schema.
+func GetAllTables(ctx context.Context, conn sqldb.Connection) ([]*Table, error) {
 	return sqldb.QueryRowsAsSlice[*Table](ctx, conn, structReflector, conn, sqldb.UnlimitedMaxNumRows,
 		/*sql*/ `SELECT * FROM information_schema.tables`,
 	)
