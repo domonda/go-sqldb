@@ -1,6 +1,7 @@
 package mysqlconn
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"fmt"
@@ -20,30 +21,16 @@ import (
 )
 
 var (
-	mysqlUser     = envOrDefault("MYSQL_USER", "testuser")
-	mysqlPassword = envOrDefault("MYSQL_PASSWORD", "testpassword")
-	mysqlHost     = envOrDefault("MYSQL_HOST", "localhost")
-	mysqlPort     = envOrDefaultInt("MYSQL_PORT", 3307)
-	dbName        = envOrDefault("MYSQL_DB", "testdb")
+	mysqlUser     = cmp.Or(os.Getenv("MYSQL_USER"), "testuser")
+	mysqlPassword = cmp.Or(os.Getenv("MYSQL_PASSWORD"), "testpassword")
+	mysqlHost     = cmp.Or(os.Getenv("MYSQL_HOST"), "localhost")
+	mysqlPort     = cmp.Or(atoi(os.Getenv("MYSQL_PORT")), 3307)
+	dbName        = cmp.Or(os.Getenv("MYSQL_DB"), "testdb")
 
 	refl = sqldb.NewTaggedStructReflector()
 )
 
-func envOrDefault(key, defaultVal string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return defaultVal
-}
-
-func envOrDefaultInt(key string, defaultVal int) int {
-	if v := os.Getenv(key); v != "" {
-		if i, err := strconv.Atoi(v); err == nil {
-			return i
-		}
-	}
-	return defaultVal
-}
+func atoi(s string) int { n, _ := strconv.Atoi(s); return n }
 
 func testConfig() *sqldb.Config {
 	return &sqldb.Config{

@@ -1,6 +1,7 @@
 package oraconn
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"fmt"
@@ -21,30 +22,16 @@ import (
 )
 
 var (
-	oracleUser     = envOrDefault("ORACLE_USER", "testuser")
-	oraclePassword = envOrDefault("ORACLE_PASSWORD", "TestPass123")
-	oracleHost     = envOrDefault("ORACLE_HOST", "localhost")
-	oraclePort     = envOrDefaultInt("ORACLE_PORT", 1522)
-	oracleService  = envOrDefault("ORACLE_SERVICE", "FREEPDB1")
+	oracleUser     = cmp.Or(os.Getenv("ORACLE_USER"), "testuser")
+	oraclePassword = cmp.Or(os.Getenv("ORACLE_PASSWORD"), "TestPass123")
+	oracleHost     = cmp.Or(os.Getenv("ORACLE_HOST"), "localhost")
+	oraclePort     = cmp.Or(atoi(os.Getenv("ORACLE_PORT")), 1522)
+	oracleService  = cmp.Or(os.Getenv("ORACLE_SERVICE"), "FREEPDB1")
 
 	refl = sqldb.NewTaggedStructReflector()
 )
 
-func envOrDefault(key, defaultVal string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return defaultVal
-}
-
-func envOrDefaultInt(key string, defaultVal int) int {
-	if v := os.Getenv(key); v != "" {
-		if i, err := strconv.Atoi(v); err == nil {
-			return i
-		}
-	}
-	return defaultVal
-}
+func atoi(s string) int { n, _ := strconv.Atoi(s); return n }
 
 func testConfig() *sqldb.Config {
 	return &sqldb.Config{

@@ -1,6 +1,7 @@
 package mssqlconn
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"fmt"
@@ -20,30 +21,16 @@ import (
 )
 
 var (
-	mssqlUser     = envOrDefault("MSSQL_USER", "sa")
-	mssqlPassword = envOrDefault("MSSQL_PASSWORD", "TestPass123!")
-	mssqlHost     = envOrDefault("MSSQL_HOST", "localhost")
-	mssqlPort     = envOrDefaultInt("MSSQL_PORT", 1434)
-	dbName        = envOrDefault("MSSQL_DB", "testdb")
+	mssqlUser     = cmp.Or(os.Getenv("MSSQL_USER"), "sa")
+	mssqlPassword = cmp.Or(os.Getenv("MSSQL_PASSWORD"), "TestPass123!")
+	mssqlHost     = cmp.Or(os.Getenv("MSSQL_HOST"), "localhost")
+	mssqlPort     = cmp.Or(atoi(os.Getenv("MSSQL_PORT")), 1434)
+	dbName        = cmp.Or(os.Getenv("MSSQL_DB"), "testdb")
 
 	refl = sqldb.NewTaggedStructReflector()
 )
 
-func envOrDefault(key, defaultVal string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return defaultVal
-}
-
-func envOrDefaultInt(key string, defaultVal int) int {
-	if v := os.Getenv(key); v != "" {
-		if i, err := strconv.Atoi(v); err == nil {
-			return i
-		}
-	}
-	return defaultVal
-}
+func atoi(s string) int { n, _ := strconv.Atoi(s); return n }
 
 func testConfig() *sqldb.Config {
 	return &sqldb.Config{

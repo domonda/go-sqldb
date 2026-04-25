@@ -1,6 +1,7 @@
 package postgres_information_test
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"log"
@@ -16,11 +17,11 @@ import (
 )
 
 var (
-	postgresUser     = envOrDefault("POSTGRES_USER", "testuser")
-	postgresPassword = envOrDefault("POSTGRES_PASSWORD", envOrDefault("PGPASSWORD", "testpassword"))
-	postgresHost     = envOrDefault("POSTGRES_HOST", "localhost")
-	postgresPort     = envOrDefaultInt("POSTGRES_PORT", 5433)
-	dbName           = envOrDefault("POSTGRES_DB", "testdb")
+	postgresUser     = cmp.Or(os.Getenv("POSTGRES_USER"), "testuser")
+	postgresPassword = cmp.Or(os.Getenv("POSTGRES_PASSWORD"), os.Getenv("PGPASSWORD"), "testpassword")
+	postgresHost     = cmp.Or(os.Getenv("POSTGRES_HOST"), "localhost")
+	postgresPort     = cmp.Or(atoi(os.Getenv("POSTGRES_PORT")), 5433)
+	dbName           = cmp.Or(os.Getenv("POSTGRES_DB"), "testdb")
 )
 
 var (
@@ -28,21 +29,7 @@ var (
 	testConn sqldb.Connection
 )
 
-func envOrDefault(key, defaultVal string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return defaultVal
-}
-
-func envOrDefaultInt(key string, defaultVal int) int {
-	if v := os.Getenv(key); v != "" {
-		if i, err := strconv.Atoi(v); err == nil {
-			return i
-		}
-	}
-	return defaultVal
-}
+func atoi(s string) int { n, _ := strconv.Atoi(s); return n }
 
 func TestMain(m *testing.M) {
 	if os.Getenv("CI") == "" {

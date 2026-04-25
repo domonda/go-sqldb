@@ -1,6 +1,7 @@
 package pqconn
 
 import (
+	"cmp"
 	"database/sql"
 	"fmt"
 	"log"
@@ -14,19 +15,12 @@ import (
 )
 
 var (
-	postgresUser     = envOrDefault("POSTGRES_USER", "testuser")
-	postgresPassword = envOrDefault("POSTGRES_PASSWORD", envOrDefault("PGPASSWORD", "testpassword"))
-	postgresHost     = envOrDefault("POSTGRES_HOST", "localhost")
-	postgresPort     = envOrDefault("POSTGRES_PORT", "5433")
-	dbName           = envOrDefault("POSTGRES_DB", "testdb")
+	postgresUser     = cmp.Or(os.Getenv("POSTGRES_USER"), "testuser")
+	postgresPassword = cmp.Or(os.Getenv("POSTGRES_PASSWORD"), os.Getenv("PGPASSWORD"), "testpassword")
+	postgresHost     = cmp.Or(os.Getenv("POSTGRES_HOST"), "localhost")
+	postgresPort     = cmp.Or(os.Getenv("POSTGRES_PORT"), "5433")
+	dbName           = cmp.Or(os.Getenv("POSTGRES_DB"), "testdb")
 )
-
-func envOrDefault(key, defaultVal string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return defaultVal
-}
 
 func dockerComposeUp() error {
 	return exec.Command("docker", "compose", "up", "-d").Run()
