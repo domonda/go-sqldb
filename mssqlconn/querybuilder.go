@@ -22,8 +22,14 @@ type QueryBuilder struct {
 // InsertUnique builds a MERGE statement that inserts a row only if it
 // does not conflict on the specified columns.
 // The number of rows affected is 1 for an insert and 0 for a conflict.
-func (b QueryBuilder) InsertUnique(formatter sqldb.QueryFormatter, table string, columns []sqldb.ColumnInfo, onConflict string) (query string, err error) {
-	conflictCols := strings.Split(onConflict, ",")
+//
+// conflictTarget is a comma-separated list of column names used as the
+// MERGE ON keys. It must NOT include the `MERGE`, `ON`, or any other
+// keyword: the builder emits the surrounding clause itself. The parameter
+// keeps PostgreSQL terminology (ON CONFLICT) on the [sqldb.UpsertQueryBuilder]
+// interface for portability across drivers.
+func (b QueryBuilder) InsertUnique(formatter sqldb.QueryFormatter, table string, columns []sqldb.ColumnInfo, conflictTarget string) (query string, err error) {
+	conflictCols := strings.Split(conflictTarget, ",")
 	for i := range conflictCols {
 		conflictCols[i] = strings.TrimSpace(conflictCols[i])
 	}

@@ -24,18 +24,24 @@ type QueryBuilder struct {
 }
 
 // InsertUnique builds an INSERT query with ON CONFLICT DO NOTHING.
-// The onConflict string specifies the conflict target columns.
-func (b QueryBuilder) InsertUnique(formatter sqldb.QueryFormatter, table string, columns []sqldb.ColumnInfo, onConflict string) (query string, err error) {
+//
+// conflictTarget is a comma-separated list of column names identifying
+// the conflict target (optionally surrounded by a single pair of outer
+// parentheses, which are stripped). It must NOT include the
+// `ON CONFLICT` keyword: the builder emits `ON CONFLICT (cols) DO NOTHING`
+// around the column list. See [sqldb.UpsertQueryBuilder] for the full
+// contract and security model.
+func (b QueryBuilder) InsertUnique(formatter sqldb.QueryFormatter, table string, columns []sqldb.ColumnInfo, conflictTarget string) (query string, err error) {
 	var q strings.Builder
 	insert, err := b.Insert(formatter, table, columns)
 	if err != nil {
 		return "", err
 	}
 	q.WriteString(insert)
-	if strings.HasPrefix(onConflict, "(") && strings.HasSuffix(onConflict, ")") {
-		onConflict = onConflict[1 : len(onConflict)-1]
+	if strings.HasPrefix(conflictTarget, "(") && strings.HasSuffix(conflictTarget, ")") {
+		conflictTarget = conflictTarget[1 : len(conflictTarget)-1]
 	}
-	fmt.Fprintf(&q, " ON CONFLICT (%s) DO NOTHING", onConflict)
+	fmt.Fprintf(&q, " ON CONFLICT (%s) DO NOTHING", conflictTarget)
 	return q.String(), nil
 }
 

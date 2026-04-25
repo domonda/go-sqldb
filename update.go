@@ -8,12 +8,24 @@ import (
 	"slices"
 )
 
-// Update table row(s) with values using the where statement with passed in args starting at $1.
-func Update(ctx context.Context, conn Executor, builder QueryBuilder, fmtr QueryFormatter, table string, values Values, where string, args ...any) error {
+// Update table row(s) with values using the whereCondition with passed in
+// args bound positionally to whereCondition placeholders.
+//
+// whereCondition is the boolean expression that follows the WHERE keyword
+// and must NOT include the WHERE keyword itself. Use the driver's placeholder
+// syntax for parameters bound to args (see package documentation). Examples
+// using PostgreSQL/SQLite syntax: "id = $1", "tenant_id = $1 AND status IN ($2, $3)".
+//
+// SECURITY: whereCondition is concatenated into the generated SQL verbatim
+// and is NOT parameterized. It must be static SQL written by the developer.
+// Never include values that originated from external input (HTTP requests,
+// filenames, database content populated by external input, etc.); pass those
+// through args using the driver's placeholder syntax.
+func Update(ctx context.Context, conn Executor, builder QueryBuilder, fmtr QueryFormatter, table string, values Values, whereCondition string, args ...any) error {
 	if len(values) == 0 {
 		return fmt.Errorf("Update table %s: no values passed", table)
 	}
-	query, vals, err := builder.Update(fmtr, table, values, where, args)
+	query, vals, err := builder.Update(fmtr, table, values, whereCondition, args)
 	if err != nil {
 		return fmt.Errorf("failed to create UPDATE query: %w", err)
 	}
@@ -24,14 +36,22 @@ func Update(ctx context.Context, conn Executor, builder QueryBuilder, fmtr Query
 	return nil
 }
 
-// UpdateReturningRow updates a table row with values using the where clause
-// with passed in args starting at $1 and returns a Row for scanning
-// the columns specified in the returning argument.
-func UpdateReturningRow(ctx context.Context, conn Querier, refl StructReflector, builder ReturningQueryBuilder, fmtr QueryFormatter, table string, values Values, returning, where string, args ...any) *Row {
+// UpdateReturningRow updates a table row with values using the whereCondition
+// with passed in args bound positionally to whereCondition placeholders and
+// returns a Row for scanning the columns specified in returningColumns.
+//
+// whereCondition follows the WHERE keyword without including it;
+// returningColumns follows the RETURNING keyword without including it.
+//
+// SECURITY: both returningColumns and whereCondition are concatenated into
+// the SQL verbatim and are NOT parameterized. They must be static SQL
+// written by the developer. Pass external input only through args using
+// the driver's placeholder syntax.
+func UpdateReturningRow(ctx context.Context, conn Querier, refl StructReflector, builder ReturningQueryBuilder, fmtr QueryFormatter, table string, values Values, returningColumns, whereCondition string, args ...any) *Row {
 	if len(values) == 0 {
 		return NewRow(NewErrRows(fmt.Errorf("UpdateReturningRow table %s: no values passed", table)), refl, fmtr, "", nil)
 	}
-	query, vals, err := builder.UpdateReturning(fmtr, table, values, returning, where, args)
+	query, vals, err := builder.UpdateReturning(fmtr, table, values, returningColumns, whereCondition, args)
 	if err != nil {
 		return NewRow(NewErrRows(fmt.Errorf("failed to create UPDATE RETURNING query: %w", err)), refl, fmtr, "", nil)
 	}
@@ -39,14 +59,22 @@ func UpdateReturningRow(ctx context.Context, conn Querier, refl StructReflector,
 	return NewRow(rows, refl, fmtr, query, vals)
 }
 
-// UpdateReturningRows updates table rows with values using the where clause
-// with passed in args starting at $1 and returns Rows for scanning
-// the columns specified in the returning argument.
-func UpdateReturningRows(ctx context.Context, conn Querier, builder ReturningQueryBuilder, fmtr QueryFormatter, table string, values Values, returning, where string, args ...any) Rows {
+// UpdateReturningRows updates table rows with values using the whereCondition
+// with passed in args bound positionally to whereCondition placeholders and
+// returns Rows for scanning the columns specified in returningColumns.
+//
+// whereCondition follows the WHERE keyword without including it;
+// returningColumns follows the RETURNING keyword without including it.
+//
+// SECURITY: both returningColumns and whereCondition are concatenated into
+// the SQL verbatim and are NOT parameterized. They must be static SQL
+// written by the developer. Pass external input only through args using
+// the driver's placeholder syntax.
+func UpdateReturningRows(ctx context.Context, conn Querier, builder ReturningQueryBuilder, fmtr QueryFormatter, table string, values Values, returningColumns, whereCondition string, args ...any) Rows {
 	if len(values) == 0 {
 		return NewErrRows(fmt.Errorf("UpdateReturningRows table %s: no values passed", table))
 	}
-	query, vals, err := builder.UpdateReturning(fmtr, table, values, returning, where, args)
+	query, vals, err := builder.UpdateReturning(fmtr, table, values, returningColumns, whereCondition, args)
 	if err != nil {
 		return NewErrRows(fmt.Errorf("failed to create UPDATE RETURNING query: %w", err))
 	}

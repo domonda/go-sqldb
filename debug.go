@@ -13,7 +13,7 @@ import (
 
 // DebugPrintConn prints a line to stderr using the passed args
 // and appending the transaction state of the connection
-// and the current time of the database using `select now()`
+// and the current time of the database using `SELECT CURRENT_TIMESTAMP`
 // or an error if the time could not be queried.
 func DebugPrintConn(ctx context.Context, conn Connection, args ...any) {
 	if tx := conn.Transaction(); tx.Active() {

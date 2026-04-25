@@ -25,8 +25,12 @@ type QueryBuilder struct {
 // StdQueryBuilder.Update returns queryArgs as [whereArgs..., vals...]
 // but the generated SQL has SET (vals) before WHERE (whereArgs).
 // This override reorders to [vals..., whereArgs...] to match SQL order.
-func (b QueryBuilder) Update(formatter sqldb.QueryFormatter, table string, values sqldb.Values, where string, whereArgs []any) (query string, queryArgs []any, err error) {
-	query, queryArgs, err = b.StdQueryBuilder.Update(formatter, table, values, where, whereArgs)
+//
+// whereCondition is the boolean expression that follows the WHERE keyword
+// and must NOT include the WHERE keyword itself. See
+// [sqldb.QueryBuilder.Update] for the full contract and security model.
+func (b QueryBuilder) Update(formatter sqldb.QueryFormatter, table string, values sqldb.Values, whereCondition string, whereArgs []any) (query string, queryArgs []any, err error) {
+	query, queryArgs, err = b.StdQueryBuilder.Update(formatter, table, values, whereCondition, whereArgs)
 	if err != nil {
 		return "", nil, err
 	}
@@ -45,12 +49,20 @@ func (b QueryBuilder) Update(formatter sqldb.QueryFormatter, table string, value
 // The number of affected rows reported by MySQL is 1 for an insert
 // and 0 for a no-op update, allowing the caller to detect whether
 // a row was inserted via ExecRowsAffected.
-func (b QueryBuilder) InsertUnique(formatter sqldb.QueryFormatter, table string, columns []sqldb.ColumnInfo, onConflict string) (query string, err error) {
+//
+// conflictTarget is a comma-separated list of column names. The MySQL
+// builder uses only the first column to construct the no-op update; the
+// remaining names are accepted for cross-driver source compatibility but
+// ignored. The argument must NOT include the `ON DUPLICATE KEY UPDATE`
+// keyword: the builder emits the surrounding clause itself. The parameter
+// keeps PostgreSQL terminology (ON CONFLICT) on the [sqldb.UpsertQueryBuilder]
+// interface for portability across drivers.
+func (b QueryBuilder) InsertUnique(formatter sqldb.QueryFormatter, table string, columns []sqldb.ColumnInfo, conflictTarget string) (query string, err error) {
 	insert, err := b.Insert(formatter, table, columns)
 	if err != nil {
 		return "", err
 	}
-	conflictCols := strings.Split(onConflict, ",")
+	conflictCols := strings.Split(conflictTarget, ",")
 	col := strings.TrimSpace(conflictCols[0])
 	col, err = formatter.FormatColumnName(col)
 	if err != nil {

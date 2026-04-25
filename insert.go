@@ -26,13 +26,20 @@ func Insert(ctx context.Context, conn Executor, builder QueryBuilder, fmtr Query
 }
 
 // InsertReturning inserts a new row into the table using values
-// and returns a Row for scanning the columns listed in the returning clause.
-func InsertReturning(ctx context.Context, conn Querier, refl StructReflector, builder ReturningQueryBuilder, fmtr QueryFormatter, table string, values Values, returning string) *Row {
+// and returns a Row for scanning the columns listed in returningColumns.
+//
+// returningColumns is the column or expression list that follows the
+// RETURNING keyword and must NOT include the keyword itself.
+//
+// SECURITY: returningColumns is appended to the query verbatim. It must be
+// static SQL written by the developer and must not contain data from
+// external input.
+func InsertReturning(ctx context.Context, conn Querier, refl StructReflector, builder ReturningQueryBuilder, fmtr QueryFormatter, table string, values Values, returningColumns string) *Row {
 	if len(values) == 0 {
 		return NewRow(NewErrRows(fmt.Errorf("InsertReturning into table %s: no values", table)), refl, fmtr, "", nil)
 	}
 	cols, vals := values.SortedColumnsAndValues()
-	query, err := builder.InsertReturning(fmtr, table, cols, returning)
+	query, err := builder.InsertReturning(fmtr, table, cols, returningColumns)
 	if err != nil {
 		return NewRow(NewErrRows(fmt.Errorf("failed to create INSERT RETURNING query: %w", err)), refl, fmtr, "", nil)
 	}
@@ -40,16 +47,31 @@ func InsertReturning(ctx context.Context, conn Querier, refl StructReflector, bu
 	return NewRow(rows, refl, fmtr, query, vals)
 }
 
-// InsertUnique inserts a new row into the table using the passed values
-// or does nothing if the onConflict statement applies.
-// Returns true if a row was inserted.
-func InsertUnique(ctx context.Context, conn Executor, builder UpsertQueryBuilder, fmtr QueryFormatter, table string, values Values, onConflict string) (inserted bool, err error) {
+// InsertUnique inserts a new row into the table using the passed values,
+// or does nothing if a conflict on the columns named by conflictTarget
+// applies. Returns true if a row was inserted.
+//
+// conflictTarget is a comma-separated list of column names identifying
+// the uniqueness target. The name keeps PostgreSQL terminology
+// (ON CONFLICT) but each driver translates it into the appropriate vendor
+// syntax (PG/SQLite: `ON CONFLICT (cols) DO NOTHING`; MySQL:
+// `ON DUPLICATE KEY UPDATE col = col` using only the first column;
+// MSSQL/Oracle: `MERGE ... ON target.col = source.col`). The argument must
+// NOT include any of those keywords; the builder emits the surrounding
+// clause itself.
+//
+// SECURITY: the PostgreSQL and SQLite builders concatenate conflictTarget
+// verbatim (after stripping a single pair of outer parentheses); MySQL,
+// MSSQL and Oracle split on commas and validate each column name via the
+// formatter. In every implementation it must be static SQL written by the
+// developer and must not contain data from external input.
+func InsertUnique(ctx context.Context, conn Executor, builder UpsertQueryBuilder, fmtr QueryFormatter, table string, values Values, conflictTarget string) (inserted bool, err error) {
 	if len(values) == 0 {
 		return false, fmt.Errorf("InsertUnique into table %s: no values", table)
 	}
 
 	cols, vals := values.SortedColumnsAndValues()
-	query, err := builder.InsertUnique(fmtr, table, cols, onConflict)
+	query, err := builder.InsertUnique(fmtr, table, cols, conflictTarget)
 	if err != nil {
 		return false, fmt.Errorf("failed to create INSERT query: %w", err)
 	}
@@ -179,13 +201,26 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 	return insertFunc, stmt.Close, nil
 }
 
-// InsertUniqueRowStruct inserts a new row or does nothing if the onConflict statement applies.
-// Returns true if a row was inserted.
+// InsertUniqueRowStruct inserts a new row, or does nothing if a conflict on
+// the columns named by conflictTarget applies. Returns true if a row was
+// inserted.
 // The table name is derived from the `db` struct tag of an embedded sqldb.TableName field
 // (e.g., sqldb.TableName `db:"my_table"`).
 // Column names are derived from the `db` struct tags of the struct's fields.
 // Optional QueryOption can be passed to ignore mapped columns.
-func InsertUniqueRowStruct(ctx context.Context, conn Executor, refl StructReflector, builder UpsertQueryBuilder, fmtr QueryFormatter, rowStruct StructWithTableName, onConflict string, options ...QueryOption) (inserted bool, err error) {
+//
+// conflictTarget is a comma-separated list of column names identifying
+// the uniqueness target. The name keeps PostgreSQL terminology but each
+// driver translates the columns into the appropriate vendor upsert syntax;
+// see [UpsertQueryBuilder] for the per-driver mapping. The argument must
+// NOT include the `ON CONFLICT`, `ON DUPLICATE KEY UPDATE`, `MERGE`, or any
+// other keyword; the builder emits the surrounding clause itself.
+//
+// SECURITY: the PostgreSQL and SQLite builders concatenate conflictTarget
+// verbatim; MySQL, MSSQL and Oracle split on commas and validate each
+// column name. In every implementation it must be static SQL written by
+// the developer and must not contain data from external input.
+func InsertUniqueRowStruct(ctx context.Context, conn Executor, refl StructReflector, builder UpsertQueryBuilder, fmtr QueryFormatter, rowStruct StructWithTableName, conflictTarget string, options ...QueryOption) (inserted bool, err error) {
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return false, err
@@ -201,11 +236,11 @@ func InsertUniqueRowStruct(ctx context.Context, conn Executor, refl StructReflec
 		return false, err
 	}
 
-	if strings.HasPrefix(onConflict, "(") && strings.HasSuffix(onConflict, ")") {
-		onConflict = onConflict[1 : len(onConflict)-1]
+	if strings.HasPrefix(conflictTarget, "(") && strings.HasSuffix(conflictTarget, ")") {
+		conflictTarget = conflictTarget[1 : len(conflictTarget)-1]
 	}
 
-	query, err := builder.InsertUnique(fmtr, table, columns, onConflict)
+	query, err := builder.InsertUnique(fmtr, table, columns, conflictTarget)
 	if err != nil {
 		return false, fmt.Errorf("failed to create INSERT query: %w", err)
 	}

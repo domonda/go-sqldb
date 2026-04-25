@@ -25,8 +25,12 @@ type QueryBuilder struct {
 // but the generated SQL has SET (vals) before WHERE (whereArgs).
 // Oracle's Go driver binds :N placeholders by order of appearance,
 // so this override reorders to [vals..., whereArgs...] to match SQL order.
-func (b QueryBuilder) Update(formatter sqldb.QueryFormatter, table string, values sqldb.Values, where string, whereArgs []any) (query string, queryArgs []any, err error) {
-	query, queryArgs, err = b.StdQueryBuilder.Update(formatter, table, values, where, whereArgs)
+//
+// whereCondition is the boolean expression that follows the WHERE keyword
+// and must NOT include the WHERE keyword itself. See
+// [sqldb.QueryBuilder.Update] for the full contract and security model.
+func (b QueryBuilder) Update(formatter sqldb.QueryFormatter, table string, values sqldb.Values, whereCondition string, whereArgs []any) (query string, queryArgs []any, err error) {
+	query, queryArgs, err = b.StdQueryBuilder.Update(formatter, table, values, whereCondition, whereArgs)
 	if err != nil {
 		return "", nil, err
 	}
@@ -43,8 +47,14 @@ func (b QueryBuilder) Update(formatter sqldb.QueryFormatter, table string, value
 // InsertUnique builds a MERGE statement that inserts a row only if it
 // does not conflict on the specified columns.
 // The number of rows affected is 1 for an insert and 0 for a conflict.
-func (b QueryBuilder) InsertUnique(formatter sqldb.QueryFormatter, table string, columns []sqldb.ColumnInfo, onConflict string) (query string, err error) {
-	conflictCols := strings.Split(onConflict, ",")
+//
+// conflictTarget is a comma-separated list of column names used as the
+// MERGE ON keys. It must NOT include the `MERGE`, `ON`, or any other
+// keyword: the builder emits the surrounding clause itself. The parameter
+// keeps PostgreSQL terminology (ON CONFLICT) on the [sqldb.UpsertQueryBuilder]
+// interface for portability across drivers.
+func (b QueryBuilder) InsertUnique(formatter sqldb.QueryFormatter, table string, columns []sqldb.ColumnInfo, conflictTarget string) (query string, err error) {
+	conflictCols := strings.Split(conflictTarget, ",")
 	for i := range conflictCols {
 		conflictCols[i] = strings.TrimSpace(conflictCols[i])
 	}

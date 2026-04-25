@@ -7,8 +7,19 @@ import (
 	"github.com/domonda/go-sqldb"
 )
 
-// Update table row(s) with values using the where statement with passed in args starting at $1.
-func Update(ctx context.Context, table string, values Values, where string, args ...any) error {
+// Update table row(s) with values using the whereCondition with passed in
+// args bound positionally to whereCondition placeholders.
+//
+// whereCondition is the boolean expression that follows the WHERE keyword
+// and must NOT include the WHERE keyword itself. Use the driver's placeholder
+// syntax for parameters bound to args (see [sqldb] package documentation).
+// Examples using PostgreSQL/SQLite syntax: "id = $1",
+// "tenant_id = $1 AND status IN ($2, $3)".
+//
+// SECURITY: whereCondition is concatenated into the generated SQL verbatim
+// and is NOT parameterized. It must be static SQL written by the developer.
+// Pass external input only through args using the driver's placeholder syntax.
+func Update(ctx context.Context, table string, values Values, whereCondition string, args ...any) error {
 	conn := Conn(ctx)
 	return sqldb.Update(
 		ctx,
@@ -17,16 +28,23 @@ func Update(ctx context.Context, table string, values Values, where string, args
 		conn,
 		table,
 		values,
-		where,
+		whereCondition,
 		args...,
 	)
 }
 
-// UpdateReturningRow updates a table row with values using the where clause
-// with passed in args starting at $1 and returns a Row for scanning
-// the columns specified in the returning argument.
+// UpdateReturningRow updates a table row with values using the whereCondition
+// with passed in args bound positionally to whereCondition placeholders and
+// returns a Row for scanning the columns specified in returningColumns.
 // The configured [QueryBuilder] must implement [sqldb.ReturningQueryBuilder].
-func UpdateReturningRow(ctx context.Context, table string, values Values, returning, where string, args ...any) *sqldb.Row {
+//
+// whereCondition follows the WHERE keyword without including it;
+// returningColumns follows the RETURNING keyword without including it.
+//
+// SECURITY: both returningColumns and whereCondition are concatenated into
+// the SQL verbatim and are NOT parameterized. Pass external input only
+// through args using the driver's placeholder syntax.
+func UpdateReturningRow(ctx context.Context, table string, values Values, returningColumns, whereCondition string, args ...any) *sqldb.Row {
 	conn := Conn(ctx)
 	builder, ok := QueryBuilder(ctx).(sqldb.ReturningQueryBuilder)
 	if !ok {
@@ -46,17 +64,24 @@ func UpdateReturningRow(ctx context.Context, table string, values Values, return
 		conn,
 		table,
 		values,
-		returning,
-		where,
+		returningColumns,
+		whereCondition,
 		args...,
 	)
 }
 
-// UpdateReturningRows updates table rows with values using the where clause
-// with passed in args starting at $1 and returns Rows for scanning
-// the columns specified in the returning argument.
+// UpdateReturningRows updates table rows with values using the whereCondition
+// with passed in args bound positionally to whereCondition placeholders and
+// returns Rows for scanning the columns specified in returningColumns.
 // The configured [QueryBuilder] must implement [sqldb.ReturningQueryBuilder].
-func UpdateReturningRows(ctx context.Context, table string, values Values, returning, where string, args ...any) sqldb.Rows {
+//
+// whereCondition follows the WHERE keyword without including it;
+// returningColumns follows the RETURNING keyword without including it.
+//
+// SECURITY: both returningColumns and whereCondition are concatenated into
+// the SQL verbatim and are NOT parameterized. Pass external input only
+// through args using the driver's placeholder syntax.
+func UpdateReturningRows(ctx context.Context, table string, values Values, returningColumns, whereCondition string, args ...any) sqldb.Rows {
 	conn := Conn(ctx)
 	builder, ok := QueryBuilder(ctx).(sqldb.ReturningQueryBuilder)
 	if !ok {
@@ -69,8 +94,8 @@ func UpdateReturningRows(ctx context.Context, table string, values Values, retur
 		conn,
 		table,
 		values,
-		returning,
-		where,
+		returningColumns,
+		whereCondition,
 		args...,
 	)
 }

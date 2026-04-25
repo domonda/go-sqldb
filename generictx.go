@@ -146,12 +146,12 @@ type genericTxWithQueryBuilder struct {
 	QueryBuilder
 }
 
-func (conn *genericTxWithQueryBuilder) InsertUnique(formatter QueryFormatter, table string, columns []ColumnInfo, onConflict string) (string, error) {
+func (conn *genericTxWithQueryBuilder) InsertUnique(formatter QueryFormatter, table string, columns []ColumnInfo, conflictTarget string) (string, error) {
 	uqb, ok := conn.QueryBuilder.(UpsertQueryBuilder)
 	if !ok {
 		return "", fmt.Errorf("genericTxWithQueryBuilder: QueryBuilder %T does not implement UpsertQueryBuilder", conn.QueryBuilder)
 	}
-	return uqb.InsertUnique(formatter, table, columns, onConflict)
+	return uqb.InsertUnique(formatter, table, columns, conflictTarget)
 }
 
 func (conn *genericTxWithQueryBuilder) Upsert(formatter QueryFormatter, table string, columns []ColumnInfo) (string, error) {
@@ -162,20 +162,20 @@ func (conn *genericTxWithQueryBuilder) Upsert(formatter QueryFormatter, table st
 	return uqb.Upsert(formatter, table, columns)
 }
 
-func (conn *genericTxWithQueryBuilder) InsertReturning(formatter QueryFormatter, table string, columns []ColumnInfo, returning string) (string, error) {
+func (conn *genericTxWithQueryBuilder) InsertReturning(formatter QueryFormatter, table string, columns []ColumnInfo, returningColumns string) (string, error) {
 	rqb, ok := conn.QueryBuilder.(ReturningQueryBuilder)
 	if !ok {
 		return "", fmt.Errorf("genericTxWithQueryBuilder: QueryBuilder %T does not implement ReturningQueryBuilder", conn.QueryBuilder)
 	}
-	return rqb.InsertReturning(formatter, table, columns, returning)
+	return rqb.InsertReturning(formatter, table, columns, returningColumns)
 }
 
-func (conn *genericTxWithQueryBuilder) UpdateReturning(formatter QueryFormatter, table string, values Values, returning, where string, whereArgs []any) (string, []any, error) {
+func (conn *genericTxWithQueryBuilder) UpdateReturning(formatter QueryFormatter, table string, values Values, returningColumns, whereCondition string, whereArgs []any) (string, []any, error) {
 	rqb, ok := conn.QueryBuilder.(ReturningQueryBuilder)
 	if !ok {
 		return "", nil, fmt.Errorf("genericTxWithQueryBuilder: QueryBuilder %T does not implement ReturningQueryBuilder", conn.QueryBuilder)
 	}
-	return rqb.UpdateReturning(formatter, table, values, returning, where, whereArgs)
+	return rqb.UpdateReturning(formatter, table, values, returningColumns, whereCondition, whereArgs)
 }
 
 // Begin overrides [genericTx.Begin] to propagate the [QueryBuilder]

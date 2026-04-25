@@ -5,6 +5,7 @@
 ## Table of contents
 
 - [Philosophy](#philosophy)
+- [Security model](#security-model)
 - [Database drivers](#database-drivers)
   - [Feature matrix](#feature-matrix)
 - [Query builders](#query-builders)
@@ -53,6 +54,59 @@
 * Transactions are run in callback functions that can be nested
 * Driver-agnostic: write code against a common `Connection` interface, swap database drivers without changing business logic
 * Store the db connection and transactions in `context.Context` to pass them down into nested functions transparently
+
+## Security model
+
+This package follows the same security model as Go's `database/sql`: the query
+string is trusted SQL source written by the developer, and the separately passed
+arguments are untrusted data sent through driver placeholders.
+
+Several functions accept additional **raw SQL fragments** alongside the data
+arguments. They are concatenated into the generated SQL verbatim and are
+**never** parameterized or validated. They MUST be static SQL written by the
+developer and MUST NOT contain data that originated outside the program (HTTP
+request body, query string, headers, JSON payload, filename, externally
+populated database content, etc.).
+
+| Parameter        | Functions                                                                                            | Meaning                                                                            |
+| ---------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `query`          | `QueryRow*`, `Exec*`                                                                                 | Full SQL statement                                                                 |
+| `whereCondition` | `StdQueryBuilder.Update`, `StdReturningQueryBuilder.UpdateReturning`, `Update`, `UpdateReturningRow*` | Boolean expression after `WHERE`. Do **not** include the `WHERE` keyword.          |
+| `returningColumns` | `InsertReturning`, `UpdateReturning*`, `StdReturningQueryBuilder.*`                                | Column or expression list after `RETURNING`. Do **not** include the keyword.       |
+| `conflictTarget` | `InsertUnique`, `InsertUniqueRowStruct`, `UpsertQueryBuilder.InsertUnique`                         | Comma-separated list of columns identifying the uniqueness target. Name keeps PostgreSQL terminology, but each driver translates it into its own vendor syntax (PG/SQLite `ON CONFLICT`, MySQL `ON DUPLICATE KEY UPDATE`, MSSQL/Oracle `MERGE`). Do **not** include any of those keywords. |
+
+Pass external input through the variadic `args` (or `whereArgs`) slice using the
+driver's placeholder syntax (`$1, $2, ...` for PostgreSQL, `?1, ?2, ...` for
+SQLite, `?` for MySQL, `@p1, @p2, ...` for SQL Server, `:1, :2, ...` for Oracle).
+
+**SAFE:**
+
+```go
+err := db.Update(ctx, "public.user",
+    db.Values{"name": newName},
+    "id = $1 AND tenant_id = $2",
+    userID, tenantID,
+)
+```
+
+**UNSAFE — DO NOT DO THIS:**
+
+```go
+// SQL injection: filter is attacker-controlled
+err := db.Update(ctx, "public.user",
+    db.Values{"name": newName},
+    filter,
+)
+```
+
+Identifier parameters (table and column names) are validated by the
+`QueryFormatter`. The standard, PostgreSQL, MySQL, MSSQL, and Oracle formatters
+reject names that do not match a conservative identifier regex and escape the
+result using the vendor-specific quoting scheme. `Values` map keys and `db:"..."`
+struct tags become column identifiers and must therefore also be static strings
+chosen by the developer, not values derived from external input. The SQLite
+formatter currently relies only on double-quote escaping without a regex, so
+prefer keeping identifiers static even with SQLite.
 
 ## Database drivers
 
@@ -535,11 +589,14 @@ err = db.InsertReturning(ctx, "public.user", db.Values{
     "email": "erik@example.com",
 }, "id").Scan(&id)
 
-// Insert or do nothing on conflict
+// Insert or do nothing on conflict.
+// The conflictTarget argument is just the conflict target (column list);
+// the builder emits the surrounding `ON CONFLICT (...) DO NOTHING`
+// (or the vendor-equivalent on other drivers).
 inserted, err := db.InsertUnique(ctx, "public.user", db.Values{
     "email": "erik@example.com",
     "name":  "Erik Unger",
-}, `ON CONFLICT (email) DO NOTHING`)
+}, "email")
 
 // Batch insert a slice of structs (uses a transaction + prepared statement)
 err = db.InsertRowStructs(ctx, users)
@@ -548,9 +605,11 @@ err = db.InsertRowStructs(ctx, users)
 ### Update
 
 ```go
-// Update with a values map and WHERE clause
+// Update with a values map and WHERE condition.
+// The whereCondition argument is the boolean expression that follows
+// the WHERE keyword and must NOT include the WHERE keyword itself.
 err = db.Update(ctx, "public.user", db.Values{"name": "New Name"},
-    `WHERE id = $1`, userID,
+    `id = $1`, userID,
 )
 
 // Update using a struct (WHERE clause built from primarykey fields)

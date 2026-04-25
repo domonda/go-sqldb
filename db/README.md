@@ -261,18 +261,18 @@ rows, err := db.QueryRowsAsMapSlice(ctx,
 | Function                                 | Description                              |
 | ---------------------------------------- | ---------------------------------------- |
 | `Insert(ctx, table, values) error`       | Insert a row from a values map           |
-| `InsertUnique(ctx, table, values, onConflict) (bool, error)` | Insert with conflict handling, returns whether a row was inserted |
-| `InsertReturning(ctx, table, values, returning) *Row` | Insert with a RETURNING clause           |
+| `InsertUnique(ctx, table, values, conflictTarget) (bool, error)` | Insert with conflict handling. `conflictTarget` is the comma-separated conflict target column list (PostgreSQL terminology; each driver translates to its own upsert syntax). Do not include `ON CONFLICT`, `ON DUPLICATE KEY UPDATE`, `MERGE`, or any other keyword. Returns whether a row was inserted. |
+| `InsertReturning(ctx, table, values, returningColumns) *Row` | Insert with a RETURNING clause. `returningColumns` is the column or expression list that follows the `RETURNING` keyword (without the keyword). |
 | `InsertRowStruct(ctx, rowStruct, options...) error` | Insert a struct                          |
 | `InsertRowStructStmt[S](ctx, options...) (func, closeStmt, error)` | Prepared statement for inserting structs |
-| `InsertUniqueRowStruct(ctx, rowStruct, onConflict, options...) (bool, error)` | Insert a struct with conflict handling   |
+| `InsertUniqueRowStruct(ctx, rowStruct, conflictTarget, options...) (bool, error)` | Insert a struct with conflict handling. `conflictTarget` is the comma-separated conflict target column list only (no surrounding keyword). |
 | `InsertRowStructs[S](ctx, rowStructs, options...) error` | Batch insert a slice of structs          |
 
 ### Update
 
 | Function                                 | Description                              |
 | ---------------------------------------- | ---------------------------------------- |
-| `Update(ctx, table, values, where, args...) error` | Update rows using a values map and WHERE clause |
+| `Update(ctx, table, values, where, args...) error` | Update rows using a values map and a WHERE condition (just the boolean expression, without the `WHERE` keyword). Pass external input only through `args`. |
 | `UpdateRowStruct(ctx, rowStruct, options...) error` | Update a row from a struct (WHERE from primary key) |
 | `UpdateRowStructStmt[S](ctx, options...) (func, closeStmt, error)` | Prepared statement for updating structs  |
 | `UpdateRowStructs[S](ctx, rowStructs, options...) error` | Batch update a slice of structs          |

@@ -20,11 +20,23 @@ func Insert(ctx context.Context, table string, values Values) error {
 	)
 }
 
-// InsertUnique inserts a new row into table using the passed values
-// or does nothing if the onConflict statement applies.
-// Returns if a row was inserted.
+// InsertUnique inserts a new row into table using the passed values, or
+// does nothing if a conflict on the columns named by conflictTarget
+// applies. Returns true if a row was inserted.
 // The configured [QueryBuilder] must implement [sqldb.UpsertQueryBuilder].
-func InsertUnique(ctx context.Context, table string, values Values, onConflict string) (inserted bool, err error) {
+//
+// conflictTarget is a comma-separated list of column names identifying
+// the uniqueness target. The name keeps PostgreSQL terminology
+// (ON CONFLICT) but the configured query builder translates it into the
+// appropriate vendor upsert syntax (PG/SQLite ON CONFLICT, MySQL
+// ON DUPLICATE KEY UPDATE, MSSQL/Oracle MERGE). The argument must NOT
+// include any of those keywords; the builder emits the surrounding
+// clause itself.
+//
+// SECURITY: conflictTarget must be static SQL written by the developer
+// and must not contain data from external input. See
+// [sqldb.UpsertQueryBuilder] for the per-driver handling.
+func InsertUnique(ctx context.Context, table string, values Values, conflictTarget string) (inserted bool, err error) {
 	conn := Conn(ctx)
 	builder, ok := QueryBuilder(ctx).(sqldb.UpsertQueryBuilder)
 	if !ok {
@@ -37,14 +49,20 @@ func InsertUnique(ctx context.Context, table string, values Values, onConflict s
 		conn,
 		table,
 		values,
-		onConflict,
+		conflictTarget,
 	)
 }
 
 // InsertReturning inserts a new row into table using values
-// and returns values from the inserted row listed in returning.
+// and returns values from the inserted row listed in returningColumns.
 // The configured [QueryBuilder] must implement [sqldb.ReturningQueryBuilder].
-func InsertReturning(ctx context.Context, table string, values Values, returning string) *sqldb.Row {
+//
+// returningColumns is the column or expression list that follows the
+// RETURNING keyword and must NOT include the keyword itself.
+//
+// SECURITY: returningColumns is appended to the SQL verbatim and is NOT
+// parameterized. It must be static SQL written by the developer.
+func InsertReturning(ctx context.Context, table string, values Values, returningColumns string) *sqldb.Row {
 	conn := Conn(ctx)
 	builder, ok := QueryBuilder(ctx).(sqldb.ReturningQueryBuilder)
 	if !ok {
@@ -64,7 +82,7 @@ func InsertReturning(ctx context.Context, table string, values Values, returning
 		conn,
 		table,
 		values,
-		returning,
+		returningColumns,
 	)
 }
 
@@ -104,14 +122,25 @@ func InsertRowStructStmt[S sqldb.StructWithTableName](ctx context.Context, optio
 	)
 }
 
-// InsertUniqueRowStruct inserts a new row or does nothing if the onConflict statement applies.
-// Returns true if a row was inserted.
+// InsertUniqueRowStruct inserts a new row, or does nothing if a conflict on
+// the columns named by conflictTarget applies. Returns true if a row was
+// inserted.
 // Table name and column names are determined by the [StructReflector] from the context.
 // The default reflector uses `db` struct tags
 // (e.g., db.TableName `db:"my_table"`, field `db:"column"`).
 // Optional QueryOption can be passed to ignore mapped columns.
 // The configured [QueryBuilder] must implement [sqldb.UpsertQueryBuilder].
-func InsertUniqueRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, onConflict string, options ...QueryOption) (inserted bool, err error) {
+//
+// conflictTarget is a comma-separated list of column names identifying
+// the uniqueness target. The name keeps PostgreSQL terminology but each
+// driver translates the columns into the appropriate vendor upsert syntax;
+// see [sqldb.UpsertQueryBuilder] for the per-driver mapping. The argument
+// must NOT include the `ON CONFLICT`, `ON DUPLICATE KEY UPDATE`, `MERGE`,
+// or any other keyword.
+//
+// SECURITY: conflictTarget must be static SQL written by the developer
+// and must not contain data from external input.
+func InsertUniqueRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableName, conflictTarget string, options ...QueryOption) (inserted bool, err error) {
 	conn := Conn(ctx)
 	builder, ok := QueryBuilder(ctx).(sqldb.UpsertQueryBuilder)
 	if !ok {
@@ -124,7 +153,7 @@ func InsertUniqueRowStruct(ctx context.Context, rowStruct sqldb.StructWithTableN
 		builder,
 		conn,
 		rowStruct,
-		onConflict,
+		conflictTarget,
 		options...,
 	)
 }
