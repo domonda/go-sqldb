@@ -63,9 +63,13 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	// Create a test table for the information schema tests
+	// Create a test table for the information schema tests.
+	// information_test_profile.user_id is BOTH the primary key AND a
+	// foreign key referencing information_test.id — it exercises the
+	// EXISTS=true branch in GetPrimaryKeyColumns' foreign-key flag.
 	err = testConn.Exec(ctx,
 		/*sql*/ `
+			DROP TABLE IF EXISTS information_test_profile;
 			DROP TABLE IF EXISTS information_test_child;
 			DROP TABLE IF EXISTS information_test;
 			CREATE TABLE information_test (
@@ -76,6 +80,9 @@ func TestMain(m *testing.M) {
 			CREATE TABLE information_test_child (
 				id        integer PRIMARY KEY,
 				parent_id integer NOT NULL REFERENCES information_test(id)
+			);
+			CREATE TABLE information_test_profile (
+				user_id integer PRIMARY KEY REFERENCES information_test(id)
 			);
 		`,
 	)
@@ -90,6 +97,7 @@ func TestMain(m *testing.M) {
 	// Cleanup
 	cleanupErr := testConn.Exec(ctx,
 		/*sql*/ `
+			DROP TABLE IF EXISTS information_test_profile;
 			DROP TABLE IF EXISTS information_test_child;
 			DROP TABLE IF EXISTS information_test;
 		`,
@@ -309,6 +317,7 @@ func TestGetPrimaryKeyColumns_ForeignKey(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	var foundProfile bool
 	for _, col := range cols {
 		switch col.Table {
 		case "public.information_test":
@@ -320,7 +329,20 @@ func TestGetPrimaryKeyColumns_ForeignKey(t *testing.T) {
 			if col.Column == "id" && col.ForeignKey {
 				t.Error("information_test_child.id PK should not be a foreign key")
 			}
+		case "public.information_test_profile":
+			// information_test_profile.user_id is BOTH primary key and
+			// foreign key — exercises the EXISTS=true branch.
+			if col.Column != "user_id" {
+				t.Errorf("expected primary key column 'user_id', got %q", col.Column)
+			}
+			if !col.ForeignKey {
+				t.Error("information_test_profile.user_id PK should also be a foreign key")
+			}
+			foundProfile = true
 		}
+	}
+	if !foundProfile {
+		t.Error("expected to find information_test_profile primary key in results")
 	}
 }
 

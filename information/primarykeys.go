@@ -165,6 +165,17 @@ type TableRowWithPrimaryKey struct {
 // quoting and placeholder syntax. The function itself contains no
 // information_schema reference and will work on any vendor as long as
 // pkCols was populated for that vendor.
+//
+// Identifier restriction: each [QueryFormatter] validates table and
+// column names against a conservative regex (typically
+// `[a-zA-Z_][a-zA-Z0-9_]*` per schema and per name part) before
+// quoting. Tables or columns whose names contain characters outside
+// that set — even when legal in the underlying database (e.g.
+// PostgreSQL accepts hyphens in double-quoted identifiers) — are
+// rejected with an "invalid table/column name" error. The conservative
+// regex is the same defense-in-depth surface used everywhere
+// identifiers are formatted, and applies even when the names came
+// from information_schema reflection.
 func GetTableRowsWithPrimaryKey(ctx context.Context, conn sqldb.Connection, pkCols []PrimaryKeyColumn, pk any) (tableRows []TableRowWithPrimaryKey, err error) {
 	for _, col := range pkCols {
 		table, err := conn.FormatTableName(col.Table)
@@ -175,7 +186,10 @@ func GetTableRowsWithPrimaryKey(ctx context.Context, conn sqldb.Connection, pkCo
 		if err != nil {
 			return nil, err
 		}
-		query := fmt.Sprintf(`SELECT * FROM %s WHERE %s = %s`, table, column, conn.FormatPlaceholder(0))
+		query := fmt.Sprintf(
+			/*sql*/ `SELECT * FROM %s WHERE %s = %s`,
+			table, column, conn.FormatPlaceholder(0),
+		)
 		strs, err := sqldb.QueryRowsAsStrings(ctx, conn, conn, sqldb.UnlimitedMaxNumRows, query, pk)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {

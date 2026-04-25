@@ -104,7 +104,12 @@ func TestMain(m *testing.M) {
 
 	// Drop in dependency order, then create. Names are prefixed
 	// `info_test_*` to avoid collisions with `mssqlconn/test/`.
+	//
+	// info_test_profile.user_id is BOTH the primary key AND a foreign
+	// key referencing info_test.id — it exercises the EXISTS=true branch
+	// in GetPrimaryKeyColumns' foreign-key flag.
 	for _, q := range []string{
+		/*sql*/ `IF OBJECT_ID('dbo.info_test_profile', 'U') IS NOT NULL DROP TABLE dbo.info_test_profile`,
 		/*sql*/ `IF OBJECT_ID('dbo.info_test_child', 'U') IS NOT NULL DROP TABLE dbo.info_test_child`,
 		/*sql*/ `IF OBJECT_ID('dbo.info_test', 'U') IS NOT NULL DROP TABLE dbo.info_test`,
 		/*sql*/ `
@@ -121,6 +126,12 @@ func TestMain(m *testing.M) {
 				CONSTRAINT fk_info_test_child_parent FOREIGN KEY (parent_id) REFERENCES dbo.info_test(id)
 			)
 		`,
+		/*sql*/ `
+			CREATE TABLE dbo.info_test_profile (
+				user_id INT NOT NULL PRIMARY KEY,
+				CONSTRAINT fk_info_test_profile_user FOREIGN KEY (user_id) REFERENCES dbo.info_test(id)
+			)
+		`,
 	} {
 		if err := testConn.Exec(ctx, q); err != nil {
 			log.Fatalf("Setup failed for %q: %v", q, err)
@@ -132,6 +143,7 @@ func TestMain(m *testing.M) {
 	m.Run()
 
 	for _, q := range []string{
+		/*sql*/ `IF OBJECT_ID('dbo.info_test_profile', 'U') IS NOT NULL DROP TABLE dbo.info_test_profile`,
 		/*sql*/ `IF OBJECT_ID('dbo.info_test_child', 'U') IS NOT NULL DROP TABLE dbo.info_test_child`,
 		/*sql*/ `IF OBJECT_ID('dbo.info_test', 'U') IS NOT NULL DROP TABLE dbo.info_test`,
 	} {
@@ -309,6 +321,8 @@ func TestGetPrimaryKeyColumns_ForeignKey(t *testing.T) {
 
 	parent := defaultSchema + ".info_test"
 	child := defaultSchema + ".info_test_child"
+	profile := defaultSchema + ".info_test_profile"
+	var foundProfile bool
 	for _, col := range cols {
 		switch col.Table {
 		case parent:
@@ -319,7 +333,18 @@ func TestGetPrimaryKeyColumns_ForeignKey(t *testing.T) {
 			if col.Column == "id" && col.ForeignKey {
 				t.Error("info_test_child.id PK should not be a foreign key")
 			}
+		case profile:
+			if col.Column != "user_id" {
+				t.Errorf("expected primary key column 'user_id', got %q", col.Column)
+			}
+			if !col.ForeignKey {
+				t.Error("info_test_profile.user_id PK should also be a foreign key")
+			}
+			foundProfile = true
 		}
+	}
+	if !foundProfile {
+		t.Errorf("expected to find primary key for %s", profile)
 	}
 }
 
