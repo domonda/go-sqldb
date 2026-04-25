@@ -13,7 +13,7 @@ import (
 
 func connectOracle(t *testing.T) sqldb.Connection {
 	t.Helper()
-	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	conn, err := connectWithRetry(t.Context())
 	require.NoError(t, err)
 	t.Cleanup(func() { conn.Close() })
 	return conn

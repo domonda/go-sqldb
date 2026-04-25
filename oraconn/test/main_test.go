@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -53,7 +54,61 @@ func testConfig() *sqldb.Config {
 		User:     oracleUser,
 		Password: oraclePassword,
 		Database: oracleService,
+		// Bound the per-test connection pool so the test suite cannot
+		// burst past Oracle's listener handler limit while many
+		// short-lived test connections are being created and torn down.
+		// Most tests issue queries serially, so a small pool with idle
+		// reuse is plenty.
+		MaxOpenConns:    2,
+		MaxIdleConns:    2,
+		ConnMaxLifetime: 0,
 	}
+}
+
+// connectWithRetry calls oraconn.Connect with backoff retry on transient
+// listener errors (ORA-12516, ORA-12519, ORA-12520). These can occur under
+// burst connection churn from the test suite even when PROCESSES is
+// configured high enough, because the listener's dispatcher pool can be
+// momentarily exhausted while previous sessions are still being torn down.
+//
+// Retry-with-backoff is the Oracle-recommended workaround for this family
+// of errors; it is appropriate in test code where the connection rate is
+// driven by test parallelism, not real workload. Production code should
+// not silently retry connection establishment because that masks real
+// configuration or capacity problems.
+func connectWithRetry(ctx context.Context) (sqldb.Connection, error) {
+	const maxAttempts = 6
+	var lastErr error
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		conn, err := oraconn.Connect(ctx, testConfig(), true)
+		if err == nil {
+			return conn, nil
+		}
+		lastErr = err
+		if !isTransientListenerError(err) {
+			return nil, err
+		}
+		// Exponential-ish backoff: 200ms, 400ms, 800ms, 1.6s, 3.2s.
+		backoff := time.Duration(200*(1<<(attempt-1))) * time.Millisecond
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(backoff):
+		}
+	}
+	return nil, fmt.Errorf("oraconn.Connect failed after %d attempts: %w", maxAttempts, lastErr)
+}
+
+// isTransientListenerError reports whether err is one of the Oracle
+// listener-side transient errors that should be retried.
+func isTransientListenerError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "ORA-12516") ||
+		strings.Contains(msg, "ORA-12519") ||
+		strings.Contains(msg, "ORA-12520")
 }
 
 func dockerComposeUp() error {
@@ -79,7 +134,7 @@ func waitForOracle() error {
 
 func dropAllTables() error {
 	ctx := context.Background()
-	conn, err := oraconn.Connect(ctx, testConfig(), true)
+	conn, err := connectWithRetry(ctx)
 	if err != nil {
 		return err
 	}
@@ -109,7 +164,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestConfig(t *testing.T) {
-	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	conn, err := connectWithRetry(t.Context())
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -120,7 +175,7 @@ func TestConfig(t *testing.T) {
 }
 
 func TestPing(t *testing.T) {
-	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	conn, err := connectWithRetry(t.Context())
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -129,7 +184,7 @@ func TestPing(t *testing.T) {
 }
 
 func TestStats(t *testing.T) {
-	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	conn, err := connectWithRetry(t.Context())
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -138,7 +193,7 @@ func TestStats(t *testing.T) {
 }
 
 func TestDefaultIsolationLevel(t *testing.T) {
-	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	conn, err := connectWithRetry(t.Context())
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -146,7 +201,7 @@ func TestDefaultIsolationLevel(t *testing.T) {
 }
 
 func TestTransactionState(t *testing.T) {
-	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	conn, err := connectWithRetry(t.Context())
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -166,7 +221,7 @@ func TestTransactionState(t *testing.T) {
 }
 
 func TestExecRowsAffected(t *testing.T) {
-	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	conn, err := connectWithRetry(t.Context())
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -201,7 +256,7 @@ func TestExecRowsAffected(t *testing.T) {
 }
 
 func TestPrepare(t *testing.T) {
-	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	conn, err := connectWithRetry(t.Context())
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -235,7 +290,7 @@ func TestPrepare(t *testing.T) {
 }
 
 func TestConnect(t *testing.T) {
-	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	conn, err := connectWithRetry(t.Context())
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -264,7 +319,7 @@ func TestMustConnectPanics(t *testing.T) {
 }
 
 func TestExec(t *testing.T) {
-	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	conn, err := connectWithRetry(t.Context())
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -294,7 +349,7 @@ func TestExec(t *testing.T) {
 }
 
 func TestQueryRow(t *testing.T) {
-	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	conn, err := connectWithRetry(t.Context())
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -329,7 +384,7 @@ func TestQueryRow(t *testing.T) {
 }
 
 func TestQueryRows(t *testing.T) {
-	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	conn, err := connectWithRetry(t.Context())
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -370,7 +425,7 @@ func TestQueryRows(t *testing.T) {
 }
 
 func TestTransaction(t *testing.T) {
-	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	conn, err := connectWithRetry(t.Context())
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -416,7 +471,7 @@ func TestTransaction(t *testing.T) {
 }
 
 func TestTransactionRollback(t *testing.T) {
-	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	conn, err := connectWithRetry(t.Context())
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -450,7 +505,7 @@ func TestTransactionRollback(t *testing.T) {
 }
 
 func TestInsertRowStruct(t *testing.T) {
-	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	conn, err := connectWithRetry(t.Context())
 	require.NoError(t, err)
 	defer conn.Close()
 
@@ -488,7 +543,7 @@ func TestInsertRowStruct(t *testing.T) {
 }
 
 func TestQueryRowScanStruct(t *testing.T) {
-	conn, err := oraconn.Connect(t.Context(), testConfig(), true)
+	conn, err := connectWithRetry(t.Context())
 	require.NoError(t, err)
 	defer conn.Close()
 
