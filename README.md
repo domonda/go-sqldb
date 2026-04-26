@@ -101,13 +101,12 @@ err := db.Update(ctx, "public.user",
 ```
 
 Identifier parameters (table and column names) are validated by the
-`QueryFormatter`. The standard, PostgreSQL, MySQL, MSSQL, and Oracle formatters
-reject names that do not match a conservative identifier regex and escape the
-result using the vendor-specific quoting scheme. `Values` map keys and `db:"..."`
-struct tags become column identifiers and must therefore also be static strings
-chosen by the developer, not values derived from external input. The SQLite
-formatter currently relies only on double-quote escaping without a regex, so
-prefer keeping identifiers static even with SQLite.
+`QueryFormatter`. All driver formatters (standard, PostgreSQL, MySQL, MSSQL,
+SQLite, Oracle) reject names that do not match a conservative identifier
+regex and escape the result using the vendor-specific quoting scheme.
+`Values` map keys and `db:"..."` struct tags become column identifiers and
+must therefore also be static strings chosen by the developer, not values
+derived from external input.
 
 ## Database drivers
 

@@ -85,11 +85,18 @@ Oracle errors are mapped to generic `sqldb` error types:
 
 ## Drop queries
 
-For resetting test databases:
+For resetting test databases. Granular helpers cover each Oracle object kind;
+`DropAll` runs them in the correct dependency order:
 
-- `DropAllTables(ctx, conn)` — drops all foreign keys, then all user tables
-- `DropAllTypes(ctx, conn)` — drops all user-defined types
-- `DropAll(ctx, conn)` — both in correct order
+| Function                                  | Drops                                                  |
+| ----------------------------------------- | ------------------------------------------------------ |
+| `DropAllTables`                           | All user tables (drops foreign keys first)             |
+| `DropAllTypes`                            | All user-defined types                                 |
+| `DropAllSequences`                        | All user sequences                                     |
+| `DropAllViews`                            | All user views                                         |
+| `DropAllSynonyms`                         | All user synonyms                                      |
+| `DropAllProceduresFunctionsPackages`      | All user procedures, functions, and packages           |
+| `DropAll`                                 | Synonyms, views, procedures/functions/packages, tables, types, sequences (in that order) |
 
 ## Integration tests
 
