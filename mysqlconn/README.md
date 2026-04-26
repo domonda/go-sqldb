@@ -107,6 +107,23 @@ if errors.As(err, &uniqueErr) {
 }
 ```
 
+## Schema introspection
+
+`mysqlconn` implements `sqldb.Information` using `information_schema` views. MySQL/MariaDB has no schema concept inside a database — "schema" and "database" are interchangeable in the catalog — so `Schemas` returns the databases the connected user can see.
+
+| Method            | Source                                                                                            |
+| ----------------- | ------------------------------------------------------------------------------------------------- |
+| `Schemas`         | `information_schema.schemata`, excluding `mysql`, `sys`, `performance_schema`, `information_schema` |
+| `CurrentSchema`   | `DATABASE()`                                                                                      |
+| `Tables`/`Views`  | `information_schema.tables` filtered by `table_type`                                              |
+| `Columns`         | `information_schema.columns`                                                                      |
+| `PrimaryKey`      | `information_schema.statistics` filtered on `index_name = 'PRIMARY'`, ordered by `seq_in_index` (constraint-declaration order) |
+| `ForeignKeys`     | `information_schema.referential_constraints` + `key_column_usage` with composite-FK ordering preserved |
+| `Routines`        | `information_schema.routines` + `parameters` formatted as `schema.name(argtypes)`                 |
+| `RoutineExists`   | Signature-match when the argument contains `(`, otherwise name-match in the resolved schema       |
+
+MySQL has no routine overloading, so a routine name appears at most once. Argument type names use MySQL's `information_schema.parameters.data_type` spelling (e.g. `int`, `varchar`) — different from PostgreSQL's spelling.
+
 ## Drop Tables for Testing
 
 `DropAllTables` drops all base tables in the current database. Foreign key checks are disabled during the operation so tables can be dropped in any order.

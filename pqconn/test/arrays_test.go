@@ -74,8 +74,9 @@ func testConn(t *testing.T) sqldb.Connection {
 	if err != nil {
 		t.Fatalf("Failed to create test_arrays table: %v", err)
 	}
+	cleanupCtx := context.WithoutCancel(t.Context())
 	t.Cleanup(func() {
-		conn.Exec(ctx,
+		conn.Exec(cleanupCtx,
 			/*sql*/ `DROP TABLE IF EXISTS test_arrays`,
 		)
 	})

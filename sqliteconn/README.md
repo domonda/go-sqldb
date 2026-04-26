@@ -123,6 +123,27 @@ The connection automatically sets:
 - **No LISTEN/NOTIFY**: SQLite does not support PostgreSQL's LISTEN/NOTIFY functionality. Calling these methods will return an error.
 - **Placeholder Syntax**: Uses `?1`, `?2`, ... positional placeholders (SQLite numbered parameters). This is required so that query builders can reference arguments by index regardless of their order in the SQL statement.
 
+## Schema introspection
+
+`sqliteconn` implements `sqldb.Information` using SQLite's native catalog: `sqlite_schema` for object enumeration and `PRAGMA` functions for column / FK / index metadata. SQLite does not expose `information_schema` and has no concept of a schema inside a database — what SQLite calls a "schema" is an attached database (`main`, `temp`, and any `ATTACH DATABASE` names).
+
+| Method            | Source                                                                                                |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
+| `Schemas`         | `PRAGMA database_list` — returns attached databases (always `main`, plus `temp` and any `ATTACH`ed names) |
+| `CurrentSchema`   | Always `"main"`                                                                                       |
+| `Tables`/`Views`  | `<dbname>.sqlite_schema` filtered by `type` (one query per attached database)                         |
+| `Columns`         | `PRAGMA table_xinfo(...)` — works for both tables and views                                           |
+| `PrimaryKey`      | `PRAGMA table_info(...)` filtered on `pk > 0`, ordered by `pk` (constraint-declaration order)         |
+| `ForeignKeys`     | `PRAGMA foreign_key_list(...)` — composite FKs are reassembled from per-column rows by `id`           |
+| `Routines`        | `errors.ErrUnsupported` — SQLite has no stored procedures or functions                                |
+| `RoutineExists`   | `errors.ErrUnsupported`                                                                               |
+
+**Caveats specific to SQLite:**
+
+- **Synthetic FK names:** `ForeignKeyInfo.Name` is generated as `fk_<id>` (where `<id>` is the value SQLite assigns in `PRAGMA foreign_key_list`). SQLite does not store FK constraint names in its catalog, so there is no real name to return.
+- **FK enforcement vs catalog:** the catalog metadata is always available via `PRAGMA foreign_key_list`. `PRAGMA foreign_keys = ON` (set automatically by `Connect`) controls runtime enforcement, not whether `ForeignKeys` returns rows.
+- **`OnUpdate`/`OnDelete`:** SQLite reports the action exactly as declared. The driver normalizes it to the standard SQL spellings (`NO ACTION`, `RESTRICT`, `CASCADE`, `SET NULL`, `SET DEFAULT`).
+
 ## Error Handling
 
 ```go

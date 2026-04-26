@@ -16,6 +16,12 @@ import (
 const UnlimitedMaxNumRows = -1
 
 // QueryRow queries a single row and returns a Row for the results.
+//
+// refl may be nil when no struct reflection is needed; the returned
+// [Row] only invokes refl when [Row.Scan] is called with a single
+// destination that is a struct not implementing [sql.Scanner].
+// In that case scanning into a struct will return an error rather
+// than panic.
 func QueryRow(ctx context.Context, conn Querier, refl StructReflector, fmtr QueryFormatter, query string, args ...any) *Row {
 	rows := conn.Query(ctx, query, args...)
 	return NewRow(rows, refl, fmtr, query, args)
@@ -24,6 +30,10 @@ func QueryRow(ctx context.Context, conn Querier, refl StructReflector, fmtr Quer
 // QueryRowAs queries a single row and scans it as the type T.
 // If T is a struct that does not implement sql.Scanner,
 // the column values are scanned into the struct fields.
+//
+// refl may be nil when T is not a struct, or when T is a struct that
+// implements [sql.Scanner]; otherwise refl must be non-nil and an
+// error is returned instead of a panic.
 func QueryRowAs[T any](ctx context.Context, conn Querier, refl StructReflector, fmtr QueryFormatter, query string, args ...any) (val T, err error) {
 	err = QueryRow(ctx, conn, refl, fmtr, query, args...).Scan(&val)
 	if err != nil {
@@ -34,6 +44,10 @@ func QueryRowAs[T any](ctx context.Context, conn Querier, refl StructReflector, 
 
 // QueryRowAsOr queries a single row and scans it as the type T,
 // or returns the passed defaultVal in case of sql.ErrNoRows.
+//
+// refl may be nil when T is not a struct, or when T is a struct that
+// implements [sql.Scanner]; otherwise refl must be non-nil and an
+// error is returned instead of a panic.
 func QueryRowAsOr[T any](ctx context.Context, conn Querier, refl StructReflector, fmtr QueryFormatter, defaultVal T, query string, args ...any) (val T, err error) {
 	val, err = QueryRowAs[T](ctx, conn, refl, fmtr, query, args...)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -45,6 +59,10 @@ func QueryRowAsOr[T any](ctx context.Context, conn Querier, refl StructReflector
 // QueryRowAsStmt prepares the query and returns a function that
 // executes it with arguments and scans a single row as the type T.
 // The returned closeStmt function must be called to release the prepared statement.
+//
+// refl may be nil when T is not a struct, or when T is a struct that
+// implements [sql.Scanner]; otherwise refl must be non-nil and the
+// returned queryFunc returns an error instead of panicking.
 func QueryRowAsStmt[T any](ctx context.Context, conn Preparer, refl StructReflector, fmtr QueryFormatter, query string) (queryFunc func(ctx context.Context, args ...any) (T, error), closeStmt func() error, err error) {
 	stmt, err := conn.Prepare(ctx, query)
 	if err != nil {
@@ -67,6 +85,9 @@ func QueryRowAsStmt[T any](ctx context.Context, conn Preparer, refl StructReflec
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
 // The number of pkValue+pkValues must match the number of primary key columns.
 func QueryRowStruct[S StructWithTableName](ctx context.Context, conn Querier, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, pkValue any, pkValues ...any) (S, error) {
+	if refl == nil {
+		return *new(S), errors.New("QueryRowStruct: nil StructReflector")
+	}
 	// Using explicit first pkValue value
 	// to not be able to compile without any value
 	pkValues = append([]any{pkValue}, pkValues...)
@@ -308,6 +329,10 @@ func QueryRowsAsMapSlice(ctx context.Context, conn Querier, fmtr QueryFormatter,
 // On any error (context cancellation, scan failure, or the final rows.Err()),
 // the function returns whatever was scanned before the error together with
 // the wrapped error, so callers may still consume the partial result.
+//
+// refl may be nil when T is not a struct, or when T is a struct that
+// implements [sql.Scanner]; otherwise refl must be non-nil and an
+// error is returned instead of a panic.
 func QueryRowsAsSlice[T any](ctx context.Context, conn Querier, refl StructReflector, fmtr QueryFormatter, maxNumRows int, query string, args ...any) (rows []T, err error) {
 	sqlRows := conn.Query(ctx, query, args...)
 	defer func() {
@@ -441,6 +466,9 @@ func QueryStructCallback[S any](ctx context.Context, conn Querier, refl StructRe
 		}
 	}()
 
+	if refl == nil {
+		return errors.New("QueryStructCallback: nil StructReflector")
+	}
 	t := reflect.TypeFor[S]()
 	st := t
 	if st.Kind() == reflect.Pointer {
@@ -491,6 +519,10 @@ func QueryStructCallback[S any](ctx context.Context, conn Querier, refl StructRe
 // is returned immediately by this function without scanning further rows.
 //
 // In case of zero rows, no error will be returned.
+//
+// refl may be nil when the callback has no struct argument (i.e. only
+// scalar arguments are scanned per row); otherwise refl must be
+// non-nil and an error is returned instead of a panic.
 func QueryCallback(ctx context.Context, conn Querier, refl StructReflector, fmtr QueryFormatter, callback any, query string, args ...any) (err error) {
 	defer func() {
 		if err != nil {

@@ -10,6 +10,9 @@ type rowScanner interface {
 }
 
 func scanStruct(row rowScanner, columns []string, reflector StructReflector, destStruct any) error {
+	if reflector == nil {
+		return fmt.Errorf("scanStruct got nil StructReflector")
+	}
 	v := reflect.ValueOf(destStruct)
 	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {

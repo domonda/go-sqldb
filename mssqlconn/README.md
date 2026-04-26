@@ -106,6 +106,23 @@ if errors.As(err, &uniqueErr) {
 }
 ```
 
+## Schema introspection
+
+`mssqlconn` implements `sqldb.Information` using SQL Server's `sys.*` catalog views (rather than `INFORMATION_SCHEMA`, which exposes only the ISO subset). `sys.*` is the canonical metadata source on SQL Server and surfaces details (PK ordinal positions, FK column ordering, routine parameters) that the ISO views drop or reorder.
+
+| Method            | Source                                                                                            |
+| ----------------- | ------------------------------------------------------------------------------------------------- |
+| `Schemas`         | `sys.schemas`, excluding `sys`, `INFORMATION_SCHEMA`, `guest`, and the `db_*` fixed role schemas  |
+| `CurrentSchema`   | `SCHEMA_NAME()` — the user's default schema (typically `dbo`)                                     |
+| `Tables`/`Views`  | `sys.tables` / `sys.views` joined with `sys.schemas`                                              |
+| `Columns`         | `sys.columns` joined with `sys.types`                                                             |
+| `PrimaryKey`      | `sys.indexes` + `sys.index_columns`, returning constraint-declaration order via `key_ordinal`     |
+| `ForeignKeys`     | `sys.foreign_keys` + `sys.foreign_key_columns` with composite-FK column ordering preserved        |
+| `Routines`        | `sys.objects` (types `FN`, `IF`, `TF`, `P`) + `sys.parameters` formatted as `schema.name(argtypes)` |
+| `RoutineExists`   | Signature-match when the argument contains `(`, otherwise name-match in the resolved schema       |
+
+SQL Server has no routine overloading, so a routine name appears at most once. The maximum query argument count is 2,100 (vs 65,535 for PostgreSQL/MySQL/Oracle), which can matter for batch operations against introspection results.
+
 ## Drop Schema for Testing
 
 Three functions are provided for resetting the database to a clean state in tests.

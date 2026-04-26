@@ -1,6 +1,7 @@
 package mssqlconn
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,8 +37,9 @@ func TestUpsertRowStruct(t *testing.T) {
 		)`,
 	)
 	require.NoError(t, err)
+	cleanupCtx := context.WithoutCancel(ctx)
 	t.Cleanup(func() {
-		conn.Exec(ctx, //nolint:errcheck
+		conn.Exec(cleanupCtx, //nolint:errcheck
 			/*sql*/ `DROP TABLE IF EXISTS test_upsert`,
 		)
 	})
@@ -93,8 +95,9 @@ func TestUpsertRowStructs(t *testing.T) {
 		)`,
 	)
 	require.NoError(t, err)
+	cleanupCtx := context.WithoutCancel(ctx)
 	t.Cleanup(func() {
-		conn.Exec(ctx, //nolint:errcheck
+		conn.Exec(cleanupCtx, //nolint:errcheck
 			/*sql*/ `DROP TABLE IF EXISTS test_upsert`,
 		)
 	})
@@ -139,8 +142,9 @@ func TestInsertUniqueRowStruct(t *testing.T) {
 		)`,
 	)
 	require.NoError(t, err)
+	cleanupCtx := context.WithoutCancel(ctx)
 	t.Cleanup(func() {
-		conn.Exec(ctx, //nolint:errcheck
+		conn.Exec(cleanupCtx, //nolint:errcheck
 			/*sql*/ `DROP TABLE IF EXISTS test_upsert`,
 		)
 	})

@@ -16,6 +16,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Database Drivers**: Separate modules for PostgreSQL (`pqconn/`), MySQL (`mysqlconn/`), SQL Server (`mssqlconn/`), SQLite (`sqliteconn/`), and Oracle (`oraconn/`)
 - **Query Building**: Flexible query construction with struct mapping
 - **Transaction Management**: Nested transactions with savepoint support
+- **Schema Introspection**: Two layers. The high-level `sqldb.Information` interface (`information.go`) is embedded into `Connection` and provides vendor-portable methods (`Schemas`, `Tables`, `Views`, `Columns`, `PrimaryKey`, `ForeignKeys`, `Routines`, plus `*Exists` variants). Each driver implements it against its native catalog (`pg_catalog`, `information_schema`, `sys.*`, `sqlite_schema` + `PRAGMA`, or Oracle's `ALL_*` views). The lower-level `information/` subpackage queries ISO `information_schema` views directly with typed structs — use it when you need raw catalog rows on PG/MySQL/MariaDB/MSSQL.
 
 ### Key Design Patterns
 
@@ -133,3 +134,21 @@ user, err := db.QueryRowAs[User](ctx,
     id, // $1
 )
 ```
+
+### Schema Introspection
+```go
+// Vendor-portable catalog access via the sqldb.Information interface
+// embedded into every Connection. The db package wraps these methods
+// as top-level db.* functions following the same ctx-first style.
+// Methods that don't apply on a vendor (e.g. Routines on SQLite)
+// return errors.ErrUnsupported.
+exists, err := db.TableExists(ctx, "public.user")
+cols, err := db.Columns(ctx, "public.user")
+pk, err := db.PrimaryKey(ctx, "public.user") // constraint order, not declaration order
+fks, err := db.ForeignKeys(ctx, "public.order")
+```
+
+Per-driver caveats live in each driver's README (`pqconn/`, `mysqlconn/`,
+`mssqlconn/`, `sqliteconn/`, `oraconn/`). The lower-level
+`information/` subpackage offers typed `information_schema` row structs
+for PG/MySQL/MariaDB/MSSQL when raw catalog rows are needed.

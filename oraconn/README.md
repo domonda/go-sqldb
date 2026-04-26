@@ -62,6 +62,27 @@ Oracle errors are mapped to generic `sqldb` error types:
 | ORA-01013 | `ErrQueryCanceled` | `IsQueryCanceled` |
 | ORA-20000–20999 | `ErrRaisedException` | — |
 
+## Schema introspection
+
+`oraconn` implements `sqldb.Information` using Oracle's `ALL_*` data-dictionary views (Oracle does not expose `information_schema`). In Oracle a "schema" is a user, so `Schemas` returns user names rather than schema names.
+
+| Method            | Source                                                                                                |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
+| `Schemas`         | `ALL_USERS WHERE oracle_maintained = 'N'` — excludes `SYS`, `SYSTEM`, GoldenGate users, and other Oracle-maintained accounts |
+| `CurrentSchema`   | `SYS_CONTEXT('USERENV','CURRENT_SCHEMA')`                                                              |
+| `Tables`/`Views`  | `ALL_TABLES` / `ALL_VIEWS`, restricted to non-Oracle-maintained owners                                 |
+| `Columns`         | `ALL_TAB_COLUMNS` joined with `ALL_CONSTRAINTS` for primary-key flags                                  |
+| `PrimaryKey`      | `ALL_CONSTRAINTS` + `ALL_CONS_COLUMNS`, ordered by `position` (constraint-declaration order)           |
+| `ForeignKeys`     | `ALL_CONSTRAINTS` + `ALL_CONS_COLUMNS` with composite-FK column ordering preserved                     |
+| `Routines`        | `ALL_OBJECTS` filtered to top-level `PROCEDURE` and `FUNCTION` objects                                  |
+| `RoutineExists`   | Signature-match when the argument contains `(`, otherwise name-match in the resolved schema           |
+
+**Caveats specific to Oracle:**
+
+- **Case folding:** Oracle stores unquoted identifiers as uppercase in the catalog (e.g. `CREATE TABLE foo` is stored as `FOO`). Compare names case-insensitively or pass identifiers in uppercase. `conntest.InformationFeatures.CaseFoldsToUpper = true` flips the conntest assertions for this.
+- **`OnUpdate` is always `"NO ACTION"`:** Oracle does not support cascading updates. The catalog only records the `ON DELETE` action; the driver populates `ForeignKeyInfo.OnUpdate` with `"NO ACTION"` for every FK so the field has a consistent value.
+- **Routines exclude package bodies:** `Routines` returns top-level standalone procedures and functions only. Routines defined inside `PACKAGE` bodies are intentionally excluded because their fully qualified name (`schema.package.routine`) does not fit the `schema.name(args)` shape the interface contracts.
+
 ## Drop queries
 
 For resetting test databases:

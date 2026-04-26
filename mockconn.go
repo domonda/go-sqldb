@@ -20,11 +20,22 @@ var (
 	_ QueryFormatter     = new(MockConn)
 )
 
-// QueryRecordings holds the recorded exec and query calls
-// made through a MockConn.
+// QueryRecordings holds the recorded exec, query, and Information
+// interface calls made through a MockConn.
 type QueryRecordings struct {
-	Execs   []QueryData
-	Queries []QueryData
+	Execs       []QueryData
+	Queries     []QueryData
+	Information []InformationCall
+}
+
+// InformationCall records a single invocation of an [Information]
+// interface method on a MockConn. Method is the Go method name
+// (e.g. "Schemas", "TableExists"); Args are the post-context
+// positional arguments (variadic schema filters become a single
+// []string).
+type InformationCall struct {
+	Method string
+	Args   []any
 }
 
 // MockConn implements the ListenerConnection interface
@@ -79,6 +90,27 @@ type MockConn struct {
 	MockIsListeningOnChannel func(channel string) bool
 	MockClose                func() error
 
+	// Information interface mocks. When a field is nil the
+	// corresponding method returns errors.ErrUnsupported (matching
+	// every other stub Information implementation in this package),
+	// so tests can detect "no introspection support" via
+	// errors.Is(err, errors.ErrUnsupported). Set the field to override
+	// per-test. Every call is recorded in
+	// [QueryRecordings.Information] regardless of whether a callback
+	// is set, so tests can assert what got called.
+	MockSchemas       func(ctx context.Context) ([]string, error)
+	MockCurrentSchema func(ctx context.Context) (string, error)
+	MockTables        func(ctx context.Context, schema ...string) ([]string, error)
+	MockTableExists   func(ctx context.Context, table string) (bool, error)
+	MockViews         func(ctx context.Context, schema ...string) ([]string, error)
+	MockViewExists    func(ctx context.Context, view string) (bool, error)
+	MockColumns       func(ctx context.Context, tableOrView string) ([]ColumnInfo, error)
+	MockColumnExists  func(ctx context.Context, tableOrView, column string) (bool, error)
+	MockPrimaryKey    func(ctx context.Context, table string) ([]string, error)
+	MockForeignKeys   func(ctx context.Context, table string) ([]ForeignKeyInfo, error)
+	MockRoutines      func(ctx context.Context, schema ...string) ([]string, error)
+	MockRoutineExists func(ctx context.Context, routine string) (bool, error)
+
 	mtx sync.Mutex
 }
 
@@ -119,8 +151,9 @@ func (c *MockConn) Clone() *MockConn {
 		StmtNo:         c.StmtNo,
 		ListeningOn:    maps.Clone(c.ListeningOn),
 		Recordings: QueryRecordings{
-			Execs:   slices.Clone(c.Recordings.Execs),
-			Queries: slices.Clone(c.Recordings.Queries),
+			Execs:       slices.Clone(c.Recordings.Execs),
+			Queries:     slices.Clone(c.Recordings.Queries),
+			Information: slices.Clone(c.Recordings.Information),
 		},
 		MockQueryResults:         maps.Clone(c.MockQueryResults),
 		MockConfig:               c.MockConfig,
@@ -138,6 +171,18 @@ func (c *MockConn) Clone() *MockConn {
 		MockUnlistenChannel:      c.MockUnlistenChannel,
 		MockIsListeningOnChannel: c.MockIsListeningOnChannel,
 		MockClose:                c.MockClose,
+		MockSchemas:              c.MockSchemas,
+		MockCurrentSchema:        c.MockCurrentSchema,
+		MockTables:               c.MockTables,
+		MockTableExists:          c.MockTableExists,
+		MockViews:                c.MockViews,
+		MockViewExists:           c.MockViewExists,
+		MockColumns:              c.MockColumns,
+		MockColumnExists:         c.MockColumnExists,
+		MockPrimaryKey:           c.MockPrimaryKey,
+		MockForeignKeys:          c.MockForeignKeys,
+		MockRoutines:             c.MockRoutines,
+		MockRoutineExists:        c.MockRoutineExists,
 	}
 }
 

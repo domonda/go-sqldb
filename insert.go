@@ -34,6 +34,12 @@ func Insert(ctx context.Context, conn Executor, builder QueryBuilder, fmtr Query
 // SECURITY: returningColumns is appended to the query verbatim. It must be
 // static SQL written by the developer and must not contain data from
 // external input.
+//
+// refl may be nil when no struct reflection is needed; the returned
+// [Row] only invokes refl when [Row.Scan] is called with a single
+// destination that is a struct not implementing [sql.Scanner].
+// In that case scanning into a struct will return an error rather
+// than panic.
 func InsertReturning(ctx context.Context, conn Querier, refl StructReflector, builder ReturningQueryBuilder, fmtr QueryFormatter, table string, values Values, returningColumns string) *Row {
 	if len(values) == 0 {
 		return NewRow(NewErrRows(fmt.Errorf("InsertReturning into table %s: no values", table)), refl, fmtr, "", nil)
@@ -89,6 +95,9 @@ func InsertUnique(ctx context.Context, conn Executor, builder UpsertQueryBuilder
 // Column names are derived from the `db` struct tags of the struct's fields.
 // Optional QueryOption can be passed to ignore mapped columns.
 func InsertRowStruct(ctx context.Context, conn Executor, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, rowStruct StructWithTableName, options ...QueryOption) error {
+	if refl == nil {
+		return errors.New("InsertRowStruct: nil StructReflector")
+	}
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return err
@@ -159,6 +168,9 @@ func InsertRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 // Column names are derived from the `db` struct tags of the struct's fields.
 // The returned closeStmt function must be called to release the prepared statement.
 func InsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Preparer, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, options ...QueryOption) (insertFunc func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
+	if refl == nil {
+		return nil, nil, errors.New("InsertRowStructStmt: nil StructReflector")
+	}
 	structType := reflect.TypeFor[S]()
 	for structType.Kind() == reflect.Pointer {
 		structType = structType.Elem()
@@ -221,6 +233,9 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 // column name. In every implementation it must be static SQL written by
 // the developer and must not contain data from external input.
 func InsertUniqueRowStruct(ctx context.Context, conn Executor, refl StructReflector, builder UpsertQueryBuilder, fmtr QueryFormatter, rowStruct StructWithTableName, conflictTarget string, options ...QueryOption) (inserted bool, err error) {
+	if refl == nil {
+		return false, errors.New("InsertUniqueRowStruct: nil StructReflector")
+	}
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return false, err
@@ -270,6 +285,9 @@ func InsertUniqueRowStruct(ctx context.Context, conn Executor, refl StructReflec
 // Column names are derived from the `db` struct tags of the struct's fields.
 // Optional QueryOption can be passed to ignore mapped columns.
 func InsertRowStructs[S StructWithTableName](ctx context.Context, conn Connection, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, rowStructs []S, options ...QueryOption) error {
+	if refl == nil {
+		return errors.New("InsertRowStructs: nil StructReflector")
+	}
 	numTotalRows := len(rowStructs)
 	switch numTotalRows {
 	case 0:

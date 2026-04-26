@@ -102,6 +102,23 @@ if errors.As(err, &fkErr) {
 - Placeholders use `$1`, `$2`, ... syntax
 - `EscapeIdentifier` quotes identifiers that contain special characters or are reserved words
 
+## Schema introspection
+
+`pqconn` implements `sqldb.Information` against `pg_catalog` directly rather than `information_schema`. `pg_catalog` is the canonical source of truth in PostgreSQL, exposes everything the interface needs (PK ordinal order, routine signatures, FK columns) without joins or post-processing, and avoids the empty-string columns `information_schema` reports for PostgreSQL-only metadata.
+
+| Method            | Source                                                                                                |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
+| `Schemas`         | `pg_catalog.pg_namespace`, excluding `pg_catalog`, `information_schema`, and `pg_toast`               |
+| `CurrentSchema`   | `current_schema()`                                                                                    |
+| `Tables`/`Views`  | `pg_catalog.pg_class` filtered by `relkind`                                                            |
+| `Columns`         | `pg_catalog.pg_attribute` joined with `pg_class` and `pg_namespace`                                    |
+| `PrimaryKey`      | `pg_catalog.pg_constraint`, returning columns in constraint-declaration order (not column-declaration order) |
+| `ForeignKeys`     | `pg_catalog.pg_constraint` with composite-FK columns and referenced columns aligned by ordinal position |
+| `Routines`        | `pg_proc` + `pg_get_function_identity_arguments` formatted as `schema.name(argtypes)`; one entry per overload |
+| `RoutineExists`   | Signature-match when the argument contains `(`, otherwise name-match against any overload             |
+
+PostgreSQL allows overloading, so `Routines` returns a separate entry for every function/procedure overload. To disambiguate, pass the full signature returned by `Routines` to `RoutineExists`. To check by name (any overload), pass just `schema.name`.
+
 ## Drop Queries for Testing
 
 The package provides pre-built queries for dropping all user-created database objects. These are useful in tests to reset the database to a clean state before recreating the schema.

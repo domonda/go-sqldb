@@ -47,6 +47,12 @@ func Update(ctx context.Context, conn Executor, builder QueryBuilder, fmtr Query
 // the SQL verbatim and are NOT parameterized. They must be static SQL
 // written by the developer. Pass external input only through args using
 // the driver's placeholder syntax.
+//
+// refl may be nil when no struct reflection is needed; the returned
+// [Row] only invokes refl when [Row.Scan] is called with a single
+// destination that is a struct not implementing [sql.Scanner].
+// In that case scanning into a struct will return an error rather
+// than panic.
 func UpdateReturningRow(ctx context.Context, conn Querier, refl StructReflector, builder ReturningQueryBuilder, fmtr QueryFormatter, table string, values Values, returningColumns, whereCondition string, args ...any) *Row {
 	if len(values) == 0 {
 		return NewRow(NewErrRows(fmt.Errorf("UpdateReturningRow table %s: no values passed", table)), refl, fmtr, "", nil)
@@ -90,6 +96,9 @@ func UpdateReturningRows(ctx context.Context, conn Querier, builder ReturningQue
 // The struct must have at least one field with a `db` tag value having a ",primarykey" suffix
 // to mark primary key column(s).
 func UpdateRowStruct(ctx context.Context, conn Executor, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, rowStruct StructWithTableName, options ...QueryOption) error {
+	if refl == nil {
+		return errors.New("UpdateRowStruct: nil StructReflector")
+	}
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return err
@@ -172,6 +181,9 @@ func UpdateRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 // to mark primary key column(s).
 // The returned closeStmt function must be called to release the prepared statement.
 func UpdateRowStructStmt[S StructWithTableName](ctx context.Context, conn Preparer, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, options ...QueryOption) (updateFunc func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
+	if refl == nil {
+		return nil, nil, errors.New("UpdateRowStructStmt: nil StructReflector")
+	}
 	structType := reflect.TypeFor[S]()
 	for structType.Kind() == reflect.Pointer {
 		structType = structType.Elem()
@@ -250,6 +262,9 @@ func reorderForUpdate[T any](columns []ColumnInfo, vals []T) []T {
 // The struct must have at least one field with a `db` tag value having a ",primarykey" suffix
 // to mark primary key column(s).
 func UpdateRowStructs[S StructWithTableName](ctx context.Context, conn Connection, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, rowStructs []S, options ...QueryOption) error {
+	if refl == nil {
+		return errors.New("UpdateRowStructs: nil StructReflector")
+	}
 	switch len(rowStructs) {
 	case 0:
 		return nil

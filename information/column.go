@@ -10,6 +10,13 @@ import (
 
 // Column maps a row from information_schema.columns.
 //
+// information_schema.columns is defined by the SQL standard to include
+// columns of both base tables AND views (and, on vendors that surface
+// them via information_schema, foreign tables and other relation
+// kinds). The TableName field does not distinguish them; cross-reference
+// against [Table] (or query information_schema.tables.table_type) if
+// the kind matters.
+//
 // Vendor support:
 //   - PostgreSQL: all fields populated.
 //   - MySQL/MariaDB: TableCatalog is always "def"; CharacterSet*,
@@ -83,22 +90,27 @@ type KeyColumnUsage struct {
 	PositionInUniqueConstraint *int   `db:"position_in_unique_constraint"`
 }
 
-// ColumnExists reports whether a column exists in the given table.
+// ColumnExists reports whether a column exists in the given table or view.
 //
-// table may be schema-qualified as "schema.table" or unqualified. When
-// unqualified the schema is not constrained, so the function returns
-// true if any schema in the current database contains a table with the
-// given name and a column with the given name.
+// information_schema.columns includes columns of both base tables AND
+// views (per the SQL standard), so this function returns true when the
+// named column belongs to either kind. Use [GetTable] and check
+// [Table.TableType] if the relation kind matters.
+//
+// tableOrView may be schema-qualified as "schema.name" or unqualified.
+// When unqualified the schema is not constrained, so the function
+// returns true if any schema in the current database contains a
+// relation with that name and a column with the given name.
 //
 // Vendor notes:
 //   - PostgreSQL, MySQL, MariaDB, SQL Server: supported.
 //   - SQLite, Oracle: not supported (no information_schema).
-func ColumnExists(ctx context.Context, conn sqldb.Connection, table, column string) (bool, error) {
+func ColumnExists(ctx context.Context, conn sqldb.Connection, tableOrView, column string) (bool, error) {
 	var (
 		query string
 		args  []any
 	)
-	if schema, name, ok := strings.Cut(table, "."); ok {
+	if schema, name, ok := strings.Cut(tableOrView, "."); ok {
 		query = fmt.Sprintf(
 			/*sql*/ `SELECT CASE WHEN EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = %s AND table_name = %s AND column_name = %s) THEN 1 ELSE 0 END`,
 			conn.FormatPlaceholder(0),
@@ -112,7 +124,7 @@ func ColumnExists(ctx context.Context, conn sqldb.Connection, table, column stri
 			conn.FormatPlaceholder(0),
 			conn.FormatPlaceholder(1),
 		)
-		args = []any{table, column}
+		args = []any{tableOrView, column}
 	}
 	n, err := sqldb.QueryRowAs[int](ctx, conn, structReflector, conn, query, args...)
 	return n != 0, err

@@ -55,6 +55,8 @@ type Querier interface {
 type Connection interface {
 	QueryFormatter
 
+	Information
+
 	// Config returns the configuration used to establish this connection.
 	Config() *Config
 

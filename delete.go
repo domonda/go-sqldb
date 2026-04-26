@@ -16,6 +16,9 @@ import (
 // The struct must have at least one primary key field.
 // Returns a wrapped [sql.ErrNoRows] error if no row was affected by the delete.
 func DeleteRowStruct(ctx context.Context, conn Executor, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, rowStruct StructWithTableName) error {
+	if refl == nil {
+		return errors.New("DeleteRowStruct: nil StructReflector")
+	}
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return err
@@ -94,6 +97,9 @@ func DeleteRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 // if no row was affected by the delete.
 // The returned closeStmt function must be called to release the prepared statement.
 func DeleteRowStructStmt[S StructWithTableName](ctx context.Context, conn Preparer, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter) (deleteFunc func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
+	if refl == nil {
+		return nil, nil, errors.New("DeleteRowStructStmt: nil StructReflector")
+	}
 	structType := reflect.TypeFor[S]()
 	for structType.Kind() == reflect.Pointer {
 		structType = structType.Elem()
@@ -151,6 +157,9 @@ func DeleteRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 // Returns a wrapped [sql.ErrNoRows] error if no row was affected
 // by the delete of any of the structs.
 func DeleteRowStructs[S StructWithTableName](ctx context.Context, conn Connection, refl StructReflector, builder QueryBuilder, fmtr QueryFormatter, rowStructs []S) error {
+	if refl == nil {
+		return errors.New("DeleteRowStructs: nil StructReflector")
+	}
 	switch len(rowStructs) {
 	case 0:
 		return nil

@@ -142,12 +142,22 @@ prefer keeping identifiers static even with SQLite.
 | `QueryBuilder`                | yes                 | yes                 | yes                 | yes                 | yes                 |
 | `UpsertQueryBuilder`          | yes                 | yes                 | yes                 | yes                 | yes                 |
 | `ReturningQueryBuilder`       | yes                 | —                   | —                   | yes                 | —                   |
+| `Information.Schemas`         | yes (`pg_namespace`) | yes (databases)    | yes (`sys.schemas`) | attached DBs        | yes (`all_users`)   |
+| `Information.CurrentSchema`   | yes                 | yes                 | yes                 | always `main`       | yes                 |
+| `Information.Tables`/`TableExists` | yes            | yes                 | yes                 | yes                 | yes                 |
+| `Information.Views`/`ViewExists`   | yes            | yes                 | yes                 | yes                 | yes                 |
+| `Information.Columns`/`ColumnExists` | yes          | yes                 | yes                 | yes (`PRAGMA`)      | yes                 |
+| `Information.PrimaryKey`      | yes                 | yes                 | yes                 | yes                 | yes                 |
+| `Information.ForeignKeys`     | yes                 | yes                 | yes                 | yes (caveats below) | yes (`OnUpdate` always `NO ACTION`) |
+| `Information.Routines`/`RoutineExists` | yes (overloads as separate entries) | yes | yes | — (`ErrUnsupported`) | yes (top-level only) |
 
 **Notes:**
 - **Nested `Begin` uses savepoint**: Only `sqliteconn` converts nested `Begin` calls into SQL `SAVEPOINT` / `RELEASE` commands. All other real drivers start a new independent transaction on the underlying connection.
 - **`db.TransactionSavepoint`**: Works with any driver by issuing raw `SAVEPOINT` SQL within an existing transaction (see [Transactions](#transactions)).
 - **MockConn**: In-memory mock for unit testing without a running database. Supports configurable query results, exec callbacks, and records all queries and execs for inspection.
 - **ErrConn**: Dummy connection where every method except `Close` returns a stored error. Useful for testing error-handling paths.
+
+**`Information` per-driver details:** each driver's README documents its catalog source and the full set of caveats — see the [Schema introspection](#schema-introspection) section below for the entry points.
 
 
 ## Query builders
@@ -759,17 +769,58 @@ Driver `Connect` functions return types that implement the `Connection` interfac
 
 ## Schema introspection
 
-The [information](https://pkg.go.dev/github.com/domonda/go-sqldb/information) subpackage queries
-ISO/IEC 9075-11 `information_schema` views (tables, views, columns, key usage, primary keys,
-domains, check constraints) and exposes typed Go structs and helper functions like `TableExists`,
-`ColumnExists`, `GetPrimaryKeyColumns`, and `GetTableRowsWithPrimaryKey`. Queries route
-placeholders and identifiers through the connection's `QueryFormatter`, so the same Go calls
-emit vendor-correct SQL.
+Two layers are available, picked by what the caller needs.
 
-Vendor coverage in short: PostgreSQL is the reference, MySQL/MariaDB and SQL Server work for
-the ISO subset (many extension columns scan as empty), SQLite and Oracle don't expose
-`information_schema` at all. See the [information package README](information/README.md) for
-the full compatibility matrix and per-helper caveats.
+The high-level `sqldb.Information` interface (`information.go`) is embedded
+into `sqldb.Connection`, so every driver-backed connection exposes it
+directly: `Schemas`, `CurrentSchema`, `Tables`, `TableExists`, `Views`,
+`ViewExists`, `Columns`, `ColumnExists`, `PrimaryKey`, `ForeignKeys`,
+`Routines`, `RoutineExists`. The `db` package wraps each of these as a
+top-level `db.*` function in the same `ctx`-first style as every other
+`db.*` call (e.g. `db.Tables(ctx)`, `db.PrimaryKey(ctx, "public.user")`).
+Each driver implements the interface against its native catalog
+(`pg_catalog`, `information_schema`, `sys.*`, `sqlite_schema` + `PRAGMA`,
+or Oracle's `ALL_*` views), so the same Go call returns sensible results
+on every supported vendor. Methods that cannot be implemented on a vendor
+(e.g. `Routines` on SQLite) return `errors.ErrUnsupported`. Returned
+schema-qualified names are stable and can be fed back into other methods.
+
+**Tables and views are kept separate.** `TableExists`/`Tables` match
+only base tables; `ViewExists`/`Views` match only views. The metadata
+methods that take a relation argument split into two groups:
+
+- `PrimaryKey` and `ForeignKeys` target tables only and return a
+  wrapped `sql.ErrNoRows` when the named relation does not exist OR
+  exists but is a view (views have no PK/FK constraints).
+- `Columns` and `ColumnExists` accept either kind and return a wrapped
+  `sql.ErrNoRows` only when no relation of either kind matches the
+  name. `ColumnExists` returns `(false, nil)` for "column not found on
+  an existing relation".
+
+Use `errors.Is(err, sql.ErrNoRows)` to check for the missing-relation
+case. The exact catalog source, schema-name filtering rules, and
+per-vendor quirks live in each driver's README:
+
+- [pqconn](pqconn/README.md#schema-introspection) — PostgreSQL via `pg_catalog`
+- [mysqlconn](mysqlconn/README.md#schema-introspection) — MySQL/MariaDB via `information_schema`
+- [mssqlconn](mssqlconn/README.md#schema-introspection) — SQL Server via `sys.*`
+- [sqliteconn](sqliteconn/README.md#schema-introspection) — SQLite via `sqlite_schema` + PRAGMA
+- [oraconn](oraconn/README.md#schema-introspection) — Oracle via `ALL_*` data-dictionary views
+
+The lower-level [information](https://pkg.go.dev/github.com/domonda/go-sqldb/information)
+subpackage queries ISO/IEC 9075-11 `information_schema` views directly
+(tables, views, columns, key usage, primary keys, domains, check
+constraints) and exposes typed Go structs alongside helper functions like
+`TableExists`, `ColumnExists`, `GetPrimaryKeyColumns`, and
+`GetTableRowsWithPrimaryKey`. Use it when you need raw ISO catalog rows
+or per-field metadata that the higher-level interface does not surface.
+Queries route placeholders and identifiers through the connection's
+`QueryFormatter`, so the same Go calls emit vendor-correct SQL — but only
+on vendors that expose `information_schema` (PostgreSQL, MySQL, MariaDB,
+SQL Server). SQLite and Oracle are out of scope for that subpackage; use
+`sqldb.Information` for them. See the
+[information package README](information/README.md) for the full
+compatibility matrix and per-helper caveats.
 
 
 ## Internal caching
@@ -1032,6 +1083,7 @@ func TestConnectionSuite(t *testing.T) {
 | `SupportsReadOnlyTransaction`  | Skip read-only transaction tests when not supported                  |
 | `SupportsCustomIsolationLevel` | Skip custom isolation level tests when not supported                 |
 | `ExecAfterClosedTxErrors`      | Whether executing on a closed transaction returns an error           |
+| `Information`                  | `InformationFeatures` recording which `sqldb.Information` features the driver supports (`SupportsRoutines`, `CaseFoldsToUpper`, `SchemaIsAttachedDB`); used by the Information sub-test to skip vendor-incompatible assertions |
 
 `RunAll` executes the following sub-test groups against the real database:
 
@@ -1048,6 +1100,7 @@ func TestConnectionSuite(t *testing.T) {
 | QueryCallback   | Per-row callback queries                                    |
 | Batch           | Bulk insert and upsert of struct slices                     |
 | MailAddress     | Custom type wrapping with `MailAddressTypeWrapper`          |
+| Information     | `sqldb.Information` against a live database: schemas, tables, views, columns, PK constraint ordering, composite FK ordering, routines (skipped via `Information.SupportsRoutines`) |
 
 Each test gets a fresh connection via `NewConn` and creates/drops its own tables, so tests are fully isolated and safe to run in parallel. Adding a new test to `conntest` automatically covers all drivers.
 

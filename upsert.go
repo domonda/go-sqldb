@@ -17,6 +17,9 @@ import (
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
 // The struct must have at least one primary key field.
 func UpsertRowStruct(ctx context.Context, conn Executor, refl StructReflector, builder UpsertQueryBuilder, fmtr QueryFormatter, rowStruct StructWithTableName, options ...QueryOption) error {
+	if refl == nil {
+		return errors.New("UpsertRowStruct: nil StructReflector")
+	}
 	structVal, err := derefStruct(reflect.ValueOf(rowStruct))
 	if err != nil {
 		return err
@@ -96,6 +99,9 @@ func UpsertRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 // Returns an upsert function to upsert individual rows and a closeStmt
 // function that must be called when done to close the prepared statement.
 func UpsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Preparer, refl StructReflector, builder UpsertQueryBuilder, fmtr QueryFormatter, options ...QueryOption) (upsert func(ctx context.Context, rowStruct S) error, closeStmt func() error, err error) {
+	if refl == nil {
+		return nil, nil, errors.New("UpsertRowStructStmt: nil StructReflector")
+	}
 	structType := reflect.TypeFor[S]()
 	for structType.Kind() == reflect.Pointer {
 		structType = structType.Elem()
@@ -153,6 +159,9 @@ func UpsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 // Primary key columns are identified by the "primarykey" option
 // in their `db` struct tag (e.g., ID int `db:"id,primarykey"`).
 func UpsertRowStructs[S StructWithTableName](ctx context.Context, conn Connection, refl StructReflector, builder UpsertQueryBuilder, fmtr QueryFormatter, rowStructs []S, options ...QueryOption) error {
+	if refl == nil {
+		return errors.New("UpsertRowStructs: nil StructReflector")
+	}
 	switch len(rowStructs) {
 	case 0:
 		return nil

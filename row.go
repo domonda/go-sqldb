@@ -17,6 +17,10 @@ type Row struct {
 }
 
 // NewRow returns a new Row that wraps the given Rows for single-row scanning.
+//
+// reflector may be nil if [Row.Scan] will not be used to scan into a
+// struct that does not implement [sql.Scanner]; in that case any
+// struct-scanning call will return an error rather than panic.
 func NewRow(rows Rows, reflector StructReflector, queryFmt QueryFormatter, query string, args []any) *Row {
 	return &Row{rows, reflector, queryFmt, query, args}
 }

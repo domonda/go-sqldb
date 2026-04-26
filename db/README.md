@@ -147,6 +147,25 @@ func TestGetUser(t *testing.T) {
 }
 ```
 
+### Schema introspection
+
+The `db` package wraps the `sqldb.Information` interface with top-level
+functions that follow the same `ctx`-first style as the rest of the
+package:
+
+```go
+tables, err := db.Tables(ctx)
+exists, err := db.TableExists(ctx, "public.user")
+cols,   err := db.Columns(ctx, "public.user")
+pk,     err := db.PrimaryKey(ctx, "public.user")
+fks,    err := db.ForeignKeys(ctx, "public.order")
+```
+
+Each helper resolves the connection from `ctx` exactly like every other
+`db.*` call, so introspection inside a transaction uses the transaction
+connection automatically. See [Schema introspection](../README.md#schema-introspection)
+on the parent README for the full method list and per-driver caveats.
+
 ## Function reference
 
 ### Setup and connection management
@@ -324,6 +343,29 @@ rows, err := db.QueryRowsAsMapSlice(ctx,
 | `ContextWithoutTransactions(ctx) context.Context` | Disable transaction handling for this context |
 | `IsContextWithoutTransactions(ctx) bool` | Check if transactions are disabled       |
 | `ContextWithSavepointFunc(ctx, func) context.Context` | Inject custom savepoint naming           |
+
+### Schema introspection
+
+Thin wrappers over the `sqldb.Information` interface implemented by every
+driver. Each function resolves the connection from `ctx` and forwards to
+the corresponding `Information` method; vendor-specific behavior and
+per-method semantics are documented on the interface and in each driver's
+README.
+
+| Function                                 | Description                              |
+| ---------------------------------------- | ---------------------------------------- |
+| `Schemas(ctx) ([]string, error)`         | Schema (or database, on MySQL/MariaDB) names visible to the connected user |
+| `CurrentSchema(ctx) (string, error)`     | Current default schema used to resolve unqualified identifiers |
+| `Tables(ctx, schema...) ([]string, error)` | Schema-qualified base table names, optionally filtered by schema |
+| `TableExists(ctx, table) (bool, error)`  | Whether a base table with the given name exists |
+| `Views(ctx, schema...) ([]string, error)` | Schema-qualified view names, optionally filtered by schema |
+| `ViewExists(ctx, view) (bool, error)`    | Whether a view with the given name exists |
+| `Columns(ctx, tableOrView) ([]ColumnInfo, error)` | Column metadata for a table or view in catalog order |
+| `ColumnExists(ctx, tableOrView, column) (bool, error)` | Whether a column exists on the given table or view |
+| `PrimaryKey(ctx, table) ([]string, error)` | Primary key column names in constraint-declaration order |
+| `ForeignKeys(ctx, table) ([]ForeignKeyInfo, error)` | Foreign key constraints declared on the given table |
+| `Routines(ctx, schema...) ([]string, error)` | Schema-qualified `name(argtypes)` signatures of stored functions and procedures |
+| `RoutineExists(ctx, routine) (bool, error)` | Whether a routine matches by signature (with parens) or by name (without) |
 
 ### Listen/Notify
 

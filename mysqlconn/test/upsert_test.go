@@ -1,6 +1,7 @@
 package mysqlconn
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -33,8 +34,9 @@ func createMySQLUpsertTable(t *testing.T, conn sqldb.Connection) {
 		)`,
 	)
 	require.NoError(t, err)
+	cleanupCtx := context.WithoutCancel(ctx)
 	t.Cleanup(func() {
-		conn.Exec(ctx, //nolint:errcheck
+		conn.Exec(cleanupCtx, //nolint:errcheck
 			/*sql*/ `DROP TABLE IF EXISTS test_upsert`,
 		)
 	})

@@ -62,14 +62,30 @@ empty `String` or nil `*int`.
 
 | Function                       | Works on                  | Caveats |
 | ------------------------------ | ------------------------- | ------- |
-| `GetTable`                     | PG, MySQL, MariaDB, MSSQL | On MySQL/MariaDB pass catalog `"def"`. Many returned struct fields scan empty on non-PG vendors. |
-| `TableExists`                  | PG, MySQL, MariaDB, MSSQL | Unqualified name matches across all schemas. |
-| `GetAllTables`                 | PG, MySQL, MariaDB, MSSQL | Same struct-field caveats as `GetTable`. |
-| `ColumnExists`                 | PG, MySQL, MariaDB, MSSQL | Unqualified table name matches across all schemas. |
+| `GetTable`                     | PG, MySQL, MariaDB, MSSQL | Returns rows for both base tables AND views (and on some vendors foreign tables, sequences, etc.) — check `Table.TableType` to distinguish. On MySQL/MariaDB pass catalog `"def"`. Many returned struct fields scan empty on non-PG vendors. |
+| `TableExists`                  | PG, MySQL, MariaDB, MSSQL | Returns true for tables AND views (per SQL standard). Unqualified name matches across all schemas. |
+| `GetAllTables`                 | PG, MySQL, MariaDB, MSSQL | Includes views and any other relation kinds the vendor exposes via `information_schema.tables`. Same struct-field caveats as `GetTable`. |
+| `ColumnExists`                 | PG, MySQL, MariaDB, MSSQL | Matches columns of base tables AND views (per SQL standard). Unqualified relation name matches across all schemas. |
 | `GetPrimaryKeyColumns`         | PG, MySQL, MariaDB, MSSQL | `Table` is composed in Go as `"schema.table"`. |
 | `GetPrimaryKeyColumnsOfType`   | PG, MySQL, MariaDB, MSSQL | `pkType` must match the vendor's `data_type` spelling. |
 | `GetTableRowsWithPrimaryKey`   | All vendors               | No `information_schema` reference; identifier and placeholder are formatted per driver. Requires `pkCols` populated for the vendor. |
 | `RenderUUIDPrimaryKeyRefsHTML` | PG (de facto)             | Filters `data_type = 'uuid'`; matches PG and MariaDB 10.7+. Other vendors return no rows. |
+
+### Tables vs. views
+
+`information_schema.tables` and `information_schema.columns` are defined by
+ISO/IEC 9075-11 to include rows for both base tables and views. Every
+vendor in the matrix above honors this. If you need to restrict to base
+tables only, filter on `Table.TableType` (or query
+`information_schema.tables.table_type` directly). Per-vendor enumerations
+verified against live servers:
+
+| Vendor      | `table_type` values                                                     |
+| ----------- | ----------------------------------------------------------------------- |
+| PostgreSQL  | `BASE TABLE`, `VIEW`, `FOREIGN`, `LOCAL TEMPORARY`                      |
+| MySQL       | `BASE TABLE`, `VIEW`, `SYSTEM VIEW`                                     |
+| MariaDB     | `BASE TABLE`, `VIEW`, `SYSTEM VIEW`, `SEQUENCE`, `TEMPORARY`, `SYSTEM VERSIONED` |
+| SQL Server  | `BASE TABLE`, `VIEW`                                                    |
 
 SQLite and Oracle are not supported by any helper that touches
 `information_schema`, because neither vendor exposes those views.
@@ -132,8 +148,9 @@ that motivated each choice:
    every query in this package fails on those drivers. SQLite uses
    `sqlite_schema` and `PRAGMA`; Oracle uses `USER_TABLES` /
    `ALL_TABLES`. Supporting them requires per-driver implementations
-   behind a small interface (the `SchemaInspector` design discussed in
-   the repo root) — not a SQL rewrite.
+   behind a small interface (the `sqldb.Information` surface in
+   `information.go`, embedded into `sqldb.Connection`) — not a SQL
+   rewrite.
 2. **Sparsely populated structs** — `Table`, `Column`, `View`, `Schema`,
    and `Domain` keep the full ISO column list. On MySQL/MariaDB and SQL
    Server many of those columns are absent from the underlying view, so

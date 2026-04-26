@@ -2,13 +2,34 @@ package oraconn
 
 import (
 	"context"
+	"errors"
+
+	"github.com/sijms/go-ora/v2/network"
 
 	"github.com/domonda/go-sqldb"
 )
 
+// errTableOrViewNotFound is ORA-00942 — the catalog reports a table or
+// view that no longer exists by the time we issue the ALTER/DROP.
+// Tolerated during DropAllTables because:
+//   - Oracle's recyclebin entries appear in user_tables and user_constraints
+//     but are sometimes purged between SELECT and DROP.
+//   - A previous test run that crashed mid-cleanup can leave constraints in
+//     user_constraints whose owning table is already gone.
+const errTableOrViewNotFound = 942
+
+// isTableOrViewNotFound reports whether err is ORA-00942.
+func isTableOrViewNotFound(err error) bool {
+	var oraErr *network.OracleError
+	return errors.As(err, &oraErr) && oraErr.ErrCode == errTableOrViewNotFound
+}
+
 // DropAllTables drops all user tables,
 // first removing all foreign key constraints to allow dropping
-// tables in any order.
+// tables in any order. Statements that target tables which have
+// already disappeared (ORA-00942) are silently ignored, so this can
+// be called against a database left in a partial state by a previous
+// crashed test run.
 // Use [DropAll] instead to drop every supported object type in the correct order.
 func DropAllTables(ctx context.Context, conn sqldb.Connection) error {
 	// Collect all foreign key constraints to drop first
@@ -37,16 +58,17 @@ func DropAllTables(ctx context.Context, conn sqldb.Connection) error {
 		return err
 	}
 	for _, stmt := range fkStmts {
-		if err := conn.Exec(ctx, stmt); err != nil {
+		if err := conn.Exec(ctx, stmt); err != nil && !isTableOrViewNotFound(err) {
 			return err
 		}
 	}
 
-	return execEachDrop(ctx, conn,
+	return execEachDropTolerant(ctx, conn,
 		/*sql*/ `SELECT table_name FROM user_tables`,
 		func(name string) string {
 			return /*sql*/ `DROP TABLE ` + EscapeIdentifier(name) + /*sql*/ ` CASCADE CONSTRAINTS`
 		},
+		isTableOrViewNotFound,
 	)
 }
 
@@ -170,6 +192,42 @@ func DropAll(ctx context.Context, conn sqldb.Connection) error {
 		return err
 	}
 	return DropAllSequences(ctx, conn)
+}
+
+// execEachDropTolerant is like [execEachDrop] but ignores any DROP
+// statement error for which tolerate returns true. Used to drop
+// tables/constraints that may have disappeared between the SELECT and
+// the DROP (ORA-00942).
+func execEachDropTolerant(
+	ctx context.Context,
+	conn sqldb.Connection,
+	selectQuery string,
+	toDropStmt func(name string) string,
+	tolerate func(error) bool,
+) error {
+	rows := conn.Query(ctx, selectQuery)
+	var stmts []string
+	for rows.Next() {
+		var name string
+		if err := rows.Scan(&name); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		stmts = append(stmts, toDropStmt(name))
+	}
+	if err := rows.Err(); err != nil {
+		_ = rows.Close()
+		return err
+	}
+	if err := rows.Close(); err != nil {
+		return err
+	}
+	for _, stmt := range stmts {
+		if err := conn.Exec(ctx, stmt); err != nil && !tolerate(err) {
+			return err
+		}
+	}
+	return nil
 }
 
 // execEachDrop runs selectQuery, scans a single string column from each row,
