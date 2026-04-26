@@ -118,6 +118,7 @@ func (refl *TaggedStructReflector) MapStructField(field reflect.StructField) (co
 	if column.Name == "" || column.Name == refl.Ignore {
 		return ColumnInfo{}, false
 	}
+	column.Type = field.Type.String()
 	return column, true
 }
 

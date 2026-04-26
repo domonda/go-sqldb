@@ -102,8 +102,8 @@ func flattenStructFields(reflector StructReflector, structType reflect.Type, par
 		if !use {
 			continue
 		}
-		if column.IsEmbeddedField() {
-			// Recurse into embedded struct
+		if column.Name == "" {
+			// Empty Name signals an embedded struct field — recurse into it.
 			embeddedFields := flattenStructFields(
 				reflector,
 				field.Type,

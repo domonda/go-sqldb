@@ -3,6 +3,7 @@ package sqldb
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -143,15 +144,15 @@ func TestTaggedStructReflector_MapStructField(t *testing.T) {
 		wantColumn  ColumnInfo
 		wantOk      bool
 	}{
-		{name: "index", structField: st.Field(0), wantColumn: ColumnInfo{Name: "index", PrimaryKey: true}, wantOk: true},
-		{name: "index_b", structField: st.Field(1), wantColumn: ColumnInfo{Name: "index_b", PrimaryKey: true}, wantOk: true},
-		{name: "named_str", structField: st.Field(2), wantColumn: ColumnInfo{Name: "named_str"}, wantOk: true},
-		{name: "read_only", structField: st.Field(3), wantColumn: ColumnInfo{Name: "read_only", ReadOnly: true}, wantOk: true},
-		{name: "untagged_field", structField: st.Field(4), wantColumn: ColumnInfo{Name: "untagged_field"}, wantOk: true},
+		{name: "index", structField: st.Field(0), wantColumn: ColumnInfo{Name: "index", Type: "int", PrimaryKey: true}, wantOk: true},
+		{name: "index_b", structField: st.Field(1), wantColumn: ColumnInfo{Name: "index_b", Type: "int", PrimaryKey: true}, wantOk: true},
+		{name: "named_str", structField: st.Field(2), wantColumn: ColumnInfo{Name: "named_str", Type: "string"}, wantOk: true},
+		{name: "read_only", structField: st.Field(3), wantColumn: ColumnInfo{Name: "read_only", Type: "bool", ReadOnly: true}, wantOk: true},
+		{name: "untagged_field", structField: st.Field(4), wantColumn: ColumnInfo{Name: "untagged_field", Type: "bool"}, wantOk: true},
 		{name: "ignore", structField: st.Field(5), wantColumn: ColumnInfo{}, wantOk: false},
-		{name: "pk_read_only", structField: st.Field(6), wantColumn: ColumnInfo{Name: "pk_read_only", PrimaryKey: true, ReadOnly: true}, wantOk: true},
-		{name: "no_flag", structField: st.Field(7), wantColumn: ColumnInfo{Name: "no_flag"}, wantOk: true},
-		{name: "malformed_flags", structField: st.Field(8), wantColumn: ColumnInfo{Name: "malformed_flags", ReadOnly: true}, wantOk: true},
+		{name: "pk_read_only", structField: st.Field(6), wantColumn: ColumnInfo{Name: "pk_read_only", Type: "int", PrimaryKey: true, ReadOnly: true}, wantOk: true},
+		{name: "no_flag", structField: st.Field(7), wantColumn: ColumnInfo{Name: "no_flag", Type: "bool"}, wantOk: true},
+		{name: "malformed_flags", structField: st.Field(8), wantColumn: ColumnInfo{Name: "malformed_flags", Type: "bool", ReadOnly: true}, wantOk: true},
 		{name: "Embedded", structField: st.Field(9), wantColumn: ColumnInfo{}, wantOk: true},
 	}
 	for _, tt := range tests {
@@ -197,9 +198,47 @@ func TestTaggedStructReflector_MapStructField_AllFlags(t *testing.T) {
 	col, use := r.MapStructField(st.Field(0))
 	require.True(t, use)
 	assert.Equal(t, "col", col.Name)
+	assert.Equal(t, "string", col.Type)
 	assert.True(t, col.PrimaryKey)
 	assert.True(t, col.ReadOnly)
 	assert.True(t, col.HasDefault)
+}
+
+// MyID exists at package scope so reflect.Type.String() reports its
+// fully-qualified name and not "struct{...}.MyID".
+type myID int64
+
+func TestTaggedStructReflector_MapStructField_TypeReflection(t *testing.T) {
+	r := NewTaggedStructReflector()
+
+	st := reflect.TypeFor[struct {
+		Plain   string    `db:"plain"`
+		Ptr     *string   `db:"ptr"`
+		Slice   []byte    `db:"slice"`
+		Time    time.Time `db:"created_at"`
+		PtrTime *time.Time `db:"updated_at"`
+		Named   myID      `db:"id"`
+	}]()
+
+	tests := []struct {
+		fieldIndex int
+		wantType   string
+	}{
+		{0, "string"},
+		{1, "*string"},
+		{2, "[]uint8"},
+		{3, "time.Time"},
+		{4, "*time.Time"},
+		{5, "sqldb.myID"},
+	}
+	for _, tt := range tests {
+		t.Run(st.Field(tt.fieldIndex).Name, func(t *testing.T) {
+			col, use := r.MapStructField(st.Field(tt.fieldIndex))
+			require.True(t, use)
+			assert.Equal(t, tt.wantType, col.Type,
+				"Type should be the reflect.Type.String() of the Go field type")
+		})
+	}
 }
 
 func TestTaggedStructReflector_MapStructField_UntaggedWithToSnakeCase(t *testing.T) {
