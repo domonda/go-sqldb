@@ -92,7 +92,7 @@ func TestNilReflector_QueryRowAsOr_StructPath_ReturnsError(t *testing.T) {
 	conn := NewMockConn(NewQueryFormatter("$")).
 		WithQueryResult([]string{"id", "name"}, [][]driver.Value{{int64(1), "alice"}}, "SELECT * FROM t")
 
-	_, err := QueryRowAsOr[nilReflTestRow](t.Context(), conn, nil, conn, nilReflTestRow{}, "SELECT * FROM t")
+	_, err := QueryRowAsOr(t.Context(), conn, nil, conn, nilReflTestRow{}, "SELECT * FROM t")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "nil StructReflector")
 }
@@ -207,7 +207,7 @@ func TestNilReflector_StructFunctions_AllReturnErrors(t *testing.T) {
 	})
 
 	t.Run("QueryRowStructOr", func(t *testing.T) {
-		_, err := QueryRowStructOr[nilReflTestRow](ctx, conn, nil, builder, conn, nilReflTestRow{}, 1)
+		_, err := QueryRowStructOr(ctx, conn, nil, builder, conn, nilReflTestRow{}, 1)
 		assertReturnsNilReflectorErr(t, "QueryRowStruct", err) // delegates to QueryRowStruct
 	})
 

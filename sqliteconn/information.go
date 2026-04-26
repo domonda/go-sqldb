@@ -51,8 +51,10 @@ func schemas(ctx context.Context, q sqldb.Connection) ([]string, error) {
 
 // currentSchema is always "main" on SQLite. There is no per-connection
 // default schema selector — unqualified names always resolve against
-// the temp/main databases in that order.
-func currentSchema(ctx context.Context, q sqldb.Connection) (string, error) {
+// the temp/main databases in that order. ctx and q are unused; the
+// signature matches the helper shape used by every other driver in
+// this file so it can be called from the same code paths.
+func currentSchema(_ context.Context, _ sqldb.Connection) (string, error) {
 	return "main", nil
 }
 
