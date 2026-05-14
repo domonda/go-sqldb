@@ -118,25 +118,48 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 	}
 	dest = dest.Elem()
 
-	// destPtr is a pointer to any type
+	// destPtr is a pointer to an interface type
 	if dest.Kind() == reflect.Interface {
-		if value != nil {
-			dest.Set(reflect.ValueOf(value)) // Assign any
-		} else {
+		if value == nil {
 			dest.SetZero() // Set nil
+			return nil
 		}
+		src := reflect.ValueOf(value)
+		if !src.Type().AssignableTo(dest.Type()) {
+			return fmt.Errorf("unable to scan %T into %s", value, dest.Type())
+		}
+		dest.Set(src)
 		return nil
+	}
+
+	// destPtr is a pointer to a pointer type:
+	// set nil for NULL, else allocate and scan through it
+	if dest.Kind() == reflect.Pointer {
+		if value == nil {
+			dest.SetZero()
+			return nil
+		}
+		if dest.IsNil() {
+			dest.Set(reflect.New(dest.Type().Elem()))
+		}
+		return ScanDriverValue(dest.Interface(), value)
 	}
 
 	switch src := value.(type) {
 	case int64:
 		switch dest.Kind() {
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			if dest.OverflowInt(src) {
+				return fmt.Errorf("int64 value %d overflows %s", src, dest.Type())
+			}
 			dest.SetInt(src)
 			return nil
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 			if src < 0 {
 				return fmt.Errorf("unable to scan negative int64 value %d into %s", src, dest.Type())
+			}
+			if dest.OverflowUint(uint64(src)) {
+				return fmt.Errorf("int64 value %d overflows %s", src, dest.Type())
 			}
 			dest.SetUint(uint64(src))
 			return nil
@@ -148,16 +171,33 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 	case float64:
 		switch dest.Kind() {
 		case reflect.Float32, reflect.Float64:
+			if dest.OverflowFloat(src) {
+				return fmt.Errorf("float64 value %g overflows %s", src, dest.Type())
+			}
 			dest.SetFloat(src)
 			return nil
 		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			dest.SetInt(int64(src))
+			i := int64(src)
+			if float64(i) != src {
+				return fmt.Errorf("float64 value %g cannot be scanned into %s without loss", src, dest.Type())
+			}
+			if dest.OverflowInt(i) {
+				return fmt.Errorf("float64 value %g overflows %s", src, dest.Type())
+			}
+			dest.SetInt(i)
 			return nil
 		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 			if src < 0 {
-				return fmt.Errorf("unable to scan negative float64 value %f into %s", src, dest.Type())
+				return fmt.Errorf("unable to scan negative float64 value %g into %s", src, dest.Type())
 			}
-			dest.SetUint(uint64(src))
+			u := uint64(src)
+			if float64(u) != src {
+				return fmt.Errorf("float64 value %g cannot be scanned into %s without loss", src, dest.Type())
+			}
+			if dest.OverflowUint(u) {
+				return fmt.Errorf("float64 value %g overflows %s", src, dest.Type())
+			}
+			dest.SetUint(u)
 			return nil
 		}
 
@@ -199,7 +239,7 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 			return nil
 		}
 		switch dest.Kind() {
-		case reflect.Pointer, reflect.Slice, reflect.Map:
+		case reflect.Slice, reflect.Map:
 			dest.SetZero()
 			return nil
 		}

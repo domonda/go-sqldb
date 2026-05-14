@@ -2,6 +2,8 @@ package sqldb
 
 import (
 	"database/sql"
+	"fmt"
+	"io"
 	"testing"
 	"time"
 )
@@ -357,6 +359,141 @@ func TestScanDriverValue_Errors(t *testing.T) {
 		err := ScanDriverValue(&dest, int64(1))
 		if err == nil {
 			t.Error("expected error for incompatible types")
+		}
+	})
+}
+
+func TestScanDriverValue_Int64Overflow(t *testing.T) {
+	t.Run("overflows int8", func(t *testing.T) {
+		var dest int8
+		if err := ScanDriverValue(&dest, int64(200)); err == nil {
+			t.Error("expected overflow error, got nil")
+		}
+	})
+	t.Run("overflows uint8", func(t *testing.T) {
+		var dest uint8
+		if err := ScanDriverValue(&dest, int64(256)); err == nil {
+			t.Error("expected overflow error, got nil")
+		}
+	})
+	t.Run("negative into unsigned", func(t *testing.T) {
+		var dest uint32
+		if err := ScanDriverValue(&dest, int64(-1)); err == nil {
+			t.Error("expected error for negative into unsigned, got nil")
+		}
+	})
+	t.Run("max int8 fits", func(t *testing.T) {
+		var dest int8
+		if err := ScanDriverValue(&dest, int64(127)); err != nil {
+			t.Fatal(err)
+		}
+		if dest != 127 {
+			t.Errorf("got %d, want 127", dest)
+		}
+	})
+}
+
+func TestScanDriverValue_Float64Loss(t *testing.T) {
+	t.Run("fractional into int", func(t *testing.T) {
+		var dest int
+		if err := ScanDriverValue(&dest, 3.5); err == nil {
+			t.Error("expected error scanning fractional float into int, got nil")
+		}
+	})
+	t.Run("fractional into uint", func(t *testing.T) {
+		var dest uint
+		if err := ScanDriverValue(&dest, 3.5); err == nil {
+			t.Error("expected error scanning fractional float into uint, got nil")
+		}
+	})
+	t.Run("overflows int8", func(t *testing.T) {
+		var dest int8
+		if err := ScanDriverValue(&dest, float64(1000)); err == nil {
+			t.Error("expected overflow error, got nil")
+		}
+	})
+	t.Run("negative into uint", func(t *testing.T) {
+		var dest uint
+		if err := ScanDriverValue(&dest, float64(-1)); err == nil {
+			t.Error("expected error for negative float into uint, got nil")
+		}
+	})
+	t.Run("overflows float32", func(t *testing.T) {
+		var dest float32
+		if err := ScanDriverValue(&dest, 1e300); err == nil {
+			t.Error("expected overflow error scanning into float32, got nil")
+		}
+	})
+	t.Run("whole float into int", func(t *testing.T) {
+		var dest int
+		if err := ScanDriverValue(&dest, float64(42)); err != nil {
+			t.Fatal(err)
+		}
+		if dest != 42 {
+			t.Errorf("got %d, want 42", dest)
+		}
+	})
+}
+
+func TestScanDriverValue_InterfaceDest_NonEmpty(t *testing.T) {
+	t.Run("not assignable returns error", func(t *testing.T) {
+		var dest io.Reader
+		err := ScanDriverValue(&dest, int64(1))
+		if err == nil {
+			t.Error("expected error scanning int64 into io.Reader, got nil")
+		}
+		if dest != nil {
+			t.Errorf("dest should remain nil, got %v", dest)
+		}
+	})
+	t.Run("assignable value is set", func(t *testing.T) {
+		var dest fmt.Stringer
+		src := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+		if err := ScanDriverValue(&dest, src); err != nil {
+			t.Fatal(err)
+		}
+		if dest == nil || dest.String() != src.String() {
+			t.Errorf("got %v, want %v", dest, src)
+		}
+	})
+}
+
+func TestScanDriverValue_PointerToPointer(t *testing.T) {
+	t.Run("nil pointer allocated and scanned", func(t *testing.T) {
+		var dest *string
+		if err := ScanDriverValue(&dest, "hello"); err != nil {
+			t.Fatal(err)
+		}
+		if dest == nil || *dest != "hello" {
+			t.Errorf("got %v, want \"hello\"", dest)
+		}
+	})
+	t.Run("existing pointer reused", func(t *testing.T) {
+		s := "old"
+		dest := &s
+		if err := ScanDriverValue(&dest, "new"); err != nil {
+			t.Fatal(err)
+		}
+		if dest != &s {
+			t.Error("expected existing pointer to be reused")
+		}
+		if *dest != "new" {
+			t.Errorf("got %q, want %q", *dest, "new")
+		}
+	})
+	t.Run("int64 into nil int pointer", func(t *testing.T) {
+		var dest *int64
+		if err := ScanDriverValue(&dest, int64(7)); err != nil {
+			t.Fatal(err)
+		}
+		if dest == nil || *dest != 7 {
+			t.Errorf("got %v, want 7", dest)
+		}
+	})
+	t.Run("incompatible value still errors", func(t *testing.T) {
+		var dest *bool
+		if err := ScanDriverValue(&dest, int64(1)); err == nil {
+			t.Error("expected error scanning int64 into *bool, got nil")
 		}
 	})
 }
