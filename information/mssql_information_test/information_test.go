@@ -68,7 +68,28 @@ func ensureTestDB() error {
 		/*sql*/ `IF NOT EXISTS (SELECT name FROM sys.databases WHERE name = '%s') CREATE DATABASE [%s]`,
 		dbName, dbName,
 	))
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Wait until testdb itself is connectable. waitForMSSQL only checks
+	// master, but after a container restart testdb can still be in
+	// recovery, and a freshly created database is not always immediately
+	// openable.
+	testDSN := fmt.Sprintf("sqlserver://%s:%s@%s:%d?database=%s&encrypt=disable",
+		mssqlUser, mssqlPassword, mssqlHost, mssqlPort, dbName)
+	for range 60 {
+		testDB, err := sql.Open("sqlserver", testDSN)
+		if err == nil {
+			err = testDB.Ping()
+			testDB.Close()
+			if err == nil {
+				return nil
+			}
+		}
+		time.Sleep(time.Second)
+	}
+	return fmt.Errorf("database %q not ready after 60 seconds", dbName)
 }
 
 func TestMain(m *testing.M) {
