@@ -119,6 +119,39 @@ type Connection interface {
 	Close() error
 }
 
+// ConnectionWithoutPlaceholderSubstitution returns a [Connection] that wraps
+// conn and overrides [QueryFormatter.SubstitutePlaceholders] to return the
+// query unchanged, keeping placeholders intact in error messages, logs, and
+// debugging output instead of substituting argument values. Use this to wrap
+// a [Connection] whose arguments may contain secrets that must not leak into
+// error logs, and pass the result to sqldb functions or to db.SetConn.
+//
+// The wrapper persists across [Connection.Begin] so that transactions
+// started from the wrapped connection inherit the no-substitution behavior.
+func ConnectionWithoutPlaceholderSubstitution(conn Connection) Connection {
+	return connectionWithoutPlaceholderSubstitution{Connection: conn}
+}
+
+type connectionWithoutPlaceholderSubstitution struct {
+	Connection
+}
+
+func (c connectionWithoutPlaceholderSubstitution) SubstitutePlaceholders(query string, args []any) (string, error) {
+	return query, nil
+}
+
+// Begin overrides the embedded Connection's Begin so the returned transaction
+// stays wrapped: without this override the wrapper would only protect queries
+// executed directly on it, while queries inside transactions would substitute
+// placeholders normally and could leak secrets to error messages and logs.
+func (c connectionWithoutPlaceholderSubstitution) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (Connection, error) {
+	tx, err := c.Connection.Begin(ctx, id, opts)
+	if err != nil {
+		return nil, err
+	}
+	return connectionWithoutPlaceholderSubstitution{Connection: tx}, nil
+}
+
 // ListenerConnection extends Connection with channel notification support.
 type ListenerConnection interface {
 	Connection

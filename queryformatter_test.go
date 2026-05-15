@@ -3,8 +3,51 @@ package sqldb
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestConnectionWithoutPlaceholderSubstitution(t *testing.T) {
+	base := NewMockConn(NewQueryFormatter("$"))
+
+	t.Run("base substitutes placeholders", func(t *testing.T) {
+		q, err := base.SubstitutePlaceholders("SELECT $1", []any{42})
+		require.NoError(t, err)
+		assert.Equal(t, "SELECT 42", q)
+	})
+
+	t.Run("wrapped connection keeps placeholders intact", func(t *testing.T) {
+		wrapped := ConnectionWithoutPlaceholderSubstitution(base)
+		q, err := wrapped.SubstitutePlaceholders("SELECT $1", []any{42})
+		require.NoError(t, err)
+		assert.Equal(t, "SELECT $1", q)
+	})
+
+	t.Run("non-formatter Connection methods pass through", func(t *testing.T) {
+		wrapped := ConnectionWithoutPlaceholderSubstitution(base)
+		// FormatPlaceholder is promoted from the embedded Connection.
+		assert.Equal(t, "$1", wrapped.FormatPlaceholder(0))
+	})
+
+	t.Run("Begin returns a wrapped transaction", func(t *testing.T) {
+		wrapped := ConnectionWithoutPlaceholderSubstitution(base)
+		tx, err := wrapped.Begin(t.Context(), 1, nil)
+		require.NoError(t, err)
+		// The returned transaction must keep placeholders intact, otherwise
+		// queries inside db.Transaction(...) would leak argument values
+		// into error messages and logs.
+		q, err := tx.SubstitutePlaceholders("SELECT $1", []any{42})
+		require.NoError(t, err)
+		assert.Equal(t, "SELECT $1", q)
+	})
+
+	t.Run("Begin error propagates", func(t *testing.T) {
+		wrapped := ConnectionWithoutPlaceholderSubstitution(base)
+		// id == 0 is rejected by MockConn.Begin.
+		_, err := wrapped.Begin(t.Context(), 0, nil)
+		require.Error(t, err)
+	})
+}
 
 func TestStdQueryFormatter_FormatTableName(t *testing.T) {
 	f := StdQueryFormatter{}
