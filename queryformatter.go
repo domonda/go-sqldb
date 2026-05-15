@@ -28,7 +28,16 @@ type QueryFormatter interface {
 	// MaxArgs returns the maximum number of query parameters
 	// supported by the database driver per query.
 	MaxArgs() int
+
+	// SubstitutePlaceholders substitutes argument placeholders in the query
+	// with formatted values, returning a human-readable SQL string.
+	// Intended for debugging or logging — not for execution.
+	// The implementation decides if any substitution is done
+	// or if the query is returned unchanged to not leak args to error logs.
+	SubstitutePlaceholders(query string, args []any) (string, error)
 }
+
+var _ QueryFormatter = StdQueryFormatter{}
 
 // StdQueryFormatter is a [QueryFormatter] implementation that validates
 // identifiers with a conservative regex ([a-zA-Z_][a-zA-Z0-9_]* with optional
@@ -51,6 +60,11 @@ type StdQueryFormatter struct {
 	//   SQL Server: @p1, @p2, ...
 	//   Oracle: :1, :2, ...
 	PlaceholderPosPrefix string
+
+	// DisableSubstitutePlaceholders if true, the query is
+	// returned unchanged from the SubstitutePlaceholders method
+	// disabling its default behavior of substituting placeholders with values.
+	DisableSubstitutePlaceholders bool
 }
 
 // NewQueryFormatter returns a [StdQueryFormatter] with the given `placeholderPosPrefix`.
@@ -95,4 +109,12 @@ func (StdQueryFormatter) FormatStringLiteral(str string) string {
 // MaxArgs implements the QueryFormatter interface.
 func (StdQueryFormatter) MaxArgs() int {
 	return 65535
+}
+
+// SubstitutePlaceholders implements the QueryFormatter interface.
+func (f StdQueryFormatter) SubstitutePlaceholders(query string, args []any) (string, error) {
+	if f.DisableSubstitutePlaceholders {
+		return query, nil
+	}
+	return SubstitutePlaceholders(f, query, args)
 }

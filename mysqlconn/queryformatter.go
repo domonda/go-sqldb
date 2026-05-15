@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/domonda/go-sqldb"
 )
 
 // MySQL identifier rules:
@@ -106,6 +108,8 @@ func EscapeIdentifier(ident string) string {
 // Uses backtick identifier quoting, ? placeholders, and backslash+quote escaping for strings.
 type QueryFormatter struct{}
 
+var _ sqldb.QueryFormatter = QueryFormatter{}
+
 // FormatTableName implements [sqldb.QueryFormatter.FormatTableName].
 func (QueryFormatter) FormatTableName(name string) (string, error) {
 	if !tableNameRegex.MatchString(name) {
@@ -165,4 +169,9 @@ func (QueryFormatter) FormatStringLiteral(str string) string {
 // MaxArgs implements [sqldb.QueryFormatter.MaxArgs].
 func (QueryFormatter) MaxArgs() int {
 	return 65535
+}
+
+// SubstitutePlaceholders implements [sqldb.QueryFormatter.SubstitutePlaceholders].
+func (f QueryFormatter) SubstitutePlaceholders(query string, args []any) (string, error) {
+	return sqldb.SubstitutePlaceholders(f, query, args)
 }

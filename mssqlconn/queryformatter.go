@@ -251,6 +251,8 @@ func EscapeIdentifier(ident string) string {
 // Uses bracket identifier escaping, @pN placeholders, and standard single-quote string literals.
 type QueryFormatter struct{}
 
+var _ sqldb.QueryFormatter = QueryFormatter{}
+
 // FormatTableName implements [sqldb.QueryFormatter.FormatTableName].
 func (QueryFormatter) FormatTableName(name string) (string, error) {
 	if !tableNameRegex.MatchString(name) {
@@ -283,4 +285,9 @@ func (QueryFormatter) FormatStringLiteral(str string) string {
 // MaxArgs implements [sqldb.QueryFormatter.MaxArgs].
 func (QueryFormatter) MaxArgs() int {
 	return 2100
+}
+
+// SubstitutePlaceholders implements [sqldb.QueryFormatter.SubstitutePlaceholders].
+func (f QueryFormatter) SubstitutePlaceholders(query string, args []any) (string, error) {
+	return sqldb.SubstitutePlaceholders(f, query, args)
 }

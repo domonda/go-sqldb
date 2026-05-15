@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/domonda/go-sqldb"
 )
 
 var (
@@ -25,6 +27,8 @@ func EscapeIdentifier(ident string) string {
 // [sqldb.StdQueryBuilder.UpdateColumns] can reference arguments by index
 // regardless of their order in the SQL statement.
 type QueryFormatter struct{}
+
+var _ sqldb.QueryFormatter = QueryFormatter{}
 
 // FormatTableName implements [sqldb.QueryFormatter.FormatTableName].
 // The name must match the regex
@@ -73,4 +77,9 @@ func (QueryFormatter) FormatStringLiteral(str string) string {
 // MaxArgs implements [sqldb.QueryFormatter.MaxArgs].
 func (QueryFormatter) MaxArgs() int {
 	return 32766
+}
+
+// SubstitutePlaceholders implements [sqldb.QueryFormatter.SubstitutePlaceholders].
+func (f QueryFormatter) SubstitutePlaceholders(query string, args []any) (string, error) {
+	return sqldb.SubstitutePlaceholders(f, query, args)
 }

@@ -134,6 +134,10 @@ func (conn *genericTx) MaxArgs() int {
 	return conn.parent.MaxArgs()
 }
 
+func (conn *genericTx) SubstitutePlaceholders(query string, args []any) (string, error) {
+	return conn.parent.SubstitutePlaceholders(query, args)
+}
+
 func (conn *genericTx) Close() error {
 	return conn.Rollback()
 }

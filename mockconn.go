@@ -239,6 +239,11 @@ func (c *MockConn) MaxArgs() int {
 	return c.getQueryFormatter().MaxArgs()
 }
 
+// SubstitutePlaceholders implements QueryFormatter.
+func (c *MockConn) SubstitutePlaceholders(query string, args []any) (string, error) {
+	return c.getQueryFormatter().SubstitutePlaceholders(query, args)
+}
+
 // Config implements Connection by returning MockConfig()
 // or a default Config with Driver "MockConn" if MockConfig is nil.
 func (c *MockConn) Config() *Config {
@@ -365,7 +370,7 @@ func (c *MockConn) Query(ctx context.Context, query string, args ...any) Rows {
 	}
 
 	if c.MockQuery == nil {
-		mockRows := c.MockQueryResults[queryData.Format(queryFormatter)]
+		mockRows := c.MockQueryResults[FormatQuery(queryFormatter, queryData.Query, queryData.Args...)]
 		if mockRows == nil {
 			return NewErrRows(fmt.Errorf("mock %w", sql.ErrNoRows))
 		}

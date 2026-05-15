@@ -226,7 +226,8 @@ type errWithQuery struct {
 func (e errWithQuery) Unwrap() error { return e.err }
 
 func (e errWithQuery) Error() string {
-	return fmt.Sprintf("%s from query: %s", e.err, FormatQuery(e.queryFmt, e.query, e.args...))
+	query := FormatQuery(e.queryFmt, e.query, e.args...)
+	return fmt.Sprintf("%s from query: %s", e.err, query)
 }
 
 // ErrMaxNumRowsExceeded is returned by the multi-row query functions
