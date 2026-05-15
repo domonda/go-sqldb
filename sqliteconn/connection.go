@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 	"time"
 
 	"zombiezen.com/go/sqlite"
@@ -17,6 +18,13 @@ import (
 
 // Driver is the database/sql driver name used for SQLite connections.
 const Driver = "sqlite"
+
+// DefaultBusyTimeoutMs is the default value applied to PRAGMA busy_timeout
+// when Config.Extra["busy_timeout"] is not set. SQLite's native default is 0,
+// which makes any contended write fail immediately with SQLITE_BUSY — a
+// footgun for the multi-process workloads that WAL mode is intended to
+// support. 5 seconds matches typical recommendations for desktop/server use.
+const DefaultBusyTimeoutMs = 5000
 
 // Connect establishes a new [sqldb.Connection] using the passed config
 // and zombiezen.com/go/sqlite as the underlying SQLite implementation.
@@ -60,6 +68,26 @@ func Connect(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error
 		if err := sqlitex.ExecuteTransient(conn, `PRAGMA query_only = ON`, nil); err != nil {
 			return nil, errors.Join(fmt.Errorf("failed to set read-only mode: %w", err), conn.Close())
 		}
+	}
+
+	// Set busy_timeout so that contended writes wait instead of failing
+	// immediately with SQLITE_BUSY. Override via Config.Extra["busy_timeout"]
+	// as a non-negative millisecond integer; 0 keeps SQLite's native
+	// "fail fast" behavior.
+	busyTimeoutMs := DefaultBusyTimeoutMs
+	if v, ok := config.Extra["busy_timeout"]; ok {
+		parsed, err := strconv.Atoi(v)
+		if err != nil {
+			return nil, errors.Join(fmt.Errorf("invalid busy_timeout %q: %w", v, err), conn.Close())
+		}
+		if parsed < 0 {
+			return nil, errors.Join(fmt.Errorf("invalid busy_timeout %d: must be >= 0", parsed), conn.Close())
+		}
+		busyTimeoutMs = parsed
+	}
+	err = sqlitex.ExecuteTransient(conn, fmt.Sprintf(`PRAGMA busy_timeout = %d`, busyTimeoutMs), nil)
+	if err != nil {
+		return nil, errors.Join(fmt.Errorf("failed to set busy_timeout: %w", err), conn.Close())
 	}
 
 	return &connection{

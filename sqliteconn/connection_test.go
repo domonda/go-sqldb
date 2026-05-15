@@ -57,6 +57,87 @@ func TestConnect(t *testing.T) {
 		require.NotNil(t, conn)
 		t.Cleanup(func() { conn.Close() })
 	})
+
+	t.Run("busy_timeout default applied", func(t *testing.T) {
+		config := &sqldb.Config{
+			Driver:   "sqlite",
+			Host:     "localhost",
+			Database: ":memory:",
+		}
+		conn, err := Connect(t.Context(), config)
+		require.NoError(t, err)
+		t.Cleanup(func() { conn.Close() })
+
+		assert.Equal(t, int64(DefaultBusyTimeoutMs), readBusyTimeout(t, conn))
+	})
+
+	t.Run("busy_timeout override via Extra", func(t *testing.T) {
+		config := &sqldb.Config{
+			Driver:   "sqlite",
+			Host:     "localhost",
+			Database: ":memory:",
+			Extra:    map[string]string{"busy_timeout": "1234"},
+		}
+		conn, err := Connect(t.Context(), config)
+		require.NoError(t, err)
+		t.Cleanup(func() { conn.Close() })
+
+		assert.Equal(t, int64(1234), readBusyTimeout(t, conn))
+	})
+
+	t.Run("busy_timeout zero accepted", func(t *testing.T) {
+		config := &sqldb.Config{
+			Driver:   "sqlite",
+			Host:     "localhost",
+			Database: ":memory:",
+			Extra:    map[string]string{"busy_timeout": "0"},
+		}
+		conn, err := Connect(t.Context(), config)
+		require.NoError(t, err)
+		t.Cleanup(func() { conn.Close() })
+
+		assert.Equal(t, int64(0), readBusyTimeout(t, conn))
+	})
+
+	t.Run("busy_timeout negative rejected", func(t *testing.T) {
+		config := &sqldb.Config{
+			Driver:   "sqlite",
+			Host:     "localhost",
+			Database: ":memory:",
+			Extra:    map[string]string{"busy_timeout": "-1"},
+		}
+		conn, err := Connect(t.Context(), config)
+		assert.Error(t, err)
+		assert.Nil(t, conn)
+		assert.Contains(t, err.Error(), "busy_timeout")
+	})
+
+	t.Run("busy_timeout non-numeric rejected", func(t *testing.T) {
+		config := &sqldb.Config{
+			Driver:   "sqlite",
+			Host:     "localhost",
+			Database: ":memory:",
+			Extra:    map[string]string{"busy_timeout": "5s"},
+		}
+		conn, err := Connect(t.Context(), config)
+		assert.Error(t, err)
+		assert.Nil(t, conn)
+		assert.Contains(t, err.Error(), "busy_timeout")
+	})
+
+	t.Run("busy_timeout default applied in read-only mode", func(t *testing.T) {
+		config := &sqldb.Config{
+			Driver:   "sqlite",
+			Host:     "localhost",
+			Database: ":memory:",
+			ReadOnly: true,
+		}
+		conn, err := Connect(t.Context(), config)
+		require.NoError(t, err)
+		t.Cleanup(func() { conn.Close() })
+
+		assert.Equal(t, int64(DefaultBusyTimeoutMs), readBusyTimeout(t, conn))
+	})
 }
 
 func TestMustConnect(t *testing.T) {
@@ -271,6 +352,16 @@ func TestDriverValuerAndSQLScanner(t *testing.T) {
 }
 
 // Helper functions
+
+func readBusyTimeout(t *testing.T, conn sqldb.Connection) int64 {
+	t.Helper()
+	rows := conn.Query(t.Context(), `PRAGMA busy_timeout`)
+	t.Cleanup(func() { rows.Close() })
+	require.True(t, rows.Next(), "PRAGMA busy_timeout returned no row")
+	var ms int64
+	require.NoError(t, rows.Scan(&ms))
+	return ms
+}
 
 func testConnection(t *testing.T) sqldb.Connection {
 	t.Helper()

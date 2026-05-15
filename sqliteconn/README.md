@@ -9,7 +9,7 @@ This package provides a native wrapper around zombiezen.com/go/sqlite that imple
 - Implements `sqldb.Connection` interface
 - `QueryBuilder` implements `sqldb.QueryBuilder`, `sqldb.UpsertQueryBuilder`, and `sqldb.ReturningQueryBuilder`
 - Automatic foreign key constraint enforcement
-- WAL mode enabled by default for better concurrency
+- Safe multi-process access by default: WAL journal mode and a 5-second `busy_timeout` are set on every connect (see [Process Concurrency](#process-concurrency))
 - Read-only mode support
 - Proper error wrapping for SQLite constraint violations
 
@@ -100,7 +100,16 @@ SQLite's default isolation level is serializable. The connection returns `sql.Le
 The connection automatically sets:
 - `PRAGMA foreign_keys = ON` - Enables foreign key constraints
 - `PRAGMA journal_mode = WAL` - Enables Write-Ahead Logging for better concurrency
+- `PRAGMA busy_timeout = 5000` - Waits up to 5 seconds (`sqliteconn.DefaultBusyTimeoutMs`) on lock contention before returning `SQLITE_BUSY`. Override with `Config.Extra["busy_timeout"]` as a non-negative millisecond integer (`"0"` keeps SQLite's native fail-fast behavior).
 - `PRAGMA query_only = ON` - For read-only connections
+
+```go
+config := &sqldb.Config{
+    Driver:   "sqlite",
+    Database: "myapp.db",
+    Extra:    map[string]string{"busy_timeout": "10000"}, // wait up to 10s on lock contention
+}
+```
 
 ### Constraint Violations
 
@@ -117,6 +126,23 @@ The connection automatically sets:
 - [ ] `ErrRaisedException`
 - [ ] `ErrQueryCanceled`
 - [ ] `ErrNullValueNotAllowed`
+
+### Process Concurrency
+
+The same database file can be opened from multiple OS processes at once. Coordination is handled by SQLite's VFS using OS-level file locks (`fcntl` on Unix, `LockFileEx` on Windows) — `modernc.org/sqlite`, the engine underneath `zombiezen.com/go/sqlite`, uses the standard SQLite VFS, so multi-process semantics match upstream SQLite exactly.
+
+What `Connect` does for you:
+
+- **WAL is on** (`PRAGMA journal_mode = WAL`). Readers do not block writers and writers do not block readers — only writers serialize against each other. The WAL file (`<db>-wal`) and shared-memory file (`<db>-shm`) live next to the database file; all participating processes must have read/write access to the directory.
+- **`busy_timeout = 5000` is on**. When two processes contend for the write lock, the loser waits up to 5 seconds for the lock to free instead of returning `SQLITE_BUSY` immediately. Tune via `Config.Extra["busy_timeout"]` (milliseconds). Set `"0"` to restore fail-fast behavior, e.g. in tests.
+
+What you should know:
+
+- **Transaction mode and write contention.** `Begin` issues `BEGIN DEFERRED` by default and upgrades to `BEGIN IMMEDIATE` only when `sql.TxOptions.Isolation >= sql.LevelReadCommitted`. A deferred transaction that starts as a reader and then issues its first `INSERT`/`UPDATE`/`DELETE` may fail with `SQLITE_BUSY_SNAPSHOT` if another process committed in the meantime — and this kind of busy error is **not** retried by `busy_timeout`. For write-heavy multi-process workloads, prefer passing `&sql.TxOptions{Isolation: sql.LevelSerializable}` (or any level `>= sql.LevelReadCommitted`) to take the write lock up front via `BEGIN IMMEDIATE`.
+- **Shared-cache is not enabled** (no `OpenSharedCache` flag, no `sqlite3_enable_shared_cache()` call). Shared-cache is a within-process optimization and has no effect on multi-process access regardless of the setting; upstream SQLite recommends WAL over shared-cache anyway.
+- **Filesystem requirements.** WAL relies on shared-memory-style coordination (`mmap` of the `-shm` file). It works on local filesystems but is **not safe on NFS or other network filesystems**. Use a local volume or fall back to a non-WAL journal mode on networked storage.
+- **One write at a time.** WAL allows many concurrent readers but still only one writer at a time across all processes. If your workload is dominated by writes from multiple processes, expect queueing — `busy_timeout` makes that queueing graceful rather than visible as errors.
+- **Detecting timeout exhaustion.** When `busy_timeout` is exhausted (or set to `0`), operations return an error matching `sqliteconn.IsDatabaseLocked`. Use that to decide whether to retry at the application layer.
 
 ### Limitations
 

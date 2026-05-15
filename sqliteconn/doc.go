@@ -30,7 +30,25 @@ Basic usage:
 The connection automatically:
   - Enables foreign key constraints (PRAGMA foreign_keys = ON)
   - Enables WAL mode for better concurrency (PRAGMA journal_mode = WAL)
+  - Sets PRAGMA busy_timeout = DefaultBusyTimeoutMs (5000 ms) — override via
+    Config.Extra["busy_timeout"] as a non-negative millisecond integer; "0"
+    restores SQLite's native fail-fast behavior
   - Sets query_only mode when Config.ReadOnly is true
+
+Multi-process access:
+
+The same database file may be opened from multiple processes. Inter-process
+coordination uses the standard SQLite VFS file-locking primitives (fcntl on
+Unix, LockFileEx on Windows). With WAL enabled, readers and writers do not
+block each other; only writers serialize against each other across processes.
+busy_timeout makes contended writes wait instead of failing immediately.
+
+Caveats: WAL is not safe on NFS or other network filesystems — use a local
+filesystem. Begin uses BEGIN DEFERRED unless sql.TxOptions.Isolation is
+>= sql.LevelReadCommitted; for write-heavy multi-process workloads, request
+that isolation level so the write lock is acquired up front via BEGIN
+IMMEDIATE. Errors from exhausted busy_timeout match sqliteconn.IsDatabaseLocked.
+See sqliteconn/README.md for details.
 
 SQLite-specific features:
   - Default isolation level is sql.LevelSerializable
