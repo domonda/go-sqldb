@@ -6,6 +6,7 @@
 
 - [Philosophy](#philosophy)
 - [Security model](#security-model)
+  - [Redacting secret arguments in logs and errors](#redacting-secret-arguments-in-logs-and-errors)
 - [Database drivers](#database-drivers)
   - [Feature matrix](#feature-matrix)
 - [Query builders](#query-builders)
@@ -107,6 +108,65 @@ regex and escape the result using the vendor-specific quoting scheme.
 `Values` map keys and `db:"..."` struct tags become column identifiers and
 must therefore also be static strings chosen by the developer, not values
 derived from external input.
+
+### Redacting secret arguments in logs and errors
+
+Query arguments flow into the result of `FormatQuery` whenever an
+error is wrapped via `WrapErrorWithQuery`. Anything that ends up in
+the error string can land in logs. Two layers are provided so secret
+arguments (passwords, API keys, tokens, PII) never appear there.
+
+**`KeepSecret` (recommended, per-argument):** wrap individual args.
+`FormatValue` substitutes a redacted string instead of the value, so
+the protection holds in every code path that formats queries,
+including inside `db.Transaction(...)` and across driver wrappers:
+
+```go
+err := db.Exec(ctx,
+    /*sql*/ `UPDATE public.user SET password_hash = $1 WHERE id = $2`,
+    sqldb.KeepSecret(passwordHash), // $1
+    userID,                          // $2
+)
+// error message: ... from query: UPDATE public.user
+//                 SET password_hash = '***REDACTED***' WHERE id = '...'
+```
+
+A `KeepSecret`-wrapped value still passes through `driver.Valuer` /
+`sql.Scanner` to the driver, so the database sees the real value.
+
+`sqldb.Secret` currently shares the same interface shape as
+[`errs.Secret`][go-errs-secret] from
+[github.com/domonda/go-errs](https://github.com/domonda/go-errs) — both
+expose `Secret() any` plus a redacted `String()`, so a value produced by
+`sqldb.KeepSecret` is currently compatible anywhere `errs.Secret` is
+expected (error messages, pretty-printed call stacks). go-sqldb does not
+import go-errs, so this compatibility is by convention rather than
+compile-checked. `errs.KeepSecret` values do not implement
+`driver.Valuer` / `sql.Scanner` and so cannot be passed directly as
+query arguments; use `sqldb.KeepSecret` for that.
+
+[go-errs-secret]: https://pkg.go.dev/github.com/domonda/go-errs#Secret
+
+**`ConnectionWithoutPlaceholderSubstitution` (connection-wide):** wrap
+the whole connection so placeholders stay literal in formatted output.
+Use when the same connection always carries secret args and you want
+belt-and-braces coverage. The wrapper persists across `Connection.Begin`,
+so transactions started from it inherit the no-substitution behaviour.
+
+```go
+conn := pqconn.MustOpen(cfg)
+db.SetConn(sqldb.ConnectionWithoutPlaceholderSubstitution(conn))
+// errors now read: ... from query: UPDATE public.user
+//                  SET password_hash = $1 WHERE id = $2
+```
+
+`KeepSecret` is the primary defense and works without any setup; the
+wrapper is defense-in-depth for connections that may carry secret args.
+Implementing a custom `QueryFormatter` must include
+`SubstitutePlaceholders(query, args) (string, error)` — the shared
+helper `sqldb.SubstitutePlaceholders(f, query, args)` covers the
+standard case, and `StdQueryFormatter.DisableSubstitutePlaceholders`
+toggles it off without writing a wrapper.
 
 ## Database drivers
 

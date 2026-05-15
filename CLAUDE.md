@@ -17,6 +17,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Query Building**: Flexible query construction with struct mapping
 - **Transaction Management**: Nested transactions with savepoint support
 - **Schema Introspection**: Two layers. The high-level `sqldb.Information` interface (`information.go`) is embedded into `Connection` and provides vendor-portable methods (`Schemas`, `Tables`, `Views`, `Columns`, `PrimaryKey`, `ForeignKeys`, `Routines`, plus `*Exists` variants). Each driver implements it against its native catalog (`pg_catalog`, `information_schema`, `sys.*`, `sqlite_schema` + `PRAGMA`, or Oracle's `ALL_*` views). The lower-level `information/` subpackage queries ISO `information_schema` views directly with typed structs — use it when you need raw catalog rows on PG/MySQL/MariaDB/MSSQL.
+- **Argument Redaction**: `sqldb.Secret` / `sqldb.KeepSecret` redact individual args in formatted queries (used by `FormatValue` so error messages built via `WrapErrorWithQuery` never leak secrets). `sqldb.ConnectionWithoutPlaceholderSubstitution` wraps a `Connection` so placeholders stay literal connection-wide, including across `Begin`. See README "Redacting secret arguments in logs and errors". Any custom `QueryFormatter` implementation must provide `SubstitutePlaceholders(query, args) (string, error)`.
 
 ### Key Design Patterns
 
