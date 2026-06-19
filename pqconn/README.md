@@ -29,6 +29,28 @@ Set `config.ReadOnly = true` to open a connection with `default_transaction_read
 
 The connection supports PostgreSQL `LISTEN`/`NOTIFY` via `ListenOnChannel`, `UnlistenChannel`, and `IsListeningOnChannel`. Listeners are shared per connection URL and automatically reconnect with channel resubscription, so no notifications are lost after a connection drop. Calling `ListenOnChannel` multiple times for the same channel adds additional callbacks. `UnlistenChannel` removes all callbacks for the channel.
 
+## Pinned Connections
+
+The connection implements `sqldb.ConnPinner`. `Conn(ctx)` checks out one dedicated session from the pool (via `database/sql`'s own `(*sql.DB).Conn`) and returns a `sqldb.Connection` pinned to it. Every query then runs on the same underlying `*sql.Conn`, and `database/sql` does not reap checked-out sessions (`ConnMaxLifetime` / `ConnMaxIdleTime` don't apply), so it is the right primitive for session-scoped state such as `pg_advisory_lock`, `SET SESSION ...`, or temporary tables. `Close` returns the session to the pool — it does not close the underlying `*sql.DB`.
+
+```go
+pinned, err := conn.(sqldb.ConnPinner).Conn(ctx)
+if err != nil {
+    return err
+}
+defer pinned.Close()
+
+if err := pinned.Exec(ctx, /*sql*/ `SELECT pg_advisory_lock($1)`, lockID); err != nil {
+    return err
+}
+defer pinned.Exec(ctx, /*sql*/ `SELECT pg_advisory_unlock($1)`, lockID)
+// ... session-scoped work on pinned ...
+```
+
+A pinned connection is not itself a transaction (`Commit`/`Rollback` return `sqldb.ErrNotWithinTransaction`), but `Begin` starts a real transaction on the same pinned session.
+
+Only the pool-backed connection implements `ConnPinner`. A `pqconn` transaction is deliberately not a `ConnPinner` — it is already bound to a single session — so `sqldb.PinConn` on a transaction returns `sqldb.ErrWithinTransaction` instead of checking out an unrelated pool session. Prefer the `db.PinnedConn` / `sqldb.PinConn` helpers over a raw type assertion; both handle the unsupported and within-transaction cases for you.
+
 ## Error Inspection
 
 PostgreSQL error codes are wrapped into typed `sqldb` errors. Helper functions check specific error classes:

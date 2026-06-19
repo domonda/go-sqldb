@@ -82,6 +82,23 @@ err := db.Transaction(ctx, func(ctx context.Context) error {
 
 Nested `Transaction` calls reuse the parent transaction (no additional BEGIN/COMMIT). Use `IsolatedTransaction` to force a new transaction even when already inside one.
 
+### Pinned connections
+
+`db.PinnedConn` pins the context connection to one dedicated database session for the duration of a callback, so session-scoped state (PostgreSQL `pg_advisory_lock`, `SET SESSION ...`, temporary tables) lives and dies on a single session. The session is returned to the pool when the callback returns, even on panic:
+
+```go
+err := db.PinnedConn(ctx, func(ctx context.Context) error {
+    if err := db.Exec(ctx, `SELECT pg_advisory_lock($1)`, lockID); err != nil {
+        return err
+    }
+    defer db.Exec(ctx, `SELECT pg_advisory_unlock($1)`, lockID)
+    // ... work on the pinned session; a nested db.Transaction inherits it ...
+    return nil
+})
+```
+
+An existing transaction or already-pinned connection is passed through unchanged (both are already bound to one session), so the callback always runs. Use `db.PinnedConnResult` to return a value. Outside a transaction, `db.PinnedConn` returns an error wrapping `errors.ErrUnsupported` on `sqliteconn`, which has no connection pool.
+
 ### Multi-column queries
 
 When a query returns a fixed number of scalar columns, use `QueryRowAs2` through `QueryRowAs5` to scan them into separate typed variables without defining a struct:
@@ -343,6 +360,13 @@ rows, err := db.QueryRowsAsMapSlice(ctx,
 | `ContextWithoutTransactions(ctx) context.Context` | Disable transaction handling for this context |
 | `IsContextWithoutTransactions(ctx) bool` | Check if transactions are disabled       |
 | `ContextWithSavepointFunc(ctx, func) context.Context` | Inject custom savepoint naming           |
+
+### Pinned connections
+
+| Function                                 | Description                              |
+| ---------------------------------------- | ---------------------------------------- |
+| `PinnedConn(ctx, pinnedFunc) error`      | Run a callback with the context connection pinned to one dedicated session (for session-scoped state like `pg_advisory_lock`); passes an existing transaction or pinned connection through unchanged |
+| `PinnedConnResult[T](ctx, pinnedFunc) (T, error)` | Pinned-session callback returning a value |
 
 ### Schema introspection
 

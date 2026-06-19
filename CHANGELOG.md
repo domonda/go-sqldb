@@ -12,6 +12,39 @@ The driver sub-modules (`pqconn`, `mysqlconn`, `mssqlconn`, `sqliteconn`,
 `oraconn`) are tagged separately as `<module>/vX.Y.Z` and released in lockstep
 with the root module.
 
+## [v1.4.0] - 2026-06-19
+
+Pin a connection to one backend session for session-scoped state like
+PostgreSQL `pg_advisory_lock`.
+
+[Diff](https://github.com/domonda/go-sqldb/compare/v1.3.1...v1.4.0)
+
+### Added
+
+- `sqldb.ConnPinner` interface and `sqldb.PinConn(ctx, conn)` helper check out
+  one dedicated session from the pool and return a `sqldb.PinnedConnection`
+  pinned to it for the lifetime of the value. Every query runs on the same
+  `*sql.Conn`, and `database/sql` does not reap checked-out sessions
+  (`ConnMaxLifetime` / `ConnMaxIdleTime` don't apply), so it is the right
+  primitive for session-scoped state such as `pg_advisory_lock`,
+  `SET SESSION ...`, and temporary tables. `Close` returns the session to the
+  pool; `Begin` starts a real transaction on the same pinned session. `PinConn`
+  on a transaction returns `ErrWithinTransaction`, and wraps
+  `errors.ErrUnsupported` when the driver has no pool. (`561b194`)
+- `db.PinnedConn` / `db.PinnedConnResult[T]` run a callback with the context
+  connection pinned to one session, then return it to the pool even on panic.
+  An existing transaction or already-pinned connection is passed through
+  unchanged, and a nested `db.Transaction` begins on and inherits the pinned
+  session. (`561b194`)
+- `sqldb.ConnPinner` implemented by `pqconn`, `mysqlconn`, `mssqlconn`, and
+  `oraconn`. `sqliteconn` does not implement it, having no connection pool.
+  (`561b194`)
+
+### For contributors
+
+- `test-workspace.sh` passes `-quiet` to gosec, so a clean run produces no
+  output. (`1a387da`)
+
 ## [v1.3.1] - 2026-06-19
 
 Hardened, standard-library-faithful value scanning.
@@ -250,6 +283,7 @@ connection management (`db` package), struct-to-row mapping, the PostgreSQL
 (`sqliteconn`) drivers, the `mockconn` test driver (`MockRows`,
 `MockStructRows`), and the `ErrQueryCanceled` sentinel.
 
+[v1.4.0]: https://github.com/domonda/go-sqldb/releases/tag/v1.4.0
 [v1.3.1]: https://github.com/domonda/go-sqldb/releases/tag/v1.3.1
 [v1.3.0]: https://github.com/domonda/go-sqldb/releases/tag/v1.3.0
 [v1.2.0]: https://github.com/domonda/go-sqldb/releases/tag/v1.2.0

@@ -147,6 +147,7 @@ What you should know:
 ### Limitations
 
 - **No LISTEN/NOTIFY**: SQLite does not support PostgreSQL's LISTEN/NOTIFY functionality. Calling these methods will return an error.
+- **No pinned connections**: `sqliteconn` does not implement `sqldb.ConnPinner`. There is no connection pool — the single underlying connection is already one fixed session — so session-scoped state already persists across calls without pinning. `sqldb.PinConn` returns an error wrapping `errors.ErrUnsupported`, as does `db.PinnedConn` outside a transaction; inside an existing transaction `db.PinnedConn` simply runs the callback unchanged, since the transaction is already bound to one session.
 - **Placeholder Syntax**: Uses `?1`, `?2`, ... positional placeholders (SQLite numbered parameters). This is required so that query builders can reference arguments by index regardless of their order in the SQL statement.
 
 ## Schema introspection

@@ -17,6 +17,7 @@ const Driver = "oracle"
 
 // Connect establishes a new [sqldb.Connection] using the passed config
 // and github.com/sijms/go-ora/v2 as driver implementation.
+// The returned connection also implements [sqldb.ConnPinner].
 // The connection is pinged with the passed context and only returned
 // when there was no error from the ping.
 //

@@ -27,7 +27,7 @@ for dir in $MODULES; do
 done
 for dir in $MODULES; do
   case "$dir" in */examples/*) continue ;; esac
-  (cd "$dir" && go tool gosec ./...)
+  (cd "$dir" && go tool gosec -quiet ./...)
 done
 
 echo ""

@@ -3,6 +3,8 @@ package sqldb
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"fmt"
 	"time"
 )
 
@@ -116,6 +118,10 @@ type Connection interface {
 
 	// Close the connection.
 	// Transactions will be rolled back.
+	//
+	// A [PinnedConnection] (returned by [ConnPinner.Conn]) overrides this to
+	// return its dedicated session to the pool instead of closing the
+	// underlying *sql.DB or rolling back; see [PinnedConnection].
 	Close() error
 }
 
@@ -150,6 +156,74 @@ func (c connectionWithoutPlaceholderSubstitution) Begin(ctx context.Context, id 
 		return nil, err
 	}
 	return connectionWithoutPlaceholderSubstitution{Connection: tx}, nil
+}
+
+// ConnPinner is implemented by Connections that can check out one dedicated
+// session pinned for the lifetime of the returned Connection. Every query runs
+// on the same underlying *sql.Conn, and database/sql does NOT reap checked-out
+// connections (ConnMaxLifetime/ConnMaxIdleTime don't apply). Close() returns it
+// to the pool. Required for session-scoped state like pg_advisory_lock that must
+// live and die on one session.
+//
+// Not every driver implements ConnPinner, so type-assert at the call site
+// (the same pattern as [UpsertQueryBuilder] and [ReturningQueryBuilder]):
+//
+//	if pinner, ok := conn.(sqldb.ConnPinner); ok {
+//		pinned, err := pinner.Conn(ctx)
+//		// ...
+//		defer pinned.Close() // returns the session to the pool
+//	}
+type ConnPinner interface {
+	// Conn checks out a dedicated session from the pool and returns a
+	// [PinnedConnection] pinned to it for the lifetime of the returned value.
+	// The caller must Close the returned Connection to return the
+	// session to the pool.
+	//
+	// Any transaction started with Begin on the returned Connection must be
+	// committed or rolled back before Close. Closing while a transaction is
+	// still open returns the session to the pool with the transaction still
+	// holding it, leaking the session (and any locks or temporary state on
+	// it) until its context is canceled or it is garbage collected.
+	Conn(ctx context.Context) (PinnedConnection, error)
+}
+
+// PinConn checks out one dedicated session from conn and returns a
+// [PinnedConnection] pinned to it for the lifetime of the returned value, by
+// type-asserting conn to [ConnPinner]. The caller must Close the returned
+// Connection to return the session to the pool.
+//
+// PinConn returns [ErrWithinTransaction] if conn is already within a
+// transaction: a transaction is already bound to a single session, and checking
+// out a new pool session inside it would silently run on an unrelated session
+// (a different backend that does not see the transaction's uncommitted changes
+// or hold its locks). To run statements on the transaction's own session, use
+// conn directly. PinConn returns an error wrapping [errors.ErrUnsupported] if
+// conn's driver does not implement [ConnPinner] (the pqconn, mysqlconn,
+// mssqlconn, and oraconn drivers do; sqliteconn does not, having no pool).
+func PinConn(ctx context.Context, conn Connection) (PinnedConnection, error) {
+	if conn.Transaction().Active() {
+		return nil, fmt.Errorf("PinConn: %w", ErrWithinTransaction)
+	}
+	pinner, ok := conn.(ConnPinner)
+	if !ok {
+		return nil, fmt.Errorf("PinConn: connection type %T does not implement sqldb.ConnPinner: %w", conn, errors.ErrUnsupported)
+	}
+	return pinner.Conn(ctx)
+}
+
+// PinnedConnection is implemented by the Connection returned from
+// [ConnPinner.Conn]: a connection already pinned to a single dedicated session.
+// It is a marker that lets helpers recognize an already-pinned connection and
+// pass it through unchanged instead of checking out a second, unrelated pool
+// session. A pinned connection deliberately does NOT implement [ConnPinner], so
+// it cannot be pinned again; the marker is how callers tell "already pinned"
+// apart from "driver does not support pinning".
+type PinnedConnection interface {
+	Connection
+
+	// IsPinnedConnection is a marker method that always returns true. It
+	// identifies a Connection already pinned to a single dedicated session.
+	IsPinnedConnection() bool
 }
 
 // ListenerConnection extends Connection with channel notification support.
