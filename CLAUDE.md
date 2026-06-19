@@ -2,11 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Version Control
-
-- **NEVER** create a git commit without permission
-- **NEVER** git push
-
 ## Architecture Overview
 
 ### Core Components
@@ -153,3 +148,36 @@ Per-driver caveats live in each driver's README (`pqconn/`, `mysqlconn/`,
 `mssqlconn/`, `sqliteconn/`, `oraconn/`). The lower-level
 `information/` subpackage offers typed `information_schema` row structs
 for PG/MySQL/MariaDB/MSSQL when raw catalog rows are needed.
+
+## gstack Skill Routing
+
+This repo is a Go library/backend with no web UI, so gstack's browser, design,
+QA, and iOS skills generally don't apply here. The skills below do — invoke them
+as slash commands (e.g. `/review`). When several fit, prefer the narrowest one.
+
+| When you want to…                        | gstack skill                        |
+| ---------------------------------------- | ----------------------------------- |
+| Reframe the problem before coding        | `/office-hours`                     |
+| Turn vague intent into a spec            | `/spec`                             |
+| Get a fully reviewed plan in one pass    | `/autoplan`                         |
+| Targeted plan-stage review               | `/plan-{ceo,eng,design}-review`     |
+| Hunt production bugs, auto-fix easy ones | `/review`                           |
+| Root-cause a bug methodically            | `/investigate`                      |
+| Security audit (OWASP + STRIDE)          | `/cso`                              |
+| Independent cross-model second opinion   | `/codex`                            |
+| Code-quality score and trend             | `/health`                           |
+| Run tests, push, open a PR               | `/ship`                             |
+| Merge PR, deploy, verify prod            | `/land-and-deploy`                  |
+| Update docs to match what shipped        | `/document-release`                 |
+| Generate Diataxis docs for a feature     | `/document-generate`                |
+| Diagram from an English description      | `/diagram`                          |
+| Markdown to a publication-quality PDF    | `/make-pdf`                         |
+| Save / restore working context           | `/context-save`, `/context-restore` |
+| Manage cross-session learnings           | `/learn`                            |
+| Weekly engineering retro                 | `/retro`                            |
+| Guard destructive cmds / lock edits      | `/careful`, `/freeze`, `/guard`     |
+| Update gstack itself                     | `/gstack-upgrade`                   |
+
+gstack's `/review`, `/investigate`, `/cso`, and `/codex` are distinct from the
+built-in `/code-review` and `/security-review` commands — use whichever the
+user names explicitly.
