@@ -48,6 +48,7 @@
   - [Integration tests](#integration-tests)
     - [Shared test suite (`conntest`)](#shared-test-suite-conntest)
 - [History](#history)
+- [Versioning](#versioning)
 - [License](#license)
 
 ## Philosophy
@@ -1170,6 +1171,15 @@ This package started out as an extension wrapper of [github.com/jmoiron/sqlx](ht
 It has been used and refined for years in production by [domonda](https://domonda.com) using the database driver [github.com/lib/pq](https://github.com/lib/pq).
 
 The design patterns evolved mostly through discovery led by the desire to minimize boilerplate code while maintaining the full power of SQL.
+
+## Versioning
+
+Releases follow the [Go module versioning](https://go.dev/ref/mod#versions)
+scheme: a `v` prefix and three [semver](https://semver.org/spec/v2.0.0.html)
+numbers (`vMAJOR.MINOR.PATCH`). The current version is recorded in the
+[`VERSION`](VERSION) file, and every release is documented in
+[`CHANGELOG.md`](CHANGELOG.md). The driver sub-modules are tagged as
+`<module>/vX.Y.Z` and released in lockstep with the root module.
 
 ## License
 
