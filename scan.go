@@ -1,11 +1,12 @@
 package sqldb
 
 import (
+	"bytes"
 	"database/sql"
 	"database/sql/driver"
-	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"time"
 	"unicode/utf8"
 )
@@ -102,17 +103,53 @@ func ScanConvertValueOrUnchanged(value any, converters ...ScanConverter) any {
 	return value
 }
 
-// ScanDriverValue scans a [driver.Value] into destPtr.
+// ScanDriverValue scans the [driver.Value] value into destPtr,
+// converting it to the destination type on a best-effort basis.
+//
+// destPtr must be a non-nil pointer. The conversions mirror those of the
+// standard library database/sql package as closely as possible:
+//
+//   - If destPtr implements [sql.Scanner] its Scan method is used.
+//   - If destPtr implements decimalCompose and value implements
+//     decimalDecompose the decimal value is composed directly.
+//   - Pointers are followed: a nil value sets the pointer to nil, otherwise
+//     a new value is allocated and scanned through.
+//   - int64 and float64 values are converted between integer, unsigned and
+//     floating point destinations with overflow and loss-of-precision checks.
+//   - int64 and float64 values of 0 or 1 convert to bool.
+//   - bool, int64, float64 and time.Time values can be formatted into string
+//     and []byte destinations; string and []byte values can be parsed into
+//     bool, integer, unsigned and floating point destinations.
+//   - time.Time is formatted with [time.RFC3339Nano] for string and []byte
+//     destinations.
+//   - []byte values are cloned when assigned to a []byte or any destination
+//     because the driver may reuse the backing array after the call.
+//   - A nil value calls SetNull if destPtr implements interface{ SetNull() },
+//     otherwise it sets slice and map destinations to nil.
 func ScanDriverValue(destPtr any, value driver.Value) error {
 	if destPtr == nil {
-		return errors.New("unable to scan nil destPtr")
+		return errNilDestPtr
+	}
+
+	dest := reflect.ValueOf(destPtr)
+	// Reject a nil pointer destination up front so the [sql.Scanner] and
+	// decimal paths below are not invoked on a nil pointer receiver.
+	if dest.Kind() == reflect.Pointer && dest.IsNil() {
+		return fmt.Errorf("%s %w", dest.Type(), errNilDestPtr)
 	}
 
 	if destScanner, ok := destPtr.(sql.Scanner); ok {
 		return destScanner.Scan(value)
 	}
 
-	dest := reflect.ValueOf(destPtr)
+	// Compose a decimal directly if both the destination and the value
+	// support the database/sql decimal interfaces.
+	if dst, ok := destPtr.(decimalCompose); ok {
+		if src, ok := value.(decimalDecompose); ok {
+			return dst.Compose(src.Decompose(nil))
+		}
+	}
+
 	if dest.Kind() != reflect.Pointer {
 		return fmt.Errorf("unable to scan non-pointer %s", dest.Type())
 	}
@@ -123,6 +160,10 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 		if value == nil {
 			dest.SetZero() // Set nil
 			return nil
+		}
+		// Clone driver bytes because the driver may reuse the backing array.
+		if b, ok := value.([]byte); ok {
+			value = bytes.Clone(b)
 		}
 		src := reflect.ValueOf(value)
 		if !src.Type().AssignableTo(dest.Type()) {
@@ -166,6 +207,24 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 		case reflect.Float32, reflect.Float64:
 			dest.SetFloat(float64(src))
 			return nil
+		case reflect.Bool:
+			switch src {
+			case 0:
+				dest.SetBool(false)
+				return nil
+			case 1:
+				dest.SetBool(true)
+				return nil
+			}
+			return fmt.Errorf("unable to scan int64 value %d into %s", src, dest.Type())
+		case reflect.String:
+			dest.SetString(strconv.FormatInt(src, 10))
+			return nil
+		case reflect.Slice:
+			if dest.Type().Elem().Kind() == reflect.Uint8 {
+				dest.SetBytes(strconv.AppendInt(nil, src, 10))
+				return nil
+			}
 		}
 
 	case float64:
@@ -199,37 +258,92 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 			}
 			dest.SetUint(u)
 			return nil
+		case reflect.Bool:
+			switch src {
+			case 0:
+				dest.SetBool(false)
+				return nil
+			case 1:
+				dest.SetBool(true)
+				return nil
+			}
+			return fmt.Errorf("unable to scan float64 value %g into %s", src, dest.Type())
+		case reflect.String:
+			dest.SetString(strconv.FormatFloat(src, 'g', -1, 64))
+			return nil
+		case reflect.Slice:
+			if dest.Type().Elem().Kind() == reflect.Uint8 {
+				dest.SetBytes(strconv.AppendFloat(nil, src, 'g', -1, 64))
+				return nil
+			}
 		}
 
 	case bool:
-		if dest.Kind() == reflect.Bool {
+		switch dest.Kind() {
+		case reflect.Bool:
 			dest.SetBool(src)
 			return nil
+		case reflect.String:
+			dest.SetString(strconv.FormatBool(src))
+			return nil
+		case reflect.Slice:
+			if dest.Type().Elem().Kind() == reflect.Uint8 {
+				dest.SetBytes(strconv.AppendBool(nil, src))
+				return nil
+			}
 		}
 
 	case []byte:
-		switch {
-		case dest.Kind() == reflect.String:
+		switch dest.Kind() {
+		case reflect.String:
 			dest.SetString(string(src))
 			return nil
-		case dest.Kind() == reflect.Slice && dest.Type().Elem().Kind() == reflect.Uint8:
-			dest.SetBytes(append([]byte(nil), src...)) // Make copy because src will be invalid after call
-			return nil
+		case reflect.Slice:
+			if dest.Type().Elem().Kind() == reflect.Uint8 {
+				// Clone because src may be reused by the driver after the call.
+				dest.SetBytes(bytes.Clone(src))
+				return nil
+			}
+		case reflect.Bool,
+			reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+			reflect.Float32, reflect.Float64:
+			return scanStringInto(dest, string(src))
 		}
 
 	case string:
-		switch {
-		case dest.Kind() == reflect.String:
+		switch dest.Kind() {
+		case reflect.String:
 			dest.SetString(src)
 			return nil
-		case dest.Kind() == reflect.Slice && dest.Type().Elem().Kind() == reflect.Uint8:
-			dest.SetBytes([]byte(src))
-			return nil
+		case reflect.Slice:
+			if dest.Type().Elem().Kind() == reflect.Uint8 {
+				dest.SetBytes([]byte(src))
+				return nil
+			}
+		case reflect.Bool,
+			reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+			reflect.Float32, reflect.Float64:
+			return scanStringInto(dest, src)
 		}
 
 	case time.Time:
-		if s := reflect.ValueOf(value); s.Type().AssignableTo(dest.Type()) {
-			dest.Set(s)
+		st := reflect.ValueOf(src)
+		switch {
+		case st.Type().AssignableTo(dest.Type()):
+			dest.Set(st)
+			return nil
+		case dest.Kind() == reflect.String:
+			dest.SetString(src.Format(time.RFC3339Nano))
+			return nil
+		case dest.Kind() == reflect.Slice && dest.Type().Elem().Kind() == reflect.Uint8:
+			dest.SetBytes([]byte(src.Format(time.RFC3339Nano)))
+			return nil
+		case dest.Kind() == reflect.Struct && st.Type().ConvertibleTo(dest.Type()):
+			// Named struct types with the same underlying type as time.Time,
+			// e.g. "type MyTime time.Time".
+			dest.Set(st.Convert(dest.Type()))
 			return nil
 		}
 
@@ -246,4 +360,43 @@ func ScanDriverValue(destPtr any, value driver.Value) error {
 	}
 
 	return fmt.Errorf("unable to scan %#v as %T", value, destPtr)
+}
+
+// scanStringInto parses s into the bool, integer, unsigned or floating point
+// destination dest, using the destination's bit size. It mirrors the
+// string-intermediate numeric conversion of the standard library's
+// database/sql package and also enables scanning into user defined types
+// such as "type Int int64".
+func scanStringInto(dest reflect.Value, s string) error {
+	switch dest.Kind() {
+	case reflect.Bool:
+		b, err := strconv.ParseBool(s)
+		if err != nil {
+			return fmt.Errorf("unable to scan %q as %s: %w", s, dest.Type(), strconvErr(err))
+		}
+		dest.SetBool(b)
+		return nil
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		i, err := strconv.ParseInt(s, 10, dest.Type().Bits())
+		if err != nil {
+			return fmt.Errorf("unable to scan %q as %s: %w", s, dest.Type(), strconvErr(err))
+		}
+		dest.SetInt(i)
+		return nil
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		u, err := strconv.ParseUint(s, 10, dest.Type().Bits())
+		if err != nil {
+			return fmt.Errorf("unable to scan %q as %s: %w", s, dest.Type(), strconvErr(err))
+		}
+		dest.SetUint(u)
+		return nil
+	case reflect.Float32, reflect.Float64:
+		f, err := strconv.ParseFloat(s, dest.Type().Bits())
+		if err != nil {
+			return fmt.Errorf("unable to scan %q as %s: %w", s, dest.Type(), strconvErr(err))
+		}
+		dest.SetFloat(f)
+		return nil
+	}
+	return fmt.Errorf("unable to scan %q as %s", s, dest.Type())
 }

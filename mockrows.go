@@ -153,10 +153,24 @@ func (m *MockRows) Close() error {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// The following code is copied and slightly simplified from
-// database/sql/convert.go
+// convertAssign and its helpers below are copied (and only slightly trimmed)
+// verbatim from the standard library's database/sql/convert.go.
+//
+// MockRows must be a drop-in replacement for the *sql.Rows returned by the
+// real drivers: pqconn, mysqlconn, mssqlconn and oraconn all delegate
+// Rows.Scan straight to *sql.Rows, which scans values using exactly this
+// code. Reproducing it byte-for-byte guarantees that a test using MockRows
+// observes identical conversion results and error messages to a test hitting
+// a real database, including the quirks (string<->number coercion, RawBytes
+// handling, decimal compose/decompose and the NULL rules).
+//
+// This is intentionally NOT routed through [ScanDriverValue]. That function is
+// sqldb's own best-effort converter and is free to diverge from the standard
+// library (extra SetNull hook, ScanConverter integration, stricter overflow
+// and precision messages). Keeping convertAssign a faithful copy keeps
+// MockRows faithful to database/sql regardless of how ScanDriverValue evolves.
 
-var errNilPtr = errors.New("destination pointer is nil") // embedded in descriptive error
+var errNilDestPtr = errors.New("destination pointer is nil") // destination pointer is nil
 
 type decimalDecompose interface {
 	// Decompose returns the internal decimal state in parts.
@@ -181,19 +195,19 @@ func convertAssign(dest any, src driver.Value) error {
 		switch d := dest.(type) {
 		case *string:
 			if d == nil {
-				return errNilPtr
+				return errNilDestPtr
 			}
 			*d = s
 			return nil
 		case *[]byte:
 			if d == nil {
-				return errNilPtr
+				return errNilDestPtr
 			}
 			*d = []byte(s)
 			return nil
 		case *sql.RawBytes:
 			if d == nil {
-				return errNilPtr
+				return errNilDestPtr
 			}
 			*d = sql.RawBytes(s)
 			return nil
@@ -202,25 +216,25 @@ func convertAssign(dest any, src driver.Value) error {
 		switch d := dest.(type) {
 		case *string:
 			if d == nil {
-				return errNilPtr
+				return errNilDestPtr
 			}
 			*d = string(s)
 			return nil
 		case *any:
 			if d == nil {
-				return errNilPtr
+				return errNilDestPtr
 			}
 			*d = bytes.Clone(s)
 			return nil
 		case *[]byte:
 			if d == nil {
-				return errNilPtr
+				return errNilDestPtr
 			}
 			*d = bytes.Clone(s)
 			return nil
 		case *sql.RawBytes:
 			if d == nil {
-				return errNilPtr
+				return errNilDestPtr
 			}
 			*d = bytes.Clone(s)
 			return nil
@@ -235,13 +249,13 @@ func convertAssign(dest any, src driver.Value) error {
 			return nil
 		case *[]byte:
 			if d == nil {
-				return errNilPtr
+				return errNilDestPtr
 			}
 			*d = []byte(s.Format(time.RFC3339Nano))
 			return nil
 		case *sql.RawBytes:
 			if d == nil {
-				return errNilPtr
+				return errNilDestPtr
 			}
 			*d = sql.RawBytes(s.Format(time.RFC3339Nano))
 			return nil
@@ -255,19 +269,19 @@ func convertAssign(dest any, src driver.Value) error {
 		switch d := dest.(type) {
 		case *any:
 			if d == nil {
-				return errNilPtr
+				return errNilDestPtr
 			}
 			*d = nil
 			return nil
 		case *[]byte:
 			if d == nil {
-				return errNilPtr
+				return errNilDestPtr
 			}
 			*d = nil
 			return nil
 		case *sql.RawBytes:
 			if d == nil {
-				return errNilPtr
+				return errNilDestPtr
 			}
 			*d = nil
 			return nil
@@ -319,7 +333,7 @@ func convertAssign(dest any, src driver.Value) error {
 		return errors.New("destination not a pointer")
 	}
 	if dpv.IsNil() {
-		return errNilPtr
+		return errNilDestPtr
 	}
 
 	if !sv.IsValid() {
