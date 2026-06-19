@@ -30,6 +30,21 @@ lowercase tags. Oracle SQL itself is case-insensitive for unquoted identifiers,
 so this only affects the Go-side column name matching used by the sqldb struct
 reflector.
 
+## Pinned connections
+
+The connection implements `sqldb.ConnPinner`. `Conn(ctx)` checks out one dedicated session from the pool (via `database/sql`'s own `(*sql.DB).Conn`) and returns a `sqldb.Connection` pinned to it. Every query then runs on the same underlying `*sql.Conn`, and `database/sql` does not reap checked-out sessions (`ConnMaxLifetime` / `ConnMaxIdleTime` don't apply), so it is the right primitive for session-scoped state such as `DBMS_LOCK` user locks, `ALTER SESSION` settings, or global temporary table contents. `Close` returns the session to the pool — it does not close the underlying `*sql.DB`.
+
+```go
+pinned, err := conn.(sqldb.ConnPinner).Conn(ctx)
+if err != nil {
+    return err
+}
+defer pinned.Close()
+// ... session-scoped work on pinned ...
+```
+
+A pinned connection is not itself a transaction (`Commit`/`Rollback` return `sqldb.ErrNotWithinTransaction`), but `Begin` starts a real transaction on the same pinned session.
+
 ## Query formatting
 
 - **Placeholders**: `:1`, `:2`, ...

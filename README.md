@@ -34,6 +34,7 @@
   - [Transactions](#transactions)
   - [Prepared statements](#prepared-statements)
   - [LISTEN/NOTIFY (PostgreSQL)](#listennotify-postgresql)
+  - [Pinned connections (session-scoped state)](#pinned-connections-session-scoped-state)
   - [Query options](#query-options)
 - [Low-level API](#low-level-api)
 - [Schema introspection](#schema-introspection)
@@ -191,6 +192,7 @@ toggles it off without writing a wrapper.
 | Default isolation level       | Read Committed      | Repeatable Read     | Read Committed      | Serializable        | Read Committed      |
 | `Connection`                  | yes                 | yes                 | yes                 | yes                 | yes                 |
 | `ListenerConnection`          | yes                 | —                   | —                   | —                   | —                   |
+| `ConnPinner`                  | yes                 | yes                 | yes                 | —                   | yes                 |
 | Transactions                  | yes                 | yes                 | yes                 | yes                 | yes                 |
 | Nested `Begin` uses savepoint | —                   | —                   | —                   | yes                 | —                   |
 | `db.TransactionSavepoint`     | yes                 | yes                 | yes                 | yes                 | yes                 |
@@ -788,6 +790,68 @@ err = db.UnlistenChannel(ctx, "user_changes")
 ```
 
 Calling `ListenOnChannel` multiple times for the same channel adds additional callbacks. `UnlistenChannel` removes all callbacks for the channel. Returns `errors.ErrUnsupported` if the connection does not implement `ListenerConnection`. The `pqconn` implementation automatically reconnects and resubscribes all channels after a connection drop.
+
+### Pinned connections (session-scoped state)
+
+Some database state lives on a single backend session rather than on the
+logical connection: PostgreSQL session-level advisory locks
+(`pg_advisory_lock`), `SET SESSION` settings, temporary tables, and prepared
+server-side state all die with the session that created them. A pooled
+`*sql.DB` is the wrong tool here — `database/sql` may run consecutive queries on
+different physical sessions and may reap idle ones (`ConnMaxLifetime` /
+`ConnMaxIdleTime`).
+
+`ConnPinner` is an optional interface that checks out one dedicated session and
+pins it for the lifetime of the returned `Connection`. Every query runs on the
+same underlying `*sql.Conn`, checked-out sessions are never reaped, and `Close`
+returns the session to the pool. The `pqconn`, `mysqlconn`, `mssqlconn`, and
+`oraconn` drivers implement it; `sqliteconn` does not, as it has no connection
+pool (its single connection is already one fixed session).
+
+The idiomatic way to use it from the `db` package is `db.PinnedConn`, which pins
+the context connection for the duration of a callback so every `db.*` call
+inside runs on the same session, then returns it to the pool (even on panic):
+
+```go
+err := db.PinnedConn(ctx, func(ctx context.Context) error {
+    if err := db.Exec(ctx, /*sql*/ `SELECT pg_advisory_lock($1)`, lockID); err != nil {
+        return err
+    }
+    defer db.Exec(ctx, /*sql*/ `SELECT pg_advisory_unlock($1)`, lockID)
+    // ... work that relies on the advisory lock, all on the pinned session ...
+    return nil
+})
+```
+
+`db.PinnedConnResult[T]` is the same with a returned value. If the context
+connection is already within a transaction, the callback runs on the
+transaction's own session unchanged (a transaction is already bound to one
+session).
+
+For lower-level use, `sqldb.PinConn(ctx, conn)` returns a pinned `Connection`
+that the caller must `Close`, or you can type-assert to `ConnPinner` directly
+(the same pattern as `UpsertQueryBuilder` / `ReturningQueryBuilder`):
+
+```go
+pinned, err := sqldb.PinConn(ctx, conn) // wraps errors.ErrUnsupported if unsupported
+if err != nil {
+    return err
+}
+defer pinned.Close() // returns the session to the pool
+
+if err := pinned.Exec(ctx, /*sql*/ `SELECT pg_advisory_lock($1)`, lockID); err != nil {
+    return err
+}
+defer pinned.Exec(ctx, /*sql*/ `SELECT pg_advisory_unlock($1)`, lockID)
+// ... work that relies on the advisory lock ...
+```
+
+A pinned `Connection` is not itself a transaction (`Commit` / `Rollback` return
+`ErrNotWithinTransaction`), but `Begin` starts a real transaction on the same
+pinned session, so transactions inherit the session-scoped state. A transaction
+is deliberately **not** a `ConnPinner` — it is already bound to one session, so
+`sqldb.PinConn` on a transaction returns `ErrWithinTransaction` rather than
+checking out an unrelated pool session.
 
 ### Query options
 

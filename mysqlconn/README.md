@@ -29,6 +29,26 @@ config.Extra = map[string]string{
 }
 ```
 
+## Pinned Connections
+
+The connection implements `sqldb.ConnPinner`. `Conn(ctx)` checks out one dedicated session from the pool (via `database/sql`'s own `(*sql.DB).Conn`) and returns a `sqldb.Connection` pinned to it. Every query then runs on the same underlying `*sql.Conn`, and `database/sql` does not reap checked-out sessions (`ConnMaxLifetime` / `ConnMaxIdleTime` don't apply), so it is the right primitive for session-scoped state such as `GET_LOCK` named locks, `SET @session_var`, or `CREATE TEMPORARY TABLE`. `Close` returns the session to the pool — it does not close the underlying `*sql.DB`.
+
+```go
+pinned, err := conn.(sqldb.ConnPinner).Conn(ctx)
+if err != nil {
+    return err
+}
+defer pinned.Close()
+
+if _, err := sqldb.QueryRowAs[int](ctx, pinned, nil, pinned, /*sql*/ `SELECT GET_LOCK(?, -1)`, lockName); err != nil {
+    return err
+}
+defer pinned.Exec(ctx, /*sql*/ `SELECT RELEASE_LOCK(?)`, lockName)
+// ... session-scoped work on pinned ...
+```
+
+A pinned connection is not itself a transaction (`Commit`/`Rollback` return `sqldb.ErrNotWithinTransaction`), but `Begin` starts a real transaction on the same pinned session.
+
 ## Query Builder
 
 `QueryBuilder` implements `sqldb.QueryBuilder` and `sqldb.UpsertQueryBuilder`:

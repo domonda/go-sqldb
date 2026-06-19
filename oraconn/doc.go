@@ -35,6 +35,8 @@ so this only affects the Go-side column name matching.
 The connection uses :1, :2, ... placeholders and double-quote identifier quoting.
 
 Oracle-specific features:
+  - Pinned sessions via the sqldb.ConnPinner interface (Conn) for
+    session-scoped state like DBMS_LOCK
   - Optional lowercasing of column names for struct tag matching
   - Default isolation level is sql.LevelReadCommitted
   - EscapeIdentifier wraps identifiers in double quotes when needed

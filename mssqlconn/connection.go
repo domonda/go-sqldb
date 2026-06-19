@@ -18,6 +18,7 @@ const Driver = "sqlserver"
 
 // Connect establishes a new [sqldb.Connection] using the passed config
 // and github.com/microsoft/go-mssqldb as driver implementation.
+// The returned connection also implements [sqldb.ConnPinner].
 // The connection is pinged with the passed context and only returned
 // when there was no error from the ping.
 func Connect(ctx context.Context, config *sqldb.Config) (sqldb.Connection, error) {

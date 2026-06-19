@@ -555,3 +555,42 @@ func (conn *transaction) Routines(ctx context.Context, schema ...string) ([]stri
 func (conn *transaction) RoutineExists(ctx context.Context, routine string) (bool, error) {
 	return routineExists(ctx, conn, routine)
 }
+
+// --- pinnedConn methods ---
+
+func (conn *pinnedConn) Schemas(ctx context.Context) ([]string, error) {
+	return schemas(ctx, conn)
+}
+func (conn *pinnedConn) CurrentSchema(ctx context.Context) (string, error) {
+	return currentSchema(ctx, conn)
+}
+func (conn *pinnedConn) Tables(ctx context.Context, schema ...string) ([]string, error) {
+	return listObjects(ctx, conn, "sys.tables", schema)
+}
+func (conn *pinnedConn) TableExists(ctx context.Context, table string) (bool, error) {
+	return objectExists(ctx, conn, "sys.tables", table)
+}
+func (conn *pinnedConn) Views(ctx context.Context, schema ...string) ([]string, error) {
+	return listObjects(ctx, conn, "sys.views", schema)
+}
+func (conn *pinnedConn) ViewExists(ctx context.Context, view string) (bool, error) {
+	return objectExists(ctx, conn, "sys.views", view)
+}
+func (conn *pinnedConn) Columns(ctx context.Context, tableOrView string) ([]sqldb.ColumnInfo, error) {
+	return columns(ctx, conn, tableOrView)
+}
+func (conn *pinnedConn) ColumnExists(ctx context.Context, tableOrView, column string) (bool, error) {
+	return columnExists(ctx, conn, tableOrView, column)
+}
+func (conn *pinnedConn) PrimaryKey(ctx context.Context, table string) ([]string, error) {
+	return primaryKey(ctx, conn, table)
+}
+func (conn *pinnedConn) ForeignKeys(ctx context.Context, table string) ([]sqldb.ForeignKeyInfo, error) {
+	return foreignKeys(ctx, conn, table)
+}
+func (conn *pinnedConn) Routines(ctx context.Context, schema ...string) ([]string, error) {
+	return routines(ctx, conn, schema)
+}
+func (conn *pinnedConn) RoutineExists(ctx context.Context, routine string) (bool, error) {
+	return routineExists(ctx, conn, routine)
+}

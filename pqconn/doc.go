@@ -30,6 +30,8 @@ The connection uses $1, $2, ... placeholders and PostgreSQL identifier quoting.
 
 PostgreSQL-specific features:
   - LISTEN/NOTIFY via ListenOnChannel, UnlistenChannel, and IsListeningOnChannel
+  - Pinned sessions via the sqldb.ConnPinner interface (Conn) for
+    session-scoped state like pg_advisory_lock
   - Read-only mode (sets default_transaction_read_only = on)
   - Typed error inspection (IsUniqueViolation, IsForeignKeyViolation, etc.)
   - Default isolation level is sql.LevelReadCommitted

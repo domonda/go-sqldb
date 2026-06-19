@@ -28,6 +28,8 @@ Basic usage:
 The connection uses ? placeholders and backtick identifier quoting.
 
 MySQL/MariaDB-specific features:
+  - Pinned sessions via the sqldb.ConnPinner interface (Conn) for
+    session-scoped state like GET_LOCK named locks
   - Default isolation level is sql.LevelRepeatableRead
   - EscapeIdentifier wraps identifiers in backticks when needed
   - DropAllTables disables foreign key checks to drop tables in any order

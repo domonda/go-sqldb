@@ -28,6 +28,8 @@ Basic usage:
 The connection uses @p1, @p2, ... placeholders and bracket identifier quoting ([identifier]).
 
 SQL Server-specific features:
+  - Pinned sessions via the sqldb.ConnPinner interface (Conn) for
+    session-scoped state like sp_getapplock application locks
   - Default isolation level is sql.LevelReadCommitted
   - EscapeIdentifier wraps identifiers in brackets when needed
   - DropAll, DropAllTables, and DropAllTypes for resetting test databases
