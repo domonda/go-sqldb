@@ -2,6 +2,8 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/domonda/go-sqldb.svg)](https://pkg.go.dev/github.com/domonda/go-sqldb) [![Go Report Card](https://goreportcard.com/badge/github.com/domonda/go-sqldb)](https://goreportcard.com/report/github.com/domonda/go-sqldb) [![Go](https://github.com/domonda/go-sqldb/actions/workflows/go.yml/badge.svg)](https://github.com/domonda/go-sqldb/actions/workflows/go.yml) [![Go version](https://img.shields.io/github/go-mod/go-version/domonda/go-sqldb)](https://github.com/domonda/go-sqldb) [![license](https://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://github.com/domonda/go-sqldb/blob/master/LICENSE)
 
+Requires Go 1.26 or later (since v1.5.0).
+
 ## Table of contents
 
 - [Philosophy](#philosophy)
@@ -1178,9 +1180,8 @@ docker compose -f pqconn/test/docker-compose.yml up -d
 ```
 
 `test-workspace.sh` builds, vets (`go vet` and `gosec`), and tests every module of
-the workspace, so it needs Go 1.26+ — `go.work` declares `go 1.26.0` because the
-`gosec` tool module requires it. Every published module stays at `go 1.24.6`, so
-using go-sqldb as a library still only needs Go 1.24.6.
+the workspace. go-sqldb requires Go 1.26: every module declares `go 1.26.0`, as
+does `go.work`.
 
 After changing a database version in `docker-compose.yml`, reset the data directory:
 ```bash

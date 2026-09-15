@@ -12,11 +12,12 @@ The driver sub-modules (`pqconn`, `mysqlconn`, `mssqlconn`, `sqliteconn`,
 `oraconn`) are tagged separately as `<module>/vX.Y.Z` and released in lockstep
 with the root module.
 
-## [v1.4.1] - 2026-09-15
+## [v1.5.0] - 2026-09-15
 
 Scan a query result into a struct pointer you already allocated.
+**Requires Go 1.26.**
 
-[Diff](https://github.com/domonda/go-sqldb/compare/v1.4.0...v1.4.1)
+[Diff](https://github.com/domonda/go-sqldb/compare/v1.4.0...v1.5.0)
 
 ### Fixed
 
@@ -36,14 +37,26 @@ Scan a query result into a struct pointer you already allocated.
 
 ### Changed
 
-- `gosec` updated to v2.29.0 (`golang.org/x/tools` v0.50.0), which fixes
-  the `internal error: package ... without types` abort that broke
-  `./test-workspace.sh` under Go 1.27. The `gosec` tools module requires
-  Go >= 1.26.0, so the `go.work` go directive moves from 1.24.6 to
-  1.26.0. Every module `go.mod` stays at `go 1.24.6`, so consumers of the
-  published modules are unaffected; only building the workspace itself
-  now needs Go 1.26+, and the CI `setup-go` pin moved to match.
-  (`18e54fe`)
+- **Every module now requires Go 1.26.** Building against go-sqldb needs
+  a Go 1.26 toolchain; Go 1.24 and 1.25 are no longer supported. This is
+  the reason for the minor rather than patch version. Two things forced
+  it: `gosec` v2.29.0 (the version that fixes the
+  `internal error: package ... without types` abort breaking
+  `./test-workspace.sh` under Go 1.27) requires Go >= 1.26.0, and the
+  `golang.org/x/crypto` advisories below are first patched in v0.52.0,
+  which requires Go >= 1.25.0. The CI `setup-go` pin moved to match.
+  (`18e54fe`, `654579b`, `9c37f13`)
+- Dependencies updated across all modules. Security-relevant, all
+  indirect and none reachable from this code per `govulncheck`:
+  `golang.org/x/crypto` v0.48.0 -> v0.57.0, clearing thirteen advisories
+  each in `mssqlconn` and `information/mssql_information_test` (seven
+  critical, two high, four medium); `golang.org/x/net` -> v0.59.0.
+  Drivers and libraries: `github.com/microsoft/go-mssqldb` v1.9.2 ->
+  v1.11.0, `github.com/go-sql-driver/mysql` v1.9.2 -> v1.10.1,
+  `modernc.org/sqlite` v1.37.1 -> v1.59.0,
+  `github.com/DataDog/go-sqllexer` v0.1.13 -> v0.2.4,
+  `github.com/corazawaf/libinjection-go` v0.3.2 -> v0.3.3,
+  `github.com/stretchr/testify` v1.11.1 -> v1.12.1. (`9c37f13`)
 
 ## [v1.4.0] - 2026-06-19
 
