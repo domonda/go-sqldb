@@ -67,7 +67,7 @@ func QueryRowAsStmt[T any](ctx context.Context, conn Preparer, refl StructReflec
 	stmt, err := conn.Prepare(ctx, query)
 	if err != nil {
 		err = fmt.Errorf("failed to prepare query: %w", err)
-		return nil, nil, WrapErrorWithQuery(err, query, nil, fmtr)
+		return nil, nil, WrapErrorWithQueryIfConfigured(err, query, nil, fmtr)
 	}
 
 	queryFunc = func(ctx context.Context, args ...any) (val T, err error) {
@@ -172,7 +172,7 @@ func QueryRowAsMap[K ~string, V any](ctx context.Context, conn Querier, fmtr Que
 	defer func() {
 		err = errors.Join(err, rows.Close())
 		if err != nil {
-			err = WrapErrorWithQuery(err, query, args, fmtr)
+			err = WrapErrorWithQueryIfConfigured(err, query, args, fmtr)
 		}
 	}()
 
@@ -269,7 +269,7 @@ func QueryRowsAsMapSlice(ctx context.Context, conn Querier, fmtr QueryFormatter,
 	defer func() {
 		err = errors.Join(err, sqlRows.Close())
 		if err != nil {
-			err = WrapErrorWithQuery(err, query, args, fmtr)
+			err = WrapErrorWithQueryIfConfigured(err, query, args, fmtr)
 		}
 	}()
 
@@ -338,7 +338,7 @@ func QueryRowsAsSlice[T any](ctx context.Context, conn Querier, refl StructRefle
 	defer func() {
 		err = errors.Join(err, sqlRows.Close())
 		if err != nil {
-			err = WrapErrorWithQuery(err, query, args, fmtr)
+			err = WrapErrorWithQueryIfConfigured(err, query, args, fmtr)
 		}
 	}()
 
@@ -413,7 +413,7 @@ func QueryRowsAsStrings(ctx context.Context, conn Querier, fmtr QueryFormatter, 
 	defer func() {
 		err = errors.Join(err, sqlRows.Close())
 		if err != nil {
-			err = WrapErrorWithQuery(err, query, args, fmtr)
+			err = WrapErrorWithQueryIfConfigured(err, query, args, fmtr)
 		}
 	}()
 
@@ -462,7 +462,7 @@ func QueryRowsAsStrings(ctx context.Context, conn Querier, fmtr QueryFormatter, 
 func QueryStructCallback[S any](ctx context.Context, conn Querier, refl StructReflector, fmtr QueryFormatter, callback func(S) error, query string, args ...any) (err error) {
 	defer func() {
 		if err != nil {
-			err = WrapErrorWithQuery(err, query, args, fmtr)
+			err = WrapErrorWithQueryIfConfigured(err, query, args, fmtr)
 		}
 	}()
 
@@ -526,7 +526,7 @@ func QueryStructCallback[S any](ctx context.Context, conn Querier, refl StructRe
 func QueryCallback(ctx context.Context, conn Querier, refl StructReflector, fmtr QueryFormatter, callback any, query string, args ...any) (err error) {
 	defer func() {
 		if err != nil {
-			err = WrapErrorWithQuery(err, query, args, fmtr)
+			err = WrapErrorWithQueryIfConfigured(err, query, args, fmtr)
 		}
 	}()
 	val := reflect.ValueOf(callback)
