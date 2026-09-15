@@ -377,6 +377,37 @@ func TestQueryRowsAsSlice(t *testing.T) {
 		}
 	})
 
+	// Regression guard: the slice element is a nil *reflectTestStruct, so
+	// scanStruct receives a **reflectTestStruct whose inner pointer is nil
+	// and must allocate it per row instead of following the indirection.
+	t.Run("pointer to struct values", func(t *testing.T) {
+		conn, refl, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("id", "name", "active").
+				WithRow(int64(1), "Alice", true).
+				WithRow(int64(2), "Bob", false)
+		}
+		rows, err := QueryRowsAsSlice[*reflectTestStruct](t.Context(), conn, refl, fmtr, UnlimitedMaxNumRows, "SELECT id, name, active FROM test_table")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(rows) != 2 {
+			t.Fatalf("len = %d, want 2", len(rows))
+		}
+		if rows[0] == nil || rows[1] == nil {
+			t.Fatalf("rows = %v, want both elements allocated", rows)
+		}
+		if rows[0].ID != 1 || rows[0].Name != "Alice" || !rows[0].Active {
+			t.Errorf("rows[0] = %+v, unexpected", rows[0])
+		}
+		if rows[1].ID != 2 || rows[1].Name != "Bob" || rows[1].Active {
+			t.Errorf("rows[1] = %+v, unexpected", rows[1])
+		}
+		if rows[0] == rows[1] {
+			t.Error("rows[0] and rows[1] point to the same struct, each row must get its own allocation")
+		}
+	})
+
 	t.Run("maxNumRows cap exceeded", func(t *testing.T) {
 		conn, refl, _, fmtr := newTestInterfaces()
 		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
@@ -1150,6 +1181,46 @@ func TestQueryCallback(t *testing.T) {
 		}
 		if results[1].ID != 2 || results[1].Name != "Bob" || results[1].Active {
 			t.Errorf("results[1] = %+v, unexpected", results[1])
+		}
+	})
+
+	// Regression guard: reflect.New of a *reflectTestStruct argument yields a
+	// **reflectTestStruct with a nil inner pointer, which scanStruct must
+	// allocate freshly per row so the callback never sees a shared struct.
+	t.Run("struct pointer callback scans fields", func(t *testing.T) {
+		// given
+		conn, refl, _, fmtr := newTestInterfaces()
+		conn.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+			return NewMockRows("id", "name", "active").
+				WithRow(int64(1), "Alice", true).
+				WithRow(int64(2), "Bob", false)
+		}
+
+		// when
+		var results []*reflectTestStruct
+		err := QueryCallback(t.Context(), conn, refl, fmtr,
+			func(row *reflectTestStruct) { results = append(results, row) },
+			"SELECT id, name, active FROM test_table",
+		)
+
+		// then
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(results) != 2 {
+			t.Fatalf("len = %d, want 2", len(results))
+		}
+		if results[0] == nil || results[1] == nil {
+			t.Fatalf("results = %v, want both callback args allocated", results)
+		}
+		if results[0].ID != 1 || results[0].Name != "Alice" || !results[0].Active {
+			t.Errorf("results[0] = %+v, unexpected", results[0])
+		}
+		if results[1].ID != 2 || results[1].Name != "Bob" || results[1].Active {
+			t.Errorf("results[1] = %+v, unexpected", results[1])
+		}
+		if results[0] == results[1] {
+			t.Error("results[0] and results[1] point to the same struct, each row must get its own allocation")
 		}
 	})
 }
