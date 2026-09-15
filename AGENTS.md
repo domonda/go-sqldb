@@ -71,6 +71,7 @@ func MyValueFromContext(ctx context.Context) string {
 
 ### Testing
 - **Acceptance tests for workspace**: `./test-workspace.sh` 
+- Building or testing the workspace needs Go 1.26+ because `go.work` declares `go 1.26.0` (required by the `gosec` tool module); every module `go.mod` stays at `go 1.24.6`
 - Use `t.Context()` instead of `context.Background()` in tests
 - Use `github.com/stretchr/testify` for tests
 - Import `github.com/stretchr/testify/require` for required conditions

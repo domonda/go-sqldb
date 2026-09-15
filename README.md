@@ -543,7 +543,20 @@ var (
 err = db.QueryRow(ctx,
     `SELECT name, email FROM public.user WHERE id = $1`, userID,
 ).Scan(&name, &email)
+
+// Low-level: scan the whole row into a struct pointer variable
+var user *User
+err = db.QueryRow(ctx,
+    `SELECT * FROM public.user WHERE id = $1`, userID,
+).Scan(&user)
 ```
+
+When `Scan` gets a single destination that is a pointer to a struct which does not
+implement `sql.Scanner`, the result columns are scanned into the struct fields
+instead of into one column value. A pointer to a struct pointer (`**User` as above)
+works too: a nil struct pointer is allocated and only assigned after a successful
+scan, while a non-nil one is scanned into in place without being reset first, so
+struct fields without a corresponding result column keep their current values.
 
 ### Querying a single row by primary key
 
@@ -1163,6 +1176,11 @@ Start a test database and run all tests:
 docker compose -f pqconn/test/docker-compose.yml up -d
 ./test-workspace.sh
 ```
+
+`test-workspace.sh` builds, vets (`go vet` and `gosec`), and tests every module of
+the workspace, so it needs Go 1.26+ — `go.work` declares `go 1.26.0` because the
+`gosec` tool module requires it. Every published module stays at `go 1.24.6`, so
+using go-sqldb as a library still only needs Go 1.24.6.
 
 After changing a database version in `docker-compose.yml`, reset the data directory:
 ```bash
