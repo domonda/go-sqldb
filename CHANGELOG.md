@@ -12,6 +12,79 @@ The driver sub-modules (`pqconn`, `mysqlconn`, `mssqlconn`, `sqliteconn`,
 `oraconn`) are tagged separately as `<module>/vX.Y.Z` and released in lockstep
 with the root module.
 
+## [v1.5.0] - 2026-09-15
+
+Keep queries and their arguments out of errors entirely, and scan a query
+result into a struct pointer you already allocated. **Requires Go 1.26.**
+
+[Diff](https://github.com/domonda/go-sqldb/compare/v1.4.0...v1.5.0)
+
+### Added
+
+- `sqldb.ConnectionWithoutQueryInErrors(conn)` wraps a `Connection` so that
+  errors from its queries carry neither the query nor its arguments. It is the
+  strictest of the three redaction layers, above `sqldb.KeepSecret` (redacts
+  individual args) and `sqldb.ConnectionWithoutPlaceholderSubstitution` (keeps
+  the query but leaves placeholders unresolved). Use it when a failing write
+  would otherwise put its payload, such as an extracted invoice, into the error
+  message and from there into the logs. Like the placeholder wrapper it
+  persists across `Connection.Begin`, and wrapping an already wrapped
+  connection returns it unchanged.
+- `sqldb.QueryInErrorsOmitter` interface and the
+  `sqldb.WrapErrorWithQueryIfConfigured` function that consults it on the
+  passed `QueryFormatter`. A custom `QueryFormatter` can implement
+  `OmitQueryInErrors() bool` to opt out of query wrapping without using the
+  `Connection` wrapper. All query functions of the package now wrap errors
+  through `WrapErrorWithQueryIfConfigured`, while `WrapErrorWithQuery` keeps
+  wrapping unconditionally as its name says.
+- `sqldb.UnwrapErrorWithQuery(err)` and its `db.UnwrapErrorWithQuery` mirror
+  return the error that `WrapErrorWithQuery` wrapped with a query, and return
+  errors that carry no query unchanged, so the call needs no precondition
+  check. The query wrapping is found with `errors.AsType`, so it is also
+  removed from errors that were further wrapped with the standard `%w`. Any
+  error wrapping around the query wrapping is discarded together with it,
+  because such an outer message already contains the query.
+
+### Fixed
+
+- `sqldb.Row.Scan` accepts a pointer to a struct pointer, so the natural
+  `company := &client.Company{}; db.QueryRow(ctx, query).Scan(&company)`
+  works instead of failing with `scanStruct expected struct or pointer to
+  struct but got **T`. `Row.Scan` already treated `**Struct` as a
+  struct-scan destination, but the scan itself only followed one level of
+  indirection and then required either a struct or a nil pointer it could
+  allocate. It now follows the pointer indirections before the
+  nil-pointer allocation branch. A nil struct pointer is still allocated
+  and only published after a successful scan, while a non-nil one is
+  scanned into in place without being reset first, so fields without a
+  matching result column keep their current values — both cases, and the
+  error-path difference between them, are now documented on `Row.Scan`.
+  (`879fd48`)
+
+### Changed
+
+- **Every module now requires Go 1.26.** Building against go-sqldb needs
+  a Go 1.26 toolchain; Go 1.24 and 1.25 are no longer supported. This is
+  the reason for the minor rather than patch version. Three things forced
+  it: `errors.AsType`, used by `UnwrapErrorWithQuery` above, is new in
+  Go 1.26; `gosec` v2.29.0 (the version that fixes the
+  `internal error: package ... without types` abort breaking
+  `./test-workspace.sh` under Go 1.27) requires Go >= 1.26.0; and the
+  `golang.org/x/crypto` advisories below are first patched in v0.52.0,
+  which requires Go >= 1.25.0. The CI `setup-go` pin moved to match.
+  (`18e54fe`, `654579b`, `9c37f13`)
+- Dependencies updated across all modules. Security-relevant, all
+  indirect and none reachable from this code per `govulncheck`:
+  `golang.org/x/crypto` v0.48.0 -> v0.57.0, clearing thirteen advisories
+  each in `mssqlconn` and `information/mssql_information_test` (seven
+  critical, two high, four medium); `golang.org/x/net` -> v0.59.0.
+  Drivers and libraries: `github.com/microsoft/go-mssqldb` v1.9.2 ->
+  v1.11.0, `github.com/go-sql-driver/mysql` v1.9.2 -> v1.10.1,
+  `modernc.org/sqlite` v1.37.1 -> v1.59.0,
+  `github.com/DataDog/go-sqllexer` v0.1.13 -> v0.2.4,
+  `github.com/corazawaf/libinjection-go` v0.3.2 -> v0.3.3,
+  `github.com/stretchr/testify` v1.11.1 -> v1.12.1. (`9c37f13`)
+
 ## [v1.4.0] - 2026-06-19
 
 Pin a connection to one backend session for session-scoped state like
@@ -283,6 +356,7 @@ connection management (`db` package), struct-to-row mapping, the PostgreSQL
 (`sqliteconn`) drivers, the `mockconn` test driver (`MockRows`,
 `MockStructRows`), and the `ErrQueryCanceled` sentinel.
 
+[v1.5.0]: https://github.com/domonda/go-sqldb/releases/tag/v1.5.0
 [v1.4.0]: https://github.com/domonda/go-sqldb/releases/tag/v1.4.0
 [v1.3.1]: https://github.com/domonda/go-sqldb/releases/tag/v1.3.1
 [v1.3.0]: https://github.com/domonda/go-sqldb/releases/tag/v1.3.0

@@ -1,6 +1,6 @@
 module github.com/domonda/go-sqldb/information/postgres_information_test
 
-go 1.24.6
+go 1.26.0
 
 replace (
 	github.com/domonda/go-sqldb => ../..
@@ -13,7 +13,7 @@ require (
 )
 
 require (
-	github.com/DataDog/go-sqllexer v0.1.13 // indirect
-	github.com/corazawaf/libinjection-go v0.3.2 // indirect
+	github.com/DataDog/go-sqllexer v0.2.4 // indirect
+	github.com/corazawaf/libinjection-go v0.3.3 // indirect
 	github.com/lib/pq v1.12.3 // indirect
 )

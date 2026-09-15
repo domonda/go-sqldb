@@ -37,10 +37,10 @@ func DeleteRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 		}
 		n, err := conn.ExecRowsAffected(ctx, cached.query, vals...)
 		if err != nil {
-			return WrapErrorWithQuery(err, cached.query, vals, fmtr)
+			return WrapErrorWithQueryIfConfigured(err, cached.query, vals, fmtr)
 		}
 		if n == 0 {
-			return WrapErrorWithQuery(sql.ErrNoRows, cached.query, vals, fmtr)
+			return WrapErrorWithQueryIfConfigured(sql.ErrNoRows, cached.query, vals, fmtr)
 		}
 		return nil
 	}
@@ -78,10 +78,10 @@ func DeleteRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 
 	n, err := conn.ExecRowsAffected(ctx, cached.query, vals...)
 	if err != nil {
-		return WrapErrorWithQuery(err, cached.query, vals, fmtr)
+		return WrapErrorWithQueryIfConfigured(err, cached.query, vals, fmtr)
 	}
 	if n == 0 {
-		return WrapErrorWithQuery(sql.ErrNoRows, cached.query, vals, fmtr)
+		return WrapErrorWithQueryIfConfigured(sql.ErrNoRows, cached.query, vals, fmtr)
 	}
 	return nil
 }
@@ -138,10 +138,10 @@ func DeleteRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 		}
 		n, err := stmt.ExecRowsAffected(ctx, vals...)
 		if err != nil {
-			return WrapErrorWithQuery(err, query, vals, fmtr)
+			return WrapErrorWithQueryIfConfigured(err, query, vals, fmtr)
 		}
 		if n == 0 {
-			return WrapErrorWithQuery(sql.ErrNoRows, query, vals, fmtr)
+			return WrapErrorWithQueryIfConfigured(sql.ErrNoRows, query, vals, fmtr)
 		}
 		return nil
 	}

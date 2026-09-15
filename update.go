@@ -31,7 +31,7 @@ func Update(ctx context.Context, conn Executor, builder QueryBuilder, fmtr Query
 	}
 	err = conn.Exec(ctx, query, vals...)
 	if err != nil {
-		return WrapErrorWithQuery(err, query, vals, fmtr)
+		return WrapErrorWithQueryIfConfigured(err, query, vals, fmtr)
 	}
 	return nil
 }
@@ -121,7 +121,7 @@ func UpdateRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 			}
 			err = conn.Exec(ctx, cached.query, vals...)
 			if err != nil {
-				return WrapErrorWithQuery(err, cached.query, vals, fmtr)
+				return WrapErrorWithQueryIfConfigured(err, cached.query, vals, fmtr)
 			}
 			return nil
 		}
@@ -167,7 +167,7 @@ func UpdateRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 
 	err = conn.Exec(ctx, cached.query, vals...)
 	if err != nil {
-		return WrapErrorWithQuery(err, cached.query, vals, fmtr)
+		return WrapErrorWithQueryIfConfigured(err, cached.query, vals, fmtr)
 	}
 	return nil
 }
@@ -229,7 +229,7 @@ func UpdateRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 		vals = reorderForUpdate(columns, vals)
 		err = stmt.Exec(ctx, vals...)
 		if err != nil {
-			return WrapErrorWithQuery(err, query, vals, fmtr)
+			return WrapErrorWithQueryIfConfigured(err, query, vals, fmtr)
 		}
 		return nil
 	}

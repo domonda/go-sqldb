@@ -1,6 +1,8 @@
 package sqldb
 
 import (
+	"context"
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -43,6 +45,62 @@ func TestConnectionWithoutPlaceholderSubstitution(t *testing.T) {
 
 	t.Run("Begin error propagates", func(t *testing.T) {
 		wrapped := ConnectionWithoutPlaceholderSubstitution(base)
+		// id == 0 is rejected by MockConn.Begin.
+		_, err := wrapped.Begin(t.Context(), 0, nil)
+		require.Error(t, err)
+	})
+}
+
+func TestConnectionWithoutQueryInErrors(t *testing.T) {
+	base := NewMockConn(NewQueryFormatter("$"))
+	base.MockExec = func(ctx context.Context, query string, args ...any) error {
+		return errors.New("mock exec error")
+	}
+	const query = /*sql*/ `INSERT INTO invoice (data) VALUES ($1)`
+
+	t.Run("base connection puts query and args into errors", func(t *testing.T) {
+		err := Exec(t.Context(), base, base, query, "secret invoice")
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "secret invoice")
+	})
+
+	t.Run("wrapped connection keeps query and args out of errors", func(t *testing.T) {
+		wrapped := ConnectionWithoutQueryInErrors(base)
+		err := Exec(t.Context(), wrapped, wrapped, query, "secret invoice")
+		require.Error(t, err)
+		assert.Equal(t, "mock exec error", err.Error())
+	})
+
+	t.Run("wrapping an already wrapped connection returns it unchanged", func(t *testing.T) {
+		wrapped := ConnectionWithoutQueryInErrors(base)
+		assert.Equal(t, wrapped, ConnectionWithoutQueryInErrors(wrapped))
+	})
+
+	t.Run("non-formatter Connection methods pass through", func(t *testing.T) {
+		wrapped := ConnectionWithoutQueryInErrors(base)
+		// FormatPlaceholder is promoted from the embedded Connection.
+		assert.Equal(t, "$1", wrapped.FormatPlaceholder(0))
+		// Placeholders are still substituted for logging and debugging,
+		// only the error wrapping is affected.
+		q, err := wrapped.SubstitutePlaceholders("SELECT $1", []any{42})
+		require.NoError(t, err)
+		assert.Equal(t, "SELECT 42", q)
+	})
+
+	t.Run("Begin returns a wrapped transaction", func(t *testing.T) {
+		wrapped := ConnectionWithoutQueryInErrors(base)
+		tx, err := wrapped.Begin(t.Context(), 1, nil)
+		require.NoError(t, err)
+		// The transaction must omit the query too, otherwise queries
+		// inside db.Transaction(...) would leak argument values
+		// into error messages and logs.
+		execErr := Exec(t.Context(), tx, tx, query, "secret invoice")
+		require.Error(t, execErr)
+		assert.Equal(t, "mock exec error", execErr.Error())
+	})
+
+	t.Run("Begin error propagates", func(t *testing.T) {
+		wrapped := ConnectionWithoutQueryInErrors(base)
 		// id == 0 is rejected by MockConn.Begin.
 		_, err := wrapped.Begin(t.Context(), 0, nil)
 		require.Error(t, err)

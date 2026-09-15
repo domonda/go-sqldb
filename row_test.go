@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 )
@@ -31,18 +32,20 @@ func TestRow_Scan_Scalars(t *testing.T) {
 	}
 }
 
+// rowScanUser is the struct scanned by the Row.Scan struct tests below.
+type rowScanUser struct {
+	TableName struct{} `db:"users"`
+	ID        int64    `db:"id,primarykey"`
+	Name      string   `db:"name"`
+	Active    bool     `db:"active"`
+}
+
 func TestRow_Scan_Struct(t *testing.T) {
-	type User struct {
-		TableName struct{} `db:"users"`
-		ID        int64    `db:"id,primarykey"`
-		Name      string   `db:"name"`
-		Active    bool     `db:"active"`
-	}
 	rows := NewMockRows("id", "name", "active").
 		WithRow(int64(42), "Bob", false)
 	row := NewRow(rows, NewTaggedStructReflector(), testFormatter, "SELECT * FROM users", nil)
 
-	var user User
+	var user rowScanUser
 	if err := row.Scan(&user); err != nil {
 		t.Fatal(err)
 	}
@@ -54,6 +57,89 @@ func TestRow_Scan_Struct(t *testing.T) {
 	}
 	if user.Active {
 		t.Error("Active: got true, want false")
+	}
+}
+
+// TestRow_Scan_StructPointerPointer documents that Row.Scan tolerates a
+// pointer to an already allocated struct pointer, which is what callers
+// pass when they write `s := &Struct{}; row.Scan(&s)`.
+func TestRow_Scan_StructPointerPointer(t *testing.T) {
+	rows := NewMockRows("id", "name", "active").
+		WithRow(int64(42), "Bob", false)
+	row := NewRow(rows, NewTaggedStructReflector(), testFormatter, "SELECT * FROM users", nil)
+
+	user := &rowScanUser{}
+	if err := row.Scan(&user); err != nil {
+		t.Fatal(err)
+	}
+	if user.ID != 42 {
+		t.Errorf("ID: got %d, want 42", user.ID)
+	}
+	if user.Name != "Bob" {
+		t.Errorf("Name: got %q, want %q", user.Name, "Bob")
+	}
+	if user.Active {
+		t.Error("Active: got true, want false")
+	}
+}
+
+// TestRow_Scan_NilStructPointerAllocated verifies the documented promise that
+// the pointed to struct pointer is allocated when it is nil, so that callers
+// can write `var s *Struct; row.Scan(&s)` without allocating s themselves.
+func TestRow_Scan_NilStructPointerAllocated(t *testing.T) {
+	rows := NewMockRows("id", "name", "active").
+		WithRow(int64(7), "Carol", true)
+	row := NewRow(rows, NewTaggedStructReflector(), testFormatter, "SELECT * FROM users", nil)
+
+	var user *rowScanUser
+	if err := row.Scan(&user); err != nil {
+		t.Fatal(err)
+	}
+	if user == nil {
+		t.Fatal("user: got nil, want an allocated struct")
+	}
+	if user.ID != 7 {
+		t.Errorf("ID: got %d, want 7", user.ID)
+	}
+	if user.Name != "Carol" {
+		t.Errorf("Name: got %q, want %q", user.Name, "Carol")
+	}
+	if !user.Active {
+		t.Error("Active: got false, want true")
+	}
+}
+
+// TestRow_Scan_NonPointerDestination checks that a destination passed by value
+// is rejected with a clear error instead of silently scanning into a copy.
+func TestRow_Scan_NonPointerDestination(t *testing.T) {
+	rows := NewMockRows("id").
+		WithRow(int64(1))
+	row := NewRow(rows, NewTaggedStructReflector(), testFormatter, "SELECT id", nil)
+
+	var id int64
+	err := row.Scan(id)
+	if err == nil {
+		t.Fatal("expected error for non-pointer destination")
+	}
+	if !strings.Contains(err.Error(), "not a pointer") {
+		t.Errorf("error = %v, want it to report a non-pointer destination", err)
+	}
+}
+
+// TestRow_Scan_NilDestination checks that a typed nil destination pointer is
+// reported as such instead of panicking inside the reflection based scanning.
+func TestRow_Scan_NilDestination(t *testing.T) {
+	rows := NewMockRows("id").
+		WithRow(int64(1))
+	row := NewRow(rows, NewTaggedStructReflector(), testFormatter, "SELECT id", nil)
+
+	var id *int64
+	err := row.Scan(id)
+	if err == nil {
+		t.Fatal("expected error for nil destination")
+	}
+	if !strings.Contains(err.Error(), "is nil") {
+		t.Errorf("error = %v, want it to report a nil destination", err)
 	}
 }
 

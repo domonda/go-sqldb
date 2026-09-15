@@ -124,6 +124,100 @@ func TestScanStruct(t *testing.T) {
 		assert.Equal(t, int64(7), inner.ID)
 		assert.Equal(t, "Charlie", inner.Name)
 	})
+
+	t.Run("scans through non-nil pointer to struct pointer", func(t *testing.T) {
+		// given
+		row := &mockRowScanner{
+			columns: []string{"id", "name"},
+			values:  []any{int64(8), "Dave"},
+		}
+		// Scanning into **scanTestStruct must fill the already allocated
+		// struct instead of failing, because callers easily pass &structPtr.
+		inner := &scanTestStruct{}
+		dest := &inner
+
+		// when
+		err := scanStruct(row, []string{"id", "name"}, refl, dest)
+
+		// then
+		require.NoError(t, err)
+		assert.Same(t, inner, *dest, "the already allocated struct must be scanned into, not replaced")
+		assert.Equal(t, int64(8), inner.ID)
+		assert.Equal(t, "Dave", inner.Name)
+	})
+
+	t.Run("allocates nil struct pointer behind non-nil pointer", func(t *testing.T) {
+		// given
+		row := &mockRowScanner{
+			columns: []string{"id", "name"},
+			values:  []any{int64(9), "Eve"},
+		}
+		// ***scanTestStruct exercises the helper beyond the depth any
+		// exported API admits (Row.Scan stops at **Struct): following the
+		// non-nil indirections must not skip the allocation of the still
+		// nil innermost struct pointer.
+		var inner *scanTestStruct
+		middle := &inner
+		dest := &middle
+
+		// when
+		err := scanStruct(row, []string{"id", "name"}, refl, dest)
+
+		// then
+		require.NoError(t, err)
+		require.NotNil(t, inner)
+		assert.Equal(t, int64(9), inner.ID)
+		assert.Equal(t, "Eve", inner.Name)
+	})
+
+	t.Run("does not allocate struct pointer when scan fails", func(t *testing.T) {
+		// given
+		row := &mockRowScanner{
+			columns: []string{"id", "name"},
+			values:  []any{int64(1), "Bob"},
+			scanErr: sql.ErrNoRows,
+		}
+		var inner *scanTestStruct
+
+		// when
+		err := scanStruct(row, []string{"id", "name"}, refl, &inner)
+
+		// then
+		require.ErrorIs(t, err, sql.ErrNoRows)
+		assert.Nil(t, inner, "a failed scan must not leave a partially scanned struct behind")
+	})
+
+	t.Run("non-struct destination behind non-nil pointer returns error", func(t *testing.T) {
+		// given
+		row := &mockRowScanner{
+			columns: []string{"id"},
+			values:  []any{int64(1)},
+		}
+		// Following non-nil indirections must not make a **int scannable.
+		inner := new(int)
+		dest := &inner
+
+		// when
+		err := scanStruct(row, []string{"id"}, refl, dest)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "expected struct")
+		assert.Contains(t, err.Error(), "**int", "the error must name the type the caller passed")
+	})
+
+	t.Run("reflector error is wrapped", func(t *testing.T) {
+		// given
+		row := &mockRowScanner{}
+		var dest scanTestStruct
+
+		// when: an empty column list makes the reflector fail
+		err := scanStruct(row, nil, refl, &dest)
+
+		// then
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "ScanableStructFieldsForColumns")
+	})
 }
 
 func Test_isNonSQLScannerStruct(t *testing.T) {

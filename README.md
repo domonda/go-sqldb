@@ -2,6 +2,8 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/domonda/go-sqldb.svg)](https://pkg.go.dev/github.com/domonda/go-sqldb) [![Go Report Card](https://goreportcard.com/badge/github.com/domonda/go-sqldb)](https://goreportcard.com/report/github.com/domonda/go-sqldb) [![Go](https://github.com/domonda/go-sqldb/actions/workflows/go.yml/badge.svg)](https://github.com/domonda/go-sqldb/actions/workflows/go.yml) [![Go version](https://img.shields.io/github/go-mod/go-version/domonda/go-sqldb)](https://github.com/domonda/go-sqldb) [![license](https://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://github.com/domonda/go-sqldb/blob/master/LICENSE)
 
+Requires Go 1.26 or later (since v1.5.0).
+
 ## Table of contents
 
 - [Philosophy](#philosophy)
@@ -114,9 +116,16 @@ derived from external input.
 ### Redacting secret arguments in logs and errors
 
 Query arguments flow into the result of `FormatQuery` whenever an
-error is wrapped via `WrapErrorWithQuery`. Anything that ends up in
-the error string can land in logs. Two layers are provided so secret
-arguments (passwords, API keys, tokens, PII) never appear there.
+error is wrapped with its query. Anything that ends up in
+the error string can land in logs. Three layers are provided so secret
+arguments (passwords, API keys, tokens, PII) never appear there, each
+withholding more than the previous one:
+
+| Layer                                      | Error message contains      |
+| ------------------------------------------ | --------------------------- |
+| `KeepSecret`                               | query, secret args redacted |
+| `ConnectionWithoutPlaceholderSubstitution` | query, args withheld        |
+| `ConnectionWithoutQueryInErrors`           | neither query nor args      |
 
 **`KeepSecret` (recommended, per-argument):** wrap individual args.
 `FormatValue` substitutes a redacted string instead of the value, so
@@ -162,9 +171,48 @@ db.SetConn(sqldb.ConnectionWithoutPlaceholderSubstitution(conn))
 //                  SET password_hash = $1 WHERE id = $2
 ```
 
+**`ConnectionWithoutQueryInErrors` (strictest, connection-wide):** wrap
+the whole connection so errors carry no query at all. Use when even the
+statement text must not reach logs, for example when a failed write of
+an extracted invoice would otherwise put that invoice into the error
+message. Like the wrapper above it persists across `Connection.Begin`.
+
+```go
+conn := pqconn.MustOpen(cfg)
+db.SetConn(sqldb.ConnectionWithoutQueryInErrors(conn))
+// errors now read: ... pq: duplicate key value violates unique constraint
+```
+
+Both connection wrappers expose only the `sqldb.Connection` method set,
+so optional interfaces of the wrapped connection such as
+`sqldb.ConnPinner` and `sqldb.ListenerConnection` are not available on
+the result — `sqldb.PinConn` on a wrapped connection returns an error
+wrapping `errors.ErrUnsupported`.
+
+To strip the query from an individual error instead of a whole
+connection, call `sqldb.UnwrapErrorWithQuery(err)` (mirrored as
+`db.UnwrapErrorWithQuery`). It returns errors that carry no query
+unchanged, so it can be called unconditionally, and it finds the query
+wrapping via `errors.AsType` so it also works on errors that were
+further wrapped with `%w`. Any error wrapping around the query wrapping is
+discarded together with it, because such an outer message already
+contains the query.
+
+```go
+err := db.Exec(ctx, /*sql*/ `INSERT INTO invoice (data) VALUES ($1)`, invoice)
+if err != nil {
+    log.Error(err)                               // full query for the operator
+    return db.UnwrapErrorWithQuery(err)          // no query for the caller
+}
+```
+
 `KeepSecret` is the primary defense and works without any setup; the
-wrapper is defense-in-depth for connections that may carry secret args.
-Implementing a custom `QueryFormatter` must include
+wrappers are defense-in-depth for connections that may carry secret args.
+A custom `QueryFormatter` opts out of query wrapping by implementing
+`sqldb.QueryInErrorsOmitter`, which is what all query functions consult
+via `sqldb.WrapErrorWithQueryIfConfigured`. `sqldb.WrapErrorWithQuery`
+itself always wraps, so call it directly to attach a query regardless of
+configuration. A custom `QueryFormatter` must always implement
 `SubstitutePlaceholders(query, args) (string, error)` — the shared
 helper `sqldb.SubstitutePlaceholders(f, query, args)` covers the
 standard case, and `StdQueryFormatter.DisableSubstitutePlaceholders`
@@ -543,7 +591,20 @@ var (
 err = db.QueryRow(ctx,
     `SELECT name, email FROM public.user WHERE id = $1`, userID,
 ).Scan(&name, &email)
+
+// Low-level: scan the whole row into a struct pointer variable
+var user *User
+err = db.QueryRow(ctx,
+    `SELECT * FROM public.user WHERE id = $1`, userID,
+).Scan(&user)
 ```
+
+When `Scan` gets a single destination that is a pointer to a struct which does not
+implement `sql.Scanner`, the result columns are scanned into the struct fields
+instead of into one column value. A pointer to a struct pointer (`**User` as above)
+works too: a nil struct pointer is allocated and only assigned after a successful
+scan, while a non-nil one is scanned into in place without being reset first, so
+struct fields without a corresponding result column keep their current values.
 
 ### Querying a single row by primary key
 
@@ -1163,6 +1224,10 @@ Start a test database and run all tests:
 docker compose -f pqconn/test/docker-compose.yml up -d
 ./test-workspace.sh
 ```
+
+`test-workspace.sh` builds, vets (`go vet` and `gosec`), and tests every module of
+the workspace. go-sqldb requires Go 1.26: every module declares `go 1.26.0`, as
+does `go.work`.
 
 After changing a database version in `docker-compose.yml`, reset the data directory:
 ```bash
