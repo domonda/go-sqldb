@@ -42,7 +42,8 @@ Scan a query result into a struct pointer you already allocated.
   Go >= 1.26.0, so the `go.work` go directive moves from 1.24.6 to
   1.26.0. Every module `go.mod` stays at `go 1.24.6`, so consumers of the
   published modules are unaffected; only building the workspace itself
-  now needs Go 1.26+. (`18e54fe`)
+  now needs Go 1.26+, and the CI `setup-go` pin moved to match.
+  (`18e54fe`)
 
 ## [v1.4.0] - 2026-06-19
 
