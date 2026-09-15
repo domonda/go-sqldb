@@ -29,7 +29,7 @@ func NewRow(rows Rows, reflector StructReflector, queryFmt QueryFormatter, query
 func (r *Row) Columns() ([]string, error) {
 	cols, err := r.rows.Columns()
 	if err != nil {
-		return nil, WrapErrorWithQuery(err, r.query, r.args, r.queryFmt)
+		return nil, WrapErrorWithQueryIfConfigured(err, r.query, r.args, r.queryFmt)
 	}
 	return cols, nil
 }
@@ -52,7 +52,7 @@ func (r *Row) Scan(dest ...any) (err error) {
 	defer func() {
 		err = errors.Join(err, r.rows.Close())
 		if err != nil {
-			err = WrapErrorWithQuery(err, r.query, r.args, r.queryFmt)
+			err = WrapErrorWithQueryIfConfigured(err, r.query, r.args, r.queryFmt)
 		}
 	}()
 

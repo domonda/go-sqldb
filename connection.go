@@ -135,6 +135,9 @@ type Connection interface {
 // The wrapper persists across [Connection.Begin] so that transactions
 // started from the wrapped connection inherit the no-substitution behavior.
 func ConnectionWithoutPlaceholderSubstitution(conn Connection) Connection {
+	if _, ok := conn.(connectionWithoutPlaceholderSubstitution); ok {
+		return conn
+	}
 	return connectionWithoutPlaceholderSubstitution{Connection: conn}
 }
 
@@ -156,6 +159,50 @@ func (c connectionWithoutPlaceholderSubstitution) Begin(ctx context.Context, id 
 		return nil, err
 	}
 	return connectionWithoutPlaceholderSubstitution{Connection: tx}, nil
+}
+
+// ConnectionWithoutQueryInErrors returns a [Connection] that wraps conn and
+// implements [QueryInErrorsOmitter] so that errors from queries executed with
+// it are not wrapped with the query by [WrapErrorWithQuery]. Use this when a
+// connection carries arguments or statements that must not reach error
+// messages or logs at all, and pass the result to sqldb functions or to
+// db.SetConn.
+//
+// This is stricter than [ConnectionWithoutPlaceholderSubstitution], which
+// keeps the query in the error message but leaves the placeholders unresolved
+// instead of substituting the argument values. Use that one to keep queries
+// readable in errors while withholding only their arguments.
+//
+// The wrapper persists across [Connection.Begin] so that transactions
+// started from the wrapped connection inherit the behavior.
+//
+// Like [ConnectionWithoutPlaceholderSubstitution], the returned Connection
+// exposes only the [Connection] method set, so optional interfaces of conn
+// like [ConnPinner] and [ListenerConnection] are not available on it.
+func ConnectionWithoutQueryInErrors(conn Connection) Connection {
+	if _, ok := conn.(connectionWithoutQueryInErrors); ok {
+		return conn
+	}
+	return connectionWithoutQueryInErrors{Connection: conn}
+}
+
+type connectionWithoutQueryInErrors struct {
+	Connection
+}
+
+// OmitQueryInErrors implements the [QueryInErrorsOmitter] interface.
+func (connectionWithoutQueryInErrors) OmitQueryInErrors() bool { return true }
+
+// Begin overrides the embedded Connection's Begin so the returned transaction
+// stays wrapped: without this override the wrapper would only protect queries
+// executed directly on it, while errors from queries inside transactions would
+// be wrapped with the query as usual.
+func (c connectionWithoutQueryInErrors) Begin(ctx context.Context, id uint64, opts *sql.TxOptions) (Connection, error) {
+	tx, err := c.Connection.Begin(ctx, id, opts)
+	if err != nil {
+		return nil, err
+	}
+	return connectionWithoutQueryInErrors{Connection: tx}, nil
 }
 
 // ConnPinner is implemented by Connections that can check out one dedicated

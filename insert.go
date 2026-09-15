@@ -20,7 +20,7 @@ func Insert(ctx context.Context, conn Executor, builder QueryBuilder, fmtr Query
 	}
 	err = conn.Exec(ctx, query, vals...)
 	if err != nil {
-		return WrapErrorWithQuery(err, query, vals, fmtr)
+		return WrapErrorWithQueryIfConfigured(err, query, vals, fmtr)
 	}
 	return nil
 }
@@ -84,7 +84,7 @@ func InsertUnique(ctx context.Context, conn Executor, builder UpsertQueryBuilder
 
 	n, err := conn.ExecRowsAffected(ctx, query, vals...)
 	if err != nil {
-		return false, WrapErrorWithQuery(err, query, vals, fmtr)
+		return false, WrapErrorWithQueryIfConfigured(err, query, vals, fmtr)
 	}
 	return n > 0, nil
 }
@@ -120,7 +120,7 @@ func InsertRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 			}
 			err = conn.Exec(ctx, cached.query, vals...)
 			if err != nil {
-				return WrapErrorWithQuery(err, cached.query, vals, fmtr)
+				return WrapErrorWithQueryIfConfigured(err, cached.query, vals, fmtr)
 			}
 			return nil
 		}
@@ -156,7 +156,7 @@ func InsertRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 
 	err = conn.Exec(ctx, cached.query, vals...)
 	if err != nil {
-		return WrapErrorWithQuery(err, cached.query, vals, fmtr)
+		return WrapErrorWithQueryIfConfigured(err, cached.query, vals, fmtr)
 	}
 	return nil
 }
@@ -206,7 +206,7 @@ func InsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 		}
 		err = stmt.Exec(ctx, vals...)
 		if err != nil {
-			return WrapErrorWithQuery(err, query, vals, fmtr)
+			return WrapErrorWithQueryIfConfigured(err, query, vals, fmtr)
 		}
 		return nil
 	}
@@ -262,7 +262,7 @@ func InsertUniqueRowStruct(ctx context.Context, conn Executor, refl StructReflec
 
 	n, err := conn.ExecRowsAffected(ctx, query, vals...)
 	if err != nil {
-		return false, WrapErrorWithQuery(err, query, vals, fmtr)
+		return false, WrapErrorWithQueryIfConfigured(err, query, vals, fmtr)
 	}
 	return n > 0, nil
 }
@@ -353,7 +353,7 @@ func InsertRowStructs[S StructWithTableName](ctx context.Context, conn Connectio
 		}
 		err = conn.Exec(ctx, query, vals...)
 		if err != nil {
-			return WrapErrorWithQuery(err, query, vals, fmtr)
+			return WrapErrorWithQueryIfConfigured(err, query, vals, fmtr)
 		}
 		return nil
 	}
@@ -382,7 +382,7 @@ func InsertRowStructs[S StructWithTableName](ctx context.Context, conn Connectio
 				}
 				err = stmt.Exec(ctx, vals...)
 				if err != nil {
-					execErr = WrapErrorWithQuery(err, fullBatchQuery, vals, fmtr)
+					execErr = WrapErrorWithQueryIfConfigured(err, fullBatchQuery, vals, fmtr)
 					break
 				}
 			}
@@ -398,7 +398,7 @@ func InsertRowStructs[S StructWithTableName](ctx context.Context, conn Connectio
 			}
 			err = tx.Exec(ctx, fullBatchQuery, vals...)
 			if err != nil {
-				return WrapErrorWithQuery(err, fullBatchQuery, vals, fmtr)
+				return WrapErrorWithQueryIfConfigured(err, fullBatchQuery, vals, fmtr)
 			}
 		}
 
@@ -417,7 +417,7 @@ func InsertRowStructs[S StructWithTableName](ctx context.Context, conn Connectio
 		}
 		err = tx.Exec(ctx, remainderQuery, vals...)
 		if err != nil {
-			return WrapErrorWithQuery(err, remainderQuery, vals, fmtr)
+			return WrapErrorWithQueryIfConfigured(err, remainderQuery, vals, fmtr)
 		}
 		return nil
 	})
