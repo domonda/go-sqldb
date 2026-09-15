@@ -2,6 +2,8 @@
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/domonda/go-sqldb.svg)](https://pkg.go.dev/github.com/domonda/go-sqldb) [![Go Report Card](https://goreportcard.com/badge/github.com/domonda/go-sqldb)](https://goreportcard.com/report/github.com/domonda/go-sqldb) [![Go](https://github.com/domonda/go-sqldb/actions/workflows/go.yml/badge.svg)](https://github.com/domonda/go-sqldb/actions/workflows/go.yml) [![Go version](https://img.shields.io/github/go-mod/go-version/domonda/go-sqldb)](https://github.com/domonda/go-sqldb) [![license](https://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://github.com/domonda/go-sqldb/blob/master/LICENSE)
 
+Requires Go 1.26 or later.
+
 ## Table of contents
 
 - [Philosophy](#philosophy)
@@ -543,7 +545,20 @@ var (
 err = db.QueryRow(ctx,
     `SELECT name, email FROM public.user WHERE id = $1`, userID,
 ).Scan(&name, &email)
+
+// Low-level: scan the whole row into a struct pointer variable
+var user *User
+err = db.QueryRow(ctx,
+    `SELECT * FROM public.user WHERE id = $1`, userID,
+).Scan(&user)
 ```
+
+When `Scan` gets a single destination that is a pointer to a struct which does not
+implement `sql.Scanner`, the result columns are scanned into the struct fields
+instead of into one column value. A pointer to a struct pointer (`**User` as above)
+works too: a nil struct pointer is allocated and only assigned after a successful
+scan, while a non-nil one is scanned into in place without being reset first, so
+struct fields without a corresponding result column keep their current values.
 
 ### Querying a single row by primary key
 
@@ -1163,6 +1178,10 @@ Start a test database and run all tests:
 docker compose -f pqconn/test/docker-compose.yml up -d
 ./test-workspace.sh
 ```
+
+`test-workspace.sh` builds, vets (`go vet` and `gosec`), and tests every module of
+the workspace. go-sqldb requires Go 1.26: every module declares `go 1.26.0`, as
+does `go.work`.
 
 After changing a database version in `docker-compose.yml`, reset the data directory:
 ```bash

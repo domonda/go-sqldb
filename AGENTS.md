@@ -71,6 +71,7 @@ func MyValueFromContext(ctx context.Context) string {
 
 ### Testing
 - **Acceptance tests for workspace**: `./test-workspace.sh` 
+- Requires Go 1.26: every module `go.mod` and `go.work` declare `go 1.26.0`
 - Use `t.Context()` instead of `context.Background()` in tests
 - Use `github.com/stretchr/testify` for tests
 - Import `github.com/stretchr/testify/require` for required conditions
