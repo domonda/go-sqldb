@@ -12,6 +12,38 @@ The driver sub-modules (`pqconn`, `mysqlconn`, `mssqlconn`, `sqliteconn`,
 `oraconn`) are tagged separately as `<module>/vX.Y.Z` and released in lockstep
 with the root module.
 
+## [v1.4.1] - 2026-09-15
+
+Scan a query result into a struct pointer you already allocated.
+
+[Diff](https://github.com/domonda/go-sqldb/compare/v1.4.0...v1.4.1)
+
+### Fixed
+
+- `sqldb.Row.Scan` accepts a pointer to a struct pointer, so the natural
+  `company := &client.Company{}; db.QueryRow(ctx, query).Scan(&company)`
+  works instead of failing with `scanStruct expected struct or pointer to
+  struct but got **T`. `Row.Scan` already treated `**Struct` as a
+  struct-scan destination, but the scan itself only followed one level of
+  indirection and then required either a struct or a nil pointer it could
+  allocate. It now follows the pointer indirections before the
+  nil-pointer allocation branch. A nil struct pointer is still allocated
+  and only published after a successful scan, while a non-nil one is
+  scanned into in place without being reset first, so fields without a
+  matching result column keep their current values — both cases, and the
+  error-path difference between them, are now documented on `Row.Scan`.
+  (`879fd48`)
+
+### Changed
+
+- `gosec` updated to v2.29.0 (`golang.org/x/tools` v0.50.0), which fixes
+  the `internal error: package ... without types` abort that broke
+  `./test-workspace.sh` under Go 1.27. The `gosec` tools module requires
+  Go >= 1.26.0, so the `go.work` go directive moves from 1.24.6 to
+  1.26.0. Every module `go.mod` stays at `go 1.24.6`, so consumers of the
+  published modules are unaffected; only building the workspace itself
+  now needs Go 1.26+. (`18e54fe`)
+
 ## [v1.4.0] - 2026-06-19
 
 Pin a connection to one backend session for session-scoped state like
