@@ -40,6 +40,14 @@ func (r *Row) Columns() ([]string, error) {
 // Except when a single destination argument is passed that is a pointer to a struct
 // that does not implement sql.Scanner, then the column values of the row
 // are scanned into the corresponding struct fields.
+//
+// A pointer to a pointer to such a struct is also accepted:
+// a nil struct pointer will be allocated, a non-nil one is scanned
+// into in place without being reset first, so struct fields without
+// a corresponding result column keep their current values.
+// If scanning fails, a struct pointer allocated by this method is
+// left nil, while a struct allocated by the caller may have been
+// partially overwritten.
 func (r *Row) Scan(dest ...any) (err error) {
 	defer func() {
 		err = errors.Join(err, r.rows.Close())
