@@ -1,6 +1,6 @@
 module github.com/domonda/go-sqldb/information/mysql_information_test
 
-go 1.24.6
+go 1.26.0
 
 replace (
 	github.com/domonda/go-sqldb => ../..
@@ -15,6 +15,6 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.1 // indirect
-	github.com/DataDog/go-sqllexer v0.1.13 // indirect
-	github.com/corazawaf/libinjection-go v0.3.2 // indirect
+	github.com/DataDog/go-sqllexer v0.2.5 // indirect
+	github.com/corazawaf/libinjection-go v0.3.5 // indirect
 )
