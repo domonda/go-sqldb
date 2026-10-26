@@ -238,9 +238,11 @@ func WrapErrorWithQuery(err error, query string, args []any, queryFmt QueryForma
 // [QueryInErrorsOmitter] with OmitQueryInErrors returning true,
 // in which case err is returned unchanged.
 //
-// This is the variant used by all query functions of this package,
-// so that a [Connection] wrapped with [ConnectionWithoutQueryInErrors]
-// never adds a query to any of its errors.
+// This is the variant used by the query, exec, insert, update, upsert and
+// delete functions of this package, so that a [Connection] wrapped with
+// [ConnectionWithoutQueryInErrors] does not add a query to their errors.
+// Driver implementations of [Information] query the catalog with the
+// unwrapped connection, so their errors can still carry the catalog query.
 //
 // Note that an err that already carries a query from a different
 // QueryFormatter is returned unchanged with that query, use

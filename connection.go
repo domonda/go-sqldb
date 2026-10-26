@@ -134,6 +134,12 @@ type Connection interface {
 //
 // The wrapper persists across [Connection.Begin] so that transactions
 // started from the wrapped connection inherit the no-substitution behavior.
+//
+// The returned Connection exposes only the [Connection] method set, so
+// optional interfaces of conn like [ConnPinner], [ListenerConnection] and
+// [QueryBuilder] are not available on it. Passing it to db.SetConn therefore
+// also disables the driver's own query builder, falling back to the one
+// configured with db.SetQueryBuilder.
 func ConnectionWithoutPlaceholderSubstitution(conn Connection) Connection {
 	if _, ok := conn.(connectionWithoutPlaceholderSubstitution); ok {
 		return conn
@@ -178,7 +184,11 @@ func (c connectionWithoutPlaceholderSubstitution) Begin(ctx context.Context, id 
 //
 // Like [ConnectionWithoutPlaceholderSubstitution], the returned Connection
 // exposes only the [Connection] method set, so optional interfaces of conn
-// like [ConnPinner] and [ListenerConnection] are not available on it.
+// like [ConnPinner], [ListenerConnection] and [QueryBuilder] are not
+// available on it. Passing it to db.SetConn therefore also disables the
+// driver's own query builder, falling back to the one configured with
+// db.SetQueryBuilder, whose StdReturningQueryBuilder default does not
+// implement [UpsertQueryBuilder].
 func ConnectionWithoutQueryInErrors(conn Connection) Connection {
 	if _, ok := conn.(connectionWithoutQueryInErrors); ok {
 		return conn
