@@ -319,3 +319,41 @@ func TestUnwrapErrorWithQuery(t *testing.T) {
 		assert.NotContains(t, unwrapped.Error(), "secret invoice")
 	})
 }
+
+// keepQueryFormatter implements QueryInErrorsOmitter but opts in to
+// queries in errors, covering the false case of the interface.
+type keepQueryFormatter struct {
+	StdQueryFormatter
+}
+
+func (keepQueryFormatter) OmitQueryInErrors() bool { return false }
+
+func TestWrapErrorWithQueryIfConfigured_OmitterReturningFalse(t *testing.T) {
+	// Implementing QueryInErrorsOmitter must not be enough to opt out,
+	// only the returned value decides. Otherwise a QueryFormatter could
+	// not make the decision per connection or at runtime.
+	original := errors.New("original error")
+	keeping := keepQueryFormatter{StdQueryFormatter{PlaceholderPosPrefix: "$"}}
+
+	err := WrapErrorWithQueryIfConfigured(original, "INSERT INTO invoice VALUES ($1)", []any{"visible arg"}, keeping)
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "INSERT INTO invoice")
+	assert.Contains(t, err.Error(), "visible arg")
+}
+
+func TestWrapErrorWithQuery_AlreadyWrappedInErrorChain(t *testing.T) {
+	// The already-wrapped check uses errors.AsType and therefore also finds
+	// a query wrapping deeper in the chain. Without this an error that
+	// passed through an outer fmt.Errorf on its way up would collect a
+	// second query and print both.
+	original := errors.New("original error")
+	formatter := StdQueryFormatter{PlaceholderPosPrefix: "$"}
+	wrapped := WrapErrorWithQuery(original, "SELECT 1", nil, formatter)
+	outer := fmt.Errorf("storing invoice: %w", wrapped)
+
+	result := WrapErrorWithQuery(outer, "SELECT 2", nil, formatter)
+
+	assert.Equal(t, outer, result)
+	assert.NotContains(t, result.Error(), "SELECT 2")
+}

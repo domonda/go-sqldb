@@ -165,3 +165,41 @@ func TestStmtWithErrWrapping_Query_Error(t *testing.T) {
 	// then – error is wrapped with query context but still unwraps to the original
 	require.ErrorIs(t, rows.Err(), queryErr)
 }
+
+func TestStmtWithErrWrapping_ConnectionWithoutQueryInErrors(t *testing.T) {
+	// given
+	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+	execErr := errors.New("exec error")
+	queryErr := errors.New("query error")
+	mock.MockPrepare = func(ctx context.Context, query string) (sqldb.Stmt, error) {
+		return &sqldb.MockStmt{
+			Prepared: query,
+			MockExec: func(ctx context.Context, args ...any) error {
+				return execErr
+			},
+			MockQuery: func(ctx context.Context, args ...any) sqldb.Rows {
+				return sqldb.NewErrRows(queryErr)
+			},
+		}, nil
+	}
+	// db.Prepare passes the context connection on to the wrapping Stmt as
+	// its QueryFormatter, so the opt-out has to reach prepared statements
+	// too, otherwise a failing prepared INSERT would still log its payload.
+	ctx := testContext(t, sqldb.ConnectionWithoutQueryInErrors(mock))
+	query := /*sql*/ `INSERT INTO invoice (data) VALUES ($1)`
+
+	stmt, err := db.Prepare(ctx, query)
+	require.NoError(t, err)
+	defer stmt.Close()
+
+	// when
+	gotExecErr := stmt.Exec(ctx, "secret invoice")
+	rows := stmt.Query(ctx, "secret invoice")
+	defer rows.Close()
+
+	// then
+	require.ErrorIs(t, gotExecErr, execErr)
+	assert.Equal(t, "exec error", gotExecErr.Error())
+	require.ErrorIs(t, rows.Err(), queryErr)
+	assert.Equal(t, "query error", rows.Err().Error())
+}

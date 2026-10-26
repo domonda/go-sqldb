@@ -31,6 +31,14 @@ func TestConnectionWithoutPlaceholderSubstitution(t *testing.T) {
 		assert.Equal(t, "$1", wrapped.FormatPlaceholder(0))
 	})
 
+	t.Run("wrapping an already wrapped connection returns it unchanged", func(t *testing.T) {
+		// Wrapping must be idempotent so that repeated calls on the way
+		// through several layers don't stack wrappers that each add
+		// another Begin indirection.
+		wrapped := ConnectionWithoutPlaceholderSubstitution(base)
+		assert.Equal(t, wrapped, ConnectionWithoutPlaceholderSubstitution(wrapped))
+	})
+
 	t.Run("Begin returns a wrapped transaction", func(t *testing.T) {
 		wrapped := ConnectionWithoutPlaceholderSubstitution(base)
 		tx, err := wrapped.Begin(t.Context(), 1, nil)
@@ -296,4 +304,127 @@ func TestQuoteStringLiteral(t *testing.T) {
 			require.Equal(t, tt.want, got, "QuoteStringLiteral(%#v)", tt.str)
 		})
 	}
+}
+
+// errTestPinned is returned by pinnerConn.Conn to prove that the
+// ConnPinner implementation was reached.
+var errTestPinned = errors.New("pinned")
+
+// pinnerConn is a Connection that also implements the optional
+// ConnPinner interface, used to verify what the Connection wrappers
+// expose of the connection they wrap.
+type pinnerConn struct {
+	*MockConn
+}
+
+func (pinnerConn) Conn(ctx context.Context) (PinnedConnection, error) {
+	return nil, errTestPinned
+}
+
+func TestConnectionWrappers_HideOptionalInterfaces(t *testing.T) {
+	base := pinnerConn{NewMockConn(NewQueryFormatter("$"))}
+
+	t.Run("optional interfaces are available on the unwrapped connection", func(t *testing.T) {
+		_, err := PinConn(t.Context(), base)
+		assert.ErrorIs(t, err, errTestPinned)
+		assert.Implements(t, (*ListenerConnection)(nil), base)
+	})
+
+	for _, tt := range []struct {
+		name    string
+		wrapped Connection
+	}{
+		{name: "ConnectionWithoutQueryInErrors", wrapped: ConnectionWithoutQueryInErrors(base)},
+		{name: "ConnectionWithoutPlaceholderSubstitution", wrapped: ConnectionWithoutPlaceholderSubstitution(base)},
+	} {
+		t.Run(tt.name+" hides them", func(t *testing.T) {
+			// Documented caveat of both wrappers: they embed the Connection
+			// interface and therefore expose only its method set. Callers
+			// that need ConnPinner or ListenerConnection must keep a
+			// reference to the unwrapped connection, so this failure mode
+			// must stay visible as an ErrUnsupported instead of silently
+			// running on a different session.
+			_, err := PinConn(t.Context(), tt.wrapped)
+			assert.ErrorIs(t, err, errors.ErrUnsupported)
+			assert.NotImplements(t, (*ListenerConnection)(nil), tt.wrapped)
+		})
+	}
+}
+
+func TestConnectionWithoutQueryInErrors_Row(t *testing.T) {
+	base := NewMockConn(NewQueryFormatter("$"))
+	base.MockQuery = func(ctx context.Context, query string, args ...any) Rows {
+		return NewErrRows(errors.New("mock query error"))
+	}
+	const query = /*sql*/ `SELECT data FROM invoice WHERE data = $1`
+
+	t.Run("base connection puts query and args into the Row error", func(t *testing.T) {
+		row := QueryRow(t.Context(), base, nil, base, query, "secret invoice")
+		var data string
+		err := row.Scan(&data)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "secret invoice")
+	})
+
+	t.Run("wrapped connection keeps query and args out of the Row error", func(t *testing.T) {
+		// Row keeps its own reference to the QueryFormatter it was
+		// created with, so the opt-out has to survive into Row.Scan,
+		// which is where most query errors surface.
+		wrapped := ConnectionWithoutQueryInErrors(base)
+		row := QueryRow(t.Context(), wrapped, nil, wrapped, query, "secret invoice")
+		var data string
+		err := row.Scan(&data)
+		require.Error(t, err)
+		assert.NotContains(t, err.Error(), "secret invoice")
+		assert.NotContains(t, err.Error(), "SELECT data FROM invoice")
+	})
+
+	t.Run("wrapped connection keeps query and args out of Row.Columns errors", func(t *testing.T) {
+		wrapped := ConnectionWithoutQueryInErrors(base)
+		row := QueryRow(t.Context(), wrapped, nil, wrapped, query, "secret invoice")
+		_, err := row.Columns()
+		require.Error(t, err)
+		assert.Equal(t, "mock query error", err.Error())
+	})
+}
+
+func TestConnectionWrappersCombined(t *testing.T) {
+	base := NewMockConn(NewQueryFormatter("$"))
+	base.MockExec = func(ctx context.Context, query string, args ...any) error {
+		return errors.New("mock exec error")
+	}
+	const query = /*sql*/ `INSERT INTO invoice (data) VALUES ($1)`
+
+	t.Run("query omission outermost keeps both behaviors", func(t *testing.T) {
+		// ConnectionWithoutQueryInErrors is the outer wrapper, so its
+		// OmitQueryInErrors is part of the method set while
+		// SubstitutePlaceholders is promoted from the inner wrapper.
+		conn := ConnectionWithoutQueryInErrors(ConnectionWithoutPlaceholderSubstitution(base))
+
+		q, err := conn.SubstitutePlaceholders("SELECT $1", []any{42})
+		require.NoError(t, err)
+		assert.Equal(t, "SELECT $1", q)
+
+		execErr := Exec(t.Context(), conn, conn, query, "secret invoice")
+		require.Error(t, execErr)
+		assert.Equal(t, "mock exec error", execErr.Error())
+	})
+
+	t.Run("placeholder wrapper outermost loses the query omission", func(t *testing.T) {
+		// Known limitation: connectionWithoutPlaceholderSubstitution embeds
+		// the Connection interface, which does not contain
+		// OmitQueryInErrors, so the method of the inner wrapper is not
+		// promoted and the stricter opt-out silently degrades to the
+		// weaker one. Apply ConnectionWithoutQueryInErrors last.
+		conn := ConnectionWithoutPlaceholderSubstitution(ConnectionWithoutQueryInErrors(base))
+
+		_, isOmitter := conn.(QueryInErrorsOmitter)
+		assert.False(t, isOmitter)
+
+		execErr := Exec(t.Context(), conn, conn, query, "secret invoice")
+		require.Error(t, execErr)
+		assert.Contains(t, execErr.Error(), "INSERT INTO invoice")
+		// The argument itself is still withheld by the placeholder wrapper.
+		assert.NotContains(t, execErr.Error(), "secret invoice")
+	})
 }
