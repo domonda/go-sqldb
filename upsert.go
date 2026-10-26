@@ -42,7 +42,7 @@ func UpsertRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 			}
 			err = conn.Exec(ctx, cached.query, vals...)
 			if err != nil {
-				return WrapErrorWithQuery(err, cached.query, vals, fmtr)
+				return WrapErrorWithQueryIfConfigured(err, cached.query, vals, fmtr)
 			}
 			return nil
 		}
@@ -84,7 +84,7 @@ func UpsertRowStruct(ctx context.Context, conn Executor, refl StructReflector, b
 
 	err = conn.Exec(ctx, cached.query, vals...)
 	if err != nil {
-		return WrapErrorWithQuery(err, cached.query, vals, fmtr)
+		return WrapErrorWithQueryIfConfigured(err, cached.query, vals, fmtr)
 	}
 	return nil
 }
@@ -144,7 +144,7 @@ func UpsertRowStructStmt[S StructWithTableName](ctx context.Context, conn Prepar
 		}
 		err = stmt.Exec(ctx, vals...)
 		if err != nil {
-			return WrapErrorWithQuery(err, query, vals, fmtr)
+			return WrapErrorWithQueryIfConfigured(err, query, vals, fmtr)
 		}
 		return nil
 	}

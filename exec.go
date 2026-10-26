@@ -6,7 +6,7 @@ import "context"
 func Exec(ctx context.Context, conn Executor, fmtr QueryFormatter, query string, args ...any) error {
 	err := conn.Exec(ctx, query, args...)
 	if err != nil {
-		return WrapErrorWithQuery(err, query, args, fmtr)
+		return WrapErrorWithQueryIfConfigured(err, query, args, fmtr)
 	}
 	return nil
 }
@@ -18,7 +18,7 @@ func Exec(ctx context.Context, conn Executor, fmtr QueryFormatter, query string,
 func ExecRowsAffected(ctx context.Context, conn Executor, fmtr QueryFormatter, query string, args ...any) (int64, error) {
 	n, err := conn.ExecRowsAffected(ctx, query, args...)
 	if err != nil {
-		return 0, WrapErrorWithQuery(err, query, args, fmtr)
+		return 0, WrapErrorWithQueryIfConfigured(err, query, args, fmtr)
 	}
 	return n, nil
 }
@@ -28,12 +28,12 @@ func ExecRowsAffected(ctx context.Context, conn Executor, fmtr QueryFormatter, q
 func ExecStmt(ctx context.Context, conn Preparer, fmtr QueryFormatter, query string) (execFunc func(ctx context.Context, args ...any) error, closeStmt func() error, err error) {
 	stmt, err := conn.Prepare(ctx, query)
 	if err != nil {
-		return nil, nil, WrapErrorWithQuery(err, query, nil, fmtr)
+		return nil, nil, WrapErrorWithQueryIfConfigured(err, query, nil, fmtr)
 	}
 	execFunc = func(ctx context.Context, args ...any) error {
 		err := stmt.Exec(ctx, args...)
 		if err != nil {
-			return WrapErrorWithQuery(err, query, args, fmtr)
+			return WrapErrorWithQueryIfConfigured(err, query, args, fmtr)
 		}
 		return nil
 	}
@@ -46,12 +46,12 @@ func ExecStmt(ctx context.Context, conn Preparer, fmtr QueryFormatter, query str
 func ExecRowsAffectedStmt(ctx context.Context, conn Preparer, fmtr QueryFormatter, query string) (execFunc func(ctx context.Context, args ...any) (int64, error), closeStmt func() error, err error) {
 	stmt, err := conn.Prepare(ctx, query)
 	if err != nil {
-		return nil, nil, WrapErrorWithQuery(err, query, nil, fmtr)
+		return nil, nil, WrapErrorWithQueryIfConfigured(err, query, nil, fmtr)
 	}
 	execFunc = func(ctx context.Context, args ...any) (int64, error) {
 		n, err := stmt.ExecRowsAffected(ctx, args...)
 		if err != nil {
-			return 0, WrapErrorWithQuery(err, query, args, fmtr)
+			return 0, WrapErrorWithQueryIfConfigured(err, query, args, fmtr)
 		}
 		return n, nil
 	}

@@ -14,10 +14,13 @@ func scanStruct(row rowScanner, columns []string, reflector StructReflector, des
 		return fmt.Errorf("scanStruct got nil StructReflector")
 	}
 	v := reflect.ValueOf(destStruct)
-	if v.Kind() == reflect.Pointer {
-		if v.IsNil() {
-			return fmt.Errorf("scanStruct got nil pointer for %T", destStruct)
-		}
+	if v.Kind() == reflect.Pointer && v.IsNil() {
+		return fmt.Errorf("scanStruct got nil pointer for %T", destStruct)
+	}
+	// Follow the pointer indirections to tolerate destinations like
+	// **Struct passed as &structPtr. A nil pointer behind the first
+	// indirection ends the loop and is allocated below.
+	for v.Kind() == reflect.Pointer && !v.IsNil() {
 		v = v.Elem()
 	}
 

@@ -124,3 +124,28 @@ func TestTransaction(t *testing.T) {
 		})
 	}
 }
+
+func TestTransaction_ConnectionWithoutQueryInErrors(t *testing.T) {
+	// given – the wrapper has to survive Connection.Begin, otherwise every
+	// write inside db.Transaction would put its payload back into the error
+	// message, and writes are where the secret arguments are.
+	mock := sqldb.NewMockConn(sqldb.NewQueryFormatter("$"))
+	execErr := errors.New("exec error")
+	mock.MockExec = func(ctx context.Context, query string, args ...any) error {
+		return execErr
+	}
+	ctx := testContext(t, sqldb.ConnectionWithoutQueryInErrors(mock))
+
+	// when
+	err := db.Transaction(ctx, func(ctx context.Context) error {
+		require.True(t, db.IsTransaction(ctx))
+		return db.Exec(ctx,
+			/*sql*/ `INSERT INTO invoice (data) VALUES ($1)`,
+			"secret invoice",
+		)
+	})
+
+	// then
+	require.ErrorIs(t, err, execErr)
+	require.Equal(t, "exec error", err.Error())
+}

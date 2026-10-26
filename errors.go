@@ -202,18 +202,98 @@ func (e ErrExclusionViolation) Unwrap() error {
 	return ErrIntegrityConstraintViolation{Constraint: e.Constraint}
 }
 
+// QueryInErrorsOmitter can be implemented by a [QueryFormatter] to opt out
+// of errors being wrapped with the query they originated from.
+// [WrapErrorWithQueryIfConfigured] returns errors unchanged when the
+// passed [QueryFormatter] implements this interface
+// and OmitQueryInErrors returns true.
+//
+// Use [ConnectionWithoutQueryInErrors] to wrap an existing [Connection]
+// instead of implementing this interface manually.
+type QueryInErrorsOmitter interface {
+	// OmitQueryInErrors returns true if errors must not be
+	// wrapped with the query they originated from.
+	OmitQueryInErrors() bool
+}
+
 // WrapErrorWithQuery wraps an error with a formatted query
 // if the error was not already wrapped with a query.
 // If the passed error is nil, then nil will be returned.
+//
+// Use [WrapErrorWithQueryIfConfigured] to respect a queryFmt that
+// is configured to omit queries in errors, and
+// [UnwrapErrorWithQuery] to remove the query from an error again.
 func WrapErrorWithQuery(err error, query string, args []any, queryFmt QueryFormatter) error {
 	if err == nil {
 		return nil
 	}
-	var wrapped errWithQuery
-	if errors.As(err, &wrapped) {
+	if _, ok := errors.AsType[errWithQuery](err); ok {
 		return err // already wrapped
 	}
 	return errWithQuery{err, query, args, queryFmt}
+}
+
+// WrapErrorWithQueryIfConfigured calls [WrapErrorWithQuery] unless queryFmt
+// is configured to omit queries in errors by implementing
+// [QueryInErrorsOmitter] with OmitQueryInErrors returning true,
+// in which case err is returned unchanged.
+//
+// This is the variant used by the query, exec, insert, update, upsert and
+// delete functions of this package, so that a [Connection] wrapped with
+// [ConnectionWithoutQueryInErrors] does not add a query to their errors.
+// Driver implementations of [Information] query the catalog with the
+// unwrapped connection, so their errors can still carry the catalog query.
+//
+// Note that an err that already carries a query from a different
+// QueryFormatter is returned unchanged with that query, use
+// [UnwrapErrorWithQuery] to remove it.
+func WrapErrorWithQueryIfConfigured(err error, query string, args []any, queryFmt QueryFormatter) error {
+	if omitter, ok := queryFmt.(QueryInErrorsOmitter); ok && omitter.OmitQueryInErrors() {
+		return err
+	}
+	return WrapErrorWithQuery(err, query, args, queryFmt)
+}
+
+// UnwrapErrorWithQuery returns the error that was wrapped with a query
+// by [WrapErrorWithQuery], or the passed err unchanged if it was not
+// wrapped with a query anywhere in its error chain. Passing nil returns nil.
+//
+// [errors.AsType] is used to find the query wrapping within the passed error,
+// so it is also removed when further wrapped with [fmt.Errorf] and %w.
+// Note that any error wrapping around the query wrapping is discarded
+// together with it, because the message of an error wrapping the query
+// wrapping already contains the query. Returning it would defeat the
+// purpose of this function.
+//
+// A multi-error that joins the query wrapping with independent errors,
+// like the ROLLBACK error of a failed transaction, is rebuilt with
+// [errors.Join] from its stripped branches instead of being discarded,
+// so [errors.Is] still finds those independent errors. The message of the
+// joining error is lost together with the query it contains, which for
+// [fmt.Errorf] with several %w verbs means its format string.
+func UnwrapErrorWithQuery(err error) error {
+	if _, ok := errors.AsType[errWithQuery](err); !ok {
+		return err // no query to remove, also covers err == nil
+	}
+	if wrapped, ok := err.(errWithQuery); ok {
+		return UnwrapErrorWithQuery(wrapped.err)
+	}
+	// err wraps a query wrapping, so its own message contains the query
+	// and err itself can't be returned.
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		// Rebuild the join from the stripped branches instead of
+		// returning only the one that carried the query.
+		branches := joined.Unwrap()
+		stripped := make([]error, len(branches))
+		for i, branch := range branches {
+			stripped[i] = UnwrapErrorWithQuery(branch)
+		}
+		return errors.Join(stripped...)
+	}
+	if unary, ok := err.(interface{ Unwrap() error }); ok {
+		return UnwrapErrorWithQuery(unary.Unwrap())
+	}
+	return err
 }
 
 type errWithQuery struct {
