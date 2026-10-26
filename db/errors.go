@@ -21,7 +21,9 @@ func IsOtherThanErrNoRows(err error) bool {
 // Passing nil returns nil.
 //
 // Any error wrapping around the query wrapping is discarded together
-// with it, see [sqldb.UnwrapErrorWithQuery].
+// with it, except for a multi-error, which is rebuilt from its stripped
+// branches so that independent errors joined with the query wrapping
+// stay observable. See [sqldb.UnwrapErrorWithQuery].
 func UnwrapErrorWithQuery(err error) error {
 	return sqldb.UnwrapErrorWithQuery(err)
 }

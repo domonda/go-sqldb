@@ -318,6 +318,39 @@ func TestUnwrapErrorWithQuery(t *testing.T) {
 		assert.Same(t, original, unwrapped)
 		assert.NotContains(t, unwrapped.Error(), "secret invoice")
 	})
+
+	t.Run("errors joined with the query wrapping survive", func(t *testing.T) {
+		// Shape of transaction.go's double error situation: the ROLLBACK
+		// error carries no query but must reach the caller, so the join
+		// is rebuilt instead of being discarded with the query.
+		rollbackErr := errors.New("ROLLBACK error")
+		wrapped := WrapErrorWithQuery(original, "INSERT INTO invoice VALUES ($1)", []any{"secret invoice"}, formatter)
+		joined := fmt.Errorf("transaction 1 ROLLBACK error (%w) after error: %w", rollbackErr, wrapped)
+		require.Contains(t, joined.Error(), "secret invoice")
+
+		unwrapped := UnwrapErrorWithQuery(joined)
+		assert.ErrorIs(t, unwrapped, rollbackErr)
+		assert.ErrorIs(t, unwrapped, original)
+		assert.NotContains(t, unwrapped.Error(), "secret invoice")
+		assert.NotContains(t, unwrapped.Error(), "INSERT INTO invoice")
+	})
+
+	t.Run("join without a query is returned unchanged", func(t *testing.T) {
+		joined := errors.Join(original, errors.New("other error"))
+		assert.Same(t, joined, UnwrapErrorWithQuery(joined))
+	})
+
+	t.Run("join nested in further wrapping is rebuilt", func(t *testing.T) {
+		rollbackErr := errors.New("ROLLBACK error")
+		wrapped := WrapErrorWithQuery(original, "INSERT INTO invoice VALUES ($1)", []any{"secret invoice"}, formatter)
+		outer := fmt.Errorf("storing invoice: %w", errors.Join(rollbackErr, wrapped))
+		require.Contains(t, outer.Error(), "secret invoice")
+
+		unwrapped := UnwrapErrorWithQuery(outer)
+		assert.ErrorIs(t, unwrapped, rollbackErr)
+		assert.ErrorIs(t, unwrapped, original)
+		assert.NotContains(t, unwrapped.Error(), "secret invoice")
+	})
 }
 
 // keepQueryFormatter implements QueryInErrorsOmitter but opts in to

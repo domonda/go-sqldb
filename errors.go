@@ -264,9 +264,34 @@ func WrapErrorWithQueryIfConfigured(err error, query string, args []any, queryFm
 // together with it, because the message of an error wrapping the query
 // wrapping already contains the query. Returning it would defeat the
 // purpose of this function.
+//
+// A multi-error that joins the query wrapping with independent errors,
+// like the ROLLBACK error of a failed transaction, is rebuilt with
+// [errors.Join] from its stripped branches instead of being discarded,
+// so [errors.Is] still finds those independent errors. The message of the
+// joining error is lost together with the query it contains, which for
+// [fmt.Errorf] with several %w verbs means its format string.
 func UnwrapErrorWithQuery(err error) error {
-	if wrapped, ok := errors.AsType[errWithQuery](err); ok {
-		return wrapped.err
+	if _, ok := errors.AsType[errWithQuery](err); !ok {
+		return err // no query to remove, also covers err == nil
+	}
+	if wrapped, ok := err.(errWithQuery); ok {
+		return UnwrapErrorWithQuery(wrapped.err)
+	}
+	// err wraps a query wrapping, so its own message contains the query
+	// and err itself can't be returned.
+	if joined, ok := err.(interface{ Unwrap() []error }); ok {
+		// Rebuild the join from the stripped branches instead of
+		// returning only the one that carried the query.
+		branches := joined.Unwrap()
+		stripped := make([]error, len(branches))
+		for i, branch := range branches {
+			stripped[i] = UnwrapErrorWithQuery(branch)
+		}
+		return errors.Join(stripped...)
+	}
+	if unary, ok := err.(interface{ Unwrap() error }); ok {
+		return UnwrapErrorWithQuery(unary.Unwrap())
 	}
 	return err
 }

@@ -196,7 +196,11 @@ unchanged, so it can be called unconditionally, and it finds the query
 wrapping via `errors.AsType` so it also works on errors that were
 further wrapped with `%w`. Any error wrapping around the query wrapping is
 discarded together with it, because such an outer message already
-contains the query.
+contains the query. A multi-error that joins the query wrapping with
+independent errors — like the ROLLBACK error of a failed transaction — is
+instead rebuilt with `errors.Join` from its stripped branches, so
+`errors.Is` still finds those independent errors. Only the message of the
+joining error is lost together with the query it contains.
 
 ```go
 err := db.Exec(ctx, /*sql*/ `INSERT INTO invoice (data) VALUES ($1)`, invoice)

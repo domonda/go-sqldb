@@ -47,7 +47,11 @@ result into a struct pointer you already allocated.
   check. The query wrapping is found with `errors.AsType`, so it is also
   removed from errors that were further wrapped with the standard `%w`. Any
   error wrapping around the query wrapping is discarded together with it,
-  because such an outer message already contains the query. (`53d5c04`)
+  because such an outer message already contains the query — except for a
+  multi-error joining the query wrapping with independent errors, such as
+  the ROLLBACK error of a failed `db.Transaction`, which is rebuilt with
+  `errors.Join` from its stripped branches so that `errors.Is` still finds
+  those independent errors. (`53d5c04`)
 
 ### Fixed
 
