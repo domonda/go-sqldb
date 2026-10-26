@@ -12,6 +12,57 @@ The driver sub-modules (`pqconn`, `mysqlconn`, `mssqlconn`, `sqliteconn`,
 `oraconn`) are tagged separately as `<module>/vX.Y.Z` and released in lockstep
 with the root module.
 
+## [v1.4.1] - 2026-10-26
+
+Dependency and security update. **Requires Go 1.26.**
+
+[Diff](https://github.com/domonda/go-sqldb/compare/v1.4.0...v1.4.1)
+
+### Security
+
+- `sqldb.IsSQLInjection` no longer takes quadratic time on string literals
+  with many backslash escapes. `github.com/corazawaf/libinjection-go` v0.3.5
+  includes the fix for
+  [GHSA-974q-67pr-5pc2](https://github.com/corazawaf/libinjection-go/security/advisories/GHSA-974q-67pr-5pc2),
+  a CPU denial of service through crafted input. Upgrade if you pass untrusted
+  input to `IsSQLInjection`. (`8561ecf`)
+- `mssqlconn` now requires `golang.org/x/crypto` v0.58.0 and `golang.org/x/net`
+  v0.61.0, past the versions with open security advisories. (`8561ecf`)
+
+### Changed
+
+- The root module and the `pqconn`, `mysqlconn`, `mssqlconn`, `sqliteconn` and
+  `oraconn` drivers declare `go 1.26.0`, so building against them requires
+  Go 1.26 or newer. (`8561ecf`)
+- Upgraded dependencies: `github.com/microsoft/go-mssqldb` v1.9.2 → v1.11.2,
+  `github.com/go-sql-driver/mysql` v1.9.2 → v1.10.1, `modernc.org/sqlite`
+  v1.37.1 → v1.61.0 (indirect, used by `zombiezen.com/go/sqlite`),
+  `github.com/DataDog/go-sqllexer` v0.1.13 → v0.2.5 and
+  `github.com/stretchr/testify` v1.11.1 → v1.12.1. (`8561ecf`)
+- `mssqlconn` error messages change with go-mssqldb v1.11: `mssql.Error` now
+  lists every server error of a batch as `mssql: <message> (<number>)`, one
+  per line, instead of `mssql: <message>`. Code that matches on error strings
+  may need updating. When the server aborts a transaction (`XACT_ABORT ON`, a
+  deadlock victim), later statements in it now fail instead of running
+  outside the transaction, and `Rows.Close` can return server errors.
+  (`8561ecf`)
+- `sqldb.IsSQLInjection` no longer reports a number followed by a `--`
+  comment after leading whitespace (for example `" 1 --"`) as an injection,
+  matching the upstream C libinjection. (`8561ecf`)
+- `sqldb.NewQueryNormalizer` keeps doubled single quotes inside string
+  literals intact (`'O''Brien'` instead of `'O' 'Brien'`), which changes the
+  normalized queries `MockConn` matches against. (`8561ecf`)
+
+### For contributors
+
+- CI tests with Go 1.26.0 using `actions/setup-go@v7`. (`89b0de7`, `62142d0`)
+- The `tools` module moves to gosec v2.30.0 and the latest release of every
+  dependency, including `google.golang.org/grpc` v1.84.0 and
+  `golang.org/x/crypto` v0.58.0. (`07bc366`, `498c07b`)
+- `oraconn` and the `information/*_test` and `examples/sqldb-dump` modules
+  build standalone with `GOWORK=off` again: their `go.mod` and `go.sum` files
+  are tidy. (`cb5cc56`)
+
 ## [v1.4.0] - 2026-06-19
 
 Pin a connection to one backend session for session-scoped state like
